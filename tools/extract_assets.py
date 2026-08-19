@@ -178,7 +178,7 @@ def create_asset_pack(rom_path, output_path):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="NBA Live 95 Asset Extractor")
-    parser.add_argument("--rom", default=r"F:\Games\SNES\NBA Live 95 (USA).sfc", help="Path to SNES ROM")
+    parser.add_argument("--rom", required=True, help="Path to SNES ROM (.sfc/.smc)")
     parser.add_argument("--output", default=r"build\nba95_assets.pak", help="Output asset package path")
     args = parser.parse_args()
 

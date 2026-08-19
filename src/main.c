@@ -7,7 +7,7 @@
 extern int win32_run_game(const char *rom_path, const char *assets_path);
 
 int main(int argc, char *argv[]) {
-    const char *rom_path = "F:\\Games\\SNES\\NBA Live 95 (USA).sfc";
+    const char *rom_path = NULL;
     const char *assets_path = NULL;
     const char *dump_frame_path = NULL;
     bool is_headless = false;
@@ -39,7 +39,8 @@ int main(int argc, char *argv[]) {
     }
 
     if (is_headless) {
-        printf("[HEADLESS] Starting headless verification with ROM: %s (frames: %d)\n", rom_path, step_frames);
+        printf("[HEADLESS] Starting headless verification (ROM: %s, Assets: %s, frames: %d)\n",
+               rom_path ? rom_path : "(none)", assets_path ? assets_path : "(none)", step_frames);
         NbaGame game;
         if (!nba_game_init(&game, rom_path, assets_path)) {
             fprintf(stderr, "[HEADLESS] Error: Failed to initialize game\n");

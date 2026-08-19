@@ -1,5 +1,5 @@
 param(
-    [string]$RomPath = 'F:\Games\SNES\NBA Live 95 (USA).sfc',
+    [string]$RomPath = '',
     [string]$AssetPack = '',
     [switch]$ExtractAssets,
     [switch]$Run,

@@ -12,13 +12,9 @@ bool nba_game_init(NbaGame *game, const char *rom_path, const char *assets_path)
     nba_renderer_init(&game->renderer);
     nba_font_init();
 
-    /* Try loading asset pack */
+    /* Load asset pack if provided via parameter */
     if (assets_path && assets_path[0] != '\0') {
         nba_assets_load(&game->assets, assets_path);
-    } else {
-        if (!nba_assets_load(&game->assets, "assets\\nba95_assets.pak")) {
-            nba_assets_load(&game->assets, "build\\nba95_assets.pak");
-        }
     }
 
     if (rom_path && rom_path[0] != '\0') {
