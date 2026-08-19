@@ -90,12 +90,12 @@ void nba_game_tick(NbaGame *game, float delta_time) {
 
         case NBA_STATE_EA_INTRO:
             /* Trigger EA intro voice/audio if present in asset pack and not yet played */
-            if (!game->intro_audio_played) {
+            if (game->ea_voice_stage == 0) {
                 const NbaAssetItem *audio_item = nba_assets_get(&game->assets, NBA_ASSET_AUDIO_EA_INTRO);
                 if (audio_item && audio_item->data && audio_item->size > 0) {
-                    printf("[AUDIO] Playing EA Sports intro voice (%u bytes)...\n", audio_item->size);
+                    printf("[AUDIO] Playing EA Sports intro voice sequence (%u bytes)...\n", audio_item->size);
                     nba_audio_play_wav(audio_item->data, (size_t)audio_item->size);
-                    game->intro_audio_played = true;
+                    game->ea_voice_stage = 1;
                 }
             }
 

@@ -243,7 +243,12 @@ def create_asset_pack(rom_path, output_path):
         raw_data = struct.pack(f'<{len(pcm_samples)}h', *pcm_samples)
         return header + raw_data
 
-    audio_bytes = bytearray()
+    # 7-10. Audio: Authentic EA Voice Clips & Synchronized Intro Track
+    audio_intro_bytes = bytearray()
+    audio_e_bytes = bytearray()
+    audio_a_bytes = bytearray()
+    audio_game_bytes = bytearray()
+
     custom_audio_candidates = [
         os.path.join(os.path.dirname(output_path), "ea_sports_intro.wav"),
         os.path.join(os.path.dirname(rom_path), "ea_sports_intro.wav"),
@@ -252,19 +257,58 @@ def create_asset_pack(rom_path, output_path):
     for cap in custom_audio_candidates:
         if os.path.exists(cap):
             with open(cap, "rb") as af:
-                audio_bytes = af.read()
-            print(f"[ASSET EXTRACTOR] Loaded external audio track: {cap} ({len(audio_bytes)} bytes)")
+                audio_intro_bytes = af.read()
+            print(f"[ASSET EXTRACTOR] Loaded external audio track: {cap} ({len(audio_intro_bytes)} bytes)")
             break
 
-    if len(audio_bytes) == 0 and os.path.exists(rom_path):
+    if os.path.exists(rom_path):
         with open(rom_path, "rb") as rf:
             rom_data = rf.read()
-        # Decode authentic digitized voice audio sample from ROM at offset 0x043025 (35760 samples)
-        if len(rom_data) > 0x043025 + 20115:
-            pcm = decode_brr_to_pcm(rom_data[0x043025:0x043025 + 20115])
-            if len(pcm) > 0:
-                audio_bytes = make_wav_bytes(pcm, sample_rate=14000)
-                print(f"[ASSET EXTRACTOR] Extracted authentic ROM voice sample (0x043025, 14000 Hz): {len(audio_bytes)} WAV bytes")
+
+        # Extract authentic "E", "A", and "It's in the game" samples from ROM
+        # "E" sample: ROM 0x12D9C5 (3492 bytes BRR, 6208 PCM samples)
+        if len(rom_data) >= 0x12D9C5 + 3492:
+            e_pcm = decode_brr_to_pcm(rom_data[0x12D9C5:0x12D9C5 + 3492])
+            if len(e_pcm) > 0:
+                audio_e_bytes = make_wav_bytes(e_pcm, sample_rate=16000)
+                print(f"[ASSET EXTRACTOR] Extracted ROM 'E' voice sample (0x12D9C5): {len(audio_e_bytes)} WAV bytes")
+
+        # "A" sample: ROM 0x12801C (5580 bytes BRR, 9920 PCM samples)
+        if len(rom_data) >= 0x12801C + 5580:
+            a_pcm = decode_brr_to_pcm(rom_data[0x12801C:0x12801C + 5580])
+            if len(a_pcm) > 0:
+                audio_a_bytes = make_wav_bytes(a_pcm, sample_rate=16000)
+                print(f"[ASSET EXTRACTOR] Extracted ROM 'A' voice sample (0x12801C): {len(audio_a_bytes)} WAV bytes")
+
+        # "It's in the game" sample: ROM 0x11249B (9036 bytes BRR, 16064 PCM samples)
+        if len(rom_data) >= 0x11249B + 9036:
+            game_pcm = decode_brr_to_pcm(rom_data[0x11249B:0x11249B + 9036])
+            if len(game_pcm) > 0:
+                audio_game_bytes = make_wav_bytes(game_pcm, sample_rate=16000)
+                print(f"[ASSET EXTRACTOR] Extracted ROM 'It's in the game' voice sample (0x11249B): {len(audio_game_bytes)} WAV bytes")
+
+        # If no external composite intro was provided, create synchronized composite track
+        if len(audio_intro_bytes) == 0 and len(e_pcm) > 0 and len(a_pcm) > 0 and len(game_pcm) > 0:
+            rate = 16000
+            total_len = int(rate * 2.8) # 2.8s intro animation
+            composite = np.zeros(total_len, dtype=np.int16)
+
+            # E at t = 0.0s (Stage 1)
+            e_len = min(len(e_pcm), total_len)
+            composite[:e_len] = np.array(e_pcm[:e_len], dtype=np.int16)
+
+            # A at t = 0.4s (Stage 2)
+            a_start = int(rate * 0.4)
+            a_len = min(len(a_pcm), total_len - a_start)
+            composite[a_start:a_start+a_len] = np.array(a_pcm[:a_len], dtype=np.int16)
+
+            # "It's in the game" at t = 0.8s (Stage 3/4)
+            g_start = int(rate * 0.8)
+            g_len = min(len(game_pcm), total_len - g_start)
+            composite[g_start:g_start+g_len] = np.array(game_pcm[:g_len], dtype=np.int16)
+
+            audio_intro_bytes = make_wav_bytes(composite.tolist(), sample_rate=16000)
+            print(f"[ASSET EXTRACTOR] Built synchronized intro composite audio track: {len(audio_intro_bytes)} WAV bytes")
 
     assets = [
         (1, 128, 11, 0, nintendo_license_bytes),               # ASSET_NINTENDO_LICENSE
@@ -275,8 +319,14 @@ def create_asset_pack(rom_path, output_path):
         (6, w4, h4, ea_flags, ea_packed[3]),                  # ASSET_EA_LOGO_STAGE4
     ]
 
-    if len(audio_bytes) > 0:
-        assets.append((7, 0, 0, 0, audio_bytes))              # ASSET_AUDIO_EA_INTRO
+    if len(audio_intro_bytes) > 0:
+        assets.append((7, 0, 0, 0, audio_intro_bytes))         # ASSET_AUDIO_EA_INTRO
+    if len(audio_e_bytes) > 0:
+        assets.append((8, 0, 0, 0, audio_e_bytes))             # ASSET_AUDIO_EA_E
+    if len(audio_a_bytes) > 0:
+        assets.append((9, 0, 0, 0, audio_a_bytes))             # ASSET_AUDIO_EA_A
+    if len(audio_game_bytes) > 0:
+        assets.append((10, 0, 0, 0, audio_game_bytes))         # ASSET_AUDIO_EA_GAME
 
     header_magic = b"NBA95PAK"
     version = 1

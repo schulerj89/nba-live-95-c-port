@@ -22,7 +22,7 @@ typedef struct {
     NbaGameState state;
     uint32_t frame_count;
     float state_timer;
-    bool intro_audio_played;
+    uint8_t ea_voice_stage;
     bool is_initialized;
 } NbaGame;
 
