@@ -62,6 +62,7 @@ bool nba_game_init(NbaGame *game, const char *rom_path, const char *assets_path)
     game->state_timer = 0.0f;
     game->frame_count = 0;
     nba_audio_debugger_init(&game->audio_debugger);
+    nba_title_sequence_init(&game->title_sequence);
     game->is_initialized = true;
 
     printf("[GAME] Initialization complete. Entering state NBA_STATE_NINTENDO_LICENSE.\n");
@@ -167,15 +168,39 @@ void nba_game_tick(NbaGame *game, float delta_time) {
             /* Step through the authentic 4 assembly stages (5.05s total hold) or advance on button press */
             if (game->input.pressed & (NBA_BTN_START | NBA_BTN_A | NBA_BTN_B)) {
                 nba_audio_stop();
-                game->state = NBA_STATE_MAIN_MENU;
+                game->state = NBA_STATE_TITLE_SEQUENCE;
                 game->state_timer = 0.0f;
+                nba_title_sequence_init(&game->title_sequence);
             } else if (game->state_timer >= 5.05f) {
+                game->state = NBA_STATE_TITLE_SEQUENCE;
+                game->state_timer = 0.0f;
+                nba_title_sequence_init(&game->title_sequence);
+            }
+            break;
+
+        case NBA_STATE_TITLE_SEQUENCE:
+            /* $80:E01E enters the NBA shield/title scene immediately after $82:AC0E. */
+            if (!game->title_sequence.audio_started) {
+                const NbaAssetItem *title_audio = nba_assets_get(
+                    &game->assets, NBA_ASSET_AUDIO_TITLE_SEQUENCE);
+                if (title_audio && title_audio->data && title_audio->size > 0) {
+                    printf("[AUDIO] Playing post-EA NBA Live 95 title sequence (%u bytes)...\n",
+                           title_audio->size);
+                    nba_audio_play_wav(title_audio->data, (size_t)title_audio->size);
+                }
+                game->title_sequence.audio_started = true;
+            }
+            if ((game->input.pressed & (NBA_BTN_START | NBA_BTN_A | NBA_BTN_B)) ||
+                nba_game_timer_frame(game->state_timer) >= NBA_TITLE_SEQUENCE_FRAMES) {
+                nba_audio_stop();
                 game->state = NBA_STATE_MAIN_MENU;
                 game->state_timer = 0.0f;
             }
             break;
 
         case NBA_STATE_MAIN_MENU:
+            break;
+
         default:
             break;
     }
@@ -301,34 +326,23 @@ void nba_game_render(NbaGame *game) {
             nba_game_render_ea_intro(game);
             break;
 
+        case NBA_STATE_TITLE_SEQUENCE:
+            nba_title_sequence_render(&game->title_sequence, &game->assets, ren,
+                                      game->state_timer);
+            break;
+
         case NBA_STATE_MAIN_MENU: {
-            nba_renderer_clear(ren, 0xFF001830); /* SNES deep blue menu background */
-
-            nba_font_render_text_centered(
-                ren->pixels, NBA_SNES_WIDTH,
-                30,
-                "NBA LIVE '95",
-                col_gold, col_shadow,
-                2
-            );
-
+            nba_renderer_clear(ren, 0xFF001830);
+            nba_font_render_text_centered(ren->pixels, NBA_SNES_WIDTH, 30,
+                                          "NBA LIVE '95", col_gold, col_shadow, 2);
             const char *menu_items[] = {
-                "EXHIBITION",
-                "SEASON",
-                "PLAYOFFS",
-                "SET RULES",
-                "SET OPTIONS"
+                "EXHIBITION", "SEASON", "PLAYOFFS", "SET RULES", "SET OPTIONS"
             };
-
-            for (int i = 0; i < 5; i++) {
-                uint32_t col = (i == 0) ? col_gold : col_white;
-                nba_font_render_text_centered(
-                    ren->pixels, NBA_SNES_WIDTH,
-                    80 + i * 20,
-                    menu_items[i],
-                    col, col_shadow,
-                    1
-                );
+            for (int i = 0; i < 5; ++i) {
+                uint32_t color = i == 0 ? col_gold : col_white;
+                nba_font_render_text_centered(ren->pixels, NBA_SNES_WIDTH,
+                                              80 + i * 20, menu_items[i],
+                                              color, col_shadow, 1);
             }
             break;
         }
@@ -368,6 +382,7 @@ void nba_game_render(NbaGame *game) {
                 else stage_str = "STG 4: 'GAME' (HOLD)";
                 break;
             }
+            case NBA_STATE_TITLE_SEQUENCE: state_str = "TITLE SEQUENCE"; break;
             case NBA_STATE_MAIN_MENU: state_str = "MAIN MENU"; break;
             default: break;
         }

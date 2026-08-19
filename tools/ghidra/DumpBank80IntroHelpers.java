@@ -33,11 +33,12 @@ public class DumpBank80IntroHelpers extends GhidraScript {
 
         long[] entries = { 0x800D, 0x8020, 0x86B0, 0x86DA, 0x893F, 0x8968, 0x898F, 0x8A02, 0x8AD2,
                            0x8FA3, 0x9DF3, 0xAC1B, 0xAC89, 0xB344, 0xDA72, 0xDA91,
-                           0xCF1B, 0xCF3B, 0xFD9E, 0xFEE6 };
+                           0xCF1B, 0xCF3B, 0xDD36, 0xDD50, 0xE01E, 0xFD9E, 0xFEE6 };
         String[] names = { "reset_entry", "startup", "wait_frame", "wait_vblank", "display_force_blank", "video_reset", "video_enable",
                            "vram_copy", "vram_fill", "tilegroup_draw", "stage_commit",
                            "oam_build_begin", "oam_build_finish", "oam_group_draw",
-                           "main_state_init", "main_state_loop", "master_brightness_fade_out", "master_brightness_fade_in", "nintendo_license",
+                           "main_state_init", "main_state_loop", "master_brightness_fade_out", "master_brightness_fade_in",
+                           "title_state_init", "title_fade_in", "title_scene_init", "nintendo_license",
                            "nba_legal_notice" };
         for (int i = 0; i < entries.length; ++i) {
             Address address = toAddr(entries[i]);
@@ -58,6 +59,7 @@ public class DumpBank80IntroHelpers extends GhidraScript {
             dumpInstructions(writer, 0xB344, 0xB440);
             dumpInstructions(writer, 0xCF1B, 0xCF80);
             dumpInstructions(writer, 0xDA72, 0xDE40);
+            dumpInstructions(writer, 0xE01E, 0xE400);
             dumpInstructions(writer, 0xFD9E, 0xFFFF);
         }
 

@@ -67,6 +67,9 @@ static void get_sample_info(const NbaAssetItem *item, char *name_buf, size_t nam
         case NBA_ASSET_AUDIO_EA_GAME:
             snprintf(name_buf, name_size, "VOICE: 'GAME'");
             break;
+        case NBA_ASSET_AUDIO_TITLE_SEQUENCE:
+            snprintf(name_buf, name_size, "NBA TITLE MUSIC");
+            break;
         default:
             if (item->flags != 0) {
                 snprintf(name_buf, name_size, "0x%06X SMPL", item->flags);

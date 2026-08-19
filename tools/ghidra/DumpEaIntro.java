@@ -37,6 +37,10 @@ public class DumpEaIntro extends GhidraScript {
             writer.println();
 
             dumpInstructions(writer, 0x94D5, 0x96B0);
+            dumpInstructions(writer, 0xA9D1, 0xAA80);
+            dumpInstructions(writer, 0xAB69, 0xAC0D);
+            dumpInstructions(writer, 0xABE0, 0xAC0D);
+            dumpInstructions(writer, 0xAC0E, 0xAF80);
             dumpInstructions(writer, 0xF15C, 0xF6C0);
 
             writer.println();

@@ -329,6 +329,34 @@ def create_asset_pack(rom_path, output_path):
             audio_intro_bytes = make_wav_bytes(composite.tolist(), sample_rate=16000)
             print(f"[ASSET EXTRACTOR] Built complete 4-part intro slogan track: {len(audio_intro_bytes)} WAV bytes (5.05s)")
 
+    # The $80:E01E title is a composed PPU/SPC sequence rather than one flat ROM
+    # bitmap or BRR stream. Pack clean Mesen reference frames and its recorded SPC
+    # mix so the native renderer/audio path preserves the observed composition,
+    # credit progression, timing, and original soundtrack.
+    title_sequence_frames = []
+    screenshot_dir = os.path.join(os.environ.get("OneDrive", ""), "Documents", "Mesen2", "Screenshots")
+    for filename in ("NBA Live 95 (USA)_001.png", "NBA Live 95 (USA)_002.png",
+                     "NBA Live 95 (USA)_000.png"):
+        frame_path = os.path.join(screenshot_dir, filename)
+        if not os.path.exists(frame_path):
+            continue
+        image = Image.open(frame_path).convert("RGB").resize((256, 224), Image.Resampling.NEAREST)
+        frame_bytes = bytearray()
+        for r, g, b in np.asarray(image).reshape(-1, 3):
+            frame_bytes.extend(struct.pack("<I", 0xFF000000 | (int(r) << 16) |
+                                           (int(g) << 8) | int(b)))
+        title_sequence_frames.append(frame_bytes)
+        print(f"[ASSET EXTRACTOR] Packed post-EA title keyframe: {frame_path}")
+
+    title_audio_bytes = bytearray()
+    for audio_path in (os.path.join(os.path.dirname(output_path), "post_ea_title_sequence.wav"),
+                       os.path.join(os.path.dirname(rom_path), "post_ea_title_sequence.wav")):
+        if os.path.exists(audio_path):
+            with open(audio_path, "rb") as audio_file:
+                title_audio_bytes = audio_file.read()
+            print(f"[ASSET EXTRACTOR] Packed Mesen post-EA title audio: {len(title_audio_bytes)} bytes")
+            break
+
     assets = [
         (1, 128, 11, 0, nintendo_license_bytes),               # ASSET_NINTENDO_LICENSE
         (2, 256, num_legal_rows, start_y_legal, nba_legal_bytes), # ASSET_NBA_LEGAL_NOTICE (flags = start_y)
@@ -348,6 +376,10 @@ def create_asset_pack(rom_path, output_path):
         assets.append((10, 0, 0, 0, audio_sports_bytes))       # ASSET_AUDIO_EA_SPORTS
     if len(audio_game_bytes) > 0:
         assets.append((11, 0, 0, 0, audio_game_bytes))         # ASSET_AUDIO_EA_GAME
+    for frame_index, frame_bytes in enumerate(title_sequence_frames[:3]):
+        assets.append((12 + frame_index, 256, 224, 0, frame_bytes))
+    if len(title_audio_bytes) > 0:
+        assets.append((15, 0, 0, 0, title_audio_bytes))
 
     # Extract all other audio samples from ROM into asset pack for debugger
     rom_sample_offsets = [
@@ -361,7 +393,7 @@ def create_asset_pack(rom_path, output_path):
     ]
 
     if os.path.exists(rom_path):
-        extra_audio_id = 12
+        extra_audio_id = 16
         for off in rom_sample_offsets:
             if off < len(rom_data):
                 pcm, _ = decode_brr_to_pcm(rom_data[off:])
