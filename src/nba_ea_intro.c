@@ -82,34 +82,7 @@ void nba_ea_intro_render_stage2(const NbaAssetPack *assets, NbaRenderer *ren, fl
         if (flash_frame < 8) flash_boost = (8 - flash_frame) * 14;
     }
 
-    /* 1. Stationary "E" piece */
-    if (p1) {
-        for (uint32_t r = 0; r < height; r++) {
-            int py = start_y + (int)r;
-            if (py < 0 || py >= NBA_SNES_HEIGHT) continue;
-            for (uint32_t c = 0; c < width; c++) {
-                uint32_t color = p1[r * width + c];
-                if (color != 0) {
-                    if (flash_boost > 0) {
-                        uint32_t a = (color >> 24) & 0xFF;
-                        uint32_t red   = ((color >> 16) & 0xFF) + (uint32_t)flash_boost;
-                        uint32_t green = ((color >> 8) & 0xFF) + (uint32_t)flash_boost;
-                        uint32_t blue  = (color & 0xFF) + (uint32_t)flash_boost;
-                        if (red > 255) red = 255;
-                        if (green > 255) green = 255;
-                        if (blue > 255) blue = 255;
-                        color = (a << 24) | (red << 16) | (green << 8) | blue;
-                    }
-                    int px = start_x + (int)c;
-                    if (px >= 0 && px < NBA_SNES_WIDTH) {
-                        ren->pixels[py * NBA_SNES_WIDTH + px] = color;
-                    }
-                }
-            }
-        }
-    }
-
-    /* 2. Zooming "A" piece from foreground */
+    /* 1. Zooming "A" piece from foreground (rendered behind stationary E) */
     int pcx = start_x + 72;
     int pcy = start_y + 43;
     float inv_scale = 1.0f / scale;
@@ -142,6 +115,33 @@ void nba_ea_intro_render_stage2(const NbaAssetPack *assets, NbaRenderer *ren, fl
             }
         }
     }
+
+    /* 2. Stationary "E" piece (rendered ON TOP so E remains 100% intact and crisp) */
+    if (p1) {
+        for (uint32_t r = 0; r < height; r++) {
+            int py = start_y + (int)r;
+            if (py < 0 || py >= NBA_SNES_HEIGHT) continue;
+            for (uint32_t c = 0; c < width; c++) {
+                uint32_t color = p1[r * width + c];
+                if (color != 0) {
+                    if (flash_boost > 0) {
+                        uint32_t a = (color >> 24) & 0xFF;
+                        uint32_t red   = ((color >> 16) & 0xFF) + (uint32_t)flash_boost;
+                        uint32_t green = ((color >> 8) & 0xFF) + (uint32_t)flash_boost;
+                        uint32_t blue  = (color & 0xFF) + (uint32_t)flash_boost;
+                        if (red > 255) red = 255;
+                        if (green > 255) green = 255;
+                        if (blue > 255) blue = 255;
+                        color = (a << 24) | (red << 16) | (green << 8) | blue;
+                    }
+                    int px = start_x + (int)c;
+                    if (px >= 0 && px < NBA_SNES_WIDTH) {
+                        ren->pixels[py * NBA_SNES_WIDTH + px] = color;
+                    }
+                }
+            }
+        }
+    }
 }
 
 /**
@@ -170,34 +170,7 @@ void nba_ea_intro_render_stage3(const NbaAssetPack *assets, NbaRenderer *ren, fl
         if (flash_frame < 8) flash_boost = (8 - flash_frame) * 14;
     }
 
-    /* 1. Stationary "EA" emblem */
-    if (p2) {
-        for (uint32_t r = 0; r < height; r++) {
-            int py = start_y + (int)r;
-            if (py < 0 || py >= NBA_SNES_HEIGHT) continue;
-            for (uint32_t c = 0; c < width; c++) {
-                uint32_t color = p2[r * width + c];
-                if (color != 0) {
-                    if (flash_boost > 0) {
-                        uint32_t a = (color >> 24) & 0xFF;
-                        uint32_t red   = ((color >> 16) & 0xFF) + (uint32_t)flash_boost;
-                        uint32_t green = ((color >> 8) & 0xFF) + (uint32_t)flash_boost;
-                        uint32_t blue  = (color & 0xFF) + (uint32_t)flash_boost;
-                        if (red > 255) red = 255;
-                        if (green > 255) green = 255;
-                        if (blue > 255) blue = 255;
-                        color = (a << 24) | (red << 16) | (green << 8) | blue;
-                    }
-                    int px = start_x + (int)c;
-                    if (px >= 0 && px < NBA_SNES_WIDTH) {
-                        ren->pixels[py * NBA_SNES_WIDTH + px] = color;
-                    }
-                }
-            }
-        }
-    }
-
-    /* 2. Zooming "SPORTS" ribbon from foreground */
+    /* 1. Zooming "SPORTS" ribbon from foreground (rendered behind stationary EA emblem) */
     int pcx = start_x + 52;
     int pcy = start_y + 94;
     float inv_scale = 1.0f / scale;
@@ -225,6 +198,33 @@ void nba_ea_intro_render_stage3(const NbaAssetPack *assets, NbaRenderer *ren, fl
                     color = (a << 24) | (red << 16) | (green << 8) | blue;
                 }
                 ren->pixels[py * NBA_SNES_WIDTH + px] = color;
+            }
+        }
+    }
+
+    /* 2. Stationary "EA" emblem (rendered ON TOP so emblem remains 100% intact and crisp) */
+    if (p2) {
+        for (uint32_t r = 0; r < height; r++) {
+            int py = start_y + (int)r;
+            if (py < 0 || py >= NBA_SNES_HEIGHT) continue;
+            for (uint32_t c = 0; c < width; c++) {
+                uint32_t color = p2[r * width + c];
+                if (color != 0) {
+                    if (flash_boost > 0) {
+                        uint32_t a = (color >> 24) & 0xFF;
+                        uint32_t red   = ((color >> 16) & 0xFF) + (uint32_t)flash_boost;
+                        uint32_t green = ((color >> 8) & 0xFF) + (uint32_t)flash_boost;
+                        uint32_t blue  = (color & 0xFF) + (uint32_t)flash_boost;
+                        if (red > 255) red = 255;
+                        if (green > 255) green = 255;
+                        if (blue > 255) blue = 255;
+                        color = (a << 24) | (red << 16) | (green << 8) | blue;
+                    }
+                    int px = start_x + (int)c;
+                    if (px >= 0 && px < NBA_SNES_WIDTH) {
+                        ren->pixels[py * NBA_SNES_WIDTH + px] = color;
+                    }
+                }
             }
         }
     }
