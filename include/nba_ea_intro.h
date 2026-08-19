@@ -1,16 +1,11 @@
-#ifndef NBA_GAME_H
-#define NBA_GAME_H
+#ifndef NBA_EA_INTRO_H
+#define NBA_EA_INTRO_H
 
 #include "nba_types.h"
-#include "nba_rom.h"
 #include "nba_assets.h"
 #include "nba_renderer.h"
-#include "nba_audio_debugger.h"
-#include "nba_ea_intro.h"
 
 /* SNES Subroutine Addresses (LoROM Bank $80 and Bank $82) */
-#define SNES_ADDR_RESET_BOOT            0x808020  /* $80:8020 - Cold boot reset handler */
-#define SNES_ADDR_GAME_LOOP             0x80DA91  /* $80:DA91 - Main scene dispatcher loop */
 #define SNES_ADDR_SETUP_INTRO           0x82F15C  /* $82:F15C - EA Sports intro setup entry point */
 #define SNES_ADDR_DRAW_STAGE1_E         0x82F4F6  /* $82:F4F6 - Assemble 'E' emblem tilegroup */
 #define SNES_ADDR_DRAW_STAGE2_A         0x82F512  /* $82:F512 - Assemble 'A' emblem tilegroup */
@@ -22,42 +17,26 @@
 #define SNES_ADDR_SCROLL_MATRIX_UPDATE  0x82962D  /* $82:962D - Mode 7 matrix & scroll register dispatcher */
 
 /* SNES Frame Timing Counts (at 60 FPS) */
-#define NBA_LICENSE_FRAMES              120       /* 2.000s ($00:FD9E) */
-#define NBA_LEGAL_FRAMES                180       /* 3.000s ($00:FEE6) */
 #define NBA_INTRO_STAGE1_FRAMES         32        /* 0.533s ($82:F2EA) */
 #define NBA_INTRO_STAGE2_FRAMES         31        /* 0.517s ($82:F36A) */
 #define NBA_INTRO_STAGE3_FRAMES         60        /* 1.000s ($82:F408) */
 #define NBA_INTRO_STAGE4_FRAMES         180       /* 3.000s ($82:F469) */
 #define NBA_INTRO_TOTAL_FRAMES          303       /* 5.050s total */
 
-typedef enum {
-    NBA_STATE_BOOT_RESET = 0,
-    NBA_STATE_NINTENDO_LICENSE,
-    NBA_STATE_NBA_LEGAL_NOTICE,
-    NBA_STATE_EA_INTRO,
-    NBA_STATE_MAIN_MENU
-} NbaGameState;
+#define NBA_INTRO_ANIM_DURATION_SEC     0.366f    /* 22 frames in SNES $82:F56D */
+#define NBA_INTRO_MAX_ZOOM_FACTOR       3.5f      /* Initial Mode 7 foreground zoom */
 
-typedef struct {
-    NbaRom rom;
-    NbaAssetPack assets;
-    NbaRenderer renderer;
-    NbaInput input;
-    NbaGameState state;
-    uint32_t frame_count;
-    float state_timer;
-    uint8_t ea_voice_stage;
-    NbaAudioDebugger audio_debugger;
-    bool show_timing_debug;
-    bool is_initialized;
-} NbaGame;
+/* Top-level EA Intro Renderer */
+void nba_ea_intro_render(const NbaAssetPack *assets, NbaRenderer *ren, float timer);
 
-bool nba_game_init(NbaGame *game, const char *rom_path, const char *assets_path);
-void nba_game_shutdown(NbaGame *game);
-void nba_game_input_update(NbaInput *input, uint16_t raw_buttons);
-void nba_game_tick(NbaGame *game, float delta_time);
-void nba_game_render(NbaGame *game);
-void nba_game_render_nba_legal_notice(NbaGame *game);
-void nba_game_render_ea_intro(NbaGame *game);
+/* Modular Stage Renderers */
+void nba_ea_intro_render_stage1(const NbaAssetPack *assets, NbaRenderer *ren, float local_t,
+                               int start_x, int start_y, uint32_t width, uint32_t height);
+void nba_ea_intro_render_stage2(const NbaAssetPack *assets, NbaRenderer *ren, float local_t,
+                               int start_x, int start_y, uint32_t width, uint32_t height);
+void nba_ea_intro_render_stage3(const NbaAssetPack *assets, NbaRenderer *ren, float local_t,
+                               int start_x, int start_y, uint32_t width, uint32_t height);
+void nba_ea_intro_render_stage4(const NbaAssetPack *assets, NbaRenderer *ren,
+                               int start_x, int start_y, uint32_t width, uint32_t height);
 
-#endif /* NBA_GAME_H */
+#endif /* NBA_EA_INTRO_H */
