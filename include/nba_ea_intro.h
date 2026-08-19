@@ -11,6 +11,9 @@
 #define SNES_ADDR_DRAW_STAGE2_A         0x82F512  /* $82:F512 - Assemble 'A' emblem tilegroup */
 #define SNES_ADDR_DRAW_STAGE3_SPORTS    0x82F52E  /* $82:F52E - Assemble 'SPORTS' banner */
 #define SNES_ADDR_DRAW_STAGE4_BANNER    0x808FA3  /* $80:8FA3 - Assemble 'ELECTRONIC ARTS' banner */
+#define SNES_ADDR_OAM_BUILD_BEGIN       0x80AC1B  /* $80:AC1B - Prepare fixed OBJ/OAM group buffer */
+#define SNES_ADDR_OAM_BUILD_FINISH      0x80AC89  /* $80:AC89 - Finish/swap fixed OBJ/OAM buffer */
+#define SNES_ADDR_OAM_GROUP_DRAW        0x80B344  /* $80:B344 - Draw fixed sprite group at X/Y */
 #define SNES_ADDR_FLASH_SUBROUTINE      0x82F4C4  /* $82:F4C4 - 8-frame specular highlight flash loop */
 #define SNES_ADDR_COLOR_STEP            0x82F5E7  /* $82:F5E7 - Palette RGB channel stepping algorithm */
 #define SNES_ADDR_STAGE_STEP_LOOP       0x82F56D  /* $82:F56D - 22-frame entrance animation step loop */

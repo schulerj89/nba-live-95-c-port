@@ -36,7 +36,7 @@ public class DumpEaIntro extends GhidraScript {
             writer.println("SNES range $82:F15C-$82:F620 (LoROM file $01715C-$017620)");
             writer.println();
 
-            dumpInstructions(writer, 0x94D5, 0x9670);
+            dumpInstructions(writer, 0x94D5, 0x96B0);
             dumpInstructions(writer, 0xF15C, 0xF6C0);
 
             writer.println();

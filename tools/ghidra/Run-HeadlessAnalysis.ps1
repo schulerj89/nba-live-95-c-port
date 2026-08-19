@@ -45,20 +45,36 @@ $bankBytes = New-Object byte[] 0x8000
 Write-Host "Running Ghidra Headless Analysis for SNES NBA Live '95..." -ForegroundColor Cyan
 
 $projectName = 'NbaLive95Bank{0:X2}' -f $Bank
-& $headless $projectDirectory $projectName `
-    -import $bankPath `
-    -overwrite `
-    -loader BinaryLoader `
-    -loader-baseAddr 0x8000 `
-    -processor '65816:LE:16:default' `
-    -scriptPath $PSScriptRoot `
-    -preScript 'SnesEntryPoints.java' `
-    -noanalysis `
-    -postScript 'DumpEaIntro.java' $analysisDirectory
+if ($Bank -eq 0x80) {
+    & $headless $projectDirectory $projectName `
+        -import $bankPath `
+        -overwrite `
+        -loader BinaryLoader `
+        -loader-baseAddr 0x8000 `
+        -processor '65816:LE:16:default' `
+        -scriptPath $PSScriptRoot `
+        -noanalysis `
+        -postScript 'DumpBank80IntroHelpers.java' $analysisDirectory
+} else {
+    & $headless $projectDirectory $projectName `
+        -import $bankPath `
+        -overwrite `
+        -loader BinaryLoader `
+        -loader-baseAddr 0x8000 `
+        -processor '65816:LE:16:default' `
+        -scriptPath $PSScriptRoot `
+        -preScript 'SnesEntryPoints.java' `
+        -noanalysis `
+        -postScript 'DumpEaIntro.java' $analysisDirectory
+}
 
 if ($LASTEXITCODE -ne 0) {
     throw "Ghidra analysis exited with code $LASTEXITCODE"
 }
 
 Write-Host "Ghidra analysis complete in: $projectDirectory" -ForegroundColor Green
-Write-Host "EA intro dump written to: $analysisDirectory\ea_intro_ghidra.txt" -ForegroundColor Green
+if ($Bank -eq 0x80) {
+    Write-Host "EA intro helper dump written to: $analysisDirectory\ea_intro_bank80_helpers.txt" -ForegroundColor Green
+} else {
+    Write-Host "EA intro dump written to: $analysisDirectory\ea_intro_ghidra.txt" -ForegroundColor Green
+}
