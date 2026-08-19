@@ -1,0 +1,19 @@
+# Build directories
+build/
+bin/
+obj/
+out/
+.vs/
+
+# Compiler and IDE artifacts
+*.exe
+*.obj
+*.lib
+*.pdb
+*.ilk
+*.idb
+*.bmp
+
+# Ghidra project data
+ghidra-projects/
+build/ghidra-*
