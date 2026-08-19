@@ -1,5 +1,6 @@
 #include "nba_game.h"
 #include "nba_font.h"
+#include "nba_audio.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -11,6 +12,7 @@ bool nba_game_init(NbaGame *game, const char *rom_path, const char *assets_path)
 
     nba_renderer_init(&game->renderer);
     nba_font_init();
+    nba_audio_init();
 
     /* Load asset pack if provided via parameter */
     if (assets_path && assets_path[0] != '\0') {
@@ -35,6 +37,7 @@ bool nba_game_init(NbaGame *game, const char *rom_path, const char *assets_path)
 
 void nba_game_shutdown(NbaGame *game) {
     if (!game) return;
+    nba_audio_shutdown();
     if (game->assets.is_loaded) {
         nba_assets_free(&game->assets);
     }
@@ -79,18 +82,22 @@ void nba_game_tick(NbaGame *game, float delta_time) {
 
         case NBA_STATE_NBA_LEGAL_NOTICE:
             /* Exact SNES timing from ROM $00:FEE6: 180 frames (3.0s) or button press */
-            if (game->input.pressed & (NBA_BTN_START | NBA_BTN_A | NBA_BTN_B)) {
+            if ((game->input.pressed & (NBA_BTN_START | NBA_BTN_A | NBA_BTN_B)) || game->state_timer >= 3.0f) {
                 game->state = NBA_STATE_EA_INTRO;
                 game->state_timer = 0.0f;
-            } else if (game->state_timer >= 3.0f) {
-                game->state = NBA_STATE_EA_INTRO;
-                game->state_timer = 0.0f;
+
+                /* Trigger EA intro voice/audio if present in asset pack */
+                const NbaAssetItem *audio_item = nba_assets_get(&game->assets, NBA_ASSET_AUDIO_EA_INTRO);
+                if (audio_item && audio_item->data && audio_item->size > 0) {
+                    nba_audio_play_wav(audio_item->data, (size_t)audio_item->size);
+                }
             }
             break;
 
         case NBA_STATE_EA_INTRO:
             /* Step through the 4 assembly stages (2.8s total) or advance on button press */
             if (game->input.pressed & (NBA_BTN_START | NBA_BTN_A | NBA_BTN_B)) {
+                nba_audio_stop();
                 game->state = NBA_STATE_MAIN_MENU;
                 game->state_timer = 0.0f;
             } else if (game->state_timer >= 2.8f) {

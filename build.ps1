@@ -52,6 +52,7 @@ $ConsoleExePath = Join-Path $BuildDir "nba95_port.exe"
 $CommonSources = @(
     "src\nba_rom.c",
     "src\nba_assets.c",
+    "src\nba_audio.c",
     "src\nba_font.c",
     "src\nba_renderer.c",
     "src\nba_game.c"

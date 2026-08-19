@@ -4,13 +4,14 @@
 #include "nba_types.h"
 
 typedef enum {
-    NBA_ASSET_NONE            = 0,
+    NBA_ASSET_NONE             = 0,
     NBA_ASSET_NINTENDO_LICENSE = 1,
     NBA_ASSET_NBA_LEGAL_NOTICE = 2,
     NBA_ASSET_EA_LOGO_STAGE1   = 3,
     NBA_ASSET_EA_LOGO_STAGE2   = 4,
     NBA_ASSET_EA_LOGO_STAGE3   = 5,
     NBA_ASSET_EA_LOGO_STAGE4   = 6,
+    NBA_ASSET_AUDIO_EA_INTRO   = 7,
     NBA_ASSET_MAX              = 16
 } NbaAssetId;
 

@@ -191,6 +191,81 @@ def create_asset_pack(rom_path, output_path):
                         stage_bytes.extend(struct.pack("<I", argb))
             ea_packed.append(stage_bytes)
 
+    # 7. Audio: EA Intro Voice / Sound Effect
+    def decode_brr_to_pcm(data):
+        pcm = []
+        p1, p2 = 0, 0
+        pos = 0
+        while pos + 9 <= len(data):
+            h = data[pos]
+            shift = h >> 4
+            f = (h >> 2) & 3
+            end = (h & 1) != 0
+            if shift > 12:
+                break
+            pos += 1
+            for b in range(8):
+                byte_val = data[pos + b]
+                for nibble in [(byte_val >> 4) & 0xF, byte_val & 0xF]:
+                    sample = nibble if nibble < 8 else nibble - 16
+                    sample = (sample << shift) >> 1
+                    if f == 0: out = sample
+                    elif f == 1: out = sample + p1 + ((-p1) >> 4)
+                    elif f == 2: out = sample + (p1 << 1) + ((-((p1 << 1) + p1)) >> 5) - p2 + (p2 >> 4)
+                    elif f == 3: out = sample + (p1 << 1) + ((-(p1 + (p1 << 2) + (p1 << 3))) >> 6) - p2 + (((p2 << 1) + p2) >> 4)
+                    else: out = sample
+                    out = max(-32768, min(32767, int(out)))
+                    pcm.append(out)
+                    p2, p1 = p1, out
+            pos += 8
+            if end:
+                break
+        return pcm
+
+    def make_wav_bytes(pcm_samples, num_channels=1, sample_rate=16000, bits_per_sample=16):
+        data_size = len(pcm_samples) * 2
+        header = struct.pack(
+            '<4sI4s4sIHHIIHH4sI',
+            b'RIFF',
+            36 + data_size,
+            b'WAVE',
+            b'fmt ',
+            16,
+            1, # PCM
+            num_channels,
+            sample_rate,
+            sample_rate * num_channels * 2,
+            num_channels * 2,
+            bits_per_sample,
+            b'data',
+            data_size
+        )
+        raw_data = struct.pack(f'<{len(pcm_samples)}h', *pcm_samples)
+        return header + raw_data
+
+    audio_bytes = bytearray()
+    custom_audio_candidates = [
+        os.path.join(os.path.dirname(output_path), "ea_sports_intro.wav"),
+        os.path.join(os.path.dirname(rom_path), "ea_sports_intro.wav"),
+        r"C:\Users\joshs\.gemini\antigravity\brain\d68e4a6c-6141-40e1-87ca-08f9ff969dfb\scratch\audio_samples\sample_00_0x04307F.wav"
+    ]
+    for cap in custom_audio_candidates:
+        if os.path.exists(cap):
+            with open(cap, "rb") as af:
+                audio_bytes = af.read()
+            print(f"[ASSET EXTRACTOR] Loaded audio track: {cap} ({len(audio_bytes)} bytes)")
+            break
+
+    if len(audio_bytes) == 0 and os.path.exists(rom_path):
+        with open(rom_path, "rb") as rf:
+            rom_data = rf.read()
+        # Decode BRR audio sample from bank $04 offset 0x043025 (2.23s voice/sound track)
+        if len(rom_data) > 0x043025 + 20115:
+            pcm = decode_brr_to_pcm(rom_data[0x043025:0x043025 + 20115])
+            if len(pcm) > 0:
+                audio_bytes = make_wav_bytes(pcm, sample_rate=16000)
+                print(f"[ASSET EXTRACTOR] Extracted ROM voice audio sample (0x043025): {len(audio_bytes)} WAV bytes")
+
     assets = [
         (1, 128, 11, 0, nintendo_license_bytes),               # ASSET_NINTENDO_LICENSE
         (2, 256, num_legal_rows, start_y_legal, nba_legal_bytes), # ASSET_NBA_LEGAL_NOTICE (flags = start_y)
@@ -199,6 +274,9 @@ def create_asset_pack(rom_path, output_path):
         (5, w4, h4, ea_flags, ea_packed[2]),                  # ASSET_EA_LOGO_STAGE3
         (6, w4, h4, ea_flags, ea_packed[3]),                  # ASSET_EA_LOGO_STAGE4
     ]
+
+    if len(audio_bytes) > 0:
+        assets.append((7, 0, 0, 0, audio_bytes))              # ASSET_AUDIO_EA_INTRO
 
     header_magic = b"NBA95PAK"
     version = 1
