@@ -3,6 +3,17 @@
 
 #include "nba_types.h"
 
+/* SNES ROM Addresses & Offsets for Assets */
+#define SNES_ROM_OFF_NINTENDO_LICENSE   0x007D9E  /* $00:FD9E - 128 bytes 1bpp bitmap */
+#define SNES_ROM_OFF_NBA_LEGAL_NOTICE   0x007EE6  /* $00:FEE6 - 480 bytes 1bpp legal text */
+#define SNES_ROM_OFF_EA_INTRO_CODE      0x01715C  /* $82:F15C - EA Sports intro routines */
+
+/* Authentic Digitized Voice Sample Offsets (BRR compressed bitstreams in ROM) */
+#define SNES_ROM_OFF_AUDIO_VOICE_E      0x12D9C5  /* $A5:D9C5 - 'E' sample (size: 0x0DA4, 3492 bytes BRR, 0.39s) */
+#define SNES_ROM_OFF_AUDIO_VOICE_A      0x12801C  /* $A5:801C - 'A' sample (size: 0x15CC, 5580 bytes BRR, 0.62s) */
+#define SNES_ROM_OFF_AUDIO_VOICE_SPORTS 0x11E03D  /* $A3:E03D - 'SPORTS' sample (size: 0x1710, 5904 bytes BRR, 0.66s) */
+#define SNES_ROM_OFF_AUDIO_VOICE_GAME   0x11249B  /* $A2:A49B - 'It\'s in the game' (size: 0x234C, 9036 bytes BRR, 1.00s) */
+
 typedef enum {
     NBA_ASSET_NONE             = 0,
     NBA_ASSET_NINTENDO_LICENSE = 1,

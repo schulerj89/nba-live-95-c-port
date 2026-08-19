@@ -102,16 +102,28 @@ static const uint8_t g_font_8x8[128][8] = {
     ['z']  = { 0x00, 0x00, 0xFC, 0x18, 0x30, 0x60, 0xFC, 0x00 }
 };
 
+/**
+ * Offset/Address/Size: N/A | Font Subsystem Init | size: N/A
+ * Purpose: Initializes the 8x8 bitmap arcade font tables.
+ */
 void nba_font_init(void) {
     /* Ready */
 }
 
+/**
+ * Offset/Address/Size: 0x000000 | 8x8 ASCII Glyph Table | size: 1024 bytes (128x8)
+ * Purpose: Returns an 8-byte 1bpp slice representing an ASCII character glyph.
+ */
 const uint8_t *nba_font_get_glyph_8x8(char c) {
     unsigned char uc = (unsigned char)c;
     if (uc >= 128) uc = ' ';
     return g_font_8x8[uc];
 }
 
+/**
+ * Offset/Address/Size: N/A | Text Layout Metric | size: N/A
+ * Purpose: Computes pixel width of a string rendered at a given scale.
+ */
 int nba_font_get_text_width(const char *text, int scale) {
     if (!text) return 0;
     if (scale < 1) scale = 1;
@@ -138,6 +150,10 @@ static void draw_glyph(uint32_t *pixels, int stride, int px, int py,
     }
 }
 
+/**
+ * Offset/Address/Size: 0x002FA3 | $80:8FA3 | size: 0x48
+ * Purpose: Renders scaled text string with drop shadow onto the frame buffer.
+ */
 void nba_font_render_text(uint32_t *pixels, int stride, int x, int y,
                           const char *text, uint32_t fg_color, uint32_t shadow_color,
                           int scale) {
@@ -160,6 +176,10 @@ void nba_font_render_text(uint32_t *pixels, int stride, int x, int y,
     }
 }
 
+/**
+ * Offset/Address/Size: N/A | Centered String Renderer | size: N/A
+ * Purpose: Centers a text string horizontally on screen and renders with drop shadow.
+ */
 void nba_font_render_text_centered(uint32_t *pixels, int stride, int y,
                                    const char *text, uint32_t fg_color, uint32_t shadow_color,
                                    int scale) {
@@ -184,6 +204,10 @@ static const uint8_t g_licensed_by_nintendo_bitmap[11][16] = {
     { 0xF3, 0x1C, 0x79, 0x98, 0xE3, 0xCF, 0x00, 0xF0, 0x60, 0x0C, 0xCC, 0xCC, 0x63, 0xCC, 0xCF, 0x0E }, // row 10
 };
 
+/**
+ * Offset/Address/Size: 0x007D9E | $00:FD9E | size: 0xB0 (176 bytes)
+ * Purpose: Renders the 128x11 1bpp LICENSED BY NINTENDO splash notice directly onto screen buffer.
+ */
 void nba_font_render_licensed_by_nintendo(uint32_t *pixels, int stride, int x, int y,
                                          uint32_t fg_color, int scale) {
     if (!pixels) return;

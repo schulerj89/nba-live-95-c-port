@@ -4,6 +4,10 @@
 #include <stdio.h>
 #include <string.h>
 
+/**
+ * Offset/Address/Size: 0x000020 | $80:8020 | size: 0x80
+ * Purpose: Game engine cold-boot initialization (loads ROM, assets, video/audio subsystems, enters initial state).
+ */
 bool nba_game_init(NbaGame *game, const char *rom_path, const char *assets_path) {
     if (!game) return false;
     memset(game, 0, sizeof(NbaGame));
@@ -36,6 +40,10 @@ bool nba_game_init(NbaGame *game, const char *rom_path, const char *assets_path)
     return true;
 }
 
+/**
+ * Offset/Address/Size: N/A | Host Game Shutdown | size: N/A
+ * Purpose: Gracefully releases audio, asset pack, and ROM cartridge buffers.
+ */
 void nba_game_shutdown(NbaGame *game) {
     if (!game) return;
     nba_audio_shutdown();
@@ -49,6 +57,10 @@ void nba_game_shutdown(NbaGame *game) {
     printf("[GAME] Shutdown complete.\n");
 }
 
+/**
+ * Offset/Address/Size: 0x00059A | $00:059A | size: 0x10
+ * Purpose: Polls controller joypad button edge states (pressed, held, released) per frame.
+ */
 void nba_game_input_update(NbaInput *input, uint16_t raw_buttons) {
     if (!input) return;
     input->pressed = (uint16_t)(raw_buttons & ~input->held);
@@ -56,6 +68,10 @@ void nba_game_input_update(NbaInput *input, uint16_t raw_buttons) {
     input->held = raw_buttons;
 }
 
+/**
+ * Offset/Address/Size: 0x005A91 | $80:DA91 | size: 0xC8
+ * Purpose: Main game loop dispatcher and scene timer state machine.
+ */
 void nba_game_tick(NbaGame *game, float delta_time) {
     /* Handle F10 Timing Debug overlay toggle */
     if (game->input.pressed & NBA_BTN_DEBUG_F10) {
@@ -134,6 +150,10 @@ void nba_game_tick(NbaGame *game, float delta_time) {
     }
 }
 
+/**
+ * Offset/Address/Size: 0x007EE6 | $00:FEE6 | size: 0x1E0 (480 bytes)
+ * Purpose: Renders the 256x15 1bpp NBA / NBPA legal copyright notice bitmap onto screen.
+ */
 void nba_game_render_nba_legal_notice(NbaGame *game) {
     if (!game) return;
     NbaRenderer *ren = &game->renderer;
@@ -167,6 +187,10 @@ void nba_game_render_nba_legal_notice(NbaGame *game) {
     }
 }
 
+/**
+ * Offset/Address/Size: 0x01715C | $82:F15C | size: 0x4E0 (1248 bytes)
+ * Purpose: Multi-stage EA Sports intro animation renderer with Mode 7 sliding/dropping transitions & specular flash.
+ */
 void nba_game_render_ea_intro(NbaGame *game) {
     if (!game) return;
     NbaRenderer *ren = &game->renderer;
@@ -382,6 +406,10 @@ void nba_game_render_ea_intro(NbaGame *game) {
     }
 }
 
+/**
+ * Offset/Address/Size: 0x005A91 | $80:DA91 | size: 0x140
+ * Purpose: Top-level scene rendering multiplexer and debug overlay compositor.
+ */
 void nba_game_render(NbaGame *game) {
     if (!game || !game->is_initialized) return;
 

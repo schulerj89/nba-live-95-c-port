@@ -27,6 +27,10 @@ typedef struct {
 } BmpInfoHeader;
 #pragma pack(pop)
 
+/**
+ * Offset/Address/Size: 0x008968 | $80:8968 | size: 0x32
+ * Purpose: Initializes the 256x224 32-bit ARGB software rasterizer (corresponds to PPU reset & blank).
+ */
 void nba_renderer_init(NbaRenderer *renderer) {
     if (!renderer) return;
     renderer->width = NBA_SNES_WIDTH;
@@ -35,6 +39,10 @@ void nba_renderer_init(NbaRenderer *renderer) {
     nba_renderer_clear(renderer, renderer->bg_color);
 }
 
+/**
+ * Offset/Address/Size: 0x008AD2 | $80:8AD2 | size: 0x20
+ * Purpose: Clears the full 256x224 frame buffer with a solid 32-bit ARGB fill color.
+ */
 void nba_renderer_clear(NbaRenderer *renderer, uint32_t color) {
     if (!renderer) return;
     for (int i = 0; i < NBA_SNES_WIDTH * NBA_SNES_HEIGHT; i++) {
@@ -42,6 +50,10 @@ void nba_renderer_clear(NbaRenderer *renderer, uint32_t color) {
     }
 }
 
+/**
+ * Offset/Address/Size: N/A | Pixel Writer | size: 4 bytes
+ * Purpose: Sets a single pixel at (x, y) with bounds clipping.
+ */
 void nba_renderer_set_pixel(NbaRenderer *renderer, int x, int y, uint32_t color) {
     if (!renderer) return;
     if (x >= 0 && x < NBA_SNES_WIDTH && y >= 0 && y < NBA_SNES_HEIGHT) {
@@ -49,6 +61,10 @@ void nba_renderer_set_pixel(NbaRenderer *renderer, int x, int y, uint32_t color)
     }
 }
 
+/**
+ * Offset/Address/Size: N/A | Rectangle Fill | size: N/A
+ * Purpose: Fills an axis-aligned rectangular region on screen with clipping.
+ */
 void nba_renderer_draw_rect(NbaRenderer *renderer, int x, int y, int w, int h, uint32_t color) {
     if (!renderer) return;
     for (int dy = 0; dy < h; dy++) {
@@ -62,6 +78,10 @@ void nba_renderer_draw_rect(NbaRenderer *renderer, int x, int y, int w, int h, u
     }
 }
 
+/**
+ * Offset/Address/Size: N/A | Host BMP Capture | size: N/A
+ * Purpose: Writes the current 256x224 frame buffer to a standard 24-bit uncompressed Windows BMP file.
+ */
 bool nba_renderer_save_bmp(const NbaRenderer *renderer, const char *filepath) {
     if (!renderer || !filepath) return false;
 

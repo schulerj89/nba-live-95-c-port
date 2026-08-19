@@ -6,6 +6,10 @@
 
 extern int win32_run_game(const char *rom_path, const char *assets_path);
 
+/**
+ * Offset/Address/Size: N/A | Application Entry Point / CLI Dispatcher | size: N/A
+ * Purpose: Parses CLI flags, executes headless frame verifications, or launches Win32 desktop application.
+ */
 int main(int argc, char *argv[]) {
     const char *rom_path = NULL;
     const char *assets_path = NULL;

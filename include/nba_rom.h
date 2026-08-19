@@ -4,7 +4,13 @@
 #include "nba_types.h"
 
 #define NBA_ROM_EXPECTED_SHA256 "2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870"
-#define NBA_ROM_MIN_SIZE (1024 * 1024)
+#define NBA_ROM_MIN_SIZE        (1024 * 1024)
+
+/* SNES LoROM Memory Map & Internal Header Constants */
+#define SNES_LOROM_HEADER_OFFSET    0x007FC0  /* $00:FFC0 - SNES ROM registration data */
+#define SNES_LOROM_RESET_VECTOR_OFF 0x007FFC  /* $00:FFFC - Emulation mode reset vector */
+#define SNES_LOROM_RESET_ADDR       0x800D    /* Reset entry point in bank $00 / $80 */
+#define SNES_LOROM_BANK_SIZE        0x8000    /* 32 KiB LoROM bank window ($8000..$FFFF) */
 
 typedef struct {
     uint8_t *data;

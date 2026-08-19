@@ -77,6 +77,10 @@ static void get_sample_info(const NbaAssetItem *item, char *name_buf, size_t nam
     }
 }
 
+/**
+ * Offset/Address/Size: N/A | Host UI Tool | size: N/A
+ * Purpose: Initializes the in-game audio debugger state.
+ */
 void nba_audio_debugger_init(NbaAudioDebugger *dbg) {
     if (!dbg) return;
     memset(dbg, 0, sizeof(NbaAudioDebugger));
@@ -86,6 +90,10 @@ void nba_audio_debugger_init(NbaAudioDebugger *dbg) {
     dbg->total_audio_items = 0;
 }
 
+/**
+ * Offset/Address/Size: N/A | Host Key Handler (VK_F11) | size: N/A
+ * Purpose: Toggles the audio sample browser overlay and pauses/unpauses gameplay.
+ */
 void nba_audio_debugger_toggle(NbaAudioDebugger *dbg) {
     if (!dbg) return;
     dbg->is_active = !dbg->is_active;
@@ -96,6 +104,10 @@ void nba_audio_debugger_toggle(NbaAudioDebugger *dbg) {
     }
 }
 
+/**
+ * Offset/Address/Size: N/A | Host Input / Sample Navigation | size: N/A
+ * Purpose: Scans loaded audio assets, processes Up/Down selection, and triggers instant sample playback.
+ */
 void nba_audio_debugger_update(NbaAudioDebugger *dbg, const NbaAssetPack *assets, const NbaInput *input) {
     if (!dbg || !assets || !input) return;
 
@@ -159,6 +171,10 @@ void nba_audio_debugger_update(NbaAudioDebugger *dbg, const NbaAssetPack *assets
     }
 }
 
+/**
+ * Offset/Address/Size: N/A | Host UI / Waveform Oscilloscope Render | size: N/A
+ * Purpose: Renders the interactive audio debugger HUD, sample directory, and 16-bit PCM waveform oscilloscope graph.
+ */
 void nba_audio_debugger_render(const NbaAudioDebugger *dbg, const NbaAssetPack *assets, NbaRenderer *ren) {
     if (!dbg || !dbg->is_active || !assets || !ren) return;
 

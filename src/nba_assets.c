@@ -20,6 +20,10 @@ typedef struct {
     uint32_t flags;
 } PackEntry;
 
+/**
+ * Offset/Address/Size: 0x000000 | Asset Pack Binary (NBA95PAK) | size: Dynamic (approx 1.45 MB)
+ * Purpose: Loads pre-extracted authentic ROM bitmaps, palettes, and BRR->PCM audio assets.
+ */
 bool nba_assets_load(NbaAssetPack *pack, const char *asset_path) {
     if (!pack || !asset_path) return false;
     memset(pack, 0, sizeof(NbaAssetPack));
@@ -90,6 +94,10 @@ bool nba_assets_load(NbaAssetPack *pack, const char *asset_path) {
     return true;
 }
 
+/**
+ * Offset/Address/Size: N/A | Host Memory | size: N/A
+ * Purpose: Releases asset pack buffer and invalidates item entries.
+ */
 void nba_assets_free(NbaAssetPack *pack) {
     if (!pack) return;
     if (pack->raw_data) {
@@ -101,6 +109,10 @@ void nba_assets_free(NbaAssetPack *pack) {
     pack->is_loaded = false;
 }
 
+/**
+ * Offset/Address/Size: N/A | Item Directory Lookup | size: N/A
+ * Purpose: Queries a loaded asset item by its unique enumeration ID.
+ */
 const NbaAssetItem *nba_assets_get(const NbaAssetPack *pack, NbaAssetId id) {
     if (!pack || !pack->is_loaded) return NULL;
     for (uint32_t i = 0; i < pack->item_count; i++) {

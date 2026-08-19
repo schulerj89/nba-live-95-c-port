@@ -6,6 +6,10 @@
 #define NBA_FONT_CHAR_WIDTH  8
 #define NBA_FONT_CHAR_HEIGHT 8
 
+/* SNES LoROM Font & Splash Bitmaps */
+#define SNES_ADDR_NINTENDO_SPLASH_BITMAP 0x00FD9E  /* $00:FD9E - 128x11 1bpp bitmap (176 bytes) */
+#define SNES_ADDR_VRAM_FONT_TILES        0x808FA3  /* $80:8FA3 - 8x8 font tile renderer */
+
 void nba_font_init(void);
 const uint8_t *nba_font_get_glyph_8x8(char c);
 

@@ -120,6 +120,10 @@ static LRESULT CALLBACK win32_wnd_proc(HWND hwnd, UINT msg, WPARAM wparam, LPARA
     return DefWindowProcA(hwnd, msg, wparam, lparam);
 }
 
+/**
+ * Offset/Address/Size: N/A | Win32 Host Application Entry | size: N/A
+ * Purpose: Creates desktop application window, initializes 60 FPS pacing timer, and hosts message/render pump.
+ */
 int win32_run_game(const char *rom_path, const char *assets_path) {
     HINSTANCE hInstance = GetModuleHandleA(NULL);
 
