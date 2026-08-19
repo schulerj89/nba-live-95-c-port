@@ -16,21 +16,21 @@ public class SnesEntryPoints extends GhidraScript {
 
     @Override
     public void run() throws Exception {
-        // Emulation-mode reset & interrupt vectors in bank 00
-        mark("reset", 0x00800DL);
-        mark("nmi_emulation", 0x008156L);
-        mark("irq_emulation", 0x008600L);
-
-        // Native-mode 65816 vectors in bank 00
-        mark("cop_native", 0x008172L);
-        mark("brk_native", 0x008174L);
-        mark("abort_native", 0x008176L);
-        mark("nmi_native", 0x008156L);
-        mark("irq_native", 0x008600L);
-
-        // Subsystems & Game loop entries
-        mark("boot_init", 0x808020L);
-        mark("game_loop_entry", 0x80DA91L);
-        mark("setup_intro", 0x82F15CL);
+        // Bank $82 is imported into Ghidra's 16-bit address space at $8000.
+        mark("setup_intro", 0xF15CL);
+        mark("intro_stage_e", 0xF2EAL);
+        mark("intro_stage_a", 0xF36AL);
+        mark("intro_stage_sports", 0xF408L);
+        mark("intro_stage_hold", 0xF469L);
+        mark("intro_flash", 0xF4C4L);
+        mark("draw_e", 0xF4F6L);
+        mark("draw_a", 0xF512L);
+        mark("draw_sports", 0xF52EL);
+        mark("intro_step_loop", 0xF56DL);
+        mark("intro_color_step", 0xF5E7L);
+        mark("mode7_matrix_commit", 0x94D5L);
+        mark("mode7_matrix_init", 0x94DFL);
+        mark("mode7_register_update", 0x962DL);
+        mark("intro_palette_step", 0xF64AL);
     }
 }

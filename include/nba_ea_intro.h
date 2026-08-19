@@ -23,8 +23,11 @@
 #define NBA_INTRO_STAGE4_FRAMES         180       /* 3.000s ($82:F469) */
 #define NBA_INTRO_TOTAL_FRAMES          303       /* 5.050s total */
 
-#define NBA_INTRO_ANIM_DURATION_SEC     0.366f    /* 22 frames in SNES $82:F56D */
-#define NBA_INTRO_MAX_ZOOM_FACTOR       3.5f      /* Initial Mode 7 foreground zoom */
+#define NBA_INTRO_ZOOM_FRAMES           22        /* Visible matrices $0001,$000D,...,$00FD */
+#define NBA_INTRO_FLASH_FRAMES          8         /* Eight waits in $82:F4C4 */
+#define NBA_INTRO_MODE7_UNIT            0x0100    /* 8.8 fixed-point identity matrix */
+#define NBA_INTRO_MODE7_START           0x0001    /* Written by $82:94DF */
+#define NBA_INTRO_MODE7_STEP            0x000C    /* Added once per frame by $82:F584-$F594 */
 
 /* Top-level EA Intro Renderer */
 void nba_ea_intro_render(const NbaAssetPack *assets, NbaRenderer *ren, float timer);

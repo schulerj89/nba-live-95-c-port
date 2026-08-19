@@ -29,3 +29,4 @@ extracted_wavs/
 # Ghidra project data
 ghidra-projects/
 build/ghidra-*
+.analysis/
