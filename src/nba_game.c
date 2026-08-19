@@ -171,12 +171,23 @@ void nba_game_render_ea_intro(NbaGame *game) {
     nba_renderer_clear(ren, 0xFF000000); /* Solid Black */
 
     NbaAssetId stage_id;
-    if (timer < 0.4f) {
+    int flash_boost = 0;
+
+    if (timer < 0.40f) {
         stage_id = NBA_ASSET_EA_LOGO_STAGE1;
-    } else if (timer < 0.8f) {
+        float local_t = timer;
+        int frame = (int)(local_t * 60.0f);
+        if (frame < 8) flash_boost = (8 - frame) * 14;
+    } else if (timer < 0.80f) {
         stage_id = NBA_ASSET_EA_LOGO_STAGE2;
-    } else if (timer < 1.2f) {
+        float local_t = timer - 0.40f;
+        int frame = (int)(local_t * 60.0f);
+        if (frame < 8) flash_boost = (8 - frame) * 14;
+    } else if (timer < 1.20f) {
         stage_id = NBA_ASSET_EA_LOGO_STAGE3;
+        float local_t = timer - 0.80f;
+        int frame = (int)(local_t * 60.0f);
+        if (frame < 8) flash_boost = (8 - frame) * 14;
     } else {
         stage_id = NBA_ASSET_EA_LOGO_STAGE4;
     }
@@ -201,6 +212,16 @@ void nba_game_render_ea_intro(NbaGame *game) {
             for (uint32_t c = 0; c < item->width; c++) {
                 uint32_t color = stage_pixels[r * item->width + c];
                 if (color != 0) {
+                    if (flash_boost > 0) {
+                        uint32_t a = (color >> 24) & 0xFF;
+                        uint32_t red   = ((color >> 16) & 0xFF) + (uint32_t)flash_boost;
+                        uint32_t green = ((color >> 8) & 0xFF) + (uint32_t)flash_boost;
+                        uint32_t blue  = (color & 0xFF) + (uint32_t)flash_boost;
+                        if (red > 255) red = 255;
+                        if (green > 255) green = 255;
+                        if (blue > 255) blue = 255;
+                        color = (a << 24) | (red << 16) | (green << 8) | blue;
+                    }
                     int px = start_x + c;
                     if (px >= 0 && px < NBA_SNES_WIDTH) {
                         ren->pixels[py * NBA_SNES_WIDTH + px] = color;
