@@ -19,4 +19,7 @@ void nba_font_render_text_centered(uint32_t *pixels, int stride, int y,
                                    const char *text, uint32_t fg_color, uint32_t shadow_color,
                                    int scale);
 
+void nba_font_render_licensed_by_nintendo(uint32_t *pixels, int stride, int x, int y,
+                                         uint32_t fg_color, int scale);
+
 #endif /* NBA_FONT_H */

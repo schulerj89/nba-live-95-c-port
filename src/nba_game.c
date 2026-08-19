@@ -111,67 +111,14 @@ void nba_game_render(NbaGame *game) {
         case NBA_STATE_NINTENDO_LICENSE: {
             nba_renderer_clear(ren, col_black);
 
-            /* "LICENSED BY" */
-            nba_font_render_text_centered(
+            /* Center 128x11 bitmap: X = (256 - 128) / 2 = 64, Y = (224 - 11) / 2 = 106 */
+            int start_x = (NBA_SNES_WIDTH - 128) / 2;
+            int start_y = (NBA_SNES_HEIGHT - 11) / 2;
+
+            nba_font_render_licensed_by_nintendo(
                 ren->pixels, NBA_SNES_WIDTH,
-                72,
-                "LICENSED BY",
-                col_white, col_shadow,
-                1
-            );
-
-            /* Nintendo Logo Pill Frame */
-            int nintendo_w = nba_font_get_text_width("NINTENDO", 2);
-            int pill_pad_x = 12;
-            int pill_pad_y = 6;
-            int pill_x = (NBA_SNES_WIDTH - nintendo_w) / 2 - pill_pad_x;
-            int pill_y = 96 - pill_pad_y;
-            int pill_w = nintendo_w + (pill_pad_x * 2);
-            int pill_h = (NBA_FONT_CHAR_HEIGHT * 2) + (pill_pad_y * 2);
-
-            /* Pill border */
-            nba_renderer_draw_rect(ren, pill_x + 4, pill_y, pill_w - 8, 2, col_red);
-            nba_renderer_draw_rect(ren, pill_x + 4, pill_y + pill_h - 2, pill_w - 8, 2, col_red);
-            nba_renderer_draw_rect(ren, pill_x, pill_y + 4, 2, pill_h - 8, col_red);
-            nba_renderer_draw_rect(ren, pill_x + pill_w - 2, pill_y + 4, 2, pill_h - 8, col_red);
-
-            /* Rounded pill corners */
-            nba_renderer_draw_rect(ren, pill_x + 2, pill_y + 2, 2, 2, col_red);
-            nba_renderer_draw_rect(ren, pill_x + pill_w - 4, pill_y + 2, 2, 2, col_red);
-            nba_renderer_draw_rect(ren, pill_x + 2, pill_y + pill_h - 4, 2, 2, col_red);
-            nba_renderer_draw_rect(ren, pill_x + pill_w - 4, pill_y + pill_h - 4, 2, 2, col_red);
-
-            /* "NINTENDO" */
-            nba_font_render_text_centered(
-                ren->pixels, NBA_SNES_WIDTH,
-                96,
-                "NINTENDO",
-                col_red, col_black,
-                2
-            );
-
-            /* "OF AMERICA INC." */
-            nba_font_render_text_centered(
-                ren->pixels, NBA_SNES_WIDTH,
-                128,
-                "OF AMERICA INC.",
-                col_white, col_shadow,
-                1
-            );
-
-            /* Copyright EA / NBA */
-            nba_font_render_text_centered(
-                ren->pixels, NBA_SNES_WIDTH,
-                170,
-                "(C) 1994 ELECTRONIC ARTS",
-                col_gray, col_black,
-                1
-            );
-            nba_font_render_text_centered(
-                ren->pixels, NBA_SNES_WIDTH,
-                184,
-                "ALL RIGHTS RESERVED",
-                col_gray, col_black,
+                start_x, start_y,
+                col_white,
                 1
             );
             break;
