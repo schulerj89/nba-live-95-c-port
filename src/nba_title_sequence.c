@@ -11,6 +11,9 @@ static uint32_t title_scale_color(uint32_t color, int brightness) {
     return (color & 0xFF000000u) | (r << 16) | (g << 8) | b;
 }
 
+/* Host-side interpolation between captured PPU compositions. The ROM instead
+ * reacts to music cue values in $064A and constructs N, B, A, LIVE, and 95 in
+ * separate blocks inside $80:E381-$80:E5C4. */
 static uint32_t title_blend(uint32_t a, uint32_t b, int amount) {
     if (amount <= 0) return a;
     if (amount >= 256) return b;
@@ -29,6 +32,8 @@ void nba_title_sequence_init(NbaTitleSequence *sequence) {
     memset(sequence, 0, sizeof(*sequence));
 }
 
+/* Render the current compatibility version of the post-EA title. Audio asset
+ * 15 is one 20-second mixed WAV; it is not the ROM's native BRR/SPC sequencer. */
 void nba_title_sequence_render(const NbaTitleSequence *sequence,
                                const NbaAssetPack *assets,
                                NbaRenderer *renderer,

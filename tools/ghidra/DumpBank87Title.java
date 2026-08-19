@@ -1,4 +1,4 @@
-// Dump bank $87 routines used by the post-EA title sequence and its audio commands.
+// Dump bank $87 routines used by the title/attract transition and animation.
 
 import java.io.File;
 import java.io.PrintWriter;
@@ -7,6 +7,7 @@ import ghidra.app.script.GhidraScript;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Instruction;
 import ghidra.program.model.listing.Listing;
+import ghidra.program.model.listing.CodeUnit;
 
 public class DumpBank87Title extends GhidraScript {
     private void dumpInstructions(PrintWriter writer, long first, long last) {
@@ -32,16 +33,24 @@ public class DumpBank87Title extends GhidraScript {
         File output = new File(outputDirectory, "post_ea_bank87.txt");
 
         long[] entries = { 0x8000, 0x80CB, 0x8C1D, 0x8C6B };
-        String[] names = { "title_timeout", "title_frame_update", "pre_ea_audio_command", "post_title_audio_command" };
+        String[] names = { "title_timeout_to_attract", "title_frame_update",
+                           "derive_team_runtime_values", "gameplay_scene_setup" };
+        String[] comments = {
+            "Called when $80:E01E's 1000-frame title timer expires; prepares attract-mode state.",
+            "Called once per title frame after attract setup; advances the attract transition, not the initial title build.",
+            "Derives capped runtime values from team selections; this is not a title-music command.",
+            "Initializes the later gameplay/transition scene; this is not the title-song start."
+        };
         for (int i = 0; i < entries.length; ++i) {
             Address address = toAddr(entries[i]);
             addEntryPoint(address);
             disassemble(address);
             if (getFunctionAt(address) == null) createFunction(address, names[i]);
+            currentProgram.getListing().setComment(address, CodeUnit.PLATE_COMMENT, comments[i]);
         }
 
         try (PrintWriter writer = new PrintWriter(output, "UTF-8")) {
-            writer.println("NBA Live '95 (USA) - bank $87 post-EA title/audio routines");
+            writer.println("NBA Live '95 (USA) - bank $87 title/attract routines");
             writer.println();
             dumpInstructions(writer, 0x8000, 0x8400);
             dumpInstructions(writer, 0x8C1D, 0x8D20);

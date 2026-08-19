@@ -54,7 +54,8 @@ if ($Bank -eq 0x80) {
         -processor '65816:LE:16:default' `
         -scriptPath $PSScriptRoot `
         -noanalysis `
-        -postScript 'DumpBank80IntroHelpers.java' $analysisDirectory
+        -postScript 'DumpBank80IntroHelpers.java' $analysisDirectory `
+        -postScript 'DumpBank80Audio.java' $analysisDirectory
 } elseif ($Bank -eq 0x87) {
     & $headless $projectDirectory $projectName `
         -import $bankPath `
@@ -85,8 +86,9 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "Ghidra analysis complete in: $projectDirectory" -ForegroundColor Green
 if ($Bank -eq 0x80) {
     Write-Host "EA intro helper dump written to: $analysisDirectory\ea_intro_bank80_helpers.txt" -ForegroundColor Green
+    Write-Host "APU driver dump written to: $analysisDirectory\bank80_apu_driver.txt" -ForegroundColor Green
 } elseif ($Bank -eq 0x87) {
-    Write-Host "Post-EA title/audio dump written to: $analysisDirectory\post_ea_bank87.txt" -ForegroundColor Green
+    Write-Host "Post-EA title/attract dump written to: $analysisDirectory\post_ea_bank87.txt" -ForegroundColor Green
 } else {
     Write-Host "EA intro dump written to: $analysisDirectory\ea_intro_ghidra.txt" -ForegroundColor Green
 }

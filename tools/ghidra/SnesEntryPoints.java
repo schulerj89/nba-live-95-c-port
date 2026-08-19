@@ -34,6 +34,7 @@ public class SnesEntryPoints extends GhidraScript {
         mark("intro_palette_step", 0xF64AL);
         mark("post_ea_sequence", 0xAC0EL);
         mark("post_ea_sequence_engine", 0xABE0L);
+        mark("post_ea_table_item_dispatch", 0xABCEL);
         mark("post_ea_sequence_script_a", 0xA9D1L);
         mark("post_ea_sequence_script_b", 0xAB69L);
         mark("post_ea_sequence_setup", 0xACFBL);
