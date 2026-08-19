@@ -247,24 +247,24 @@ def create_asset_pack(rom_path, output_path):
     custom_audio_candidates = [
         os.path.join(os.path.dirname(output_path), "ea_sports_intro.wav"),
         os.path.join(os.path.dirname(rom_path), "ea_sports_intro.wav"),
-        r"C:\Users\joshs\.gemini\antigravity\brain\d68e4a6c-6141-40e1-87ca-08f9ff969dfb\scratch\audio_samples\sample_00_0x04307F.wav"
+        "ea_sports_intro.wav"
     ]
     for cap in custom_audio_candidates:
         if os.path.exists(cap):
             with open(cap, "rb") as af:
                 audio_bytes = af.read()
-            print(f"[ASSET EXTRACTOR] Loaded audio track: {cap} ({len(audio_bytes)} bytes)")
+            print(f"[ASSET EXTRACTOR] Loaded external audio track: {cap} ({len(audio_bytes)} bytes)")
             break
 
     if len(audio_bytes) == 0 and os.path.exists(rom_path):
         with open(rom_path, "rb") as rf:
             rom_data = rf.read()
-        # Decode BRR audio sample from bank $04 offset 0x043025 (2.23s voice/sound track)
+        # Decode authentic digitized voice audio sample from ROM at offset 0x043025 (35760 samples)
         if len(rom_data) > 0x043025 + 20115:
             pcm = decode_brr_to_pcm(rom_data[0x043025:0x043025 + 20115])
             if len(pcm) > 0:
-                audio_bytes = make_wav_bytes(pcm, sample_rate=16000)
-                print(f"[ASSET EXTRACTOR] Extracted ROM voice audio sample (0x043025): {len(audio_bytes)} WAV bytes")
+                audio_bytes = make_wav_bytes(pcm, sample_rate=14000)
+                print(f"[ASSET EXTRACTOR] Extracted authentic ROM voice sample (0x043025, 14000 Hz): {len(audio_bytes)} WAV bytes")
 
     assets = [
         (1, 128, 11, 0, nintendo_license_bytes),               # ASSET_NINTENDO_LICENSE
