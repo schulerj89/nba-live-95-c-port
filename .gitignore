@@ -14,6 +14,13 @@ out/
 *.idb
 *.bmp
 
+# Asset packs and ROM dumps (no copyrighted data in repo)
+assets/
+*.bin
+*.dat
+*.sfc
+*.smc
+
 # Ghidra project data
 ghidra-projects/
 build/ghidra-*

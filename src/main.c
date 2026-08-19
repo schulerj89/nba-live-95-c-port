@@ -4,10 +4,11 @@
 #include <stdbool.h>
 #include "nba_game.h"
 
-extern int win32_run_game(const char *rom_path);
+extern int win32_run_game(const char *rom_path, const char *assets_path);
 
 int main(int argc, char *argv[]) {
     const char *rom_path = "F:\\Games\\SNES\\NBA Live 95 (USA).sfc";
+    const char *assets_path = NULL;
     const char *dump_frame_path = NULL;
     bool is_headless = false;
     int step_frames = 30;
@@ -15,6 +16,8 @@ int main(int argc, char *argv[]) {
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--rom") == 0 && i + 1 < argc) {
             rom_path = argv[++i];
+        } else if (strcmp(argv[i], "--assets") == 0 && i + 1 < argc) {
+            assets_path = argv[++i];
         } else if (strcmp(argv[i], "--headless") == 0) {
             is_headless = true;
         } else if (strcmp(argv[i], "--frames") == 0 && i + 1 < argc) {
@@ -26,6 +29,7 @@ int main(int argc, char *argv[]) {
             printf("Usage: nba95_port.exe [options]\n\n");
             printf("Options:\n");
             printf("  --rom <path>          Path to SNES ROM file\n");
+            printf("  --assets <path>       Path to extracted asset pack (.pak)\n");
             printf("  --headless            Run without opening GUI window\n");
             printf("  --frames <N>          Number of frames to step in headless mode (default: 30)\n");
             printf("  --dump-frame <file>   Save rendered frame to 24-bit BMP image\n");
@@ -37,7 +41,7 @@ int main(int argc, char *argv[]) {
     if (is_headless) {
         printf("[HEADLESS] Starting headless verification with ROM: %s (frames: %d)\n", rom_path, step_frames);
         NbaGame game;
-        if (!nba_game_init(&game, rom_path)) {
+        if (!nba_game_init(&game, rom_path, assets_path)) {
             fprintf(stderr, "[HEADLESS] Error: Failed to initialize game\n");
             return 1;
         }
@@ -65,5 +69,5 @@ int main(int argc, char *argv[]) {
     }
 
     /* Normal Win32 graphical execution */
-    return win32_run_game(rom_path);
+    return win32_run_game(rom_path, assets_path);
 }

@@ -3,6 +3,7 @@
 
 #include "nba_types.h"
 #include "nba_rom.h"
+#include "nba_assets.h"
 #include "nba_renderer.h"
 
 typedef enum {
@@ -15,6 +16,7 @@ typedef enum {
 
 typedef struct {
     NbaRom rom;
+    NbaAssetPack assets;
     NbaRenderer renderer;
     NbaInput input;
     NbaGameState state;
@@ -23,12 +25,12 @@ typedef struct {
     bool is_initialized;
 } NbaGame;
 
-bool nba_game_init(NbaGame *game, const char *rom_path);
+bool nba_game_init(NbaGame *game, const char *rom_path, const char *assets_path);
 void nba_game_shutdown(NbaGame *game);
 void nba_game_input_update(NbaInput *input, uint16_t raw_buttons);
 void nba_game_tick(NbaGame *game, float delta_time);
 void nba_game_render(NbaGame *game);
-void nba_game_render_nba_legal_notice(NbaRenderer *ren);
-void nba_game_render_ea_intro(NbaRenderer *ren, float timer);
+void nba_game_render_nba_legal_notice(NbaGame *game);
+void nba_game_render_ea_intro(NbaGame *game);
 
 #endif /* NBA_GAME_H */

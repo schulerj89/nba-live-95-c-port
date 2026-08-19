@@ -1,7 +1,10 @@
 param(
     [string]$RomPath = 'F:\Games\SNES\NBA Live 95 (USA).sfc',
+    [string]$AssetPack = '',
+    [switch]$ExtractAssets,
     [switch]$Run,
     [switch]$Headless,
+    [int]$Frames = 30,
     [string]$DumpFrame = ''
 )
 
@@ -10,8 +13,24 @@ $ErrorActionPreference = 'Stop'
 $Root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $BuildDir = Join-Path $Root "build"
 $ObjDir = Join-Path $BuildDir "obj"
+$DefaultAssetPack = Join-Path $BuildDir "nba95_assets.pak"
+
 New-Item -ItemType Directory -Force -Path $BuildDir | Out-Null
 New-Item -ItemType Directory -Force -Path $ObjDir | Out-Null
+
+# Auto-extract asset pack if requested or if it does not exist and ROM is present
+if ($ExtractAssets -or (![string]::IsNullOrEmpty($RomPath) -and (Test-Path $RomPath) -and !(Test-Path $DefaultAssetPack) -and [string]::IsNullOrEmpty($AssetPack))) {
+    Write-Host "Extracting assets from ROM to: $DefaultAssetPack..." -ForegroundColor Cyan
+    $ExtractorScript = Join-Path $Root "tools\extract_assets.py"
+    & python $ExtractorScript --rom $RomPath --output $DefaultAssetPack
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Warning: Asset extraction script returned non-zero exit code." -ForegroundColor Yellow
+    }
+}
+
+if ([string]::IsNullOrEmpty($AssetPack) -and (Test-Path $DefaultAssetPack)) {
+    $AssetPack = $DefaultAssetPack
+}
 
 $VsWhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
 if (!(Test-Path $VsWhere)) {
@@ -29,10 +48,10 @@ if (!(Test-Path $VcVars)) {
 }
 
 $ConsoleExePath = Join-Path $BuildDir "nba95_port.exe"
-$GameExePath = Join-Path $BuildDir "nba95_port_game.exe"
 
 $CommonSources = @(
     "src\nba_rom.c",
+    "src\nba_assets.c",
     "src\nba_font.c",
     "src\nba_renderer.c",
     "src\nba_game.c"
@@ -62,7 +81,10 @@ Write-Host "  Executable: $ConsoleExePath"
 
 if ($Headless -or $DumpFrame) {
     Write-Host "Running headless verification..." -ForegroundColor Yellow
-    $argsList = @('--headless', '--rom', $RomPath)
+    $argsList = @('--headless', '--rom', $RomPath, '--frames', $Frames)
+    if (![string]::IsNullOrEmpty($AssetPack)) {
+        $argsList += @('--assets', $AssetPack)
+    }
     if ($DumpFrame) {
         $argsList += @('--dump-frame', $DumpFrame)
     }
@@ -72,5 +94,9 @@ if ($Headless -or $DumpFrame) {
     }
 } elseif ($Run) {
     Write-Host "Launching NBA Live '95 C Port..." -ForegroundColor Cyan
-    & $ConsoleExePath --rom $RomPath
+    $runArgs = @('--rom', $RomPath)
+    if (![string]::IsNullOrEmpty($AssetPack)) {
+        $runArgs += @('--assets', $AssetPack)
+    }
+    & $ConsoleExePath $runArgs
 }

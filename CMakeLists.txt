@@ -11,6 +11,7 @@ set(NBA95_SOURCES
     src/main.c
     src/win32_game_main.c
     src/nba_rom.c
+    src/nba_assets.c
     src/nba_font.c
     src/nba_renderer.c
     src/nba_game.c

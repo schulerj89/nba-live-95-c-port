@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 
-bool nba_game_init(NbaGame *game, const char *rom_path) {
+bool nba_game_init(NbaGame *game, const char *rom_path, const char *assets_path) {
     if (!game) return false;
     memset(game, 0, sizeof(NbaGame));
 
@@ -11,6 +11,15 @@ bool nba_game_init(NbaGame *game, const char *rom_path) {
 
     nba_renderer_init(&game->renderer);
     nba_font_init();
+
+    /* Try loading asset pack */
+    if (assets_path && assets_path[0] != '\0') {
+        nba_assets_load(&game->assets, assets_path);
+    } else {
+        if (!nba_assets_load(&game->assets, "assets\\nba95_assets.pak")) {
+            nba_assets_load(&game->assets, "build\\nba95_assets.pak");
+        }
+    }
 
     if (rom_path && rom_path[0] != '\0') {
         if (!nba_rom_load_file(&game->rom, rom_path)) {
@@ -30,6 +39,9 @@ bool nba_game_init(NbaGame *game, const char *rom_path) {
 
 void nba_game_shutdown(NbaGame *game) {
     if (!game) return;
+    if (game->assets.is_loaded) {
+        nba_assets_free(&game->assets);
+    }
     if (game->rom.is_loaded) {
         nba_rom_free(&game->rom);
     }
@@ -97,30 +109,32 @@ void nba_game_tick(NbaGame *game, float delta_time) {
     }
 }
 
-#include "nba_legal_bitmap.h"
-#include "nba_ea_logo.h"
-
-void nba_game_render_nba_legal_notice(NbaRenderer *ren) {
-    if (!ren) return;
+void nba_game_render_nba_legal_notice(NbaGame *game) {
+    if (!game) return;
+    NbaRenderer *ren = &game->renderer;
 
     nba_renderer_clear(ren, 0xFF000000); /* Solid Black */
 
-    uint32_t col_white = 0xFFFFFFFF;
-    int start_y = NBA_LEGAL_START_Y;
+    const NbaAssetItem *item = nba_assets_get(&game->assets, NBA_ASSET_NBA_LEGAL_NOTICE);
+    if (item && item->data) {
+        uint32_t col_white = 0xFFFFFFFF;
+        const uint8_t *bitmap = (const uint8_t *)item->data;
+        int start_y = (int)item->flags; /* Stored start_y in flags */
 
-    for (int r = 0; r < NBA_LEGAL_HEIGHT; r++) {
-        int py = start_y + r;
-        if (py < 0 || py >= NBA_SNES_HEIGHT) continue;
+        for (uint32_t r = 0; r < item->height; r++) {
+            int py = start_y + r;
+            if (py < 0 || py >= NBA_SNES_HEIGHT) continue;
 
-        for (int b = 0; b < 32; b++) {
-            uint8_t byte_val = g_nba_legal_notice_bitmap[r][b];
-            if (!byte_val) continue;
+            for (int b = 0; b < 32; b++) {
+                uint8_t byte_val = bitmap[r * 32 + b];
+                if (!byte_val) continue;
 
-            for (int bit = 0; bit < 8; bit++) {
-                if (byte_val & (0x80 >> bit)) {
-                    int px = b * 8 + bit;
-                    if (px >= 0 && px < NBA_SNES_WIDTH) {
-                        ren->pixels[py * NBA_SNES_WIDTH + px] = col_white;
+                for (int bit = 0; bit < 8; bit++) {
+                    if (byte_val & (0x80 >> bit)) {
+                        int px = b * 8 + bit;
+                        if (px >= 0 && px < NBA_SNES_WIDTH) {
+                            ren->pixels[py * NBA_SNES_WIDTH + px] = col_white;
+                        }
                     }
                 }
             }
@@ -128,43 +142,41 @@ void nba_game_render_nba_legal_notice(NbaRenderer *ren) {
     }
 }
 
-void nba_game_render_ea_intro(NbaRenderer *ren, float timer) {
-    if (!ren) return;
+void nba_game_render_ea_intro(NbaGame *game) {
+    if (!game) return;
+    NbaRenderer *ren = &game->renderer;
+    float timer = game->state_timer;
 
     nba_renderer_clear(ren, 0xFF000000); /* Solid Black */
 
-    /* Determine animation stage based on authentic timings:
-     * Stage 1 (0.0s - 0.4s): "E" piece slams in
-     * Stage 2 (0.4s - 0.8s): "A" piece joins with bright peach flash
-     * Stage 3 (0.8s - 1.2s): "SPORTS" blue banner drops in and flashes
-     * Stage 4 (1.2s - 2.8s): Complete logo with "ELECTRONIC ARTS" banner
-     */
-    const uint32_t (*stage_pixels)[NBA_EA_LOGO_WIDTH] = NULL;
-
+    NbaAssetId stage_id;
     if (timer < 0.4f) {
-        stage_pixels = g_ea_logo_stage1;
+        stage_id = NBA_ASSET_EA_LOGO_STAGE1;
     } else if (timer < 0.8f) {
-        stage_pixels = g_ea_logo_stage2;
+        stage_id = NBA_ASSET_EA_LOGO_STAGE2;
     } else if (timer < 1.2f) {
-        stage_pixels = g_ea_logo_stage3;
+        stage_id = NBA_ASSET_EA_LOGO_STAGE3;
     } else {
-        stage_pixels = g_ea_logo_stage4;
+        stage_id = NBA_ASSET_EA_LOGO_STAGE4;
     }
 
-    /* Render the selected assembly stage */
-    int start_x = NBA_EA_LOGO_X;
-    int start_y = NBA_EA_LOGO_Y;
+    const NbaAssetItem *item = nba_assets_get(&game->assets, stage_id);
+    if (item && item->data) {
+        const uint32_t *stage_pixels = (const uint32_t *)item->data;
+        int start_x = (NBA_SNES_WIDTH - (int)item->width) / 2;
+        int start_y = (NBA_SNES_HEIGHT - (int)item->height) / 2 - 1;
 
-    for (int r = 0; r < NBA_EA_LOGO_HEIGHT; r++) {
-        int py = start_y + r;
-        if (py < 0 || py >= NBA_SNES_HEIGHT) continue;
+        for (uint32_t r = 0; r < item->height; r++) {
+            int py = start_y + r;
+            if (py < 0 || py >= NBA_SNES_HEIGHT) continue;
 
-        for (int c = 0; c < NBA_EA_LOGO_WIDTH; c++) {
-            uint32_t color = stage_pixels[r][c];
-            if (color != 0) {
-                int px = start_x + c;
-                if (px >= 0 && px < NBA_SNES_WIDTH) {
-                    ren->pixels[py * NBA_SNES_WIDTH + px] = color;
+            for (uint32_t c = 0; c < item->width; c++) {
+                uint32_t color = stage_pixels[r * item->width + c];
+                if (color != 0) {
+                    int px = start_x + c;
+                    if (px >= 0 && px < NBA_SNES_WIDTH) {
+                        ren->pixels[py * NBA_SNES_WIDTH + px] = color;
+                    }
                 }
             }
         }
@@ -190,25 +202,50 @@ void nba_game_render(NbaGame *game) {
         case NBA_STATE_NINTENDO_LICENSE: {
             nba_renderer_clear(ren, col_black);
 
-            /* Center 128x11 bitmap: X = (256 - 128) / 2 = 64, Y = (224 - 11) / 2 = 106 */
-            int start_x = (NBA_SNES_WIDTH - 128) / 2;
-            int start_y = (NBA_SNES_HEIGHT - 11) / 2;
+            const NbaAssetItem *item = nba_assets_get(&game->assets, NBA_ASSET_NINTENDO_LICENSE);
+            if (item && item->data) {
+                const uint8_t *bitmap = (const uint8_t *)item->data;
+                int start_x = (NBA_SNES_WIDTH - (int)item->width) / 2;
+                int start_y = (NBA_SNES_HEIGHT - (int)item->height) / 2;
 
-            nba_font_render_licensed_by_nintendo(
-                ren->pixels, NBA_SNES_WIDTH,
-                start_x, start_y,
-                col_white,
-                1
-            );
+                for (uint32_t r = 0; r < item->height; r++) {
+                    int py = start_y + r;
+                    if (py < 0 || py >= NBA_SNES_HEIGHT) continue;
+
+                    for (int b = 0; b < 16; b++) {
+                        uint8_t byte_val = bitmap[r * 16 + b];
+                        if (!byte_val) continue;
+
+                        for (int bit = 0; bit < 8; bit++) {
+                            if (byte_val & (0x80 >> bit)) {
+                                int px = start_x + (b * 8 + bit);
+                                if (px >= 0 && px < NBA_SNES_WIDTH) {
+                                    ren->pixels[py * NBA_SNES_WIDTH + px] = col_white;
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                /* Fallback to embedded font helper */
+                int start_x = (NBA_SNES_WIDTH - 128) / 2;
+                int start_y = (NBA_SNES_HEIGHT - 11) / 2;
+                nba_font_render_licensed_by_nintendo(
+                    ren->pixels, NBA_SNES_WIDTH,
+                    start_x, start_y,
+                    col_white,
+                    1
+                );
+            }
             break;
         }
 
         case NBA_STATE_NBA_LEGAL_NOTICE:
-            nba_game_render_nba_legal_notice(ren);
+            nba_game_render_nba_legal_notice(game);
             break;
 
         case NBA_STATE_EA_INTRO:
-            nba_game_render_ea_intro(ren, game->state_timer);
+            nba_game_render_ea_intro(game);
             break;
 
         case NBA_STATE_MAIN_MENU: {

@@ -117,7 +117,7 @@ static LRESULT CALLBACK win32_wnd_proc(HWND hwnd, UINT msg, WPARAM wparam, LPARA
     return DefWindowProcA(hwnd, msg, wparam, lparam);
 }
 
-int win32_run_game(const char *rom_path) {
+int win32_run_game(const char *rom_path, const char *assets_path) {
     HINSTANCE hInstance = GetModuleHandleA(NULL);
 
     WNDCLASSA wc = {0};
@@ -156,7 +156,7 @@ int win32_run_game(const char *rom_path) {
 
     win32_init_framebuffer(&g_framebuffer, NBA_SNES_WIDTH, NBA_SNES_HEIGHT);
 
-    if (!nba_game_init(&g_game, rom_path)) {
+    if (!nba_game_init(&g_game, rom_path, assets_path)) {
         MessageBoxA(hwnd, "Failed to initialize game engine", "Error", MB_OK | MB_ICONERROR);
         win32_free_framebuffer(&g_framebuffer);
         DestroyWindow(hwnd);
