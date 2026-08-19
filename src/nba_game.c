@@ -4,6 +4,34 @@
 #include <stdio.h>
 #include <string.h>
 
+static int nba_game_timer_frame(float state_timer) {
+    return (int)(state_timer * 60.0f + 0.5f);
+}
+
+/* SNES INIDISP master-brightness levels are linear values from 0 through 15. */
+static uint32_t nba_game_master_brightness_color(uint32_t color, int brightness) {
+    if (brightness >= 15) return color;
+    if (brightness <= 0) return color & 0xFF000000u;
+
+    uint32_t r = ((color >> 16) & 0xFFu) * (uint32_t)brightness / 15u;
+    uint32_t g = ((color >> 8) & 0xFFu) * (uint32_t)brightness / 15u;
+    uint32_t b = (color & 0xFFu) * (uint32_t)brightness / 15u;
+    return (color & 0xFF000000u) | (r << 16) | (g << 8) | b;
+}
+
+static int nba_game_license_brightness(float state_timer) {
+    int fade_frame = nba_game_timer_frame(state_timer) - NBA_LICENSE_FRAMES;
+    return fade_frame <= 0 ? 15 : 15 - fade_frame;
+}
+
+static int nba_game_legal_brightness(float state_timer) {
+    int frame = nba_game_timer_frame(state_timer);
+    int fade_out_start = NBA_SCREEN_FADE_FRAMES + NBA_LEGAL_FRAMES;
+    if (frame < NBA_SCREEN_FADE_FRAMES) return frame;
+    if (frame <= fade_out_start) return 15;
+    return 15 - (frame - fade_out_start);
+}
+
 /**
  * Offset/Address/Size: 0x000020 | $80:8020 | size: 0x80
  * Purpose: Game engine cold-boot initialization (loads ROM, assets, video/audio subsystems, enters initial state).
@@ -104,19 +132,22 @@ void nba_game_tick(NbaGame *game, float delta_time) {
             break;
 
         case NBA_STATE_NINTENDO_LICENSE:
-            /* Exact SNES timing from ROM $00:FD9E: 120 frames (2.0s) or button press */
+            /* $80:FD9E holds for $78 frames, then $80:CF1B fades brightness to zero. */
             if (game->input.pressed & (NBA_BTN_START | NBA_BTN_A | NBA_BTN_B)) {
                 game->state = NBA_STATE_NBA_LEGAL_NOTICE;
                 game->state_timer = 0.0f;
-            } else if (game->state_timer >= 2.0f) {
+            } else if (nba_game_timer_frame(game->state_timer) >=
+                       NBA_LICENSE_FRAMES + NBA_SCREEN_FADE_FRAMES) {
                 game->state = NBA_STATE_NBA_LEGAL_NOTICE;
                 game->state_timer = 0.0f;
             }
             break;
 
         case NBA_STATE_NBA_LEGAL_NOTICE:
-            /* Exact SNES timing from ROM $00:FEE6: 180 frames (3.0s) or button press */
-            if ((game->input.pressed & (NBA_BTN_START | NBA_BTN_A | NBA_BTN_B)) || game->state_timer >= 3.0f) {
+            /* $80:CF3B fades in, $80:FEE6 holds for $B4 frames, then $80:CF1B fades out. */
+            if ((game->input.pressed & (NBA_BTN_START | NBA_BTN_A | NBA_BTN_B)) ||
+                nba_game_timer_frame(game->state_timer) >=
+                    NBA_SCREEN_FADE_FRAMES + NBA_LEGAL_FRAMES + NBA_SCREEN_FADE_FRAMES) {
                 game->state = NBA_STATE_EA_INTRO;
                 game->state_timer = 0.0f;
             }
@@ -151,8 +182,8 @@ void nba_game_tick(NbaGame *game, float delta_time) {
 }
 
 /**
- * Offset/Address/Size: 0x007EE6 | $00:FEE6 | size: 0x1E0 (480 bytes)
- * Purpose: Renders the 256x15 1bpp NBA / NBPA legal copyright notice bitmap onto screen.
+ * Offset/Address/Size: 0x007EE6 | $80:FEE6 | size: N/A (timing routine)
+ * Purpose: Renders the extracted NBA / NBPA legal bitmap with the ROM's master-brightness ramp.
  */
 void nba_game_render_nba_legal_notice(NbaGame *game) {
     if (!game) return;
@@ -162,7 +193,8 @@ void nba_game_render_nba_legal_notice(NbaGame *game) {
 
     const NbaAssetItem *item = nba_assets_get(&game->assets, NBA_ASSET_NBA_LEGAL_NOTICE);
     if (item && item->data) {
-        uint32_t col_white = 0xFFFFFFFF;
+        uint32_t col_white = nba_game_master_brightness_color(
+            0xFFFFFFFF, nba_game_legal_brightness(game->state_timer));
         const uint8_t *bitmap = (const uint8_t *)item->data;
         int start_y = (int)item->flags; /* Stored start_y in flags */
 
@@ -220,6 +252,9 @@ void nba_game_render(NbaGame *game) {
         case NBA_STATE_NINTENDO_LICENSE: {
             nba_renderer_clear(ren, col_black);
 
+            uint32_t license_white = nba_game_master_brightness_color(
+                col_white, nba_game_license_brightness(game->state_timer));
+
             const NbaAssetItem *item = nba_assets_get(&game->assets, NBA_ASSET_NINTENDO_LICENSE);
             if (item && item->data) {
                 const uint8_t *bitmap = (const uint8_t *)item->data;
@@ -238,7 +273,7 @@ void nba_game_render(NbaGame *game) {
                             if (byte_val & (0x80 >> bit)) {
                                 int px = start_x + (b * 8 + bit);
                                 if (px >= 0 && px < NBA_SNES_WIDTH) {
-                                    ren->pixels[py * NBA_SNES_WIDTH + px] = col_white;
+                                    ren->pixels[py * NBA_SNES_WIDTH + px] = license_white;
                                 }
                             }
                         }
@@ -251,7 +286,7 @@ void nba_game_render(NbaGame *game) {
                 nba_font_render_licensed_by_nintendo(
                     ren->pixels, NBA_SNES_WIDTH,
                     start_x, start_y,
-                    col_white,
+                    license_white,
                     1
                 );
             }

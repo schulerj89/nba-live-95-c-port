@@ -4,8 +4,8 @@
 #include "nba_types.h"
 
 /* SNES ROM Addresses & Offsets for Assets */
-#define SNES_ROM_OFF_NINTENDO_LICENSE   0x007D9E  /* $00:FD9E - 128 bytes 1bpp bitmap */
-#define SNES_ROM_OFF_NBA_LEGAL_NOTICE   0x007EE6  /* $00:FEE6 - 480 bytes 1bpp legal text */
+#define SNES_ROM_OFF_NINTENDO_LICENSE   0x007D9E  /* $80:FD9E - license/legal sequence routine */
+#define SNES_ROM_OFF_NBA_LEGAL_NOTICE   0x007EE6  /* $80:FEE6 - NBA legal timing routine */
 #define SNES_ROM_OFF_EA_INTRO_CODE      0x01715C  /* $82:F15C - EA Sports intro routines */
 
 /* Authentic Digitized Voice Sample Offsets (BRR compressed bitstreams in ROM) */

@@ -148,8 +148,8 @@ void nba_ea_intro_render_stage2(const NbaAssetPack *assets, NbaRenderer *ren, fl
                 nba_ea_intro_pixel_is_logo(final_color)) {
                 int px = start_x + (int)c;
                 if (px >= 0 && px < NBA_SNES_WIDTH) {
-                    ren->pixels[py * NBA_SNES_WIDTH + px] =
-                        nba_ea_intro_flash_color(final_color, flash_frame);
+                    /* $82:F3E9 selects A's palette block for F4C4, not this settled E. */
+                    ren->pixels[py * NBA_SNES_WIDTH + px] = final_color;
                 }
             }
         }
@@ -210,8 +210,8 @@ void nba_ea_intro_render_stage3(const NbaAssetPack *assets, NbaRenderer *ren, fl
                     nba_ea_intro_pixel_is_logo(final_color)) {
                     int px = start_x + (int)c;
                     if (px >= 0 && px < NBA_SNES_WIDTH) {
-                        ren->pixels[py * NBA_SNES_WIDTH + px] =
-                            nba_ea_intro_flash_color(final_color, flash_frame);
+                        /* $82:F43A selects SPORTS' palette block for F4C4, not settled EA. */
+                        ren->pixels[py * NBA_SNES_WIDTH + px] = final_color;
                     }
                 }
             }

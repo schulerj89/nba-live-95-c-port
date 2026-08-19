@@ -31,11 +31,14 @@ public class DumpBank80IntroHelpers extends GhidraScript {
         outputDirectory.mkdirs();
         File output = new File(outputDirectory, "ea_intro_bank80_helpers.txt");
 
-        long[] entries = { 0x86B0, 0x86DA, 0x8968, 0x898F, 0x8A02, 0x8AD2,
-                           0x8FA3, 0x9DF3, 0xAC1B, 0xAC89, 0xB344 };
-        String[] names = { "wait_frame", "wait_vblank", "video_reset", "video_enable",
+        long[] entries = { 0x800D, 0x8020, 0x86B0, 0x86DA, 0x893F, 0x8968, 0x898F, 0x8A02, 0x8AD2,
+                           0x8FA3, 0x9DF3, 0xAC1B, 0xAC89, 0xB344, 0xDA72, 0xDA91,
+                           0xCF1B, 0xCF3B, 0xFD9E, 0xFEE6 };
+        String[] names = { "reset_entry", "startup", "wait_frame", "wait_vblank", "display_force_blank", "video_reset", "video_enable",
                            "vram_copy", "vram_fill", "tilegroup_draw", "stage_commit",
-                           "oam_build_begin", "oam_build_finish", "oam_group_draw" };
+                           "oam_build_begin", "oam_build_finish", "oam_group_draw",
+                           "main_state_init", "main_state_loop", "master_brightness_fade_out", "master_brightness_fade_in", "nintendo_license",
+                           "nba_legal_notice" };
         for (int i = 0; i < entries.length; ++i) {
             Address address = toAddr(entries[i]);
             addEntryPoint(address);
@@ -46,12 +49,16 @@ public class DumpBank80IntroHelpers extends GhidraScript {
         try (PrintWriter writer = new PrintWriter(output, "UTF-8")) {
             writer.println("NBA Live '95 (USA) - bank $80 EA intro helpers");
             writer.println();
+            dumpInstructions(writer, 0x800D, 0x86AF);
             dumpInstructions(writer, 0x86B0, 0x8720);
-            dumpInstructions(writer, 0x8968, 0x8B30);
+            dumpInstructions(writer, 0x893F, 0x8B30);
             dumpInstructions(writer, 0x8FA3, 0x9120);
             dumpInstructions(writer, 0x9DF3, 0x9F20);
             dumpInstructions(writer, 0xAC1B, 0xAD20);
             dumpInstructions(writer, 0xB344, 0xB440);
+            dumpInstructions(writer, 0xCF1B, 0xCF80);
+            dumpInstructions(writer, 0xDA72, 0xDE40);
+            dumpInstructions(writer, 0xFD9E, 0xFFFF);
         }
 
         println("Wrote bank $80 helper dump: " + output.getAbsolutePath());

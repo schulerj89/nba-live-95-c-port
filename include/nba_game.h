@@ -22,8 +22,9 @@
 #define SNES_ADDR_SCROLL_MATRIX_UPDATE  0x82962D  /* $82:962D - Mode 7 matrix & scroll register dispatcher */
 
 /* SNES Frame Timing Counts (at 60 FPS) */
-#define NBA_LICENSE_FRAMES              120       /* 2.000s ($00:FD9E) */
-#define NBA_LEGAL_FRAMES                180       /* 3.000s ($00:FEE6) */
+#define NBA_LICENSE_FRAMES              120       /* 2.000s ($80:FD9E) */
+#define NBA_LEGAL_FRAMES                180       /* 3.000s ($80:FEE6) */
+#define NBA_SCREEN_FADE_FRAMES          15        /* $80:CF1B/$80:CF3B - INIDISP levels 0..15 */
 #define NBA_INTRO_STAGE1_FRAMES         32        /* 0.533s ($82:F2EA) */
 #define NBA_INTRO_STAGE2_FRAMES         31        /* 0.517s ($82:F36A) */
 #define NBA_INTRO_STAGE3_FRAMES         60        /* 1.000s ($82:F408) */
