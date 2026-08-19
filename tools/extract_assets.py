@@ -82,58 +82,108 @@ def create_asset_pack(rom_path, output_path):
                         byte_val |= (0x80 >> bit)
                 nba_legal_bytes.append(byte_val)
 
-    # 3-6. EA Logo Stages 1..4 (141x127 32-bit ARGB, 141*127*4 = 71628 bytes each)
+    # 3-6. EA Logo Stages 1..4
     ea_candidates = [
         r'C:\Users\joshs\.gemini\antigravity\brain\d68e4a6c-6141-40e1-87ca-08f9ff969dfb\.user_uploaded\media_1787113995148.png',
         r'C:\Users\joshs\.gemini\antigravity\brain\d68e4a6c-6141-40e1-87ca-08f9ff969dfb\.user_uploaded\media_1787114012696.png',
         r'C:\Users\joshs\.gemini\antigravity\brain\d68e4a6c-6141-40e1-87ca-08f9ff969dfb\.user_uploaded\media_1787114029401.png',
         r'C:\Users\joshs\.gemini\antigravity\brain\d68e4a6c-6141-40e1-87ca-08f9ff969dfb\.user_uploaded\media_1787113963057.png',
     ]
-    # Fallback to brain previews
     if not all(os.path.exists(p) for p in ea_candidates):
         ea_candidates = [
             f'C:\\Users\\joshs\\.gemini\\antigravity\\brain\\d68e4a6c-6141-40e1-87ca-08f9ff969dfb\\ea_stage_{i}.png' for i in range(1, 5)
         ]
 
-    w4, h4 = 141, 127
+    w4, h4 = 145, 127
+    ea_flags = (53 << 16) | 48  # start_x = 53, start_y = 48
     ea_packed = []
 
     if all(os.path.exists(p) for p in ea_candidates):
-        down_stages = []
+        # Determine best downsampling phase from Stage 4
+        im4 = Image.open(ea_candidates[3]).convert('RGB')
+        arr4 = np.array(im4)
+        best_px4, best_py4, best_score4 = 0, 0, -1
+        for py in range(3):
+            for px in range(3):
+                sub = arr4[py::3, px::3]
+                score = float(np.var(sub))
+                if score > best_score4:
+                    best_score4 = score
+                    best_px4, best_py4 = px, py
+
+        downs = []
         for p in ea_candidates:
             im = Image.open(p).convert('RGB')
             arr = np.array(im)
-            best_px, best_py, best_score = 0, 0, -1
-            for py in range(3):
-                for px in range(3):
-                    sub = arr[py::3, px::3]
-                    score = np.var(sub)
-                    if score > best_score:
-                        best_score = score
-                        best_px = px
-                        best_py = py
-            down = arr[best_py::3, best_px::3]
-            down_stages.append(down)
+            downs.append(arr[best_py4::3, best_px4::3])
 
-        s4 = down_stages[3]
-        mask4 = np.any(s4 > 20, axis=2)
+        # Find E-piece top anchor in each stage to align relative offsets
+        def find_e_anchor(down):
+            r_ch = down[:,:,0].astype(float)
+            g_ch = down[:,:,1].astype(float)
+            b_ch = down[:,:,2].astype(float)
+            orange = (r_ch > 80) & (g_ch < 80) & (b_ch < 60)
+            rows = np.where(np.any(orange, axis=1))[0]
+            cols = np.where(np.any(orange, axis=0))[0]
+            if len(rows) > 0:
+                top_row = rows[0]
+                left_col = np.where(orange[top_row])[0][0]
+                return (left_col, top_row)
+            return None
+
+        anchors = [find_e_anchor(d) for d in downs]
+        master = anchors[3]
+        offsets = [(master[0] - a[0], master[1] - a[1]) if a and master else (0, 0) for a in anchors]
+
+        # Stage 4 reference position on 256x224
+        mask4 = np.any(downs[3] > 20, axis=2)
         rows4 = np.where(np.any(mask4, axis=1))[0]
         cols4 = np.where(np.any(mask4, axis=0))[0]
-        rmin4, rmax4 = rows4[0], rows4[-1]
-        cmin4, cmax4 = cols4[0], cols4[-1]
-        w4, h4 = cmax4 - cmin4 + 1, rmax4 - rmin4 + 1
+        s4_w = cols4[-1] - cols4[0] + 1
+        s4_h = rows4[-1] - rows4[0] + 1
+        s4_ox, s4_oy = cols4[0], rows4[0]
 
-        for s in down_stages:
-            crop = s[rmin4:rmax4+1, cmin4:cmax4+1]
-            crop_h, crop_w = crop.shape[0], crop.shape[1]
+        snes_sx = (256 - s4_w) // 2
+        snes_sy = (224 - s4_h) // 2
+
+        snes_frames = []
+        for i, (down, (dx, dy)) in enumerate(zip(downs, offsets)):
+            frame = np.zeros((224, 256, 3), dtype=np.uint8)
+            h, w = down.shape[:2]
+            for r in range(h):
+                for c in range(w):
+                    s4_x = c + dx
+                    s4_y = r + dy
+                    sx = s4_x - s4_ox + snes_sx
+                    sy = s4_y - s4_oy + snes_sy
+                    if 0 <= sx < 256 and 0 <= sy < 224:
+                        rgb = down[r, c]
+                        if np.any(rgb > 10):
+                            frame[sy, sx] = rgb
+            snes_frames.append(frame)
+
+        # Union bounding box across all 4 frames
+        all_rows, all_cols = [], []
+        for frame in snes_frames:
+            m = np.any(frame > 10, axis=2)
+            rs = np.where(np.any(m, axis=1))[0]
+            cs = np.where(np.any(m, axis=0))[0]
+            if len(rs) > 0:
+                all_rows.extend([rs[0], rs[-1]])
+                all_cols.extend([cs[0], cs[-1]])
+
+        urmin, urmax = min(all_rows), max(all_rows)
+        ucmin, ucmax = min(all_cols), max(all_cols)
+        w4 = ucmax - ucmin + 1
+        h4 = urmax - urmin + 1
+        ea_flags = (int(ucmin) << 16) | int(urmin)
+
+        for frame in snes_frames:
+            crop = frame[urmin:urmax+1, ucmin:ucmax+1]
             stage_bytes = bytearray()
             for r in range(h4):
                 for c in range(w4):
-                    if r < crop_h and c < crop_w:
-                        rgb = crop[r, c]
-                    else:
-                        rgb = np.array([0, 0, 0])
-
+                    rgb = crop[r, c]
                     if np.all(rgb <= 10):
                         stage_bytes.extend(struct.pack("<I", 0x00000000))
                     else:
@@ -144,10 +194,10 @@ def create_asset_pack(rom_path, output_path):
     assets = [
         (1, 128, 11, 0, nintendo_license_bytes),               # ASSET_NINTENDO_LICENSE
         (2, 256, num_legal_rows, start_y_legal, nba_legal_bytes), # ASSET_NBA_LEGAL_NOTICE (flags = start_y)
-        (3, w4, h4, 0, ea_packed[0]),                         # ASSET_EA_LOGO_STAGE1
-        (4, w4, h4, 0, ea_packed[1]),                         # ASSET_EA_LOGO_STAGE2
-        (5, w4, h4, 0, ea_packed[2]),                         # ASSET_EA_LOGO_STAGE3
-        (6, w4, h4, 0, ea_packed[3]),                         # ASSET_EA_LOGO_STAGE4
+        (3, w4, h4, ea_flags, ea_packed[0]),                  # ASSET_EA_LOGO_STAGE1
+        (4, w4, h4, ea_flags, ea_packed[1]),                  # ASSET_EA_LOGO_STAGE2
+        (5, w4, h4, ea_flags, ea_packed[2]),                  # ASSET_EA_LOGO_STAGE3
+        (6, w4, h4, ea_flags, ea_packed[3]),                  # ASSET_EA_LOGO_STAGE4
     ]
 
     header_magic = b"NBA95PAK"

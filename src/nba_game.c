@@ -159,8 +159,15 @@ void nba_game_render_ea_intro(NbaGame *game) {
     const NbaAssetItem *item = nba_assets_get(&game->assets, stage_id);
     if (item && item->data) {
         const uint32_t *stage_pixels = (const uint32_t *)item->data;
-        int start_x = (NBA_SNES_WIDTH - (int)item->width) / 2;
-        int start_y = (NBA_SNES_HEIGHT - (int)item->height) / 2 - 1;
+        int start_x, start_y;
+
+        if (item->flags != 0) {
+            start_x = (int)((item->flags >> 16) & 0xFFFF);
+            start_y = (int)(item->flags & 0xFFFF);
+        } else {
+            start_x = (NBA_SNES_WIDTH - (int)item->width) / 2;
+            start_y = (NBA_SNES_HEIGHT - (int)item->height) / 2;
+        }
 
         for (uint32_t r = 0; r < item->height; r++) {
             int py = start_y + r;
