@@ -81,7 +81,11 @@ void nba_game_tick(NbaGame *game, float delta_time) {
             break;
 
         case NBA_STATE_EA_INTRO:
+            /* Step through the 4 assembly stages (2.8s total) or advance on button press */
             if (game->input.pressed & (NBA_BTN_START | NBA_BTN_A | NBA_BTN_B)) {
+                game->state = NBA_STATE_MAIN_MENU;
+                game->state_timer = 0.0f;
+            } else if (game->state_timer >= 2.8f) {
                 game->state = NBA_STATE_MAIN_MENU;
                 game->state_timer = 0.0f;
             }
@@ -94,6 +98,7 @@ void nba_game_tick(NbaGame *game, float delta_time) {
 }
 
 #include "nba_legal_bitmap.h"
+#include "nba_ea_logo.h"
 
 void nba_game_render_nba_legal_notice(NbaRenderer *ren) {
     if (!ren) return;
@@ -123,6 +128,49 @@ void nba_game_render_nba_legal_notice(NbaRenderer *ren) {
     }
 }
 
+void nba_game_render_ea_intro(NbaRenderer *ren, float timer) {
+    if (!ren) return;
+
+    nba_renderer_clear(ren, 0xFF000000); /* Solid Black */
+
+    /* Determine animation stage based on authentic timings:
+     * Stage 1 (0.0s - 0.4s): "E" piece slams in
+     * Stage 2 (0.4s - 0.8s): "A" piece joins with bright peach flash
+     * Stage 3 (0.8s - 1.2s): "SPORTS" blue banner drops in and flashes
+     * Stage 4 (1.2s - 2.8s): Complete logo with "ELECTRONIC ARTS" banner
+     */
+    const uint32_t (*stage_pixels)[NBA_EA_LOGO_WIDTH] = NULL;
+
+    if (timer < 0.4f) {
+        stage_pixels = g_ea_logo_stage1;
+    } else if (timer < 0.8f) {
+        stage_pixels = g_ea_logo_stage2;
+    } else if (timer < 1.2f) {
+        stage_pixels = g_ea_logo_stage3;
+    } else {
+        stage_pixels = g_ea_logo_stage4;
+    }
+
+    /* Render the selected assembly stage */
+    int start_x = NBA_EA_LOGO_X;
+    int start_y = NBA_EA_LOGO_Y;
+
+    for (int r = 0; r < NBA_EA_LOGO_HEIGHT; r++) {
+        int py = start_y + r;
+        if (py < 0 || py >= NBA_SNES_HEIGHT) continue;
+
+        for (int c = 0; c < NBA_EA_LOGO_WIDTH; c++) {
+            uint32_t color = stage_pixels[r][c];
+            if (color != 0) {
+                int px = start_x + c;
+                if (px >= 0 && px < NBA_SNES_WIDTH) {
+                    ren->pixels[py * NBA_SNES_WIDTH + px] = color;
+                }
+            }
+        }
+    }
+}
+
 void nba_game_render(NbaGame *game) {
     if (!game || !game->is_initialized) return;
 
@@ -133,7 +181,6 @@ void nba_game_render(NbaGame *game) {
     uint32_t col_white      = 0xFFFFFFFF;
     uint32_t col_shadow     = 0xFF202020;
     uint32_t col_gold       = 0xFFF8B800;
-    uint32_t col_cyan       = 0xFF00E0E0;
 
     switch (game->state) {
         case NBA_STATE_BOOT_RESET:
@@ -160,49 +207,9 @@ void nba_game_render(NbaGame *game) {
             nba_game_render_nba_legal_notice(ren);
             break;
 
-        case NBA_STATE_EA_INTRO: {
-            nba_renderer_clear(ren, col_black);
-
-            nba_font_render_text_centered(
-                ren->pixels, NBA_SNES_WIDTH,
-                50,
-                "EA SPORTS",
-                col_gold, col_shadow,
-                2
-            );
-
-            nba_font_render_text_centered(
-                ren->pixels, NBA_SNES_WIDTH,
-                80,
-                "IF IT'S IN THE GAME,",
-                col_white, col_shadow,
-                1
-            );
-            nba_font_render_text_centered(
-                ren->pixels, NBA_SNES_WIDTH,
-                96,
-                "IT'S IN THE GAME.",
-                col_cyan, col_shadow,
-                1
-            );
-
-            nba_font_render_text_centered(
-                ren->pixels, NBA_SNES_WIDTH,
-                140,
-                "NBA LIVE '95",
-                col_gold, col_shadow,
-                2
-            );
-
-            nba_font_render_text_centered(
-                ren->pixels, NBA_SNES_WIDTH,
-                180,
-                "PRESS START TO PLAY",
-                col_white, col_shadow,
-                1
-            );
+        case NBA_STATE_EA_INTRO:
+            nba_game_render_ea_intro(ren, game->state_timer);
             break;
-        }
 
         case NBA_STATE_MAIN_MENU: {
             nba_renderer_clear(ren, 0xFF001830); /* SNES deep blue menu background */

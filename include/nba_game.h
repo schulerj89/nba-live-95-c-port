@@ -29,5 +29,6 @@ void nba_game_input_update(NbaInput *input, uint16_t raw_buttons);
 void nba_game_tick(NbaGame *game, float delta_time);
 void nba_game_render(NbaGame *game);
 void nba_game_render_nba_legal_notice(NbaRenderer *ren);
+void nba_game_render_ea_intro(NbaRenderer *ren, float timer);
 
 #endif /* NBA_GAME_H */
