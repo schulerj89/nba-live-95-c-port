@@ -61,6 +61,9 @@ static void get_sample_info(const NbaAssetItem *item, char *name_buf, size_t nam
         case NBA_ASSET_AUDIO_EA_A:
             snprintf(name_buf, name_size, "VOICE: 'A'");
             break;
+        case NBA_ASSET_AUDIO_EA_SPORTS:
+            snprintf(name_buf, name_size, "VOICE: 'SPORTS'");
+            break;
         case NBA_ASSET_AUDIO_EA_GAME:
             snprintf(name_buf, name_size, "VOICE: 'GAME'");
             break;

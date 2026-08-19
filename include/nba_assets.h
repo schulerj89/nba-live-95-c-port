@@ -14,7 +14,8 @@ typedef enum {
     NBA_ASSET_AUDIO_EA_INTRO   = 7,
     NBA_ASSET_AUDIO_EA_E       = 8,
     NBA_ASSET_AUDIO_EA_A       = 9,
-    NBA_ASSET_AUDIO_EA_GAME    = 10,
+    NBA_ASSET_AUDIO_EA_SPORTS  = 10,
+    NBA_ASSET_AUDIO_EA_GAME    = 11,
     NBA_ASSET_MAX              = 128
 } NbaAssetId;
 
