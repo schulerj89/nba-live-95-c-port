@@ -14,6 +14,9 @@ $shortcut.Save()
 
 if (Test-Path $shortcutPath) {
     Write-Host "Desktop shortcut created successfully at: $shortcutPath" -ForegroundColor Green
+    
+    # Trigger Windows Shell refresh
+    python -c "import ctypes; ctypes.windll.shell32.SHChangeNotify(0x08000000, 0x1000, 0, 0)"
 } else {
     Write-Error "Failed to create desktop shortcut."
 }
