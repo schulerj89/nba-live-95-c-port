@@ -93,38 +93,32 @@ void nba_game_tick(NbaGame *game, float delta_time) {
     }
 }
 
+#include "nba_legal_bitmap.h"
+
 void nba_game_render_nba_legal_notice(NbaRenderer *ren) {
     if (!ren) return;
 
     nba_renderer_clear(ren, 0xFF000000); /* Solid Black */
 
-    /* Exact text from ROM offset $00:FCB7 */
-    const char *legal_lines[] = {
-        "All NBA and Team insignias",
-        "depicted in or on this product",
-        "are the property of",
-        "NBA Properties, Inc. and the",
-        "respective NBA Teams and may not",
-        "be reproduced without written",
-        "consent of NBA Properties, Inc.",
-        "",
-        "(C) 1994  NBA Properties, Inc."
-    };
-
     uint32_t col_white = 0xFFFFFFFF;
-    int start_y = 44;
-    int line_spacing = 13;
+    int start_y = NBA_LEGAL_START_Y;
 
-    for (int i = 0; i < 9; i++) {
-        if (legal_lines[i][0] != '\0') {
-            nba_font_render_text_centered(
-                ren->pixels, NBA_SNES_WIDTH,
-                start_y + i * line_spacing,
-                legal_lines[i],
-                col_white,
-                0,
-                1
-            );
+    for (int r = 0; r < NBA_LEGAL_HEIGHT; r++) {
+        int py = start_y + r;
+        if (py < 0 || py >= NBA_SNES_HEIGHT) continue;
+
+        for (int b = 0; b < 32; b++) {
+            uint8_t byte_val = g_nba_legal_notice_bitmap[r][b];
+            if (!byte_val) continue;
+
+            for (int bit = 0; bit < 8; bit++) {
+                if (byte_val & (0x80 >> bit)) {
+                    int px = b * 8 + bit;
+                    if (px >= 0 && px < NBA_SNES_WIDTH) {
+                        ren->pixels[py * NBA_SNES_WIDTH + px] = col_white;
+                    }
+                }
+            }
         }
     }
 }
