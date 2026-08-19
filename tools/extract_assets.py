@@ -2,6 +2,8 @@ import os
 import sys
 import struct
 import argparse
+import shutil
+import subprocess
 from PIL import Image
 import numpy as np
 
@@ -348,10 +350,74 @@ def create_asset_pack(rom_path, output_path):
         title_sequence_frames.append(frame_bytes)
         print(f"[ASSET EXTRACTOR] Packed post-EA title keyframe: {frame_path}")
 
-    title_audio_bytes = bytearray()
+    def encode_title_reference(avi_path, start_seconds=26.0, duration_seconds=36.0,
+                               fps=30, width=256, height=224):
+        ffmpeg = shutil.which("ffmpeg")
+        if not ffmpeg:
+            print("[ASSET EXTRACTOR] ffmpeg unavailable; skipping title video stream")
+            return bytearray(), bytearray()
+        command = [ffmpeg, "-v", "error", "-ss", str(start_seconds),
+                   "-t", str(duration_seconds), "-i", avi_path, "-an",
+                   "-vf", f"fps={fps}", "-f", "rawvideo", "-pix_fmt", "rgb24", "pipe:1"]
+        process = subprocess.Popen(command, stdout=subprocess.PIPE)
+        raw_size = width * height * 3
+        records = bytearray()
+        previous = None
+        count = 0
+        while True:
+            raw = process.stdout.read(raw_size)
+            if len(raw) != raw_size:
+                break
+            rgb = np.frombuffer(raw, dtype=np.uint8).reshape(-1, 3)
+            colors = (((rgb[:, 0].astype(np.uint16) >> 3) << 11) |
+                      ((rgb[:, 1].astype(np.uint16) >> 2) << 5) |
+                      (rgb[:, 2].astype(np.uint16) >> 3))
+            changed = (np.arange(colors.size, dtype=np.int32) if previous is None
+                       else np.flatnonzero(colors != previous))
+            runs = []
+            if changed.size:
+                split_points = np.flatnonzero(np.diff(changed) != 1) + 1
+                for indices in np.split(changed, split_points):
+                    start = int(indices[0])
+                    length = int(indices.size)
+                    runs.append((start, length,
+                                 colors[start:start + length].astype('<u2').tobytes()))
+            payload = bytearray(struct.pack("<I", len(runs)))
+            for start, length, pixels in runs:
+                payload.extend(struct.pack("<HH", start, length))
+                payload.extend(pixels)
+            records.extend(struct.pack("<I", len(payload)))
+            records.extend(payload)
+            previous = colors.copy()
+            count += 1
+        process.stdout.close()
+        if process.wait() != 0 or count == 0:
+            print("[ASSET EXTRACTOR] Failed to decode Mesen title reference")
+            return bytearray(), bytearray()
+        header = b"NBTITLE1" + struct.pack("<6I", 1, width, height, fps, 1, count)
+
+        audio_command = [ffmpeg, "-v", "error", "-ss", str(start_seconds),
+                         "-t", str(duration_seconds), "-i", avi_path, "-vn",
+                         "-ac", "1", "-ar", "22050", "-acodec", "pcm_s16le",
+                         "-f", "s16le", "pipe:1"]
+        pcm = subprocess.run(audio_command, stdout=subprocess.PIPE, check=True).stdout
+        wav_header = struct.pack('<4sI4s4sIHHIIHH4sI', b'RIFF', 36 + len(pcm),
+                                 b'WAVE', b'fmt ', 16, 1, 1, 22050, 44100,
+                                 2, 16, b'data', len(pcm))
+        print(f"[ASSET EXTRACTOR] Encoded {count} cue-aligned title frames from Mesen")
+        return header + records, wav_header + pcm
+
+    title_video_bytes = bytearray()
+    mesen_title_audio = bytearray()
+    mesen_avi = os.path.join(os.environ.get("OneDrive", ""), "Documents", "Mesen2",
+                             "Avi", "NBA Live 95 (USA).avi")
+    if os.path.exists(mesen_avi):
+        title_video_bytes, mesen_title_audio = encode_title_reference(mesen_avi)
+
+    title_audio_bytes = mesen_title_audio
     for audio_path in (os.path.join(os.path.dirname(output_path), "post_ea_title_sequence.wav"),
                        os.path.join(os.path.dirname(rom_path), "post_ea_title_sequence.wav")):
-        if os.path.exists(audio_path):
+        if len(title_audio_bytes) == 0 and os.path.exists(audio_path):
             with open(audio_path, "rb") as audio_file:
                 title_audio_bytes = audio_file.read()
             print(f"[ASSET EXTRACTOR] Packed Mesen post-EA title audio: {len(title_audio_bytes)} bytes")
@@ -380,6 +446,8 @@ def create_asset_pack(rom_path, output_path):
         assets.append((12 + frame_index, 256, 224, 0, frame_bytes))
     if len(title_audio_bytes) > 0:
         assets.append((15, 0, 0, 0, title_audio_bytes))
+    if len(title_video_bytes) > 0:
+        assets.append((68, 256, 224, 30, title_video_bytes))
 
     # Extract all other audio samples from ROM into asset pack for debugger
     rom_sample_offsets = [

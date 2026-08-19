@@ -25,15 +25,15 @@ construct the initial title letters.
 
 ## What the current C port does
 
-Asset 15 is currently one 20-second, 22,050 Hz, mono PCM WAV (882,078 bytes)
-captured from Mesen's final SPC mix. It preserves the audible song but does not
-yet reproduce the ROM's sample bank, sequencer, or music-cue channel.
+Asset 15 is a 36-second, 22,050 Hz mono PCM capture of Mesen's final SPC mix.
+It preserves the audible song but does not reproduce the ROM's sample bank or
+SPC sequencer internally.
 
 The extra entries shown by the port's F11 debugger are 52 standalone WAV previews
 made by decoding candidate BRR offsets. They are useful for identifying source
 instruments/effects, but the F11 list is not a playlist and the port does not
 currently assemble those entries into the title song.
 
-The renderer currently crossfades three captured title keyframes. A faithful
-implementation should replace that with the six `$064A`-driven construction
-stages above and time credits from the same music cue/event stream.
+Asset 68 contains a 30 FPS delta-frame reference stream aligned to asset 15.
+It reproduces the gym fade, the six `$064A`-driven construction stages, the
+cycling lights, and the credit progression without storing 1,080 full bitmaps.
