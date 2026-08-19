@@ -1,11 +1,12 @@
 #include "nba_ea_intro.h"
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
 
 /**
  * Offset/Address/Size: 0x0172EA | $82:F2EA | size: 0x80 (128 bytes)
  * Subroutines: $82:94DF (Mode 7 scale init), $82:F4F6 (E tilegroup draw), $82:F56D (22-frame zoom loop)
- * Purpose: Renders Stage 1 "E" zooming in from the foreground (3.5x -> 1.0x) to the screen center.
+ * Purpose: Renders Stage 1 "E" zooming in from the foreground (3.5x -> 1.0x) to its exact emblem position.
  */
 void nba_ea_intro_render_stage1(const NbaAssetPack *assets, NbaRenderer *ren, float local_t,
                                int start_x, int start_y, uint32_t width, uint32_t height) {
@@ -26,16 +27,17 @@ void nba_ea_intro_render_stage1(const NbaAssetPack *assets, NbaRenderer *ren, fl
         if (flash_frame < 8) flash_boost = (8 - flash_frame) * 14;
     }
 
-    int pcx = NBA_SNES_WIDTH / 2;
-    int pcy = start_y + (int)height / 2;
+    /* Exact geometric center of 'E' piece on screen */
+    float pcx = (float)start_x + 46.0f;
+    float pcy = (float)start_y + 44.5f;
     float inv_scale = 1.0f / scale;
 
     for (int py = 0; py < NBA_SNES_HEIGHT; py++) {
-        int ty = pcy + (int)((float)(py - pcy) * inv_scale) - start_y;
+        int ty = (int)floorf(pcy + (float)(py - pcy) * inv_scale - (float)start_y + 0.5f);
         if (ty < 0 || ty >= (int)height) continue;
 
         for (int px = 0; px < NBA_SNES_WIDTH; px++) {
-            int tx = pcx + (int)((float)(px - pcx) * inv_scale) - start_x;
+            int tx = (int)floorf(pcx + (float)(px - pcx) * inv_scale - (float)start_x + 0.5f);
             if (tx < 0 || tx >= (int)width) continue;
 
             uint32_t color = p1[ty * width + tx];
@@ -83,19 +85,20 @@ void nba_ea_intro_render_stage2(const NbaAssetPack *assets, NbaRenderer *ren, fl
     }
 
     /* 1. Zooming "A" piece from foreground (rendered behind stationary E) */
-    int pcx = start_x + 72;
-    int pcy = start_y + 43;
+    /* Exact geometric center of 'A' piece */
+    float pcx = (float)start_x + 69.5f;
+    float pcy = (float)start_y + 37.5f;
     float inv_scale = 1.0f / scale;
 
     for (int py = 0; py < NBA_SNES_HEIGHT; py++) {
-        int ty = pcy + (int)((float)(py - pcy) * inv_scale) - start_y;
+        int ty = (int)floorf(pcy + (float)(py - pcy) * inv_scale - (float)start_y + 0.5f);
         if (ty < 0 || ty >= (int)height) continue;
 
         for (int px = 0; px < NBA_SNES_WIDTH; px++) {
-            int tx = pcx + (int)((float)(px - pcx) * inv_scale) - start_x;
+            int tx = (int)floorf(pcx + (float)(px - pcx) * inv_scale - (float)start_x + 0.5f);
             if (tx < 0 || tx >= (int)width) continue;
 
-            if (tx >= 46) {
+            if (tx >= 4) {
                 uint32_t col1 = p1 ? p1[ty * width + tx] : 0;
                 uint32_t col2 = p2[ty * width + tx];
                 if (col2 != 0 && col1 == 0) {
@@ -171,16 +174,17 @@ void nba_ea_intro_render_stage3(const NbaAssetPack *assets, NbaRenderer *ren, fl
     }
 
     /* 1. Zooming "SPORTS" ribbon from foreground (rendered behind stationary EA emblem) */
-    int pcx = start_x + 52;
-    int pcy = start_y + 94;
+    /* Exact geometric center of 'SPORTS' ribbon */
+    float pcx = (float)start_x + 75.5f;
+    float pcy = (float)start_y + 95.5f;
     float inv_scale = 1.0f / scale;
 
     for (int py = 0; py < NBA_SNES_HEIGHT; py++) {
-        int ty = pcy + (int)((float)(py - pcy) * inv_scale) - start_y;
+        int ty = (int)floorf(pcy + (float)(py - pcy) * inv_scale - (float)start_y + 0.5f);
         if (ty < 0 || ty >= (int)height) continue;
 
         for (int px = 0; px < NBA_SNES_WIDTH; px++) {
-            int tx = pcx + (int)((float)(px - pcx) * inv_scale) - start_x;
+            int tx = (int)floorf(pcx + (float)(px - pcx) * inv_scale - (float)start_x + 0.5f);
             if (tx < 0 || tx >= (int)width) continue;
 
             uint32_t col2 = p2 ? p2[ty * width + tx] : 0;
