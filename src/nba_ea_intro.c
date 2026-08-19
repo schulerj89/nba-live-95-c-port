@@ -53,6 +53,13 @@ static int nba_ea_intro_pixel_is_logo(uint32_t color) {
     return r > 48 && r > g && r > b;
 }
 
+/* Stage 2 capture colors the newly written A tiles peach; the existing E stays orange. */
+static int nba_ea_intro_pixel_is_a(uint32_t color) {
+    uint32_t g = (color >> 8) & 0xFF;
+    uint32_t b = color & 0xFF;
+    return g > 80 && b > 48;
+}
+
 static int nba_ea_intro_pixel_is_sports(uint32_t color) {
     uint32_t r = (color >> 16) & 0xFF;
     uint32_t g = (color >> 8) & 0xFF;
@@ -101,7 +108,7 @@ void nba_ea_intro_render_stage1(const NbaAssetPack *assets, NbaRenderer *ren, fl
 /**
  * Offset/Address/Size: 0x01736A | $82:F36A | size: 0x90 (144 bytes)
  * Subroutines: $82:F512 (A tilegroup draw), $82:F56D (22-frame zoom loop), $82:F4C4 (8-frame flash)
- * Purpose: Renders Stage 2 stationary "E" while "A" zooms in from foreground to meet "E".
+ * Purpose: Keeps the completed E fixed while the new A tilegroup zooms over it.
  */
 void nba_ea_intro_render_stage2(const NbaAssetPack *assets, NbaRenderer *ren, float local_t,
                                int start_x, int start_y, uint32_t width, uint32_t height) {
@@ -118,7 +125,25 @@ void nba_ea_intro_render_stage2(const NbaAssetPack *assets, NbaRenderer *ren, fl
     float scale = nba_ea_intro_mode7_scale(frame);
     int flash_frame = frame - NBA_INTRO_ZOOM_FRAMES;
 
-    /* 1. Zooming "A" piece from foreground (rendered behind stationary E) */
+    /* The previous E has already settled. Draw it first so the incoming A can occlude it. */
+    if (p1) {
+        for (uint32_t r = 0; r < height; r++) {
+            int py = start_y + (int)r;
+            if (py < 0 || py >= NBA_SNES_HEIGHT) continue;
+            for (uint32_t c = 0; c < width; c++) {
+                uint32_t color = p1[r * width + c];
+                if (nba_ea_intro_pixel_is_logo(color)) {
+                    int px = start_x + (int)c;
+                    if (px >= 0 && px < NBA_SNES_WIDTH) {
+                        ren->pixels[py * NBA_SNES_WIDTH + px] =
+                            nba_ea_intro_flash_color(color, flash_frame);
+                    }
+                }
+            }
+        }
+    }
+
+    /* F512's peach A pixels are the new tilegroup transformed by F56D. */
     float pcx = (float)NBA_SNES_WIDTH * 0.5f;
     float pcy = (float)NBA_SNES_HEIGHT * 0.5f;
     float inv_scale = 1.0f / scale;
@@ -131,33 +156,11 @@ void nba_ea_intro_render_stage2(const NbaAssetPack *assets, NbaRenderer *ren, fl
             int tx = (int)floorf(pcx + (float)(px - pcx) * inv_scale - (float)start_x + 0.5f);
             if (tx < 0 || tx >= (int)width) continue;
 
-            if (tx >= 4) {
-                uint32_t col1 = p1 ? p1[ty * width + tx] : 0;
-                uint32_t col2 = p2[ty * width + tx];
-                uint32_t final_color = p4 ? p4[ty * width + tx] : col2;
-                if (nba_ea_intro_pixel_is_logo(col2) && !nba_ea_intro_pixel_is_logo(col1) &&
-                    nba_ea_intro_pixel_is_logo(final_color)) {
-                    uint32_t color = final_color;
-                    color = nba_ea_intro_flash_color(color, flash_frame);
-                    ren->pixels[py * NBA_SNES_WIDTH + px] = color;
-                }
-            }
-        }
-    }
-
-    /* 2. Stationary "E" piece (rendered ON TOP so E remains 100% intact and crisp) */
-    if (p1) {
-        for (uint32_t r = 0; r < height; r++) {
-            int py = start_y + (int)r;
-            if (py < 0 || py >= NBA_SNES_HEIGHT) continue;
-            for (uint32_t c = 0; c < width; c++) {
-                uint32_t color = p1[r * width + c];
-                if (nba_ea_intro_pixel_is_logo(color)) {
-                    int px = start_x + (int)c;
-                    if (px >= 0 && px < NBA_SNES_WIDTH) {
-                        ren->pixels[py * NBA_SNES_WIDTH + px] = color;
-                    }
-                }
+            uint32_t col2 = p2[ty * width + tx];
+            uint32_t final_color = p4 ? p4[ty * width + tx] : col2;
+            if (nba_ea_intro_pixel_is_a(col2) && nba_ea_intro_pixel_is_logo(final_color)) {
+                uint32_t color = nba_ea_intro_flash_color(final_color, flash_frame);
+                ren->pixels[py * NBA_SNES_WIDTH + px] = color;
             }
         }
     }
@@ -166,7 +169,7 @@ void nba_ea_intro_render_stage2(const NbaAssetPack *assets, NbaRenderer *ren, fl
 /**
  * Offset/Address/Size: 0x017408 | $82:F408 | size: 0x90 (144 bytes)
  * Subroutines: $82:F52E (SPORTS banner draw), $82:F56D (22-frame zoom loop), $82:F4C4 (8-frame flash)
- * Purpose: Renders Stage 3 stationary "EA" emblem while "SPORTS" ribbon zooms in from foreground.
+ * Purpose: Keeps the completed EA fixed while the SPORTS tilegroup zooms over it.
  */
 void nba_ea_intro_render_stage3(const NbaAssetPack *assets, NbaRenderer *ren, float local_t,
                                int start_x, int start_y, uint32_t width, uint32_t height) {
@@ -183,7 +186,27 @@ void nba_ea_intro_render_stage3(const NbaAssetPack *assets, NbaRenderer *ren, fl
     float scale = nba_ea_intro_mode7_scale(frame);
     int flash_frame = frame - NBA_INTRO_ZOOM_FRAMES;
 
-    /* 1. Zooming "SPORTS" ribbon from foreground (rendered behind stationary EA emblem) */
+    /* Draw the settled EA first; the incoming SPORTS layer is composited over it. */
+    if (p2) {
+        for (uint32_t r = 0; r < height; r++) {
+            int py = start_y + (int)r;
+            if (py < 0 || py >= NBA_SNES_HEIGHT) continue;
+            for (uint32_t c = 0; c < width; c++) {
+                uint32_t source_color = p2[r * width + c];
+                uint32_t final_color = p4 ? p4[r * width + c] : source_color;
+                if (nba_ea_intro_pixel_is_logo(source_color) &&
+                    nba_ea_intro_pixel_is_logo(final_color)) {
+                    int px = start_x + (int)c;
+                    if (px >= 0 && px < NBA_SNES_WIDTH) {
+                        ren->pixels[py * NBA_SNES_WIDTH + px] =
+                            nba_ea_intro_flash_color(final_color, flash_frame);
+                    }
+                }
+            }
+        }
+    }
+
+    /* F52E's blue pixels identify the new SPORTS tilegroup transformed by F56D. */
     float pcx = (float)NBA_SNES_WIDTH * 0.5f;
     float pcy = (float)NBA_SNES_HEIGHT * 0.5f;
     float inv_scale = 1.0f / scale;
@@ -196,33 +219,11 @@ void nba_ea_intro_render_stage3(const NbaAssetPack *assets, NbaRenderer *ren, fl
             int tx = (int)floorf(pcx + (float)(px - pcx) * inv_scale - (float)start_x + 0.5f);
             if (tx < 0 || tx >= (int)width) continue;
 
-            uint32_t col2 = p2 ? p2[ty * width + tx] : 0;
             uint32_t col3 = p3[ty * width + tx];
             uint32_t final_color = p4 ? p4[ty * width + tx] : col3;
-            if (nba_ea_intro_pixel_is_sports(col3) && !nba_ea_intro_pixel_is_sports(col2) &&
-                nba_ea_intro_pixel_is_sports(final_color)) {
-                uint32_t color = final_color;
-                color = nba_ea_intro_flash_color(color, flash_frame);
+            if (nba_ea_intro_pixel_is_sports(col3) && nba_ea_intro_pixel_is_sports(final_color)) {
+                uint32_t color = nba_ea_intro_flash_color(final_color, flash_frame);
                 ren->pixels[py * NBA_SNES_WIDTH + px] = color;
-            }
-        }
-    }
-
-    /* 2. Stationary "EA" emblem (rendered ON TOP so emblem remains 100% intact and crisp) */
-    if (p2) {
-        for (uint32_t r = 0; r < height; r++) {
-            int py = start_y + (int)r;
-            if (py < 0 || py >= NBA_SNES_HEIGHT) continue;
-            for (uint32_t c = 0; c < width; c++) {
-                uint32_t color = p2[r * width + c];
-                uint32_t final_color = p4 ? p4[r * width + c] : color;
-                if (nba_ea_intro_pixel_is_logo(color) && nba_ea_intro_pixel_is_logo(final_color)) {
-                    color = final_color;
-                    int px = start_x + (int)c;
-                    if (px >= 0 && px < NBA_SNES_WIDTH) {
-                        ren->pixels[py * NBA_SNES_WIDTH + px] = color;
-                    }
-                }
             }
         }
     }
