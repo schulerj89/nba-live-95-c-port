@@ -16,10 +16,15 @@ out/
 
 # Asset packs and ROM dumps (no copyrighted data in repo)
 assets/
+extracted_wavs/
+*.pak
 *.bin
 *.dat
 *.sfc
 *.smc
+*.wav
+*.mp3
+*.ogg
 
 # Ghidra project data
 ghidra-projects/
