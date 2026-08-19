@@ -25,6 +25,7 @@ typedef struct {
     float state_timer;
     uint8_t ea_voice_stage;
     NbaAudioDebugger audio_debugger;
+    bool show_timing_debug;
     bool is_initialized;
 } NbaGame;
 

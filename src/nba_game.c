@@ -57,7 +57,11 @@ void nba_game_input_update(NbaInput *input, uint16_t raw_buttons) {
 }
 
 void nba_game_tick(NbaGame *game, float delta_time) {
-    if (!game || !game->is_initialized) return;
+    /* Handle F10 Timing Debug overlay toggle */
+    if (game->input.pressed & NBA_BTN_DEBUG_F10) {
+        game->show_timing_debug = !game->show_timing_debug;
+        printf("[DEBUG] Timing HUD overlay %s\n", game->show_timing_debug ? "ENABLED" : "DISABLED");
+    }
 
     /* Handle F11 Audio Debugger toggle */
     if (game->input.pressed & NBA_BTN_DEBUG_F11) {
@@ -107,18 +111,18 @@ void nba_game_tick(NbaGame *game, float delta_time) {
             if (game->ea_voice_stage == 0) {
                 const NbaAssetItem *audio_item = nba_assets_get(&game->assets, NBA_ASSET_AUDIO_EA_INTRO);
                 if (audio_item && audio_item->data && audio_item->size > 0) {
-                    printf("[AUDIO] Playing EA Sports intro voice sequence (%u bytes)...\n", audio_item->size);
+                    printf("[AUDIO] Playing EA Sports intro voice sequence (%u bytes, 5.05s total)...\n", audio_item->size);
                     nba_audio_play_wav(audio_item->data, (size_t)audio_item->size);
                     game->ea_voice_stage = 1;
                 }
             }
 
-            /* Step through the 4 assembly stages (2.8s total) or advance on button press */
+            /* Step through the authentic 4 assembly stages (5.05s total hold) or advance on button press */
             if (game->input.pressed & (NBA_BTN_START | NBA_BTN_A | NBA_BTN_B)) {
                 nba_audio_stop();
                 game->state = NBA_STATE_MAIN_MENU;
                 game->state_timer = 0.0f;
-            } else if (game->state_timer >= 2.8f) {
+            } else if (game->state_timer >= 5.05f) {
                 game->state = NBA_STATE_MAIN_MENU;
                 game->state_timer = 0.0f;
             }
@@ -173,19 +177,19 @@ void nba_game_render_ea_intro(NbaGame *game) {
     NbaAssetId stage_id;
     int flash_boost = 0;
 
-    if (timer < 0.40f) {
+    if (timer < 0.533f) {
         stage_id = NBA_ASSET_EA_LOGO_STAGE1;
         float local_t = timer;
         int frame = (int)(local_t * 60.0f);
         if (frame < 8) flash_boost = (8 - frame) * 14;
-    } else if (timer < 0.80f) {
+    } else if (timer < 1.050f) {
         stage_id = NBA_ASSET_EA_LOGO_STAGE2;
-        float local_t = timer - 0.40f;
+        float local_t = timer - 0.533f;
         int frame = (int)(local_t * 60.0f);
         if (frame < 8) flash_boost = (8 - frame) * 14;
-    } else if (timer < 1.20f) {
+    } else if (timer < 2.050f) {
         stage_id = NBA_ASSET_EA_LOGO_STAGE3;
-        float local_t = timer - 0.80f;
+        float local_t = timer - 1.050f;
         int frame = (int)(local_t * 60.0f);
         if (frame < 8) flash_boost = (8 - frame) * 14;
     } else {
@@ -328,6 +332,53 @@ void nba_game_render(NbaGame *game) {
             }
             break;
         }
+    }
+
+    /* Render Timing Debug Overlay [F10] if enabled */
+    if (game->show_timing_debug && !game->audio_debugger.is_active) {
+        /* Draw top debug banner */
+        uint32_t hud_bg = 0xCC001020;
+        uint32_t hud_border = 0xFF4A90E2;
+        uint32_t col_cyan = 0xFF40C0FF;
+        uint32_t col_yellow = 0xFFFFD700;
+
+        int bx = 4, by = 4, bw = 248, bh = 38;
+        for (int y = by; y < by + bh; y++) {
+            for (int x = bx; x < bx + bw; x++) {
+                if (x == bx || x == bx + bw - 1 || y == by || y == by + bh - 1) {
+                    ren->pixels[y * NBA_SNES_WIDTH + x] = hud_border;
+                } else {
+                    ren->pixels[y * NBA_SNES_WIDTH + x] = hud_bg;
+                }
+            }
+        }
+
+        char l1[40], l2[40], l3[40];
+        const char *state_str = "UNKNOWN";
+        const char *stage_str = "";
+
+        switch (game->state) {
+            case NBA_STATE_NINTENDO_LICENSE: state_str = "NINTENDO LICENSE"; break;
+            case NBA_STATE_NBA_LEGAL_NOTICE: state_str = "NBA LEGAL NOTICE"; break;
+            case NBA_STATE_EA_INTRO: {
+                state_str = "EA INTRO";
+                if (game->state_timer < 0.533f) stage_str = "STG 1: 'E'";
+                else if (game->state_timer < 1.050f) stage_str = "STG 2: 'A'";
+                else if (game->state_timer < 2.050f) stage_str = "STG 3: 'SPORTS'";
+                else stage_str = "STG 4: 'GAME' (HOLD)";
+                break;
+            }
+            case NBA_STATE_MAIN_MENU: state_str = "MAIN MENU"; break;
+            default: break;
+        }
+
+        snprintf(l1, sizeof(l1), "TIMING DEBUG [F10]");
+        snprintf(l2, sizeof(l2), "ST: %-10s %s", state_str, stage_str);
+        snprintf(l3, sizeof(l3), "F:%04u  T:%4.2fs  VOICE:%u", game->frame_count, game->state_timer, game->ea_voice_stage);
+
+        nba_font_render_text(ren->pixels, NBA_SNES_WIDTH, bx + 6, by + 4, l1, col_yellow, col_shadow, 1);
+        nba_font_render_text(ren->pixels, NBA_SNES_WIDTH, bx + 6, by + 14, l2, col_white, col_shadow, 1);
+        nba_font_render_text(ren->pixels, NBA_SNES_WIDTH, bx + 6, by + 24, l3, col_cyan, col_shadow, 1);
     }
 
     /* Render Audio Debugger Overlay on top of any game screen if active */

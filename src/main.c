@@ -51,6 +51,15 @@ int main(int argc, char *argv[]) {
             return 1;
         }
 
+        bool timing_debug_test = false;
+        for (int i = 1; i < argc; i++) {
+            if (strcmp(argv[i], "--timing-debug") == 0) timing_debug_test = true;
+        }
+
+        if (timing_debug_test) {
+            game.show_timing_debug = true;
+        }
+
         if (audio_debug_test) {
             game.audio_debugger.is_active = true;
             nba_audio_debugger_update(&game.audio_debugger, &game.assets, &game.input);
