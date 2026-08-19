@@ -14,12 +14,9 @@ bool nba_game_init(NbaGame *game, const char *rom_path) {
 
     if (rom_path && rom_path[0] != '\0') {
         if (!nba_rom_load_file(&game->rom, rom_path)) {
-            printf("[GAME] Warning: Continuing with emulated SNES boot environment without ROM file.\n");
+            printf("[GAME] Warning: Continuing without ROM file.\n");
         }
     }
-
-    /* Run the authentic SNES hardware reset routine */
-    nba_snes_init(&game->snes);
 
     /* Setup initial game state */
     game->state = NBA_STATE_NINTENDO_LICENSE;
@@ -52,9 +49,6 @@ void nba_game_tick(NbaGame *game, float delta_time) {
 
     game->state_timer += delta_time;
     game->frame_count++;
-
-    /* Update SNES joypad register */
-    nba_snes_set_joypad(&game->snes, game->input.held);
 
     switch (game->state) {
         case NBA_STATE_BOOT_RESET:

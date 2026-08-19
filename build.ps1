@@ -33,7 +33,6 @@ $GameExePath = Join-Path $BuildDir "nba95_port_game.exe"
 
 $CommonSources = @(
     "src\nba_rom.c",
-    "src\nba_snes.c",
     "src\nba_font.c",
     "src\nba_renderer.c",
     "src\nba_game.c"

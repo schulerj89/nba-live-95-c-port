@@ -3,7 +3,6 @@
 
 #include "nba_types.h"
 #include "nba_rom.h"
-#include "nba_snes.h"
 #include "nba_renderer.h"
 
 typedef enum {
@@ -14,7 +13,6 @@ typedef enum {
 } NbaGameState;
 
 typedef struct {
-    NbaSnes snes;
     NbaRom rom;
     NbaRenderer renderer;
     NbaInput input;
