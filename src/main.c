@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
 #include "nba_game.h"
@@ -9,12 +10,15 @@ int main(int argc, char *argv[]) {
     const char *rom_path = "F:\\Games\\SNES\\NBA Live 95 (USA).sfc";
     const char *dump_frame_path = NULL;
     bool is_headless = false;
+    int step_frames = 30;
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--rom") == 0 && i + 1 < argc) {
             rom_path = argv[++i];
         } else if (strcmp(argv[i], "--headless") == 0) {
             is_headless = true;
+        } else if (strcmp(argv[i], "--frames") == 0 && i + 1 < argc) {
+            step_frames = atoi(argv[++i]);
         } else if (strcmp(argv[i], "--dump-frame") == 0 && i + 1 < argc) {
             dump_frame_path = argv[++i];
         } else if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
@@ -23,6 +27,7 @@ int main(int argc, char *argv[]) {
             printf("Options:\n");
             printf("  --rom <path>          Path to SNES ROM file\n");
             printf("  --headless            Run without opening GUI window\n");
+            printf("  --frames <N>          Number of frames to step in headless mode (default: 30)\n");
             printf("  --dump-frame <file>   Save rendered frame to 24-bit BMP image\n");
             printf("  --help, -h            Show this help text\n");
             return 0;
@@ -30,15 +35,15 @@ int main(int argc, char *argv[]) {
     }
 
     if (is_headless) {
-        printf("[HEADLESS] Starting headless verification with ROM: %s\n", rom_path);
+        printf("[HEADLESS] Starting headless verification with ROM: %s (frames: %d)\n", rom_path, step_frames);
         NbaGame game;
         if (!nba_game_init(&game, rom_path)) {
             fprintf(stderr, "[HEADLESS] Error: Failed to initialize game\n");
             return 1;
         }
 
-        /* Step frames to reach licensing screen */
-        for (int frame = 0; frame < 30; frame++) {
+        /* Step frames to reach desired screen */
+        for (int frame = 0; frame < step_frames; frame++) {
             nba_game_tick(&game, 1.0f / 60.0f);
         }
 

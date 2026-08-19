@@ -8,6 +8,7 @@
 typedef enum {
     NBA_STATE_BOOT_RESET = 0,
     NBA_STATE_NINTENDO_LICENSE,
+    NBA_STATE_NBA_LEGAL_NOTICE,
     NBA_STATE_EA_INTRO,
     NBA_STATE_MAIN_MENU
 } NbaGameState;
@@ -27,5 +28,6 @@ void nba_game_shutdown(NbaGame *game);
 void nba_game_input_update(NbaInput *input, uint16_t raw_buttons);
 void nba_game_tick(NbaGame *game, float delta_time);
 void nba_game_render(NbaGame *game);
+void nba_game_render_nba_legal_notice(NbaRenderer *ren);
 
 #endif /* NBA_GAME_H */

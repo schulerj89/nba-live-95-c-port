@@ -59,12 +59,22 @@ void nba_game_tick(NbaGame *game, float delta_time) {
             break;
 
         case NBA_STATE_NINTENDO_LICENSE:
-            /* Progress to next screen after 3.5 seconds or if Start / A is pressed */
+            /* Exact SNES timing from ROM $00:FD9E: 120 frames (2.0s) or button press */
             if (game->input.pressed & (NBA_BTN_START | NBA_BTN_A | NBA_BTN_B)) {
-                printf("[GAME] Start pressed during license screen -> advancing state\n");
+                game->state = NBA_STATE_NBA_LEGAL_NOTICE;
+                game->state_timer = 0.0f;
+            } else if (game->state_timer >= 2.0f) {
+                game->state = NBA_STATE_NBA_LEGAL_NOTICE;
+                game->state_timer = 0.0f;
+            }
+            break;
+
+        case NBA_STATE_NBA_LEGAL_NOTICE:
+            /* Exact SNES timing from ROM $00:FEE6: 180 frames (3.0s) or button press */
+            if (game->input.pressed & (NBA_BTN_START | NBA_BTN_A | NBA_BTN_B)) {
                 game->state = NBA_STATE_EA_INTRO;
                 game->state_timer = 0.0f;
-            } else if (game->state_timer >= 3.5f) {
+            } else if (game->state_timer >= 3.0f) {
                 game->state = NBA_STATE_EA_INTRO;
                 game->state_timer = 0.0f;
             }
@@ -83,6 +93,42 @@ void nba_game_tick(NbaGame *game, float delta_time) {
     }
 }
 
+void nba_game_render_nba_legal_notice(NbaRenderer *ren) {
+    if (!ren) return;
+
+    nba_renderer_clear(ren, 0xFF000000); /* Solid Black */
+
+    /* Exact text from ROM offset $00:FCB7 */
+    const char *legal_lines[] = {
+        "All NBA and Team insignias",
+        "depicted in or on this product",
+        "are the property of",
+        "NBA Properties, Inc. and the",
+        "respective NBA Teams and may not",
+        "be reproduced without written",
+        "consent of NBA Properties, Inc.",
+        "",
+        "(C) 1994  NBA Properties, Inc."
+    };
+
+    uint32_t col_white = 0xFFFFFFFF;
+    int start_y = 44;
+    int line_spacing = 13;
+
+    for (int i = 0; i < 9; i++) {
+        if (legal_lines[i][0] != '\0') {
+            nba_font_render_text_centered(
+                ren->pixels, NBA_SNES_WIDTH,
+                start_y + i * line_spacing,
+                legal_lines[i],
+                col_white,
+                0,
+                1
+            );
+        }
+    }
+}
+
 void nba_game_render(NbaGame *game) {
     if (!game || !game->is_initialized) return;
 
@@ -92,10 +138,8 @@ void nba_game_render(NbaGame *game) {
     uint32_t col_black      = 0xFF000000;
     uint32_t col_white      = 0xFFFFFFFF;
     uint32_t col_shadow     = 0xFF202020;
-    uint32_t col_red        = 0xFFD82800; /* Authentic SNES Nintendo Red */
     uint32_t col_gold       = 0xFFF8B800;
     uint32_t col_cyan       = 0xFF00E0E0;
-    uint32_t col_gray       = 0xFFA0A0A0;
 
     switch (game->state) {
         case NBA_STATE_BOOT_RESET:
@@ -117,6 +161,10 @@ void nba_game_render(NbaGame *game) {
             );
             break;
         }
+
+        case NBA_STATE_NBA_LEGAL_NOTICE:
+            nba_game_render_nba_legal_notice(ren);
+            break;
 
         case NBA_STATE_EA_INTRO: {
             nba_renderer_clear(ren, col_black);
