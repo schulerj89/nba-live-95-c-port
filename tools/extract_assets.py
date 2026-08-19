@@ -306,22 +306,23 @@ def create_asset_pack(rom_path, output_path):
             total_len = int(rate * 2.8) # 2.8s intro animation
             composite = np.zeros(total_len, dtype=np.int16)
 
-            # Stage 1: E at t = 0.00s
-            e_len = min(len(e_pcm), total_len)
-            composite[:e_len] = np.array(e_pcm[:e_len], dtype=np.int16)
+            # Stage 1: E at Frame 0 (t = 0.00s)
+            e_start = int(rate * 0.00)
+            e_len = min(len(e_pcm), total_len - e_start)
+            composite[e_start:e_start+e_len] = np.array(e_pcm[:e_len], dtype=np.int16)
 
-            # Stage 2: A at t = 0.38s
-            a_start = int(rate * 0.38)
+            # Stage 2: A at Frame 24 (t = 0.40s)
+            a_start = int(rate * 0.40)
             a_len = min(len(a_pcm), total_len - a_start)
             composite[a_start:a_start+a_len] = np.array(a_pcm[:a_len], dtype=np.int16)
 
-            # Stage 3: Sports at t = 0.78s
-            s_start = int(rate * 0.78)
+            # Stage 3: Sports at Frame 48 (t = 0.80s)
+            s_start = int(rate * 0.80)
             s_len = min(len(sports_pcm), total_len - s_start)
             composite[s_start:s_start+s_len] = np.array(sports_pcm[:s_len], dtype=np.int16)
 
-            # Stage 4: "It's in the game" at t = 1.45s
-            g_start = int(rate * 1.45)
+            # Stage 4: "It's in the game" at Frame 72 (t = 1.20s)
+            g_start = int(rate * 1.20)
             g_len = min(len(game_pcm), total_len - g_start)
             composite[g_start:g_start+g_len] = np.array(game_pcm[:g_len], dtype=np.int16)
 
