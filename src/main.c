@@ -11,6 +11,7 @@ int main(int argc, char *argv[]) {
     const char *assets_path = NULL;
     const char *dump_frame_path = NULL;
     bool is_headless = false;
+    bool audio_debug_test = false;
     int step_frames = 30;
 
     for (int i = 1; i < argc; i++) {
@@ -24,6 +25,8 @@ int main(int argc, char *argv[]) {
             step_frames = atoi(argv[++i]);
         } else if (strcmp(argv[i], "--dump-frame") == 0 && i + 1 < argc) {
             dump_frame_path = argv[++i];
+        } else if (strcmp(argv[i], "--audio-debug") == 0) {
+            audio_debug_test = true;
         } else if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
             printf("NBA Live '95 Native C Port\n");
             printf("Usage: nba95_port.exe [options]\n\n");
@@ -32,6 +35,7 @@ int main(int argc, char *argv[]) {
             printf("  --assets <path>       Path to extracted asset pack (.pak)\n");
             printf("  --headless            Run without opening GUI window\n");
             printf("  --frames <N>          Number of frames to step in headless mode (default: 30)\n");
+            printf("  --audio-debug         Activate audio sample debugger in headless render\n");
             printf("  --dump-frame <file>   Save rendered frame to 24-bit BMP image\n");
             printf("  --help, -h            Show this help text\n");
             return 0;
@@ -45,6 +49,11 @@ int main(int argc, char *argv[]) {
         if (!nba_game_init(&game, rom_path, assets_path)) {
             fprintf(stderr, "[HEADLESS] Error: Failed to initialize game\n");
             return 1;
+        }
+
+        if (audio_debug_test) {
+            game.audio_debugger.is_active = true;
+            nba_audio_debugger_update(&game.audio_debugger, &game.assets, &game.input);
         }
 
         /* Step frames to reach desired screen */

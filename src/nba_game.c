@@ -29,6 +29,7 @@ bool nba_game_init(NbaGame *game, const char *rom_path, const char *assets_path)
     game->state = NBA_STATE_NINTENDO_LICENSE;
     game->state_timer = 0.0f;
     game->frame_count = 0;
+    nba_audio_debugger_init(&game->audio_debugger);
     game->is_initialized = true;
 
     printf("[GAME] Initialization complete. Entering state NBA_STATE_NINTENDO_LICENSE.\n");
@@ -57,6 +58,19 @@ void nba_game_input_update(NbaInput *input, uint16_t raw_buttons) {
 
 void nba_game_tick(NbaGame *game, float delta_time) {
     if (!game || !game->is_initialized) return;
+
+    /* Handle F11 Audio Debugger toggle */
+    if (game->input.pressed & NBA_BTN_DEBUG_F11) {
+        nba_audio_debugger_toggle(&game->audio_debugger);
+    }
+
+    /* Update audio debugger navigation / playback */
+    nba_audio_debugger_update(&game->audio_debugger, &game->assets, &game->input);
+
+    /* If audio debugger is active, freeze game state progression */
+    if (game->audio_debugger.is_active) {
+        return;
+    }
 
     game->state_timer += delta_time;
     game->frame_count++;
@@ -293,5 +307,10 @@ void nba_game_render(NbaGame *game) {
             }
             break;
         }
+    }
+
+    /* Render Audio Debugger Overlay on top of any game screen if active */
+    if (game->audio_debugger.is_active) {
+        nba_audio_debugger_render(&game->audio_debugger, &game->assets, ren);
     }
 }

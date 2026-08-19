@@ -22,8 +22,9 @@
 #define NBA_BTN_RIGHT   (1 << 7)
 #define NBA_BTN_A       (1 << 8)
 #define NBA_BTN_X       (1 << 9)
-#define NBA_BTN_L       (1 << 10)
-#define NBA_BTN_R       (1 << 11)
+#define NBA_BTN_L          (1 << 10)
+#define NBA_BTN_R          (1 << 11)
+#define NBA_BTN_DEBUG_F11  (1 << 12)
 
 typedef struct {
     uint16_t held;

@@ -219,8 +219,8 @@ def create_asset_pack(rom_path, output_path):
                     p2, p1 = p1, out
             pos += 8
             if end:
-                break
-        return pcm
+                return pcm, pos
+        return pcm, pos
 
     def make_wav_bytes(pcm_samples, num_channels=1, sample_rate=16000, bits_per_sample=16):
         data_size = len(pcm_samples) * 2
@@ -267,22 +267,26 @@ def create_asset_pack(rom_path, output_path):
 
         # Extract authentic "E", "A", and "It's in the game" samples from ROM
         # "E" sample: ROM 0x12D9C5 (3492 bytes BRR, 6208 PCM samples)
+        e_pcm = []
+        a_pcm = []
+        game_pcm = []
+
         if len(rom_data) >= 0x12D9C5 + 3492:
-            e_pcm = decode_brr_to_pcm(rom_data[0x12D9C5:0x12D9C5 + 3492])
+            e_pcm, _ = decode_brr_to_pcm(rom_data[0x12D9C5:0x12D9C5 + 3492])
             if len(e_pcm) > 0:
                 audio_e_bytes = make_wav_bytes(e_pcm, sample_rate=16000)
                 print(f"[ASSET EXTRACTOR] Extracted ROM 'E' voice sample (0x12D9C5): {len(audio_e_bytes)} WAV bytes")
 
         # "A" sample: ROM 0x12801C (5580 bytes BRR, 9920 PCM samples)
         if len(rom_data) >= 0x12801C + 5580:
-            a_pcm = decode_brr_to_pcm(rom_data[0x12801C:0x12801C + 5580])
+            a_pcm, _ = decode_brr_to_pcm(rom_data[0x12801C:0x12801C + 5580])
             if len(a_pcm) > 0:
                 audio_a_bytes = make_wav_bytes(a_pcm, sample_rate=16000)
                 print(f"[ASSET EXTRACTOR] Extracted ROM 'A' voice sample (0x12801C): {len(audio_a_bytes)} WAV bytes")
 
         # "It's in the game" sample: ROM 0x11249B (9036 bytes BRR, 16064 PCM samples)
         if len(rom_data) >= 0x11249B + 9036:
-            game_pcm = decode_brr_to_pcm(rom_data[0x11249B:0x11249B + 9036])
+            game_pcm, _ = decode_brr_to_pcm(rom_data[0x11249B:0x11249B + 9036])
             if len(game_pcm) > 0:
                 audio_game_bytes = make_wav_bytes(game_pcm, sample_rate=16000)
                 print(f"[ASSET EXTRACTOR] Extracted ROM 'It's in the game' voice sample (0x11249B): {len(audio_game_bytes)} WAV bytes")
@@ -327,6 +331,27 @@ def create_asset_pack(rom_path, output_path):
         assets.append((9, 0, 0, 0, audio_a_bytes))             # ASSET_AUDIO_EA_A
     if len(audio_game_bytes) > 0:
         assets.append((10, 0, 0, 0, audio_game_bytes))         # ASSET_AUDIO_EA_GAME
+
+    # Extract all other audio samples from ROM into asset pack for debugger
+    rom_sample_offsets = [
+        0x043025, 0x0DA71E, 0x0DBA2C, 0x0DF19E, 0x0E001C, 0x0E4A6F, 0x0E801C, 0x0EC8B6,
+        0x0F001C, 0x0F482F, 0x10801C, 0x10D1E7, 0x114803, 0x11E03D, 0x11F769,
+        0x124C14, 0x129604, 0x12A820, 0x12B964, 0x13001C, 0x1318E0, 0x1324F0,
+        0x133394, 0x1350E8, 0x135BB4, 0x13BCE4, 0x13F850, 0x14001C, 0x1439E0, 0x145663,
+        0x145FD9, 0x147C01, 0x149BA6, 0x14AD51, 0x14BEE4, 0x14E8BA, 0x14F0B6, 0x15001C,
+        0x1507F4, 0x15102F, 0x151792, 0x151F4F, 0x1526BB, 0x152E03, 0x153C78, 0x15517D,
+        0x155811, 0x159E18, 0x15D7E5, 0x16001C, 0x160F23, 0x161CBF, 0x166995
+    ]
+
+    if os.path.exists(rom_path):
+        extra_audio_id = 11
+        for off in rom_sample_offsets:
+            if off < len(rom_data):
+                pcm, _ = decode_brr_to_pcm(rom_data[off:])
+                if len(pcm) > 0:
+                    wav_bytes = make_wav_bytes(pcm, sample_rate=16000)
+                    assets.append((extra_audio_id, 0, 0, off, wav_bytes))
+                    extra_audio_id += 1
 
     header_magic = b"NBA95PAK"
     version = 1

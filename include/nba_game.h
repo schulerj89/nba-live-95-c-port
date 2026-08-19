@@ -5,6 +5,7 @@
 #include "nba_rom.h"
 #include "nba_assets.h"
 #include "nba_renderer.h"
+#include "nba_audio_debugger.h"
 
 typedef enum {
     NBA_STATE_BOOT_RESET = 0,
@@ -23,6 +24,7 @@ typedef struct {
     uint32_t frame_count;
     float state_timer;
     uint8_t ea_voice_stage;
+    NbaAudioDebugger audio_debugger;
     bool is_initialized;
 } NbaGame;
 
