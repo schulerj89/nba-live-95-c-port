@@ -85,16 +85,20 @@ void nba_game_tick(NbaGame *game, float delta_time) {
             if ((game->input.pressed & (NBA_BTN_START | NBA_BTN_A | NBA_BTN_B)) || game->state_timer >= 3.0f) {
                 game->state = NBA_STATE_EA_INTRO;
                 game->state_timer = 0.0f;
-
-                /* Trigger EA intro voice/audio if present in asset pack */
-                const NbaAssetItem *audio_item = nba_assets_get(&game->assets, NBA_ASSET_AUDIO_EA_INTRO);
-                if (audio_item && audio_item->data && audio_item->size > 0) {
-                    nba_audio_play_wav(audio_item->data, (size_t)audio_item->size);
-                }
             }
             break;
 
         case NBA_STATE_EA_INTRO:
+            /* Trigger EA intro voice/audio if present in asset pack and not yet played */
+            if (!game->intro_audio_played) {
+                const NbaAssetItem *audio_item = nba_assets_get(&game->assets, NBA_ASSET_AUDIO_EA_INTRO);
+                if (audio_item && audio_item->data && audio_item->size > 0) {
+                    printf("[AUDIO] Playing EA Sports intro voice (%u bytes)...\n", audio_item->size);
+                    nba_audio_play_wav(audio_item->data, (size_t)audio_item->size);
+                    game->intro_audio_played = true;
+                }
+            }
+
             /* Step through the 4 assembly stages (2.8s total) or advance on button press */
             if (game->input.pressed & (NBA_BTN_START | NBA_BTN_A | NBA_BTN_B)) {
                 nba_audio_stop();
