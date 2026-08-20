@@ -226,7 +226,31 @@ void nba_game_tick(NbaGame *game, float delta_time) {
             /* $80:A3B8 - per-frame Game Setup update: slide-in, backdrop
              * scroll and row cursor. $80:A9E3/$80:AA7B/$80:AACD feed the
              * cycle-timed SPC command path started at the title handoff. */
-            nba_setup_screen_update(&game->setup_screen, &game->input);
+            {
+                NbaSetupPage page_before = game->setup_screen.page;
+                NbaSetupSound sound =
+                    nba_setup_screen_update(&game->setup_screen, &game->input);
+                uint8_t srcn = 0xFFu;
+                if (sound == NBA_SETUP_SOUND_ADJUST) srcn = 0x1Au;
+                if (sound == NBA_SETUP_SOUND_MOVE) srcn = 0x1Bu;
+                if (sound == NBA_SETUP_SOUND_CONFIRM) srcn = 0x1Cu;
+                /* $82:8DDC calls $87:8C2D for the Options slider rows while the
+                 * working value still lives at $7E:16FB.  Keep the independent
+                 * waveOut music stream in sync without disturbing menu SFX. */
+                if (page_before == NBA_SETUP_PAGE_OPTIONS &&
+                    sound == NBA_SETUP_SOUND_ADJUST) {
+                    if (game->setup_screen.menu_row == 0) {
+                        nba_audio_set_setup_music_volume(
+                            &game->audio, game->setup_screen.working_options[0], 45u);
+                    } else if (game->setup_screen.menu_row == 1) {
+                        nba_audio_set_setup_sfx_volume(
+                            &game->audio, game->setup_screen.working_options[1], 45u);
+                    }
+                }
+                if (srcn != 0xFFu) {
+                    nba_audio_play_setup_sfx(&game->audio, &game->assets, srcn);
+                }
+            }
             break;
 
         default:

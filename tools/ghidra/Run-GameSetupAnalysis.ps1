@@ -20,7 +20,7 @@ New-Item -ItemType Directory -Force -Path $analysisDirectory | Out-Null
 $env:JAVA_HOME = $JdkHome
 
 # Entry points observed executing on the Game Setup screen (live Mesen trace).
-$banks = @('80','81','83','87')
+$banks = @('80','81','82','83','87')
 
 $romBytes = [System.IO.File]::ReadAllBytes((Resolve-Path -LiteralPath $RomPath))
 

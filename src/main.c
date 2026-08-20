@@ -25,6 +25,11 @@ int main(int argc, char *argv[]) {
     bool spc_self_test = false;
     int step_frames = 30;
     double tick_rate = 60.0;
+    const char *setup_menu = NULL;
+    int setup_menu_row = 0;
+    int setup_menu_right = 0;
+    bool setup_menu_confirm = false;
+    bool setup_menu_b = false;
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--rom") == 0 && i + 1 < argc) {
@@ -49,6 +54,16 @@ int main(int argc, char *argv[]) {
             start_at_setup = true;
         } else if (strcmp(argv[i], "--spc-self-test") == 0) {
             spc_self_test = true;
+        } else if (strcmp(argv[i], "--setup-menu") == 0 && i + 1 < argc) {
+            setup_menu = argv[++i];
+        } else if (strcmp(argv[i], "--setup-menu-row") == 0 && i + 1 < argc) {
+            setup_menu_row = atoi(argv[++i]);
+        } else if (strcmp(argv[i], "--setup-menu-right") == 0 && i + 1 < argc) {
+            setup_menu_right = atoi(argv[++i]);
+        } else if (strcmp(argv[i], "--setup-menu-confirm") == 0) {
+            setup_menu_confirm = true;
+        } else if (strcmp(argv[i], "--setup-menu-b") == 0) {
+            setup_menu_b = true;
         } else if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
             printf("NBA Live '95 Native C Port\n");
             printf("Usage: nba95_port.exe [options]\n\n");
@@ -61,6 +76,11 @@ int main(int argc, char *argv[]) {
             printf("  --audio-debug         Activate audio sample debugger in headless render\n");
             printf("  --title-only          Start at $80:E01E title state (headless tests)\n");
             printf("  --setup-only          Start at the $80:E600 -> $80:A2BF handoff\n");
+            printf("  --setup-menu <name>   Open Rules or Options in headless mode\n");
+            printf("  --setup-menu-row <N>  Move to submenu row N\n");
+            printf("  --setup-menu-right N  Apply N right-value adjustments\n");
+            printf("  --setup-menu-confirm  Press Start to commit submenu values\n");
+            printf("  --setup-menu-b        Press ignored B after scripted edits\n");
             printf("  --spc-self-test       Run deterministic SPC700/S-DSP core vectors\n");
             printf("  --dump-frame <file>   Save rendered frame to 24-bit BMP image\n");
             printf("  --dump-audio <file>   Save the active runtime-synthesized WAV\n");
@@ -83,6 +103,16 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "[HEADLESS] --frames must be non-negative and --tick-rate must be positive.\n");
             return 1;
         }
+        if (setup_menu && strcmp(setup_menu, "rules") != 0 &&
+            strcmp(setup_menu, "options") != 0) {
+            fprintf(stderr, "[HEADLESS] --setup-menu must be rules or options.\n");
+            return 1;
+        }
+        if (setup_menu_row < 0 || setup_menu_row > 1000 ||
+            setup_menu_right < 0 || setup_menu_right > 1000) {
+            fprintf(stderr, "[HEADLESS] Invalid Setup menu row or adjustment count.\n");
+            return 1;
+        }
         printf("[HEADLESS] Starting headless verification (ROM: %s, Assets: %s, frames: %d)\n",
                rom_path ? rom_path : "(none)", assets_path ? assets_path : "(none)", step_frames);
         NbaGame game;
@@ -95,6 +125,10 @@ int main(int argc, char *argv[]) {
         bool enter_setup = false;
         int title_press_frame = -1;
         int setup_down_count = 0;
+        bool setup_menu_opened = false;
+        bool setup_menu_done = false;
+        int setup_menu_moves_done = 0;
+        int setup_menu_right_done = 0;
         for (int i = 1; i < argc; i++) {
             if (strcmp(argv[i], "--timing-debug") == 0) timing_debug_test = true;
             if (strcmp(argv[i], "--enter-setup") == 0) enter_setup = true;
@@ -152,7 +186,57 @@ int main(int argc, char *argv[]) {
                     game.input.pressed = NBA_BTN_DOWN;
                 }
             }
+
+            /* Deterministic controller script for Rules/Options regressions.
+             * One new press is issued per frame, after $80:A3B8 has settled. */
+            if (setup_menu && !setup_menu_done &&
+                game.state == NBA_STATE_GAME_SETUP &&
+                game.setup_screen.frame >= NBA_SETUP_BG3_SETTLE_FRAME) {
+                NbaSetupRow target = strcmp(setup_menu, "rules") == 0 ?
+                                     NBA_SETUP_ROW_RULES : NBA_SETUP_ROW_OPTIONS;
+                if (!setup_menu_opened) {
+                    if (game.setup_screen.row != target) {
+                        game.input.pressed = NBA_BTN_DOWN;
+                    } else {
+                        game.input.pressed = NBA_BTN_A;
+                        setup_menu_opened = true;
+                    }
+                } else if (game.setup_screen.page != NBA_SETUP_PAGE_MAIN) {
+                    if (setup_menu_moves_done < setup_menu_row) {
+                        game.input.pressed = NBA_BTN_DOWN;
+                        setup_menu_moves_done++;
+                    } else if (setup_menu_right_done < setup_menu_right) {
+                        game.input.pressed = NBA_BTN_RIGHT;
+                        setup_menu_right_done++;
+                    } else if (setup_menu_b) {
+                        game.input.pressed = NBA_BTN_B;
+                        setup_menu_done = true;
+                    } else if (setup_menu_confirm) {
+                        game.input.pressed = NBA_BTN_START;
+                        setup_menu_done = true;
+                    } else {
+                        setup_menu_done = true;
+                    }
+                }
+            }
             nba_game_tick(&game, (float)(1.0 / tick_rate));
+        }
+
+        if (setup_menu) {
+            const NbaSetupScreen *s = &game.setup_screen;
+            int menu_count = strcmp(setup_menu, "rules") == 0 ?
+                             NBA_SETUP_RULE_COUNT : NBA_SETUP_OPTION_COUNT;
+            int report_row = setup_menu_row % menu_count;
+            printf("[SETUP TEST] page=%d menu_row=%d rules0=%u/%u options0=%u/%u "
+                   "option_row=%d working=%u committed=%u\n",
+                   (int)s->page, s->menu_row,
+                   s->working_rules[0], s->config.rules[0],
+                   s->working_options[0], s->config.options[0],
+                   report_row,
+                   strcmp(setup_menu, "rules") == 0 ?
+                       s->working_rules[report_row] : s->working_options[report_row],
+                   strcmp(setup_menu, "rules") == 0 ?
+                       s->config.rules[report_row] : s->config.options[report_row]);
         }
 
         nba_game_render(&game);

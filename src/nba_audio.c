@@ -198,6 +198,7 @@ static void audio_discard_render(NbaSpcTrackRender *render) {
 void nba_audio_init(NbaAudio *audio) {
     if (!audio) return;
     memset(audio, 0, sizeof(*audio));
+    audio->setup_sfx_volume = 30u;
     printf("[AUDIO] Initializing Audio Subsystem...\n");
 }
 
@@ -207,6 +208,9 @@ void nba_audio_init(NbaAudio *audio) {
  */
 void nba_audio_shutdown(NbaAudio *audio) {
     nba_audio_stop(audio);
+    free(audio->setup_sfx_wav);
+    audio->setup_sfx_wav = NULL;
+    audio->setup_sfx_wav_size = 0;
     printf("[AUDIO] Audio Subsystem shutdown.\n");
 }
 
@@ -224,6 +228,69 @@ void nba_audio_play_wav(NbaAudio *audio, const void *data, size_t size) {
 #else
     (void)data;
     (void)size;
+#endif
+}
+
+/**
+ * Offset/Address/Size: $80:9DF3 | menu SFX dispatch | commands $49-$4B
+ * Subroutines: $80:A9E3/$80:AACD (APU queue), SPC SRCN $1A-$1C
+ * Purpose: Plays the same BRR source exposed by the F11 catalog without
+ *          stopping Setup's independent waveOut music stream.
+ */
+void nba_audio_play_setup_sfx(NbaAudio *audio, const NbaAssetPack *assets,
+                              uint8_t srcn) {
+    if (!audio || !assets || srcn >= 30u) return;
+    const NbaAssetItem *item = nba_assets_get(
+        assets, (NbaAssetId)(NBA_ASSET_SETUP_SAMPLE_BASE + srcn));
+    if (!item || !item->data || item->size < 44u) return;
+    const uint8_t *source = (const uint8_t *)item->data;
+    if (memcmp(source, "RIFF", 4) != 0 || memcmp(source + 8, "WAVE", 4) != 0 ||
+        audio_u16(source + 20) != 1u || audio_u16(source + 34) != 16u ||
+        memcmp(source + 36, "data", 4) != 0 ||
+        audio_u32(source + 40) > item->size - 44u) return;
+#if defined(_WIN32)
+    PlaySoundA(NULL, NULL, 0);
+#endif
+    if (audio->setup_sfx_wav_size < item->size) {
+        uint8_t *grown = (uint8_t *)realloc(audio->setup_sfx_wav, item->size);
+        if (!grown) return;
+        audio->setup_sfx_wav = grown;
+        audio->setup_sfx_wav_size = item->size;
+    }
+    memcpy(audio->setup_sfx_wav, source, item->size);
+    uint32_t pcm_bytes = audio_u32(source + 40) & ~1u;
+    int peak = 0;
+    for (uint32_t offset = 44; offset < 44u + pcm_bytes; offset += 2u) {
+        int16_t sample = (int16_t)audio_u16(source + offset);
+        int scaled = ((int)sample * (int)audio->setup_sfx_volume) / 45;
+        int magnitude = scaled < 0 ? -scaled : scaled;
+        if (magnitude > peak) peak = magnitude;
+        audio_put_u16(audio->setup_sfx_wav + offset, (uint16_t)(int16_t)scaled);
+    }
+    printf("[SETUP] Menu SFX SRCN $%02X (F11 asset %u), volume=%u/45 peak=%d.\n",
+           srcn, (unsigned)(NBA_ASSET_SETUP_SAMPLE_BASE + srcn),
+           audio->setup_sfx_volume, peak);
+#if defined(_WIN32)
+    PlaySoundA((LPCSTR)audio->setup_sfx_wav, NULL,
+               SND_MEMORY | SND_ASYNC | SND_NODEFAULT);
+#endif
+}
+
+void nba_audio_set_setup_sfx_volume(NbaAudio *audio, uint16_t value,
+                                    uint16_t maximum) {
+    if (!audio || maximum == 0u) return;
+    audio->setup_sfx_volume = value > maximum ? maximum : value;
+}
+
+void nba_audio_set_setup_music_volume(NbaAudio *audio, uint16_t value,
+                                      uint16_t maximum) {
+    if (!audio || !audio->loop_playback || maximum == 0u) return;
+#if defined(_WIN32)
+    NbaWaveLoop *stream = (NbaWaveLoop *)audio->loop_playback;
+    uint32_t channel = ((uint32_t)value * 0xFFFFu) / maximum;
+    waveOutSetVolume(stream->device, channel | (channel << 16));
+#else
+    (void)value;
 #endif
 }
 

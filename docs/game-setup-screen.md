@@ -160,9 +160,40 @@ Two PPU details were needed to land this pixel-exactly:
 
 ## Rendering status
 
-1. **Option values.** Changing Mode/Style/Level/Quarter needs the ROM glyph
-   renderer that writes into the BG3 tile canvas.
-
 The captured settled reference frame is **100% pixel-identical** (0 of 57,344
 pixels differ), including the gold highlight. Transition and cursor-row hashes
 are enforced by `tools/test_setup_transition.py`.
+
+## Set Rules and Set Options
+
+`tools/mesen_setup_menus_capture.lua` records both submenus after their slide,
+including settled VRAM/CGRAM, controller-driven WRAM writes, CPU execution
+ranges, mirrored APU ports, and DSP writes. `DumpGameSetup.java` applies the
+same entry-point labels during the headless Ghidra pass.
+
+| Menu path | ROM routines | Working and committed storage |
+|---|---|---|
+| Set Rules | `$81:D318` frame, `$81:D3B1` move, `$81:D446` decrement, `$81:D4C0` increment, `$81:D47A` common write, `$81:D59B` redraw, `$81:D675` draw value | edits at `$7E:16FB + row*2`; `$81:D491` sets state `$7E:17AD = 2`; Start at `$81:D516` copies 26 bytes to `$7E:17D1` |
+| Set Options | `$82:8CD1` frame, `$82:8D3C` move, `$82:8DA6` decrement, `$82:8E73` increment, `$82:8DC6` common write, `$82:8F9C` redraw, `$82:9028` draw value | edits at `$7E:16FB + row*2`; Start through `$82:8CD9/$82:8D0A` copies 14 bytes to `$7E:17B5` |
+
+Both pages wrap their cursor and their discrete values. The two bar rows clamp
+at 0 and 45 (`$81:D4A9-$D4B9/$81:D4FA-$D508` and
+`$82:8E43-$8E54/$82:8E97-$8EA5`). Start confirms and returns; B is
+intentionally ignored by the original handlers. Rules has 13 entries and a
+seven-row scrolling viewport. The port scrolls the captured 64-row BG3 canvas,
+so hidden rule labels and glyph pixels remain ROM-authentic rather than being
+redrawn with a host font.
+
+The shared sound dispatch is `$80:9DF3`: command `$49` selects SRCN `$1A` for
+a value adjustment, `$4A` selects SRCN `$1B` for cursor movement, and `$4B`
+selects SRCN `$1C` for confirm/open. These are asset IDs 120–122 in the F11
+BRR catalog. Options calls `$87:8C2D` from `$82:8DDC` for rows 0 and 1 to
+apply slider changes immediately; the port applies Music Volume to the
+still-running Setup music stream and rescales each F11 menu-sample PCM buffer
+with the current SFX Volume before playback.
+
+Asset-pack version 5 adds the settled Rules and Options VRAM/CGRAM pairs.
+`tools/test_setup_transition.py` hashes all four assets and both rendered menu
+pages, compares the bars/arrows to compact Mesen pixel oracles, verifies exact
+content for the three F11 menu samples and live SFX gain, and exercises clamp,
+wrap, ignored-B, and working-versus-committed behavior for each submenu.

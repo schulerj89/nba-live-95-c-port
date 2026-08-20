@@ -506,6 +506,23 @@ def create_asset_pack(rom_path, output_path):
         print("[ASSET EXTRACTOR] Game Setup entrance capture missing; run:")
         print("    Mesen.exe <rom> tools/mesen_setup_transition_capture.lua")
 
+    def read_setup_menu_capture(menu_name, filename, expected_size):
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..",
+                            ".analysis", f"setup_{menu_name}", filename)
+        if not os.path.exists(path):
+            raise RuntimeError(f"Missing Set {menu_name.title()} capture: {path}. "
+                               "Run tools/mesen_setup_menus_capture.lua first.")
+        data = open(path, "rb").read()
+        if len(data) != expected_size:
+            raise RuntimeError(f"Invalid {path}: expected {expected_size} bytes, "
+                               f"got {len(data)}")
+        return data
+
+    rules_vram_bytes = read_setup_menu_capture("rules", "menu_vram.bin", 0x10000)
+    rules_cgram_bytes = read_setup_menu_capture("rules", "menu_cgram.bin", 0x200)
+    options_vram_bytes = read_setup_menu_capture("options", "menu_vram.bin", 0x10000)
+    options_cgram_bytes = read_setup_menu_capture("options", "menu_cgram.bin", 0x200)
+
     # ------------------------------------------------------------------
     # Title -> Game Setup audio handoff. The snapshot is taken on ROM frame
     # 1637 (the last visible title-fade frame). Every subsequent mirrored
@@ -680,6 +697,12 @@ def create_asset_pack(rom_path, output_path):
         (93, 0, 0, 0, bytes(setup_dsp_trace)),
     ])
     assets.extend(setup_sample_assets)
+    assets.extend([
+        (124, 0, 0, 0, rules_vram_bytes),
+        (125, 0, 0, 0, rules_cgram_bytes),
+        (126, 0, 0, 0, options_vram_bytes),
+        (127, 0, 0, 0, options_cgram_bytes),
+    ])
 
     # Extract all other audio samples from ROM into asset pack for debugger
     rom_sample_offsets = [
@@ -708,7 +731,7 @@ def create_asset_pack(rom_path, output_path):
                     extra_audio_id += 1
 
     header_magic = b"NBA95PAK"
-    version = 4
+    version = 5
     asset_count = len(assets)
     entry_size = 24 # 6 * 4 bytes
 

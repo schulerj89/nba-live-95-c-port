@@ -60,6 +60,32 @@ EXPECTED_CURSOR_SHA256 = {
     5: "80d54ec7fc3fde9e6ad83a976b3b342c90ad59f06ddc24f59cf7f669b2b823c8",
     6: "e3ec329dc39626391b9315e7ff60bf4c60b9a31b23d903bdcdca22ac5738fc65",
 }
+EXPECTED_MENU_RGB_SHA256 = {
+    "rules": "2354452cb07daab0f7fc454c21cb4315b4fae1d637b230027d9dea42f602e3d7",
+    "options": "6221dbafae1202984eec2c1f87cddea6f341c7e24e1c4242fa9503086bf23b8f",
+}
+EXPECTED_MENU_ACTION_SHA256 = {
+    ("rules", 2, 1): "c3075265ec452abd1cec93dabc8285547dba93118d12b4053f008502c0b4ed04",
+    ("options", 0, 1): "37681e073428d19d3de63bb3d1ff156395cca02ed54acf2af504f9f0d098ab47",
+    ("rules", 9, 0): "db75a123ac48bff3fb9ebf6bd980fb62e904a7f4c7025c0e783c883b40c3adf9",
+    ("rules", 12, 0): "77e629913615ee5233c984aa0875b1b36e3c8b47ccb8e1861bbbdb294a656778",
+}
+MESEN_MENU_PRIMITIVE_SHA256 = {
+    "rules_bar": "6a08a0e635e0d0ae5c24cafbaf3507fd16ce61c0f3adc0c282a8b620b36f48c8",
+    "options_bar": "bda182a61baf1f225317538bd3e4d4ddae969498ae47fd40794504342a8708cb",
+    "down_arrow": "92409e5622a90c322305da2be37e4e34cd4fd895ad008131dbf24e49de94631b",
+}
+EXPECTED_MENU_SFX_SHA256 = {
+    120: "da27ef1aacd1e96b71b40e6b0baacd0a8fa4f02ddae8754d3fc620602670eaae",
+    121: "da27ef1aacd1e96b71b40e6b0baacd0a8fa4f02ddae8754d3fc620602670eaae",
+    122: "303c2a89000b675eb48a42160c8d233d2a28ab728d8b7645628886bd224cb890",
+}
+EXPECTED_MENU_ASSET_SHA256 = {
+    124: "acc87f5139c463275742a378f966c64cc030b40f9712dc0e7329ddc57e622b31",
+    125: "c2a8ce0b568da6af32774eb7fdc6845947841843c46d99e2fa555571d474933b",
+    126: "0d25909881fe03449acf046c2d3a8cfaa64172f596864c3523c08806b581f89d",
+    127: "c712e398c1060f25428b322a26ba52df8af1c86bf645ba1730c87805b7fb2f33",
+}
 SETUP_LOOP_START = 2053956
 SETUP_LOOP_END = 4048365
 
@@ -69,7 +95,7 @@ def load_pack(path):
     if len(data) < 16 or data[:8] != b"NBA95PAK":
         raise AssertionError("invalid asset pack")
     version, count = struct.unpack_from("<II", data, 8)
-    if version != 4 or 16 + count * 24 > len(data):
+    if version != 5 or 16 + count * 24 > len(data):
         raise AssertionError("invalid asset directory")
     assets = {}
     for index in range(count):
@@ -86,11 +112,21 @@ def load_pack(path):
 
 def check_pack(pack_path):
     raw, assets = load_pack(pack_path)
-    required = {16, 17, 88, 89, 90, 91, 92, 93}
+    required = {16, 17, 88, 89, 90, 91, 92, 93, 120, 121, 122,
+                124, 125, 126, 127}
     if not required.issubset(assets):
         raise AssertionError(f"missing Setup assets: {sorted(required - assets.keys())}")
     if len(assets[16]) != 0x10000 or len(assets[17]) != 0x200:
         raise AssertionError("invalid Setup VRAM/CGRAM size")
+    for asset_id, expected_hash in EXPECTED_MENU_ASSET_SHA256.items():
+        actual_hash = hashlib.sha256(assets[asset_id]).hexdigest()
+        if actual_hash != expected_hash:
+            raise AssertionError(f"Set Rules/Options asset {asset_id} changed")
+    for asset_id in (120, 121, 122):
+        if assets[asset_id][:4] != b"RIFF":
+            raise AssertionError(f"menu SFX asset {asset_id} is not an F11 WAV")
+        if hashlib.sha256(assets[asset_id]).hexdigest() != EXPECTED_MENU_SFX_SHA256[asset_id]:
+            raise AssertionError(f"menu SFX asset {asset_id} content changed")
     if len(assets[88]) != 0x10000 or len(assets[89]) != 0x80:
         raise AssertionError("invalid Setup SPC RAM/DSP size")
     if assets[90][:8] != b"NBTSSPC1" or assets[91][:8] != b"NBTSAPU1":
@@ -268,6 +304,135 @@ def check_frames(exe, rom, pack):
             if actual != expected_hash:
                 raise AssertionError(f"Setup cursor row {down_count} changed")
 
+        # The settled Rules/Options pages are rendered from the captured ROM
+        # VRAM/CGRAM, not recreated screenshots or host fonts.
+        for menu, expected_hash in EXPECTED_MENU_RGB_SHA256.items():
+            output = Path(directory) / f"setup_{menu}.bmp"
+            result = subprocess.run(
+                [str(exe), "--headless", "--setup-only", "--setup-menu", menu,
+                 "--rom", str(rom), "--assets", str(pack), "--frames", "220",
+                 "--dump-frame", str(output)],
+                text=True, capture_output=True, check=True,
+            )
+            actual = hashlib.sha256(Image.open(output).convert("RGB").tobytes()).hexdigest()
+            if actual != expected_hash:
+                raise AssertionError(f"Set {menu.title()} settled frame changed")
+            image = Image.open(output).convert("RGB")
+            bar_boxes = ((144, 82, 192, 90), (144, 100, 192, 108)) if menu == "rules" \
+                else ((160, 74, 208, 82), (160, 92, 208, 100))
+            bar_hash = MESEN_MENU_PRIMITIVE_SHA256[f"{menu}_bar"]
+            for box in bar_boxes:
+                if hashlib.sha256(image.crop(box).tobytes()).hexdigest() != bar_hash:
+                    raise AssertionError(f"Set {menu.title()} bar differs from Mesen")
+            if menu == "rules":
+                arrow = hashlib.sha256(image.crop((19, 185, 29, 197)).tobytes()).hexdigest()
+                if arrow != MESEN_MENU_PRIMITIVE_SHA256["down_arrow"]:
+                    raise AssertionError("Set Rules viewport arrow differs from Mesen")
+
+        for (menu, row, rights), expected_hash in EXPECTED_MENU_ACTION_SHA256.items():
+            output = Path(directory) / f"setup_{menu}_{row}_{rights}.bmp"
+            result = subprocess.run(
+                [str(exe), "--headless", "--setup-only", "--setup-menu", menu,
+                 "--setup-menu-row", str(row), "--setup-menu-right", str(rights),
+                 "--rom", str(rom), "--assets", str(pack), "--frames", "220",
+                 "--dump-frame", str(output)],
+                text=True, capture_output=True, check=True,
+            )
+            if "Menu SFX SRCN $1C (F11 asset 122)" not in result.stdout:
+                raise AssertionError(f"Set {menu.title()} did not play confirm SFX")
+            if row and "Menu SFX SRCN $1B (F11 asset 121)" not in result.stdout:
+                raise AssertionError(f"Set {menu.title()} did not play move SFX")
+            if rights and "Menu SFX SRCN $1A (F11 asset 120)" not in result.stdout:
+                raise AssertionError(f"Set {menu.title()} did not play adjust SFX")
+            actual = hashlib.sha256(Image.open(output).convert("RGB").tobytes()).hexdigest()
+            if actual != expected_hash:
+                raise AssertionError(
+                    f"Set {menu.title()} row {row} action frame changed"
+                )
+
+        # $7E:16FB is a working copy: an edit must not alter the committed
+        # block until Start runs $81:D516 or $82:8CD9/$82:8D0A.
+        cases = (
+            ("rules", 2, False, 0, 1),
+            ("rules", 2, True, 0, 0),
+            ("options", 0, False, 31, 30),
+            ("options", 0, True, 31, 31),
+        )
+        for menu, row, confirm, working, committed in cases:
+            command = [
+                str(exe), "--headless", "--setup-only", "--setup-menu", menu,
+                "--setup-menu-row", str(row), "--setup-menu-right", "1",
+                "--rom", str(rom), "--assets", str(pack), "--frames", "220",
+            ]
+            if confirm:
+                command.append("--setup-menu-confirm")
+            result = subprocess.run(command, text=True, capture_output=True, check=True)
+            match = re.search(
+                rf"option_row={row} working=(\d+) committed=(\d+)", result.stdout
+            )
+            if not match or tuple(map(int, match.groups())) != (working, committed):
+                raise AssertionError(
+                    f"Set {menu.title()} working/commit behavior changed: {result.stdout}"
+                )
+            if "Menu SFX SRCN $1A (F11 asset 120)" not in result.stdout:
+                raise AssertionError(f"Set {menu.title()} adjustment SFX was not dispatched")
+
+        # Bar rows clamp at their endpoints and do not emit command $49 when
+        # the requested direction cannot change the value.
+        clamp = subprocess.run(
+            [str(exe), "--headless", "--setup-only", "--setup-menu", "rules",
+             "--setup-menu-right", "1", "--rom", str(rom), "--assets", str(pack),
+             "--frames", "220"],
+            text=True, capture_output=True, check=True,
+        )
+        if "option_row=0 working=45 committed=45" not in clamp.stdout:
+            raise AssertionError("Rules slider no longer clamps at 45")
+        if "Menu SFX SRCN $1A" in clamp.stdout:
+            raise AssertionError("blocked Rules slider adjustment emitted SFX")
+
+        # $82:8DDC -> $87:8C2D applies row 1 immediately. Prove the same
+        # SRCN is actually rescaled, not merely that the displayed value moved.
+        sfx_peaks = []
+        for row in (0, 1):
+            volume_run = subprocess.run(
+                [str(exe), "--headless", "--setup-only", "--setup-menu", "options",
+                 "--setup-menu-row", str(row), "--setup-menu-right", "1",
+                 "--rom", str(rom), "--assets", str(pack), "--frames", "220"],
+                text=True, capture_output=True, check=True,
+            )
+            match = re.search(
+                r"SRCN \$1A \(F11 asset 120\), volume=(\d+)/45 peak=(\d+)",
+                volume_run.stdout,
+            )
+            if not match:
+                raise AssertionError("menu SFX gain telemetry missing")
+            sfx_peaks.append(tuple(map(int, match.groups())))
+        if sfx_peaks[0][0] != 30 or sfx_peaks[1][0] != 31 or \
+           sfx_peaks[1][1] <= sfx_peaks[0][1]:
+            raise AssertionError(f"SFX Volume did not change PCM gain: {sfx_peaks}")
+
+        # Thirteen Down presses wrap the 13-row Rules cursor to row zero.
+        wrapped = subprocess.run(
+            [str(exe), "--headless", "--setup-only", "--setup-menu", "rules",
+             "--setup-menu-row", "13", "--rom", str(rom), "--assets", str(pack),
+             "--frames", "220"],
+            text=True, capture_output=True, check=True,
+        )
+        if "page=1 menu_row=0" not in wrapped.stdout:
+            raise AssertionError("Rules submenu cursor no longer wraps")
+
+        # B is consumed but ignored: the working edit remains uncommitted and
+        # the page stays open, exactly as the submenu handler does.
+        ignored_b = subprocess.run(
+            [str(exe), "--headless", "--setup-only", "--setup-menu", "rules",
+             "--setup-menu-row", "2", "--setup-menu-right", "1", "--setup-menu-b",
+             "--rom", str(rom), "--assets", str(pack), "--frames", "220"],
+            text=True, capture_output=True, check=True,
+        )
+        if "page=1 menu_row=2" not in ignored_b.stdout or \
+           "option_row=2 working=0 committed=1" not in ignored_b.stdout:
+            raise AssertionError("B no longer matches the ROM's ignored behavior")
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -277,7 +442,7 @@ def main():
     args = parser.parse_args()
     check_pack(Path(args.pack))
     check_frames(Path(args.exe), Path(args.rom), Path(args.pack))
-    print("[TEST] PASS: forced blank, Setup scroll staging, ROM BRR/S-DSP audio")
+    print("[TEST] PASS: Setup transition, Rules/Options persistence, menu SFX assets, ROM audio")
 
 
 if __name__ == "__main__":

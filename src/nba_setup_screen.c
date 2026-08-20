@@ -1,10 +1,18 @@
 #include "nba_setup_screen.h"
 #include "nba_snes_ppu.h"
+#include "nba_font.h"
 #include <stdio.h>
 #include <string.h>
 
 #define SETUP_PPU_MAGIC "NBSPPU1\0"
 #define SETUP_PPU_HEADER_SIZE 16
+
+static const uint16_t setup_rule_max[NBA_SETUP_RULE_COUNT] = {
+    45, 45, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+};
+static const uint16_t setup_option_max[NBA_SETUP_OPTION_COUNT] = {
+    45, 45, 2, 1, 1, 1, 1
+};
 
 static uint16_t setup_u16(const uint8_t *p) {
     return (uint16_t)(p[0] | ((uint16_t)p[1] << 8));
@@ -122,6 +130,25 @@ void nba_setup_screen_init(NbaSetupScreen *s, const NbaAssetPack *assets) {
     s->main_screen = NBA_SETUP_MAIN_ENTER;
     s->sub_screen = 0;
     s->row = NBA_SETUP_ROW_MODE;
+    s->page = NBA_SETUP_PAGE_MAIN;
+    {
+        static const uint16_t default_rules[NBA_SETUP_RULE_COUNT] = {
+            45, 45, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+        };
+        static const uint16_t default_options[NBA_SETUP_OPTION_COUNT] = {
+            30, 30, 2, 1, 0, 0, 0
+        };
+        memcpy(s->config.rules, default_rules, sizeof(default_rules));
+        memcpy(s->config.options, default_options, sizeof(default_options));
+    }
+    const NbaAssetItem *rules_vram = nba_assets_get(assets, NBA_ASSET_SET_RULES_VRAM);
+    const NbaAssetItem *rules_cgram = nba_assets_get(assets, NBA_ASSET_SET_RULES_CGRAM);
+    const NbaAssetItem *options_vram = nba_assets_get(assets, NBA_ASSET_SET_OPTIONS_VRAM);
+    const NbaAssetItem *options_cgram = nba_assets_get(assets, NBA_ASSET_SET_OPTIONS_CGRAM);
+    if (rules_vram && rules_vram->size == 0x10000u) s->rules_vram = rules_vram->data;
+    if (rules_cgram && rules_cgram->size == 0x200u) s->rules_cgram = rules_cgram->data;
+    if (options_vram && options_vram->size == 0x10000u) s->options_vram = options_vram->data;
+    if (options_cgram && options_cgram->size == 0x200u) s->options_cgram = options_cgram->data;
     s->is_initialized = true;
 
     printf("[SETUP] Entered 105-frame forced-blank build before $80:A2BF.\n");
@@ -134,16 +161,16 @@ void nba_setup_screen_init(NbaSetupScreen *s, const NbaAssetPack *assets) {
  *          15-step brightness ramp, then holds the settled scroll values and
  *          advances the backdrop one pixel every third frame.
  */
-void nba_setup_screen_update(NbaSetupScreen *s, const NbaInput *input) {
-    if (!s || !s->is_initialized) return;
+NbaSetupSound nba_setup_screen_update(NbaSetupScreen *s, const NbaInput *input) {
+    if (!s || !s->is_initialized) return NBA_SETUP_SOUND_NONE;
 
     s->frame++;
 
-    if (s->frame < 0) return;
+    if (s->frame < 0) return NBA_SETUP_SOUND_NONE;
 
     if (!nba_setup_screen_decode_ppu_to(s, s->frame)) {
         s->has_gfx = false;
-        return;
+        return NBA_SETUP_SOUND_NONE;
     }
 
     if (s->frame <= NBA_SETUP_ENTER_FRAMES) {
@@ -189,7 +216,63 @@ void nba_setup_screen_update(NbaSetupScreen *s, const NbaInput *input) {
                             ? NBA_SETUP_SUB_SETTLED : 0;
     }
 
-    if (!input) return;
+    if (!input) return NBA_SETUP_SOUND_NONE;
+
+    if (s->page != NBA_SETUP_PAGE_MAIN) {
+        int count = s->page == NBA_SETUP_PAGE_RULES ?
+                    NBA_SETUP_RULE_COUNT : NBA_SETUP_OPTION_COUNT;
+        if (input->pressed & NBA_BTN_UP) {
+            s->menu_row = (s->menu_row + count - 1) % count;
+        } else if (input->pressed & NBA_BTN_DOWN) {
+            s->menu_row = (s->menu_row + 1) % count;
+        } else if (input->pressed & (NBA_BTN_LEFT | NBA_BTN_RIGHT)) {
+            uint16_t *values = s->page == NBA_SETUP_PAGE_RULES ?
+                               s->working_rules : s->working_options;
+            const uint16_t *maximums = s->page == NBA_SETUP_PAGE_RULES ?
+                                       setup_rule_max : setup_option_max;
+            uint16_t max = maximums[s->menu_row];
+            bool changed = false;
+            if (s->menu_row < 2) {
+                /* Rules $81:D4A9-$D4B9/$81:D4FA-$D508 and Options
+                 * $82:8E43-$8E54/$82:8E97-$8EA5 clamp bar values. */
+                if ((input->pressed & NBA_BTN_LEFT) && values[s->menu_row] > 0u) {
+                    values[s->menu_row]--;
+                    changed = true;
+                } else if ((input->pressed & NBA_BTN_RIGHT) &&
+                           values[s->menu_row] < max) {
+                    values[s->menu_row]++;
+                    changed = true;
+                }
+            } else if (input->pressed & NBA_BTN_LEFT) {
+                values[s->menu_row] = values[s->menu_row] == 0u ? max :
+                                      (uint16_t)(values[s->menu_row] - 1u);
+                changed = true;
+            } else {
+                values[s->menu_row] = values[s->menu_row] >= max ? 0u :
+                                      (uint16_t)(values[s->menu_row] + 1u);
+                changed = true;
+            }
+            if (changed) return NBA_SETUP_SOUND_ADJUST;
+        } else if (input->pressed & NBA_BTN_START) {
+            /* $81:D516 copies 26 bytes to $17D1; $82:8CD9/$8D0A copies
+             * 14 bytes to $17B5. B is deliberately ignored by the ROM. */
+            if (s->page == NBA_SETUP_PAGE_RULES) {
+                memcpy(s->config.rules, s->working_rules, sizeof(s->config.rules));
+            } else {
+                memcpy(s->config.options, s->working_options, sizeof(s->config.options));
+            }
+            s->page = NBA_SETUP_PAGE_MAIN;
+            s->menu_row = 0;
+            s->menu_scroll = 0;
+            return NBA_SETUP_SOUND_CONFIRM;
+        }
+
+        if (s->menu_row < s->menu_scroll) s->menu_scroll = s->menu_row;
+        if (s->menu_row >= s->menu_scroll + 7) s->menu_scroll = s->menu_row - 6;
+        if (input->pressed & (NBA_BTN_UP | NBA_BTN_DOWN))
+            return NBA_SETUP_SOUND_MOVE;
+        return NBA_SETUP_SOUND_NONE;
+    }
 
     /* $80:A62D - row cursor wraps at both ends. */
     if (input->pressed & NBA_BTN_UP) {
@@ -197,6 +280,190 @@ void nba_setup_screen_update(NbaSetupScreen *s, const NbaInput *input) {
     }
     if (input->pressed & NBA_BTN_DOWN) {
         s->row = (NbaSetupRow)((s->row + 1) % NBA_SETUP_ROW_COUNT);
+    }
+    if (input->pressed & NBA_BTN_A) {
+        if (s->row == NBA_SETUP_ROW_RULES && s->rules_vram && s->rules_cgram) {
+            memcpy(s->working_rules, s->config.rules, sizeof(s->working_rules));
+            s->page = NBA_SETUP_PAGE_RULES;
+            s->menu_row = s->menu_scroll = 0;
+            return NBA_SETUP_SOUND_CONFIRM;
+        }
+        if (s->row == NBA_SETUP_ROW_OPTIONS && s->options_vram && s->options_cgram) {
+            memcpy(s->working_options, s->config.options, sizeof(s->working_options));
+            s->page = NBA_SETUP_PAGE_OPTIONS;
+            s->menu_row = s->menu_scroll = 0;
+            return NBA_SETUP_SOUND_CONFIRM;
+        }
+    }
+    if (input->pressed & (NBA_BTN_UP | NBA_BTN_DOWN)) return NBA_SETUP_SOUND_MOVE;
+    return NBA_SETUP_SOUND_NONE;
+}
+
+static void setup_restore_bg2_rect(const NbaSetupScreen *s, NbaRenderer *ren,
+                                   const uint8_t *vram, const uint8_t *cgram,
+                                   int x, int y, int w, int h) {
+    for (int py = y; py < y + h && py < NBA_SNES_HEIGHT; ++py) {
+        for (int px = x; px < x + w && px < NBA_SNES_WIDTH; ++px) {
+            uint32_t out = nba_snes_cgram_color(cgram, 0, 15, 0, 0, 0);
+            NbaSnesBgPixel pixel;
+            if (nba_snes_sample_bg(vram, NBA_SETUP_BG2_TILEMAP, NBA_SETUP_BG2_CHR,
+                                   4, true, false, 0, s->bg2_vscroll,
+                                   px, py, &pixel)) {
+                out = nba_snes_cgram_color(cgram,
+                    pixel.palette * 16 + pixel.color_index, 15, 0, 0, 0);
+            }
+            ren->pixels[py * NBA_SNES_WIDTH + px] = out;
+        }
+    }
+}
+
+static const char *setup_menu_value_text(NbaSetupPage page, int row,
+                                         uint16_t value) {
+    if (page == NBA_SETUP_PAGE_RULES) return value ? "ON" : "OFF";
+    if (row == 2) {
+        static const char *modes[] = { "OFF", "MONO", "STEREO" };
+        return modes[value <= 2u ? value : 2u];
+    }
+    if (row == 5) return value ? "CPU" : "PLAYER";
+    return value ? "ON" : "OFF";
+}
+
+static void setup_draw_bar(NbaRenderer *ren, int x, int y,
+                           uint16_t value, uint16_t maximum) {
+    (void)maximum;
+    static const uint32_t gradient[46] = {
+        0xFFA5FF00u,0xFFA5FF00u,0xFFA5FF00u,0xFFA5FF00u,
+        0xFFADFF00u,0xFFADFF00u,0xFFADFF00u,
+        0xFFBDFF00u,0xFFBDFF00u,0xFFBDFF00u,
+        0xFFCEFF00u,0xFFCEFF00u,0xFFCEFF00u,
+        0xFFEFF700u,0xFFEFF700u,0xFFEFF700u,
+        0xFFFFF700u,0xFFFFF700u,0xFFFFF700u,0xFFFFF700u,
+        0xFFFFD600u,0xFFFFD600u,0xFFFFD600u,
+        0xFFFFAD00u,0xFFFFAD00u,0xFFFFAD00u,
+        0xFFFF8C00u,0xFFFF8C00u,0xFFFF8C00u,
+        0xFFFF6B00u,0xFFFF6B00u,0xFFFF6B00u,
+        0xFFFF4200u,0xFFFF4200u,0xFFFF4200u,
+        0xFFFF2100u,0xFFFF2100u,0xFFFF2100u,
+        0xFFFF0000u,0xFFFF0000u,0xFFFF0000u,0xFFFF0000u,
+        0xFFFF0000u,0xFFFF0000u,0xFFFF0000u,0xFFFF0000u
+    };
+    for (int py = 0; py < 8; ++py) {
+        for (int px = 0; px < 48; ++px) {
+            bool edge = py == 0 || py == 7 || px == 0 || px == 47;
+            uint32_t color = edge ? 0xFFFFFFFFu : 0xFF000000u;
+            if (!edge && px - 1 <= value) color = gradient[px - 1];
+            ren->pixels[(y + py) * NBA_SNES_WIDTH + x + px] = color;
+        }
+    }
+}
+
+/* $81:D675/$82:9028 draw the menu's proportional 2bpp glyphs into BG3.
+ * Reuse those exact glyph pixels from the captured Options canvas for values
+ * that already occur there, rather than substituting the port's debug font. */
+static bool setup_copy_rom_value(const NbaSetupScreen *s, NbaRenderer *ren,
+                                 const char *text, int dx, int dy,
+                                 bool highlighted) {
+    if (!s->options_vram || !s->options_cgram) return false;
+    int sy;
+    if (strcmp(text, "STEREO") == 0) sy = 112;
+    else if (strcmp(text, "ON") == 0) sy = 130;
+    else if (strcmp(text, "OFF") == 0) sy = 148;
+    else if (strcmp(text, "PLAYER") == 0) sy = 166;
+    else return false;
+
+    bool copied = false;
+    for (int py = 0; py < 16; ++py) {
+        for (int px = 0; px < 68; ++px) {
+            NbaSnesBgPixel pixel;
+            if (!nba_snes_sample_bg(s->options_vram, NBA_SETUP_BG3_TILEMAP,
+                                    NBA_SETUP_BG3_CHR, 2, false, true, 0, 0,
+                                    156 + px, sy + py, &pixel)) continue;
+            int x = dx + px;
+            int y = dy + py;
+            if (x < 0 || x >= NBA_SNES_WIDTH || y < 0 || y >= NBA_SNES_HEIGHT)
+                continue;
+            ren->pixels[y * NBA_SNES_WIDTH + x] = nba_snes_cgram_color(
+                s->options_cgram, pixel.palette * 4 + pixel.color_index,
+                s->brightness,
+                highlighted ? NBA_SETUP_MATH_SUB_R : 0,
+                highlighted ? NBA_SETUP_MATH_SUB_G : 0,
+                highlighted ? NBA_SETUP_MATH_SUB_B : 0);
+            copied = true;
+        }
+    }
+    return copied;
+}
+
+static void setup_draw_rules_arrow(NbaRenderer *ren, bool up) {
+    const uint32_t outline = 0xFFFFFF00u;
+    const uint32_t fill = 0xFF847300u;
+    if (up) {
+        for (int y = 80; y <= 91; ++y) {
+            int half = y <= 84 ? y - 80 : 1;
+            int left = y <= 84 ? 23 - half : 22;
+            int right = y <= 84 ? 24 + half : 25;
+            for (int x = left; x <= right; ++x)
+                ren->pixels[y * NBA_SNES_WIDTH + x] =
+                    (x == left || x == right || y == 91) ? outline : fill;
+        }
+    } else {
+        for (int y = 185; y <= 196; ++y) {
+            int half = y >= 192 ? 196 - y : 1;
+            int left = y >= 192 ? 23 - half : 22;
+            int right = y >= 192 ? 24 + half : 25;
+            for (int x = left; x <= right; ++x)
+                ren->pixels[y * NBA_SNES_WIDTH + x] =
+                    (x == left || x == right || y == 185) ? outline : fill;
+        }
+    }
+}
+
+static void setup_render_menu_values(const NbaSetupScreen *s, NbaRenderer *ren,
+                                     const uint8_t *vram, const uint8_t *cgram) {
+    if (s->page == NBA_SETUP_PAGE_MAIN) return;
+    const uint16_t *values = s->page == NBA_SETUP_PAGE_RULES ?
+                             s->working_rules : s->working_options;
+    const uint16_t *maximums = s->page == NBA_SETUP_PAGE_RULES ?
+                               setup_rule_max : setup_option_max;
+    int count = s->page == NBA_SETUP_PAGE_RULES ?
+                NBA_SETUP_RULE_COUNT : NBA_SETUP_OPTION_COUNT;
+    static const uint16_t default_rules[NBA_SETUP_RULE_COUNT] = {
+        45, 45, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    };
+    static const uint16_t default_options[NBA_SETUP_OPTION_COUNT] = {
+        30, 30, 2, 1, 0, 0, 0
+    };
+    const uint16_t *defaults = s->page == NBA_SETUP_PAGE_RULES ?
+                               default_rules : default_options;
+
+    if (s->menu_scroll > 0)
+        setup_restore_bg2_rect(s, ren, vram, cgram, 16, 70, 212, 10);
+    if (s->page == NBA_SETUP_PAGE_RULES && s->menu_scroll > 0)
+        setup_draw_rules_arrow(ren, true);
+    if (s->page == NBA_SETUP_PAGE_RULES && s->menu_scroll + 7 < count)
+        setup_draw_rules_arrow(ren, false);
+
+    for (int visible = 0; visible < 7; ++visible) {
+        int row = s->menu_scroll + visible;
+        if (row >= count) break;
+        int top = (s->page == NBA_SETUP_PAGE_RULES ? 76 : 68) + visible * 18;
+        uint32_t color = row == s->menu_row ? 0xFFFFA531u : 0xFFFFFFFFu;
+        if (row < 2 || values[row] != defaults[row]) {
+            setup_restore_bg2_rect(s, ren, vram, cgram, 140, top, 82, 16);
+            if (row < 2) {
+                setup_draw_bar(ren,
+                    s->page == NBA_SETUP_PAGE_RULES ? 144 : 160,
+                    top + 6, values[row], maximums[row]);
+            } else {
+                const char *text = setup_menu_value_text(s->page, row, values[row]);
+                int value_x = s->page == NBA_SETUP_PAGE_RULES ? 140 : 156;
+                if (!setup_copy_rom_value(s, ren, text, value_x, top,
+                                          row == s->menu_row)) {
+                    nba_font_render_text(ren->pixels, NBA_SNES_WIDTH,
+                        value_x + 4, top + 4, text, color, 0xFF000000u, 1);
+                }
+            }
+        }
     }
 }
 
@@ -216,11 +483,21 @@ void nba_setup_screen_render(const NbaSetupScreen *s, NbaRenderer *ren) {
 
     const uint8_t *vram = s->vram;
     const uint8_t *cgram = s->cgram;
+    if (s->page == NBA_SETUP_PAGE_RULES) {
+        vram = s->rules_vram;
+        cgram = s->rules_cgram;
+    } else if (s->page == NBA_SETUP_PAGE_OPTIONS) {
+        vram = s->options_vram;
+        cgram = s->options_cgram;
+    }
     uint32_t backdrop = nba_snes_cgram_color(cgram, 0, s->brightness, 0, 0, 0);
 
     /* HDMA ch7 opens window 1 over the active row only; colour math is enabled
      * for BG3 alone ($2131 = 4), so just this band of BG3 pixels is subtracted. */
-    int band_top = nba_setup_screen_row_band_top(s->row);
+    int band_top = s->page == NBA_SETUP_PAGE_MAIN ?
+                   nba_setup_screen_row_band_top(s->row) :
+                   (s->page == NBA_SETUP_PAGE_RULES ? 76 : 68) +
+                   (s->menu_row - s->menu_scroll) * 18;
     int band_bottom = band_top + NBA_SETUP_HIGHLIGHT_HEIGHT;
     bool math_active = (s->sub_screen & NBA_SETUP_SUB_SETTLED) != 0;
 
@@ -261,8 +538,11 @@ void nba_setup_screen_render(const NbaSetupScreen *s, NbaRenderer *ren) {
             }
 
             if (s->main_screen & 0x04) {
+                int bg3_scroll = s->bg3_vscroll;
+                if (s->page == NBA_SETUP_PAGE_RULES && s->menu_scroll > 0 && y >= 70)
+                    bg3_scroll += s->menu_scroll * NBA_SETUP_ROW_PITCH;
                 if (nba_snes_sample_bg(vram, NBA_SETUP_BG3_TILEMAP, NBA_SETUP_BG3_CHR,
-                                       2, false, true, 0, s->bg3_vscroll,
+                                       2, false, true, 0, bg3_scroll,
                                        x, y, &pixel)) {
                     out = nba_snes_cgram_color(cgram,
                         pixel.palette * 4 + pixel.color_index, s->brightness,
@@ -275,4 +555,5 @@ void nba_setup_screen_render(const NbaSetupScreen *s, NbaRenderer *ren) {
             ren->pixels[y * NBA_SNES_WIDTH + x] = out;
         }
     }
+    setup_render_menu_values(s, ren, vram, cgram);
 }

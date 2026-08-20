@@ -53,6 +53,10 @@ typedef enum {
     /* 30 BRR sources from Setup's streamed SPC directory, exposed by F11. */
     NBA_ASSET_SETUP_SAMPLE_BASE     = 94,
     NBA_ASSET_SETUP_SAMPLE_LAST     = 123,
+    NBA_ASSET_SET_RULES_VRAM        = 124,
+    NBA_ASSET_SET_RULES_CGRAM       = 125,
+    NBA_ASSET_SET_OPTIONS_VRAM      = 126,
+    NBA_ASSET_SET_OPTIONS_CGRAM     = 127,
     NBA_ASSET_MAX                   = 128
 } NbaAssetId;
 

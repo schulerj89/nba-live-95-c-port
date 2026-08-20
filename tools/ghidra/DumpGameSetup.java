@@ -45,6 +45,34 @@ public class DumpGameSetup extends GhidraScript {
         return out;
     }
 
+    private void addMenuRanges(List<Range> ranges, int bank) {
+        // Entry points below came from tools/mesen_setup_menus_capture.lua.
+        // Keeping them explicit makes the submenu analysis reproducible even
+        // when the older settled-screen trace is regenerated independently.
+        if (bank == 0x80) {
+            ranges.add(new Range(0x9DEA, 0x9E61)); // shared input dispatch
+        } else if (bank == 0x81) {
+            ranges.add(new Range(0xD318, 0xD3B0)); // Rules frame dispatcher
+            ranges.add(new Range(0xD3B1, 0xD445)); // Rules cursor movement
+            ranges.add(new Range(0xD446, 0xD479)); // Rules decrement
+            ranges.add(new Range(0xD47A, 0xD4BF)); // Rules common commit
+            ranges.add(new Range(0xD4C0, 0xD50D)); // Rules increment
+            ranges.add(new Range(0xD50E, 0xD59A)); // Rules confirm/copy
+            ranges.add(new Range(0xD59B, 0xD674)); // Rules redraw
+            ranges.add(new Range(0xD675, 0xD6A0)); // Rules bar/text helper
+        } else if (bank == 0x82) {
+            ranges.add(new Range(0x8CD1, 0x8D3B)); // Options frame dispatcher
+            ranges.add(new Range(0x8D3C, 0x8DA5)); // Options cursor movement
+            ranges.add(new Range(0x8DA6, 0x8DC5)); // Options decrement
+            ranges.add(new Range(0x8DC6, 0x8E72)); // Options common commit
+            ranges.add(new Range(0x8E73, 0x8F9B)); // Options increment
+            ranges.add(new Range(0x8F9C, 0x9027)); // Options redraw
+            ranges.add(new Range(0x9028, 0x9075)); // Options text/bar helper
+        } else if (bank == 0x87) {
+            ranges.add(new Range(0x8C2D, 0x8C80)); // live volume apply helper
+        }
+    }
+
     private void dumpRange(PrintWriter w, String bank, long first, long last) {
         Listing listing = currentProgram.getListing();
         Address end = toAddr(last);
@@ -72,6 +100,7 @@ public class DumpGameSetup extends GhidraScript {
         int bank = Integer.parseInt(bankStr, 16);
 
         List<Range> ranges = readTrace(new File(outDir, "setup_exec_addrs.txt"), bank);
+        addMenuRanges(ranges, bank);
         println("bank $" + bankStr + ": " + ranges.size() + " traced ranges");
         if (ranges.isEmpty()) return;
 
@@ -104,10 +133,40 @@ public class DumpGameSetup extends GhidraScript {
             createLabel(toAddr(0xAACD), "game_setup_apu_queue", true);
             listing.setComment(toAddr(0xAACD), CodeUnit.PLATE_COMMENT,
                 "Queues per-voice parameters and command $0B through $2140-$2143.");
+            createLabel(toAddr(0x9DEA), "setup_menu_input_dispatch", true);
+            listing.setComment(toAddr(0x9DEA), CodeUnit.PLATE_COMMENT,
+                "Shared Game Setup controller dispatch reached before Rules/Options row and value handlers.");
         } else if (bank == 0x81) {
             createLabel(toAddr(0xF9F1), "game_setup_hdma_window_init", true);
             listing.setComment(toAddr(0xF9F1), CodeUnit.PLATE_COMMENT,
                 "Initializes HDMA channel 7 for the selected-row color-math window.");
+            createLabel(toAddr(0xD318), "set_rules_frame", true);
+            createLabel(toAddr(0xD3B1), "set_rules_move_cursor", true);
+            createLabel(toAddr(0xD446), "set_rules_decrement", true);
+            createLabel(toAddr(0xD47A), "set_rules_write_working_value", true);
+            createLabel(toAddr(0xD491), "set_rules_mark_dirty", true);
+            createLabel(toAddr(0xD4C0), "set_rules_increment", true);
+            createLabel(toAddr(0xD516), "set_rules_confirm_copy", true);
+            createLabel(toAddr(0xD59B), "set_rules_redraw", true);
+            createLabel(toAddr(0xD675), "set_rules_draw_value", true);
+            listing.setComment(toAddr(0xD47A), CodeUnit.PLATE_COMMENT,
+                "Common Rules value path stores the selected 16-bit value at the working array $7E:16FB + row*2. $81:D491 marks $7E:17AD = 2; Start at $81:D516 copies all 26 bytes to committed Rules $7E:17D1.");
+        } else if (bank == 0x82) {
+            createLabel(toAddr(0x8CD1), "set_options_frame", true);
+            createLabel(toAddr(0x8CD9), "set_options_confirm_copy", true);
+            createLabel(toAddr(0x8D0A), "set_options_commit_copy", true);
+            createLabel(toAddr(0x8D3C), "set_options_move_cursor", true);
+            createLabel(toAddr(0x8DA6), "set_options_decrement", true);
+            createLabel(toAddr(0x8DC6), "set_options_write_working_value", true);
+            createLabel(toAddr(0x8E73), "set_options_increment", true);
+            createLabel(toAddr(0x8F9C), "set_options_redraw", true);
+            createLabel(toAddr(0x9028), "set_options_draw_value", true);
+            listing.setComment(toAddr(0x8DC6), CodeUnit.PLATE_COMMENT,
+                "Common Options value path stores the selected 16-bit value at working array $7E:16FB + row*2. Start through $82:8CD9/$82:8D0A copies all 14 bytes to committed Options $7E:17B5.");
+        } else if (bank == 0x87) {
+            createLabel(toAddr(0x8C2D), "set_options_apply_live_volume", true);
+            listing.setComment(toAddr(0x8C2D), CodeUnit.PLATE_COMMENT,
+                "Called from $82:8DDC for Options rows 0 and 1 after a changed slider value; applies the live Music/SFX volume setting.");
         }
 
         File listingOut = new File(outDir, "setup_bank" + bankStr + "_listing.txt");
