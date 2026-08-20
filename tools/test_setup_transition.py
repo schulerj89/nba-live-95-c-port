@@ -14,10 +14,14 @@ from audio_fingerprint import assert_wav_fingerprint
 
 EXPECTED_RGB_SHA256 = {
     # Frames passed to --setup-only. 104 is the final forced-blank frame;
-    # 105 releases $80:A2BF. Frames 146/166 match Mesen frames 1784/1804.
+    # 105 releases $80:A2BF. 125/128 guard the formerly corrupt wrapped
+    # construction cells; 130 is pixel-exact with Mesen transition frame 132.
     104: "2cbbeef1249170a43854962fa5b19fba628470c70beb9ce23e15a0f05cb891f2",
-    105: "fc55ce12b6688bea4700cdc3c65cbf84dcf860658a774f0c03b741decfa33459",
-    118: "b74d254c5419713f36925c96faf4e9c5dac5f6432a01cb0a8484a0e95caa0c85",
+    105: "a916ad913f486038f1811c8d15b8e7bc539476d7d49e37a45eb2e44f2289e2f8",
+    118: "6fdb16a76df0a6724650a250ecb0932ca7f78dd831ede75a28acca03ebe2a6fb",
+    125: "17b0b585205691998a2e9c5238ed919f874a90094afd8e51cd8025a4309377f5",
+    128: "160ca9f0c0e602e43fa77116e9693179dbc79ca7121ff7383199c1970948c17e",
+    130: "95e6190d88f4cbe4a6edb85ca1d4e8bc24870ff4cd09b3b9b2affd73a5666489",
     146: "047185a6c2ffb0c4f079f0984ebb6f04afeaa3220c651de7812d1e710df310a2",
     162: "e7f61a0f21ca67bf4f3833ddbaa13c9e5501e04d1fd57f6bf3f54a0dc2d1719f",
     166: "51ef64c72ae13fc1c37e15a2cf9c3a913ccce788e9547c61f246b75bacdef416",
@@ -65,7 +69,7 @@ def load_pack(path):
 
 def check_pack(pack_path):
     raw, assets = load_pack(pack_path)
-    required = {16, 17, 88, 89, 90, 91}
+    required = {16, 17, 88, 89, 90, 91, 92}
     if not required.issubset(assets):
         raise AssertionError(f"missing Setup assets: {sorted(required - assets.keys())}")
     if len(assets[16]) != 0x10000 or len(assets[17]) != 0x200:
@@ -74,6 +78,8 @@ def check_pack(pack_path):
         raise AssertionError("invalid Setup SPC RAM/DSP size")
     if assets[90][:8] != b"NBTSSPC1" or assets[91][:8] != b"NBTSAPU1":
         raise AssertionError("invalid Setup SPC asset format")
+    if assets[92][:8] != b"NBSPPU1\0":
+        raise AssertionError("invalid Setup entrance PPU trace")
     if any(blob[:4] == b"RIFF" for blob in (assets[88], assets[89], assets[90], assets[91])):
         raise AssertionError("recorded Setup WAV returned")
 
@@ -90,6 +96,20 @@ def check_pack(pack_path):
         previous = cycle
     if previous > frames * 1024000 // 60:
         raise AssertionError("Setup APU trace exceeds its declared duration")
+
+    version, ppu_frames = struct.unpack_from("<II", assets[92], 8)
+    if version != 1 or ppu_frames != 61:
+        raise AssertionError("unexpected Setup entrance PPU dimensions")
+    offset = 16
+    ppu_writes = 0
+    for _ in range(ppu_frames):
+        if offset + 4 > len(assets[92]):
+            raise AssertionError("truncated Setup entrance PPU record")
+        vram_count, cgram_count = struct.unpack_from("<HH", assets[92], offset)
+        offset += 4 + (vram_count + cgram_count) * 3
+        ppu_writes += vram_count + cgram_count
+    if offset != len(assets[92]) or ppu_writes != 3094:
+        raise AssertionError("invalid Setup entrance PPU write stream")
     if b"post_ea_game_setup.wav" in raw:
         raise AssertionError("recorded Setup WAV name returned")
 

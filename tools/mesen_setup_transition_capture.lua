@@ -9,6 +9,10 @@ local out = os.getenv("NBA95_CAPTURE_DIR")
 assert(out and out ~= "", "NBA95_CAPTURE_DIR is not set")
 local log = assert(io.open(out .. "/capture_log.txt", "wb"))
 local ppu = assert(io.open(out .. "/ppu_trace.txt", "wb"))
+local entrance_vram_writes = assert(io.open(out .. "/entrance_vram_writes.txt", "wb"))
+local entrance_cgram_writes = assert(io.open(out .. "/entrance_cgram_writes.txt", "wb"))
+entrance_vram_writes:write("# transition_frame address value\n")
+entrance_cgram_writes:write("# transition_frame address value\n")
 
 local title_frame = -1
 local transition_frame = -1
@@ -16,12 +20,15 @@ local fade_seen = false
 local PRESS_AT = 850
 local PRESS_LEN = 8
 local CAPTURE_FRAMES = 1800 -- 30 seconds of the CPU-driven Setup sequence
+local capture_frames = os.getenv("NBA95_CAPTURE_MOTION") == "1"
 
 local capturing = false
 local base_cycle = 0
 local event_count = 0
 local events = {}
 local event_file = nil
+local entrance_vram = nil
+local entrance_cgram = nil
 
 emu.addEventCallback(function()
     if title_frame >= PRESS_AT and title_frame < PRESS_AT + PRESS_LEN then
@@ -110,6 +117,44 @@ emu.addEventCallback(function()
     local frame = transition_frame
     transition_frame = transition_frame + 1
 
+    if capture_frames and frame <= 230 then
+        local image = assert(io.open(out .. string.format("/reference_%03d.png", frame), "wb"))
+        image:write(emu.takeScreenshot())
+        image:close()
+    end
+
+    -- $80:A2BF has finished all loading and released forced blank here. Keep
+    -- this entrance-time PPU memory separate from the later settled capture:
+    -- off-screen tilemap cells are subsequently reused and become visible as
+    -- garbage if that later VRAM image is scrolled through the entrance.
+    if frame == 106 then
+        dump_mem("entrance_vram.bin", emu.memType.snesVideoRam, 0x10000)
+        dump_mem("entrance_cgram.bin", emu.memType.snesCgRam, 0x200)
+        entrance_vram = {}
+        entrance_cgram = {}
+        for address = 0, 0xFFFF do
+            entrance_vram[address] = emu.read(address, emu.memType.snesVideoRam, false) or 0
+        end
+        for address = 0, 0x1FF do
+            entrance_cgram[address] = emu.read(address, emu.memType.snesCgRam, false) or 0
+        end
+    elseif frame > 106 and frame <= 166 and entrance_vram then
+        for address = 0, 0xFFFF do
+            local value = emu.read(address, emu.memType.snesVideoRam, false) or 0
+            if value ~= entrance_vram[address] then
+                entrance_vram_writes:write(string.format("%d %04X %02X\n", frame, address, value))
+                entrance_vram[address] = value
+            end
+        end
+        for address = 0, 0x1FF do
+            local value = emu.read(address, emu.memType.snesCgRam, false) or 0
+            if value ~= entrance_cgram[address] then
+                entrance_cgram_writes:write(string.format("%d %04X %02X\n", frame, address, value))
+                entrance_cgram[address] = value
+            end
+        end
+    end
+
     if frame <= 230 then
         if ok and type(state) == "table" then
             ppu:write(string.format(
@@ -132,6 +177,8 @@ emu.addEventCallback(function()
         flush_events()
         if event_file then event_file:close() end
         ppu:close()
+        entrance_vram_writes:write("# done\n"); entrance_vram_writes:close()
+        entrance_cgram_writes:write("# done\n"); entrance_cgram_writes:close()
         log:write(string.format("done frames=%d events=%d\n", CAPTURE_FRAMES, event_count))
         log:close()
         local done = assert(io.open(out .. "/capture_complete.txt", "wb"))

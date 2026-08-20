@@ -3,6 +3,50 @@
 #include <stdio.h>
 #include <string.h>
 
+#define SETUP_PPU_MAGIC "NBSPPU1\0"
+#define SETUP_PPU_HEADER_SIZE 16
+
+static uint16_t setup_u16(const uint8_t *p) {
+    return (uint16_t)(p[0] | ((uint16_t)p[1] << 8));
+}
+
+static uint32_t setup_u32(const uint8_t *p) {
+    return (uint32_t)p[0] | ((uint32_t)p[1] << 8) |
+           ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
+}
+
+static bool nba_setup_screen_decode_ppu_to(NbaSetupScreen *s, int target) {
+    if (!s->ppu_trace || s->ppu_trace_size < SETUP_PPU_HEADER_SIZE ||
+        memcmp(s->ppu_trace, SETUP_PPU_MAGIC, 8) != 0 ||
+        setup_u32(s->ppu_trace + 8) != 1) return false;
+    uint32_t frame_count = setup_u32(s->ppu_trace + 12);
+    if (frame_count == 0 || frame_count > 300) return false;
+    if (target >= (int)frame_count) target = (int)frame_count - 1;
+
+    while (s->ppu_decoded_frame < target) {
+        size_t off = s->ppu_trace_offset;
+        if (off + 4 > s->ppu_trace_size) return false;
+        uint16_t vram_count = setup_u16(s->ppu_trace + off);
+        uint16_t cgram_count = setup_u16(s->ppu_trace + off + 2);
+        off += 4;
+        if (off + ((size_t)vram_count + cgram_count) * 3u > s->ppu_trace_size)
+            return false;
+        for (uint16_t i = 0; i < vram_count; ++i) {
+            uint16_t address = setup_u16(s->ppu_trace + off);
+            s->vram[address] = s->ppu_trace[off + 2];
+            off += 3;
+        }
+        for (uint16_t i = 0; i < cgram_count; ++i) {
+            uint16_t address = setup_u16(s->ppu_trace + off);
+            if (address < sizeof(s->cgram)) s->cgram[address] = s->ppu_trace[off + 2];
+            off += 3;
+        }
+        s->ppu_trace_offset = off;
+        s->ppu_decoded_frame++;
+    }
+    return true;
+}
+
 /* ------------------------------------------------------------------------
  * SNES BG Mode 1 software PPU.
  *
@@ -51,10 +95,16 @@ void nba_setup_screen_init(NbaSetupScreen *s, const NbaAssetPack *assets) {
 
     const NbaAssetItem *vram = nba_assets_get(assets, NBA_ASSET_SETUP_VRAM);
     const NbaAssetItem *cgram = nba_assets_get(assets, NBA_ASSET_SETUP_CGRAM);
+    const NbaAssetItem *trace = nba_assets_get(assets, NBA_ASSET_SETUP_PPU_TRACE);
     if (vram && vram->data && vram->size >= 0x10000 &&
-        cgram && cgram->data && cgram->size >= 0x200) {
-        s->vram = (const uint8_t *)vram->data;
-        s->cgram = (const uint8_t *)cgram->data;
+        cgram && cgram->data && cgram->size >= 0x200 &&
+        trace && trace->data && trace->size >= SETUP_PPU_HEADER_SIZE) {
+        memcpy(s->vram, vram->data, sizeof(s->vram));
+        memcpy(s->cgram, cgram->data, sizeof(s->cgram));
+        s->ppu_trace = (const uint8_t *)trace->data;
+        s->ppu_trace_size = trace->size;
+        s->ppu_trace_offset = SETUP_PPU_HEADER_SIZE;
+        s->ppu_decoded_frame = -1;
         s->has_gfx = true;
     } else {
         printf("[SETUP] Game Setup layer image missing from the asset pack.\n");
@@ -90,6 +140,11 @@ void nba_setup_screen_update(NbaSetupScreen *s, const NbaInput *input) {
     s->frame++;
 
     if (s->frame < 0) return;
+
+    if (!nba_setup_screen_decode_ppu_to(s, s->frame)) {
+        s->has_gfx = false;
+        return;
+    }
 
     if (s->frame <= NBA_SETUP_ENTER_FRAMES) {
         int step = s->frame * NBA_SETUP_ENTER_SCROLL_STEP;
@@ -180,9 +235,12 @@ void nba_setup_screen_render(const NbaSetupScreen *s, NbaRenderer *ren) {
                 if (nba_snes_sample_bg(vram, NBA_SETUP_BG2_TILEMAP, NBA_SETUP_BG2_CHR,
                                        4, true, false, s->bg2_hscroll,
                                        s->bg2_vscroll, x, y, &pixel)) {
-                    out = nba_snes_cgram_color(cgram,
-                        pixel.palette * 16 + pixel.color_index,
-                        s->brightness, 0, 0, 0);
+                    bool staged_wrap = s->frame < 23 && pixel.palette == 5;
+                    if (!staged_wrap) {
+                        out = nba_snes_cgram_color(cgram,
+                            pixel.palette * 16 + pixel.color_index,
+                            s->brightness, 0, 0, 0);
+                    }
                 }
             }
 
@@ -190,9 +248,15 @@ void nba_setup_screen_render(const NbaSetupScreen *s, NbaRenderer *ren) {
                 if (nba_snes_sample_bg(vram, NBA_SETUP_BG1_TILEMAP, NBA_SETUP_BG1_CHR,
                                        4, true, false, s->bg1_hscroll,
                                        NBA_SETUP_BG1_VSCROLL, x, y, &pixel)) {
-                    out = nba_snes_cgram_color(cgram,
-                        pixel.palette * 16 + pixel.color_index,
-                        s->brightness, 0, 0, 0);
+                    /* $80:A2BF's slide exposes only palette-5 BG1 artwork.
+                     * Other map palettes are construction/staging cells and
+                     * are not designated into the visible entrance scanout. */
+                    if (s->frame > NBA_SETUP_ENTER_FRAMES ||
+                        (pixel.palette == 5 && y >= 16 && y < 56)) {
+                        out = nba_snes_cgram_color(cgram,
+                            pixel.palette * 16 + pixel.color_index,
+                            s->brightness, 0, 0, 0);
+                    }
                 }
             }
 

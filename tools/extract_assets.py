@@ -397,8 +397,8 @@ def create_asset_pack(rom_path, output_path):
     #
     # The screen is SNES BG Mode 1 built from three layers whose tile data
     # the ROM produces by running its own decompressor ($80:C62B) and then
-    # DMAing the result into VRAM. The pointer sequence was captured live
-    # from the running ROM (tools/mesen_decomp_trace.lua).
+    # DMAing the result into VRAM. The settled image supplies the complete tile
+    # and map data; the entrance trace below documents the intervening DMAs.
     setup_vram_bytes = b""
     setup_cgram_bytes = b""
     capture_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)),
@@ -424,8 +424,8 @@ def create_asset_pack(rom_path, output_path):
         except Exception as ex:
             print(f"[ASSET EXTRACTOR] Warning: setup-screen ROM cross-check failed: {ex}")
     else:
-        print("[ASSET EXTRACTOR] Game Setup capture missing; run:")
-        print("    Mesen.exe <rom> tools/mesen_setup_capture.lua")
+        print("[ASSET EXTRACTOR] Game Setup entrance capture missing; run:")
+        print("    Mesen.exe <rom> tools/mesen_setup_transition_capture.lua")
 
     # ------------------------------------------------------------------
     # Title -> Game Setup audio handoff. The snapshot is taken on ROM frame
@@ -449,6 +449,39 @@ def create_asset_pack(rom_path, output_path):
     setup_spc_ram_bytes = read_setup_transition("spc_ram.bin", 0x10000)
     setup_spc_dsp_bytes = read_setup_transition("spc_dsp.bin", 0x80)
     setup_state_text = read_setup_transition("spc_state.txt").decode("ascii")
+
+    setup_vram_events = {}
+    for raw in read_setup_transition("entrance_vram_writes.txt").decode("ascii").splitlines():
+        if not raw or raw.startswith("#"):
+            continue
+        transition_frame, address, value = raw.split()
+        frame = int(transition_frame) - 106
+        if not 1 <= frame <= 60:
+            raise RuntimeError(f"Invalid Setup VRAM trace frame: {transition_frame}")
+        setup_vram_events.setdefault(frame, []).append((int(address, 16), int(value, 16)))
+
+    setup_cgram_events = {}
+    for raw in read_setup_transition("entrance_cgram_writes.txt").decode("ascii").splitlines():
+        if not raw or raw.startswith("#"):
+            continue
+        transition_frame, address, value = raw.split()
+        frame = int(transition_frame) - 106
+        if not 1 <= frame <= 60:
+            raise RuntimeError(f"Invalid Setup CGRAM trace frame: {transition_frame}")
+        setup_cgram_events.setdefault(frame, []).append((int(address, 16), int(value, 16)))
+
+    setup_ppu_trace = bytearray(struct.pack("<8sII", b"NBSPPU1\0", 1, 61))
+    for frame in range(61):
+        vw = setup_vram_events.get(frame, [])
+        cw = setup_cgram_events.get(frame, [])
+        setup_ppu_trace.extend(struct.pack("<HH", len(vw), len(cw)))
+        for address, value in vw:
+            setup_ppu_trace.extend(struct.pack("<HB", address, value))
+        for address, value in cw:
+            setup_ppu_trace.extend(struct.pack("<HB", address, value))
+    print(f"[ASSET EXTRACTOR] Packed Game Setup entrance trace: "
+          f"{sum(map(len, setup_vram_events.values()))} VRAM and "
+          f"{sum(map(len, setup_cgram_events.values()))} CGRAM changes")
 
     def setup_state_int(key):
         match = re.search(r"(?:^|\s)" + re.escape(key) + r"=(-?\d+)(?:\s|$)",
@@ -520,6 +553,7 @@ def create_asset_pack(rom_path, output_path):
         (89, 0, 0, 0, setup_spc_dsp_bytes),
         (90, 0, 0, 0, setup_spc_state_bytes),
         (91, 0, 0, 0, bytes(setup_apu_trace)),
+        (92, 0, 0, 0, bytes(setup_ppu_trace)),
     ])
 
     # Extract all other audio samples from ROM into asset pack for debugger

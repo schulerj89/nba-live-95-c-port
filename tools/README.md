@@ -10,7 +10,7 @@
 | `mesen_intro_capture.lua` | legal and four EA intro reference frames; set `NBA95_CAPTURE_MOTION=1` for the 123-frame motion oracle |
 | `mesen_title_capture.lua` | title PPU/APU/cue state |
 | `mesen_setup_capture.lua` | settled Setup VRAM/CGRAM and PPU state |
-| `mesen_setup_transition_capture.lua` | Setup transition and cycle-timed APU writes |
+| `mesen_setup_transition_capture.lua` | Setup entrance VRAM deltas and cycle-timed APU writes; `NBA95_CAPTURE_MOTION=1` also saves frame oracles |
 
 `extract_assets.py` validates those captures and the ROM, then writes the asset
 pack. Its minimal 65816 decompressor lives in `snes65816_decompressor.py`.

@@ -127,8 +127,12 @@ typedef enum {
 } NbaSetupRow;
 
 typedef struct {
-    const uint8_t *vram;    /* 64 KiB VRAM image  (asset 16) */
-    const uint8_t *cgram;   /* 512 B CGRAM image  (asset 17) */
+    uint8_t vram[0x10000];  /* mutable $80:A2BF entrance VRAM + DMA trace */
+    uint8_t cgram[0x200];   /* mutable entrance CGRAM + DMA trace          */
+    const uint8_t *ppu_trace;
+    size_t ppu_trace_size;
+    size_t ppu_trace_offset;
+    int ppu_decoded_frame;
     bool has_gfx;
 
     int frame;              /* -105 forced-blank load; 0 = first visible frame */
