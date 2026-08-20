@@ -31,8 +31,9 @@ typedef enum {
     NBA_ASSET_SETUP_VRAM            = 16,
     NBA_ASSET_SETUP_CGRAM           = 17,
     NBA_ASSET_DEBUG_AUDIO_BASE      = 18,
-    /* $82:F512's independent indexed Mode 7 A tilegroup. */
+    /* $82:F4F6/$82:F512 independent indexed Mode 7 letter tilegroups. */
     NBA_ASSET_EA_A_LAYER            = 70,
+    NBA_ASSET_EA_E_LAYER            = 71,
     NBA_ASSET_TITLE_VRAM            = 80,
     NBA_ASSET_TITLE_CGRAM           = 81,
     NBA_ASSET_TITLE_PPU_TRACE       = 82,

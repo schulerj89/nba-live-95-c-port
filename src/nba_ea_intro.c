@@ -14,8 +14,14 @@ static int nba_ea_intro_local_frame(float local_t) {
 }
 
 static float nba_ea_intro_mode7_scale(int frame) {
-    if (frame >= NBA_INTRO_ZOOM_FRAMES) return 1.0f;
-    int matrix = NBA_INTRO_MODE7_START + NBA_INTRO_MODE7_STEP * frame;
+    /* $82:F56D presents $0001 for two end-of-frame captures before the
+     * first $000C increment.  Mesen then records $000D..$00FD and finally
+     * $0100.  Keeping that initial duplicate is important: without it every
+     * incoming letter is one zoom step too small. */
+    if (frame <= 1) return (float)NBA_INTRO_MODE7_UNIT /
+                           (float)NBA_INTRO_MODE7_START;
+    if (frame >= NBA_INTRO_ZOOM_FRAMES + 1) return 1.0f;
+    int matrix = NBA_INTRO_MODE7_START + NBA_INTRO_MODE7_STEP * (frame - 1);
     return (float)NBA_INTRO_MODE7_UNIT / (float)matrix;
 }
 
@@ -74,16 +80,18 @@ void nba_ea_intro_render_stage1(const NbaAssetPack *assets, NbaRenderer *ren, fl
                                int start_x, int start_y, uint32_t width, uint32_t height) {
     if (!assets || !ren) return;
     const NbaAssetItem *item1 = nba_assets_get(assets, NBA_ASSET_EA_LOGO_STAGE1);
-    if (!item1 || !item1->data) return;
+    const NbaAssetItem *e_item = nba_assets_get(assets, NBA_ASSET_EA_E_LAYER);
+    if (!item1 || !item1->data || !e_item || !e_item->data ||
+        e_item->size < width * height * 4u) return;
 
-    const uint32_t *p1 = (const uint32_t *)item1->data;
+    const uint32_t *e_layer = (const uint32_t *)e_item->data;
     int frame = nba_ea_intro_local_frame(local_t);
-    if (frame >= NBA_INTRO_ZOOM_FRAMES + NBA_INTRO_FLASH_FRAMES) {
+    if (frame >= NBA_INTRO_ZOOM_FRAMES + 1 + NBA_INTRO_FLASH_FRAMES) {
         nba_ea_intro_render_captured_stage(item1, ren, start_x, start_y);
         return;
     }
     float scale = nba_ea_intro_mode7_scale(frame);
-    int flash_frame = frame - NBA_INTRO_ZOOM_FRAMES;
+    int flash_frame = frame - (NBA_INTRO_ZOOM_FRAMES + 1);
 
     /* M7X/M7Y are fixed at $0200: every component shares the screen center. */
     float pcx = (float)NBA_SNES_WIDTH * 0.5f;
@@ -91,15 +99,17 @@ void nba_ea_intro_render_stage1(const NbaAssetPack *assets, NbaRenderer *ren, fl
     float inv_scale = 1.0f / scale;
 
     for (int py = 0; py < NBA_SNES_HEIGHT; py++) {
-        int ty = (int)floorf(pcy + (float)(py - pcy) * inv_scale - (float)start_y + 0.5f);
+        int ty = (int)floorf(pcy - 2.0f + (float)(py - pcy) * inv_scale -
+                             (float)start_y + 0.5f);
         if (ty < 0 || ty >= (int)height) continue;
 
         for (int px = 0; px < NBA_SNES_WIDTH; px++) {
-            int tx = (int)floorf(pcx + (float)(px - pcx) * inv_scale - (float)start_x + 0.5f);
+            int tx = (int)floorf(pcx + 2.0f + (float)(px - pcx) * inv_scale -
+                                 (float)start_x + 0.5f);
             if (tx < 0 || tx >= (int)width) continue;
 
             uint32_t index = (uint32_t)ty * width + (uint32_t)tx;
-            uint32_t source_color = p1[index];
+            uint32_t source_color = e_layer[index];
             if (nba_ea_intro_pixel_visible(source_color)) {
                 uint32_t color = source_color;
                 color = nba_ea_intro_flash_color(color, flash_frame);
@@ -126,12 +136,12 @@ void nba_ea_intro_render_stage2(const NbaAssetPack *assets, NbaRenderer *ren, fl
     const uint32_t *p1 = (const uint32_t *)item1->data;
     const uint32_t *a_layer = (const uint32_t *)a_item->data;
     int frame = nba_ea_intro_local_frame(local_t);
-    if (frame >= NBA_INTRO_ZOOM_FRAMES + NBA_INTRO_FLASH_FRAMES) {
+    if (frame >= NBA_INTRO_ZOOM_FRAMES + 1 + NBA_INTRO_FLASH_FRAMES) {
         nba_ea_intro_render_captured_stage(item2, ren, start_x, start_y);
         return;
     }
     float scale = nba_ea_intro_mode7_scale(frame);
-    int flash_frame = frame - NBA_INTRO_ZOOM_FRAMES;
+    int flash_frame = frame - (NBA_INTRO_ZOOM_FRAMES + 1);
 
     /* The previous E has already settled. Draw it first so the incoming A can occlude it. */
     for (uint32_t r = 0; r < height; r++) {
@@ -157,11 +167,13 @@ void nba_ea_intro_render_stage2(const NbaAssetPack *assets, NbaRenderer *ren, fl
     float inv_scale = 1.0f / scale;
 
     for (int py = 0; py < NBA_SNES_HEIGHT; py++) {
-        int ty = (int)floorf(pcy + (float)(py - pcy) * inv_scale - (float)start_y + 0.5f);
+        int ty = (int)floorf(pcy - 2.0f + (float)(py - pcy) * inv_scale -
+                             (float)start_y + 0.5f);
         if (ty < 0 || ty >= (int)height) continue;
 
         for (int px = 0; px < NBA_SNES_WIDTH; px++) {
-            int tx = (int)floorf(pcx + (float)(px - pcx) * inv_scale - (float)start_x + 0.5f);
+            int tx = (int)floorf(pcx + 2.0f + (float)(px - pcx) * inv_scale -
+                                 (float)start_x + 0.5f);
             if (tx < 0 || tx >= (int)width) continue;
 
             uint32_t index = (uint32_t)ty * width + (uint32_t)tx;
@@ -189,12 +201,12 @@ void nba_ea_intro_render_stage3(const NbaAssetPack *assets, NbaRenderer *ren, fl
     const uint32_t *p2 = (item2 && item2->data) ? (const uint32_t *)item2->data : NULL;
     const uint32_t *p3 = (const uint32_t *)item3->data;
     int frame = nba_ea_intro_local_frame(local_t);
-    if (frame >= NBA_INTRO_ZOOM_FRAMES + NBA_INTRO_FLASH_FRAMES) {
+    if (frame >= NBA_INTRO_ZOOM_FRAMES + 1 + NBA_INTRO_FLASH_FRAMES) {
         nba_ea_intro_render_captured_stage(item3, ren, start_x, start_y);
         return;
     }
     float scale = nba_ea_intro_mode7_scale(frame);
-    int flash_frame = frame - NBA_INTRO_ZOOM_FRAMES;
+    int flash_frame = frame - (NBA_INTRO_ZOOM_FRAMES + 1);
 
     /* Draw the settled EA first; the incoming SPORTS layer is composited over it. */
     if (p2) {
@@ -299,22 +311,22 @@ void nba_ea_intro_render(const NbaAssetPack *assets, NbaRenderer *ren, float tim
 
     int intro_frame = nba_ea_intro_local_frame(timer);
     if (intro_frame < NBA_INTRO_STAGE1_FRAMES) {
-        /* Stage 1: E, frames 0-31. */
+        /* Stage 1: E, Mesen motion frames 0-32. */
         nba_ea_intro_render_stage1(assets, ren, (float)intro_frame / 60.0f,
                                    start_x, start_y, width, height);
     } else if (intro_frame < NBA_INTRO_STAGE1_FRAMES + NBA_INTRO_STAGE2_FRAMES) {
-        /* Stage 2: A, frames 32-62. */
+        /* Stage 2: A, Mesen motion frames 33-66. */
         int local_frame = intro_frame - NBA_INTRO_STAGE1_FRAMES;
         nba_ea_intro_render_stage2(assets, ren, (float)local_frame / 60.0f,
                                    start_x, start_y, width, height);
     } else if (intro_frame < NBA_INTRO_STAGE1_FRAMES + NBA_INTRO_STAGE2_FRAMES +
                              NBA_INTRO_STAGE3_FRAMES) {
-        /* Stage 3: SPORTS, frames 63-122. */
+        /* Stage 3: SPORTS, Mesen motion frames 67-99. */
         int local_frame = intro_frame - NBA_INTRO_STAGE1_FRAMES - NBA_INTRO_STAGE2_FRAMES;
         nba_ea_intro_render_stage3(assets, ren, (float)local_frame / 60.0f,
                                    start_x, start_y, width, height);
     } else {
-        /* Stage 4: ELECTRONIC ARTS hold, frames 123-302. */
+        /* Stage 4: completed logo hold, Mesen motion frame 100 onward. */
         nba_ea_intro_render_stage4(assets, ren, start_x, start_y, width, height);
     }
 }

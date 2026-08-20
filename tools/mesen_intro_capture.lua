@@ -17,6 +17,8 @@ local captured = {}
 local motion_enabled = os.getenv("NBA95_CAPTURE_MOTION") == "1"
 local motion_frame = -1
 local a_vram_captured = false
+local e_vram_captured = false
+local mode7_log = nil
 
 local function dump_mem(name, mem_type, size)
     local chunks = {}
@@ -59,6 +61,15 @@ on_exec(0x82F492, "ea_stage_4.png")
 -- Mode 7 tilegroup. Preserve the planar hardware source before the zoom loop;
 -- this avoids trying to recover layer ownership from a flattened screenshot.
 emu.addMemoryCallback(function()
+    if not e_vram_captured then
+        dump_mem("ea_e_mode7_vram.bin", emu.memType.snesVideoRam, 0x10000)
+        dump_mem("ea_e_mode7_cgram.bin", emu.memType.snesCgRam, 0x200)
+        e_vram_captured = true
+    end
+end, emu.callbackType.exec, 0x82F512, 0x82F512,
+    emu.cpuType.snes, emu.memType.snesMemory)
+
+emu.addMemoryCallback(function()
     if not a_vram_captured then
         dump_mem("ea_a_mode7_vram.bin", emu.memType.snesVideoRam, 0x10000)
         dump_mem("ea_a_mode7_cgram.bin", emu.memType.snesCgRam, 0x200)
@@ -69,6 +80,22 @@ end, emu.callbackType.exec, 0x82F52D, 0x82F52D,
 
 emu.addEventCallback(function()
     if motion_frame >= 0 and motion_frame < 123 then
+        if not mode7_log then
+            mode7_log = assert(io.open(out .. "/ea_mode7_state.txt", "wb"))
+            mode7_log:write("frame,m7a,m7b,m7c,m7d,m7x,m7y,hscroll,vscroll\n")
+        end
+        local state = emu.getState()
+        mode7_log:write(string.format("%d,%s,%s,%s,%s,%s,%s,%s,%s\n",
+            motion_frame,
+            tostring(state["ppu.mode7.matrix[0]"]),
+            tostring(state["ppu.mode7.matrix[1]"]),
+            tostring(state["ppu.mode7.matrix[2]"]),
+            tostring(state["ppu.mode7.matrix[3]"]),
+            tostring(state["ppu.mode7.centerX"]),
+            tostring(state["ppu.mode7.centerY"]),
+            tostring(state["ppu.mode7.hscroll"]),
+            tostring(state["ppu.mode7.vscroll"])))
+        mode7_log:flush()
         local motion = assert(io.open(out .. string.format("/ea_motion_%03d.png", motion_frame), "wb"))
         motion:write(emu.takeScreenshot())
         motion:close()
@@ -85,6 +112,7 @@ emu.addEventCallback(function()
     if captured["legal.png"] and captured["ea_stage_1.png"] and
        captured["ea_stage_2.png"] and captured["ea_stage_3.png"] and
        captured["ea_stage_4.png"] then
+        if mode7_log then mode7_log:close(); mode7_log = nil end
         local done = assert(io.open(out .. "/capture_complete.txt", "wb"))
         done:write("ok\n")
         done:close()

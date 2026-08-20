@@ -6,6 +6,7 @@ import re
 import struct
 import subprocess
 import tempfile
+import wave
 from pathlib import Path
 
 import numpy as np
@@ -59,6 +60,8 @@ EXPECTED_CURSOR_SHA256 = {
     5: "80d54ec7fc3fde9e6ad83a976b3b342c90ad59f06ddc24f59cf7f669b2b823c8",
     6: "e3ec329dc39626391b9315e7ff60bf4c60b9a31b23d903bdcdca22ac5738fc65",
 }
+SETUP_LOOP_START = 2053956
+SETUP_LOOP_END = 4048365
 
 
 def load_pack(path):
@@ -66,7 +69,7 @@ def load_pack(path):
     if len(data) < 16 or data[:8] != b"NBA95PAK":
         raise AssertionError("invalid asset pack")
     version, count = struct.unpack_from("<II", data, 8)
-    if version != 1 or 16 + count * 24 > len(data):
+    if version != 2 or 16 + count * 24 > len(data):
         raise AssertionError("invalid asset directory")
     assets = {}
     for index in range(count):
@@ -101,7 +104,7 @@ def check_pack(pack_path):
         raise AssertionError("recorded Setup WAV returned")
 
     version, frames, writes = struct.unpack_from("<III", assets[91], 8)
-    if version != 1 or frames != 1800 or writes != 102445:
+    if version != 1 or frames != 9000 or writes != 289435:
         raise AssertionError(f"unexpected Setup APU dimensions: {frames}, {writes}")
     if len(assets[91]) != 20 + writes * 6:
         raise AssertionError("truncated Setup APU trace")
@@ -115,7 +118,7 @@ def check_pack(pack_path):
         raise AssertionError("Setup APU trace exceeds its declared duration")
 
     version, dsp_frames, dsp_writes = struct.unpack_from("<III", assets[93], 8)
-    if version != 1 or dsp_frames != 1800 or dsp_writes != 19928:
+    if version != 1 or dsp_frames != 9000 or dsp_writes != 114059:
         raise AssertionError(
             f"unexpected Setup S-DSP dimensions: {dsp_frames}, {dsp_writes}"
         )
@@ -178,7 +181,8 @@ def check_frames(exe, rom, pack):
             )
             match = re.search(
                 r"Synthesized Game Setup through ROM BRR/S-DSP: "
-                r"1800 frames, 19928 cycle-timed DSP writes, peak=(\d+)",
+                r"9000 frames, 114059 cycle-timed DSP writes, peak=(\d+); "
+                rf"seamless host loop {SETUP_LOOP_START}\.\.{SETUP_LOOP_END} enabled",
                 result.stdout,
             )
             if not match or int(match.group(1)) == 0:
@@ -190,9 +194,9 @@ def check_frames(exe, rom, pack):
                 )
             if frame == min(EXPECTED_RGB_SHA256):
                 assert_wav_fingerprint(
-                    audio_output, 960000, EXPECTED_AUDIO_RMS_EIGHTHS,
+                    audio_output, 4800000, EXPECTED_AUDIO_RMS_EIGHTHS,
                     EXPECTED_AUDIO_BAND_PPM, EXPECTED_AUDIO_CHANNEL_RMS,
-                    0.9966, 24000, 25500
+                    0.9966, 25000, 26000
                 )
                 _, features, _ = wav_fingerprint(audio_output)
                 actual = np.asarray(features["rms_eighths"], dtype=float)
@@ -208,6 +212,14 @@ def check_frames(exe, rom, pack):
                         "Setup PCM no longer follows the Mesen onset oracle: "
                         f"correlation={correlation:.3f}, error={normalized_error:.3f}"
                     )
+                with wave.open(str(audio_output), "rb") as wav:
+                    wav.setpos(SETUP_LOOP_START - 1)
+                    start = np.frombuffer(wav.readframes(2), dtype="<i2").reshape(2, 2)
+                    wav.setpos(SETUP_LOOP_END - 1)
+                    end = np.frombuffer(wav.readframes(2), dtype="<i2").reshape(2, 2)
+                if not (np.array_equal(start[1], end[1]) and
+                        np.array_equal(start[1] - start[0], end[1] - end[0])):
+                    raise AssertionError("Setup musical loop seam is no longer sample-continuous")
 
         # Exercise the real title-dismiss path as well as the direct fixture.
         # Start on title frame 0, take $80:E5C7's snap/hold/fade, preserve the

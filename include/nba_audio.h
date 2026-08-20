@@ -14,6 +14,7 @@
 typedef struct {
     uint8_t *generated_wav;
     size_t generated_wav_size;
+    void *loop_playback;
 } NbaAudio;
 
 void nba_audio_init(NbaAudio *audio);

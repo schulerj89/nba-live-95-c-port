@@ -20,13 +20,13 @@
 #define SNES_ADDR_SCROLL_MATRIX_UPDATE  0x82962D  /* $82:962D - Mode 7 matrix & scroll register dispatcher */
 
 /* SNES Frame Timing Counts (at 60 FPS) */
-#define NBA_INTRO_STAGE1_FRAMES         32        /* 0.533s ($82:F2EA) */
-#define NBA_INTRO_STAGE2_FRAMES         31        /* 0.517s ($82:F36A) */
-#define NBA_INTRO_STAGE3_FRAMES         60        /* 1.000s ($82:F408) */
-#define NBA_INTRO_STAGE4_FRAMES         180       /* 3.000s ($82:F469) */
+#define NBA_INTRO_STAGE1_FRAMES         33        /* motion 0..32; A resets at 33 */
+#define NBA_INTRO_STAGE2_FRAMES         34        /* motion 33..66; SPORTS resets at 67 */
+#define NBA_INTRO_STAGE3_FRAMES         33        /* motion 67..99; Stage 4 at 100 */
+#define NBA_INTRO_STAGE4_FRAMES         203       /* preserve $82:F15C's 303-frame total */
 #define NBA_INTRO_TOTAL_FRAMES          303       /* 5.050s total */
 
-#define NBA_INTRO_ZOOM_FRAMES           22        /* Visible matrices $0001,$000D,...,$00FD */
+#define NBA_INTRO_ZOOM_FRAMES           22        /* $000C increments after duplicated $0001 */
 #define NBA_INTRO_FLASH_FRAMES          8         /* Eight waits in $82:F4C4 */
 #define NBA_INTRO_MODE7_UNIT            0x0100    /* 8.8 fixed-point identity matrix */
 #define NBA_INTRO_MODE7_START           0x0001    /* Written by $82:94DF */

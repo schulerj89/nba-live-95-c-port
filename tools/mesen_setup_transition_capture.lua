@@ -19,7 +19,11 @@ local transition_frame = -1
 local fade_seen = false
 local PRESS_AT = 850
 local PRESS_LEN = 8
-local CAPTURE_FRAMES = 1800 -- 30 seconds of the CPU-driven Setup sequence
+-- Two complete 62.34-second ROM music periods plus lead-in are required so
+-- host playback never falls off the former 30-second diagnostic cutoff.
+local CAPTURE_FRAMES = tonumber(os.getenv("NBA95_SETUP_AUDIO_FRAMES")) or 9000
+assert(CAPTURE_FRAMES >= 1800 and CAPTURE_FRAMES <= 18000,
+    "NBA95_SETUP_AUDIO_FRAMES must be between 1800 and 18000")
 local capture_frames = os.getenv("NBA95_CAPTURE_MOTION") == "1"
 
 local capturing = false

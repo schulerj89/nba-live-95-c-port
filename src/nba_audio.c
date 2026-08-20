@@ -4,10 +4,20 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define NBA_SETUP_LOOP_START_SAMPLE 2053956u
+#define NBA_SETUP_LOOP_END_SAMPLE   4048365u
+
 #if defined(_WIN32)
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <mmsystem.h>
+
+typedef struct {
+    HWAVEOUT device;
+    WAVEHDR intro;
+    WAVEHDR loop;
+} NbaWaveLoop;
+
 #endif
 
 static uint16_t audio_u16(const uint8_t *p) {
@@ -118,7 +128,8 @@ static bool audio_prepare_spc_track(const NbaAssetPack *assets,
     return true;
 }
 
-static bool audio_play_generated(NbaAudio *audio, NbaSpcTrackRender *render) {
+static bool audio_play_generated(NbaAudio *audio, NbaSpcTrackRender *render,
+                                 bool loop) {
     free(render->spc);
     render->spc = NULL;
     nba_audio_stop(audio);
@@ -126,8 +137,47 @@ static bool audio_play_generated(NbaAudio *audio, NbaSpcTrackRender *render) {
     audio->generated_wav_size = render->wav_size;
     render->wav = NULL;
 #if defined(_WIN32)
-    if (!PlaySoundA((LPCSTR)audio->generated_wav, NULL,
-                    SND_MEMORY | SND_ASYNC | SND_NODEFAULT)) {
+    if (loop) {
+        if (render->sample_count < NBA_SETUP_LOOP_END_SAMPLE) {
+            nba_audio_stop(audio);
+            return false;
+        }
+        NbaWaveLoop *stream = (NbaWaveLoop *)calloc(1, sizeof(*stream));
+        WAVEFORMATEX format = { WAVE_FORMAT_PCM, 2, NBA_SPC_SAMPLE_RATE,
+                                NBA_SPC_SAMPLE_RATE * 4u, 4, 16, 0 };
+        if (!stream || waveOutOpen(&stream->device, WAVE_MAPPER, &format,
+                                   0, 0, CALLBACK_NULL) != MMSYSERR_NOERROR) {
+            free(stream);
+            nba_audio_stop(audio);
+            return false;
+        }
+        char *pcm = (char *)audio->generated_wav + 44;
+        stream->intro.lpData = pcm;
+        stream->intro.dwBufferLength = NBA_SETUP_LOOP_START_SAMPLE * 4u;
+        stream->loop.lpData = pcm + NBA_SETUP_LOOP_START_SAMPLE * 4u;
+        stream->loop.dwBufferLength =
+            (NBA_SETUP_LOOP_END_SAMPLE - NBA_SETUP_LOOP_START_SAMPLE) * 4u;
+        stream->loop.dwFlags = WHDR_BEGINLOOP | WHDR_ENDLOOP;
+        stream->loop.dwLoops = 0xFFFFFFFFu;
+        if (waveOutPrepareHeader(stream->device, &stream->intro,
+                                 sizeof(stream->intro)) != MMSYSERR_NOERROR ||
+            waveOutPrepareHeader(stream->device, &stream->loop,
+                                 sizeof(stream->loop)) != MMSYSERR_NOERROR ||
+            waveOutWrite(stream->device, &stream->intro,
+                         sizeof(stream->intro)) != MMSYSERR_NOERROR ||
+            waveOutWrite(stream->device, &stream->loop,
+                         sizeof(stream->loop)) != MMSYSERR_NOERROR) {
+            waveOutReset(stream->device);
+            waveOutUnprepareHeader(stream->device, &stream->intro, sizeof(stream->intro));
+            waveOutUnprepareHeader(stream->device, &stream->loop, sizeof(stream->loop));
+            waveOutClose(stream->device);
+            free(stream);
+            nba_audio_stop(audio);
+            return false;
+        }
+        audio->loop_playback = stream;
+    } else if (!PlaySoundA((LPCSTR)audio->generated_wav, NULL,
+                           SND_MEMORY | SND_ASYNC | SND_NODEFAULT)) {
         nba_audio_stop(audio);
         return false;
     }
@@ -228,27 +278,29 @@ bool nba_audio_play_title_spc(NbaAudio *audio, const NbaAssetPack *assets) {
     }
     uint32_t frame_count = render.frame_count;
     uint32_t event_count = render.event_count;
-    if (!audio_play_generated(audio, &render)) return false;
+    if (!audio_play_generated(audio, &render, false)) return false;
     printf("[AUDIO] Synthesized title through SPC700/S-DSP: %u frames, %u APU writes.\n",
            frame_count, event_count);
     return true;
 }
 
 /**
- * Offset/Address/Size: $80:E600 -> $80:A2BF/$80:A3B8 | 30-second trace
+ * Offset/Address/Size: $80:E600 -> $80:A2BF/$80:A3B8 | 150-second trace
  * Subroutines: $80:A9E3 (command), $80:AA7B (handshake), $80:AACD (queue)
  * Purpose: $80:A9E3/$80:AA7B/$80:AACD produce the captured $2140-$2143
  *          command stream. The resident SPC700 driver first streams Setup's
  *          30-source BRR bank into ARAM, then emits the captured $F2/$F3
- *          program. Asset 88 is that bank at the first KON, so replay keeps
+ *          program through more than two observed 62.34-second musical
+ *          periods. Asset 88 is that bank at the first KON, so replay keeps
  *          the source/pitch/envelope choices while C decodes BRR live. The
- *          asset pack contains no mixed Setup PCM.
+ *          asset pack contains no mixed Setup PCM. The synthesized host
+ *          buffer loops continuously while the Setup screen remains active.
  */
 bool nba_audio_play_setup_dsp(NbaAudio *audio, const NbaAssetPack *assets) {
     static const NbaSpcTrackSpec spec = {
         NBA_ASSET_SETUP_SPC_RAM, NBA_ASSET_SETUP_SPC_DSP,
         NBA_ASSET_SETUP_SPC_STATE, NBA_ASSET_SETUP_DSP_TRACE,
-        "NBTSSPC1", "NBTSDSP1", "Game Setup", 7200, 6
+        "NBTSSPC1", "NBTSDSP1", "Game Setup", 18000, 6
     };
     if (!audio || !assets) return false;
     NbaSpcTrackRender render;
@@ -293,10 +345,12 @@ bool nba_audio_play_setup_dsp(NbaAudio *audio, const NbaAssetPack *assets) {
 
     uint32_t frame_count = render.frame_count;
     uint32_t event_count = render.event_count;
-    if (!audio_play_generated(audio, &render)) return false;
+    if (!audio_play_generated(audio, &render, true)) return false;
     printf("[AUDIO] Synthesized Game Setup through ROM BRR/S-DSP: "
-           "%u frames, %u cycle-timed DSP writes, peak=%d.\n",
-           frame_count, event_count, peak);
+           "%u frames, %u cycle-timed DSP writes, peak=%d; "
+           "seamless host loop %u..%u enabled.\n",
+           frame_count, event_count, peak,
+           NBA_SETUP_LOOP_START_SAMPLE, NBA_SETUP_LOOP_END_SAMPLE);
     return true;
 }
 
@@ -319,6 +373,15 @@ void nba_audio_stop(NbaAudio *audio) {
     if (!audio) return;
 #if defined(_WIN32)
     PlaySoundA(NULL, NULL, 0);
+    NbaWaveLoop *stream = (NbaWaveLoop *)audio->loop_playback;
+    if (stream) {
+        waveOutReset(stream->device);
+        waveOutUnprepareHeader(stream->device, &stream->intro, sizeof(stream->intro));
+        waveOutUnprepareHeader(stream->device, &stream->loop, sizeof(stream->loop));
+        waveOutClose(stream->device);
+        free(stream);
+        audio->loop_playback = NULL;
+    }
 #endif
     free(audio->generated_wav);
     audio->generated_wav = NULL;

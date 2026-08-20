@@ -5,7 +5,7 @@
 
 #define NBA_ASSET_MAGIC "NBA95PAK"
 
-#define NBA_ASSET_PACK_VERSION 1u
+#define NBA_ASSET_PACK_VERSION 2u
 #define NBA_ASSET_HEADER_SIZE 16u
 #define NBA_ASSET_ENTRY_SIZE 24u
 
@@ -37,7 +37,8 @@ static bool asset_metadata_valid(uint32_t id, uint32_t size, uint32_t width,
         case NBA_ASSET_EA_LOGO_STAGE2:
         case NBA_ASSET_EA_LOGO_STAGE3:
         case NBA_ASSET_EA_LOGO_STAGE4:
-        case NBA_ASSET_EA_A_LAYER: {
+        case NBA_ASSET_EA_A_LAYER:
+        case NBA_ASSET_EA_E_LAYER: {
             uint32_t x = flags >> 16;
             uint32_t y = flags & 0xFFFFu;
             required = (uint64_t)width * (uint64_t)height * sizeof(uint32_t);
@@ -146,9 +147,9 @@ bool nba_assets_load(NbaAssetPack *pack, const char *asset_path) {
             ea_height = height;
             ea_flags = flags;
         }
-        if (id == NBA_ASSET_EA_A_LAYER &&
+        if ((id == NBA_ASSET_EA_A_LAYER || id == NBA_ASSET_EA_E_LAYER) &&
             (width != ea_width || height != ea_height || flags != ea_flags)) {
-            return asset_load_error(pack, "EA A-layer dimensions are inconsistent");
+            return asset_load_error(pack, "EA letter-layer dimensions are inconsistent");
         }
 
         pack->items[i].id = id;
