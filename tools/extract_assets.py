@@ -522,6 +522,11 @@ def create_asset_pack(rom_path, output_path):
     rules_cgram_bytes = read_setup_menu_capture("rules", "menu_cgram.bin", 0x200)
     options_vram_bytes = read_setup_menu_capture("options", "menu_vram.bin", 0x10000)
     options_cgram_bytes = read_setup_menu_capture("options", "menu_cgram.bin", 0x200)
+    rules_oam_bytes = read_setup_menu_capture("rules", "menu_oam.bin", 0x220)
+    options_oam_bytes = read_setup_menu_capture("options", "menu_oam.bin", 0x220)
+    options_off_vram_bytes = read_setup_menu_capture("options", "options_off_vram.bin", 0x10000)
+    options_mono_vram_bytes = read_setup_menu_capture("options", "options_mono_vram.bin", 0x10000)
+    options_cpu_vram_bytes = read_setup_menu_capture("options", "options_cpu_vram.bin", 0x10000)
 
     # ------------------------------------------------------------------
     # Title -> Game Setup audio handoff. The snapshot is taken on ROM frame
@@ -702,6 +707,11 @@ def create_asset_pack(rom_path, output_path):
         (125, 0, 0, 0, rules_cgram_bytes),
         (126, 0, 0, 0, options_vram_bytes),
         (127, 0, 0, 0, options_cgram_bytes),
+        (128, 0x6000, 0, 0, rules_oam_bytes),
+        (129, 0x6000, 0, 0, options_oam_bytes),
+        (130, 0, 0, 0, options_off_vram_bytes),
+        (131, 0, 0, 0, options_mono_vram_bytes),
+        (132, 0, 0, 0, options_cpu_vram_bytes),
     ])
 
     # Extract all other audio samples from ROM into asset pack for debugger
@@ -731,7 +741,7 @@ def create_asset_pack(rom_path, output_path):
                     extra_audio_id += 1
 
     header_magic = b"NBA95PAK"
-    version = 5
+    version = 6
     asset_count = len(assets)
     entry_size = 24 # 6 * 4 bytes
 

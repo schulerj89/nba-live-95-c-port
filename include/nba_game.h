@@ -7,6 +7,7 @@
 #include "nba_renderer.h"
 #include "nba_audio.h"
 #include "nba_audio_debugger.h"
+#include "nba_asset_debugger.h"
 #include "nba_ea_intro.h"
 #include "nba_title_sequence.h"
 #include "nba_setup_screen.h"
@@ -41,6 +42,7 @@ typedef struct {
     float state_timer;
     bool ea_intro_audio_started;
     NbaAudioDebugger audio_debugger;
+    NbaAssetDebugger asset_debugger;
     NbaTitleSequence title_sequence;
     NbaSetupScreen setup_screen;
     bool show_timing_debug;

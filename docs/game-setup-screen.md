@@ -65,9 +65,10 @@ BG Mode 1. VRAM byte offsets (Mesen reports word addresses):
 | BG2 | `$1000` | `$2000` | 64×32, 4bpp | blue gradient, NBA watermark, EA SPORTS |
 | BG3 | `$0000` | `$8000` | 32×64, 2bpp | menu text |
 
-Settled state: main screen `$17` (BG1+BG2+BG3+OBJ), sub screen `$04` (BG3),
-colour math enabled for BG3 in subtract mode, brightness 15. All sprites are
-parked at y=225 (off screen), so OBJ contributes nothing.
+Settled main-Setup state is main screen `$17`, sub screen `$04`. Main Setup's
+sprites are parked at y=225, but Rules/Options populate OAM with both volume
+bars and the Rules viewport arrow. Their OBJ CHR uses OBSEL word base `$6000`
+(byte offset `$C000` in the packed VRAM image).
 
 ## Scroll behaviour (measured per frame)
 
@@ -184,16 +185,33 @@ seven-row scrolling viewport. The port scrolls the captured 64-row BG3 canvas,
 so hidden rule labels and glyph pixels remain ROM-authentic rather than being
 redrawn with a host font.
 
+Opening either submenu is a shared screen transition, not a direct page swap.
+The complete Mesen `$2100/$212C/$212D/$210D-$2112` trace shows BG3 scrolling
+out by 14 pixels/frame, followed by opposing BG1/BG2 slides at 8 pixels/frame
+while brightness falls 15→1. The ROM holds forced blank while `$80:A2BF`
+builds the target, then `$80:A3B8` runs the 32-frame entrance and delayed BG3
+staging. A submenu settles 140 frames after A; Start returns and settles after
+116 transition frames.
+
 The shared sound dispatch is `$80:9DF3`: command `$49` selects SRCN `$1A` for
 a value adjustment, `$4A` selects SRCN `$1B` for cursor movement, and `$4B`
 selects SRCN `$1C` for confirm/open. These are asset IDs 120–122 in the F11
-BRR catalog. Options calls `$87:8C2D` from `$82:8DDC` for rows 0 and 1 to
+BRR catalog. Runtime playback keys S-DSP voice 1 from packed Setup ARAM/DIR
+with the captured SRCN, pitch, `$8E/$E0` ADSR, and volume registers; it does
+not play the undecorated F11 preview WAV. Options calls `$87:8C2D` from
+`$82:8DDC` for rows 0 and 1 to
 apply slider changes immediately; the port applies Music Volume to the
-still-running Setup music stream and rescales each F11 menu-sample PCM buffer
-with the current SFX Volume before playback.
+still-running Setup music stream and applies SFX Volume to the independently
+synthesized menu voice.
 
-Asset-pack version 5 adds the settled Rules and Options VRAM/CGRAM pairs.
-`tools/test_setup_transition.py` hashes all four assets and both rendered menu
-pages, compares the bars/arrows to compact Mesen pixel oracles, verifies exact
-content for the three F11 menu samples and live SFX gain, and exercises clamp,
-wrap, ignored-B, and working-versus-committed behavior for each submenu.
+Asset-pack version 6 adds Rules/Options VRAM/CGRAM/OAM plus exact OFF, MONO,
+and CPU BG3 states. Bars/arrows are decoded from captured OAM and OBJ tiles;
+the full Rules bar objects provide the game's shared dynamic bar tiles, while
+the Options OAM capture remains a packed, debugger-visible default-position
+oracle. These values have no host-font or hardcoded-pixel fallback, and a
+submenu will not open from an incomplete pack.
+`tools/test_setup_transition.py` hashes the assets and rendered pages, compares
+bars/arrows to Mesen pixel oracles, locks the open/return transition stages and
+OFF/MONO/CPU states, and exercises clamp, wrap, ignored-B, live SFX gain, and
+working-versus-committed behavior. It also fingerprints the exact WAV output,
+pitch, envelope, and shape for all three menu SRCNs.

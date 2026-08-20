@@ -133,6 +133,12 @@ typedef enum {
 } NbaSetupPage;
 
 typedef enum {
+    NBA_SETUP_TRANSITION_NONE = 0,
+    NBA_SETUP_TRANSITION_OPEN,
+    NBA_SETUP_TRANSITION_RETURN
+} NbaSetupTransition;
+
+typedef enum {
     NBA_SETUP_SOUND_NONE = 0,
     NBA_SETUP_SOUND_ADJUST,   /* $80:9DF3 command $49, SRCN $1A */
     NBA_SETUP_SOUND_MOVE,     /* $80:9DF3 command $4A, SRCN $1B */
@@ -169,10 +175,19 @@ typedef struct {
     NbaSetupPage page;
     int menu_row;
     int menu_scroll;
+    NbaSetupTransition transition;
+    NbaSetupPage transition_target;
+    int transition_frame;
+    bool transition_blank;
     const uint8_t *rules_vram;
     const uint8_t *rules_cgram;
     const uint8_t *options_vram;
     const uint8_t *options_cgram;
+    const uint8_t *rules_oam;
+    const uint8_t *options_oam;
+    const uint8_t *options_off_vram;
+    const uint8_t *options_mono_vram;
+    const uint8_t *options_cpu_vram;
     NbaSetupConfig config;
     uint16_t working_rules[NBA_SETUP_RULE_COUNT];
     uint16_t working_options[NBA_SETUP_OPTION_COUNT];

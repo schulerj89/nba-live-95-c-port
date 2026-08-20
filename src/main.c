@@ -18,8 +18,11 @@ int main(int argc, char *argv[]) {
     const char *assets_path = NULL;
     const char *dump_frame_path = NULL;
     const char *dump_audio_path = NULL;
+    const char *dump_menu_sfx_path = NULL;
+    int menu_sfx_srcn = 0x1B;
     bool is_headless = false;
     bool audio_debug_test = false;
+    int asset_debug_id = -1;
     bool start_at_title = false;
     bool start_at_setup = false;
     bool spc_self_test = false;
@@ -48,6 +51,24 @@ int main(int argc, char *argv[]) {
             dump_audio_path = argv[++i];
         } else if (strcmp(argv[i], "--audio-debug") == 0) {
             audio_debug_test = true;
+        } else if (strcmp(argv[i], "--asset-debug") == 0 && i + 1 < argc) {
+            char *end = NULL;
+            long value = strtol(argv[++i], &end, 10);
+            if (!end || *end != '\0' || value <= 0 || value >= NBA_ASSET_MAX) {
+                fprintf(stderr, "[HEADLESS] Invalid ROM asset ID: %s\n", argv[i]);
+                return 1;
+            }
+            asset_debug_id = (int)value;
+        } else if (strcmp(argv[i], "--dump-menu-sfx") == 0 && i + 1 < argc) {
+            dump_menu_sfx_path = argv[++i];
+        } else if (strcmp(argv[i], "--menu-sfx-srcn") == 0 && i + 1 < argc) {
+            char *end = NULL;
+            long value = strtol(argv[++i], &end, 0);
+            if (!end || *end != '\0' || value < 0x1A || value > 0x1C) {
+                fprintf(stderr, "[HEADLESS] Menu SFX SRCN must be 0x1A..0x1C.\n");
+                return 1;
+            }
+            menu_sfx_srcn = (int)value;
         } else if (strcmp(argv[i], "--title-only") == 0) {
             start_at_title = true;
         } else if (strcmp(argv[i], "--setup-only") == 0) {
@@ -74,6 +95,9 @@ int main(int argc, char *argv[]) {
             printf("  --frames <N>          Number of frames to step in headless mode (default: 30)\n");
             printf("  --tick-rate <Hz>      Headless host tick rate (default: 60.0)\n");
             printf("  --audio-debug         Activate audio sample debugger in headless render\n");
+            printf("  --asset-debug <ID>    Render the F12 ROM asset browser at asset ID\n");
+            printf("  --dump-menu-sfx FILE  Save a deterministic packed-SPC menu sound\n");
+            printf("  --menu-sfx-srcn N     Select menu SRCN 0x1A..0x1C (default 0x1B)\n");
             printf("  --title-only          Start at $80:E01E title state (headless tests)\n");
             printf("  --setup-only          Start at the $80:E600 -> $80:A2BF handoff\n");
             printf("  --setup-menu <name>   Open Rules or Options in headless mode\n");
@@ -201,7 +225,8 @@ int main(int argc, char *argv[]) {
                         game.input.pressed = NBA_BTN_A;
                         setup_menu_opened = true;
                     }
-                } else if (game.setup_screen.page != NBA_SETUP_PAGE_MAIN) {
+                } else if (game.setup_screen.page != NBA_SETUP_PAGE_MAIN &&
+                           game.setup_screen.transition == NBA_SETUP_TRANSITION_NONE) {
                     if (setup_menu_moves_done < setup_menu_row) {
                         game.input.pressed = NBA_BTN_DOWN;
                         setup_menu_moves_done++;
@@ -221,15 +246,46 @@ int main(int argc, char *argv[]) {
             }
             nba_game_tick(&game, (float)(1.0 / tick_rate));
         }
+        if (asset_debug_id >= 0) {
+            game.asset_debugger.is_active = true;
+            bool found = false;
+            for (uint32_t index = 0; index < game.assets.item_count; ++index) {
+                if (game.assets.items[index].id == (uint32_t)asset_debug_id) {
+                    found = true;
+                    game.asset_debugger.selected_index = (int)index;
+                    if (game.assets.items[index].size == 0x10000u)
+                        game.asset_debugger.tile_page = 16;
+                    break;
+                }
+            }
+            if (!found) {
+                fprintf(stderr, "[HEADLESS] ROM asset ID %d is not present in this pack.\n",
+                        asset_debug_id);
+                nba_game_shutdown(&game);
+                return 1;
+            }
+        }
+
+        if (dump_menu_sfx_path) {
+            nba_audio_play_setup_sfx(&game.audio, &game.assets,
+                                     (uint8_t)menu_sfx_srcn);
+            if (!nba_audio_save_setup_sfx_wav(&game.audio, dump_menu_sfx_path)) {
+                fprintf(stderr, "[HEADLESS] Failed to write menu SFX WAV.\n");
+                nba_game_shutdown(&game);
+                return 1;
+            }
+        }
 
         if (setup_menu) {
             const NbaSetupScreen *s = &game.setup_screen;
             int menu_count = strcmp(setup_menu, "rules") == 0 ?
                              NBA_SETUP_RULE_COUNT : NBA_SETUP_OPTION_COUNT;
             int report_row = setup_menu_row % menu_count;
-            printf("[SETUP TEST] page=%d menu_row=%d rules0=%u/%u options0=%u/%u "
+            printf("[SETUP TEST] page=%d menu_row=%d transition=%d/%d blank=%d gfx=%d "
+                   "rules0=%u/%u options0=%u/%u "
                    "option_row=%d working=%u committed=%u\n",
-                   (int)s->page, s->menu_row,
+                   (int)s->page, s->menu_row, (int)s->transition,
+                   s->transition_frame, s->transition_blank, s->has_gfx,
                    s->working_rules[0], s->config.rules[0],
                    s->working_options[0], s->config.options[0],
                    report_row,

@@ -34,7 +34,7 @@ def require_failure(result, description):
 
 
 def check_asset_loader(exe, directory):
-    valid = b"NBA95PAK" + struct.pack("<II", 5, 1)
+    valid = b"NBA95PAK" + struct.pack("<II", 6, 1)
     valid += pack_entry(18, 40, 1) + b"\0"
     valid_path = directory / "valid.pak"
     valid_path.write_bytes(valid)
@@ -43,26 +43,26 @@ def check_asset_loader(exe, directory):
         "valid minimal asset pack",
     )
 
-    duplicate = b"NBA95PAK" + struct.pack("<II", 5, 2)
+    duplicate = b"NBA95PAK" + struct.pack("<II", 6, 2)
     duplicate += pack_entry(1, 64, 1) + pack_entry(1, 65, 1) + b"\0\0"
     invalid_packs = {
-        "bad_magic.pak": b"NOTAPACK" + struct.pack("<II", 5, 1) + pack_entry(1, 40, 1) + b"\0",
+        "bad_magic.pak": b"NOTAPACK" + struct.pack("<II", 6, 1) + pack_entry(1, 40, 1) + b"\0",
         "bad_version.pak": b"NBA95PAK" + struct.pack("<II", 4, 1) + pack_entry(1, 40, 1) + b"\0",
-        "too_many.pak": b"NBA95PAK" + struct.pack("<II", 5, 128),
-        "truncated_directory.pak": b"NBA95PAK" + struct.pack("<II", 5, 2) + pack_entry(1, 64, 1),
+        "too_many.pak": b"NBA95PAK" + struct.pack("<II", 6, 160),
+        "truncated_directory.pak": b"NBA95PAK" + struct.pack("<II", 6, 2) + pack_entry(1, 64, 1),
         "duplicate_id.pak": duplicate,
-        "directory_overlap.pak": b"NBA95PAK" + struct.pack("<II", 5, 1) + pack_entry(1, 16, 1) + b"\0",
-        "wrapped_range.pak": b"NBA95PAK" + struct.pack("<II", 5, 1) + pack_entry(1, 0xFFFFFFF0, 64) + b"\0",
-        "bad_id.pak": b"NBA95PAK" + struct.pack("<II", 5, 1) + pack_entry(128, 40, 1) + b"\0",
-        "short_license.pak": b"NBA95PAK" + struct.pack("<II", 5, 1) +
+        "directory_overlap.pak": b"NBA95PAK" + struct.pack("<II", 6, 1) + pack_entry(1, 16, 1) + b"\0",
+        "wrapped_range.pak": b"NBA95PAK" + struct.pack("<II", 6, 1) + pack_entry(1, 0xFFFFFFF0, 64) + b"\0",
+        "bad_id.pak": b"NBA95PAK" + struct.pack("<II", 6, 1) + pack_entry(160, 40, 1) + b"\0",
+        "short_license.pak": b"NBA95PAK" + struct.pack("<II", 6, 1) +
             pack_entry(1, 40, 1, 128, 11) + b"\0",
-        "short_legal.pak": b"NBA95PAK" + struct.pack("<II", 5, 1) +
+        "short_legal.pak": b"NBA95PAK" + struct.pack("<II", 6, 1) +
             pack_entry(2, 40, 1, 256, 151, 35) + b"\0",
-        "short_ea_pixels.pak": b"NBA95PAK" + struct.pack("<II", 5, 1) +
+        "short_ea_pixels.pak": b"NBA95PAK" + struct.pack("<II", 6, 1) +
             pack_entry(3, 40, 1, 1, 1) + b"\0",
-        "oversized_ea_dimensions.pak": b"NBA95PAK" + struct.pack("<II", 5, 1) +
+        "oversized_ea_dimensions.pak": b"NBA95PAK" + struct.pack("<II", 6, 1) +
             pack_entry(3, 40, 1, 0xFFFFFFFF, 0xFFFFFFFF) + b"\0",
-        "offscreen_ea_flags.pak": b"NBA95PAK" + struct.pack("<II", 5, 1) +
+        "offscreen_ea_flags.pak": b"NBA95PAK" + struct.pack("<II", 6, 1) +
             pack_entry(3, 40, 4, 1, 1, (256 << 16)) + b"\0\0\0\0",
     }
     for name, payload in invalid_packs.items():
@@ -142,6 +142,19 @@ def check_host_rate_equivalence(exe, rom, pack, directory):
         raise AssertionError("title animation differs between 60.0 and 59.94 Hz")
 
 
+def check_asset_debug_cli(exe, pack):
+    require_failure(
+        run(exe, "--headless", "--assets", pack, "--frames", 0,
+            "--asset-debug", "abc"),
+        "malformed asset debugger ID",
+    )
+    require_failure(
+        run(exe, "--headless", "--assets", pack, "--frames", 0,
+            "--asset-debug", 159),
+        "missing asset debugger ID",
+    )
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--pack", required=True, type=Path)
@@ -159,6 +172,7 @@ def main():
         valid_pack = check_asset_loader(args.exe, directory)
         check_rom_identity(args.exe, args.rom, valid_pack, directory)
         check_host_rate_equivalence(args.exe, args.rom, args.pack, directory)
+        check_asset_debug_cli(args.exe, args.pack)
     print("[TEST] PASS: asset-pack safety, ROM identity, and host-rate timing")
 
 

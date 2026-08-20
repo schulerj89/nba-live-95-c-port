@@ -67,6 +67,7 @@ bool nba_game_init(NbaGame *game, const char *rom_path, const char *assets_path)
     nba_game_enter_state(game, NBA_STATE_NINTENDO_LICENSE);
     game->frame_count = 0;
     nba_audio_debugger_init(&game->audio_debugger);
+    nba_asset_debugger_init(&game->asset_debugger);
     nba_title_sequence_init(&game->title_sequence);
     game->is_initialized = true;
 
@@ -117,13 +118,17 @@ void nba_game_tick(NbaGame *game, float delta_time) {
     if (game->input.pressed & NBA_BTN_DEBUG_F11) {
         nba_audio_debugger_toggle(&game->audio_debugger);
     }
+    if (game->input.pressed & NBA_BTN_DEBUG_F12) {
+        nba_asset_debugger_toggle(&game->asset_debugger);
+    }
 
     /* Update audio debugger navigation / playback */
     nba_audio_debugger_update(&game->audio_debugger, &game->audio,
                               &game->assets, &game->input);
+    nba_asset_debugger_update(&game->asset_debugger, &game->assets, &game->input);
 
     /* If audio debugger is active, freeze game state progression */
-    if (game->audio_debugger.is_active) {
+    if (game->audio_debugger.is_active || game->asset_debugger.is_active) {
         return;
     }
 
@@ -440,5 +445,8 @@ void nba_game_render(NbaGame *game) {
     /* Render Audio Debugger Overlay on top of any game screen if active */
     if (game->audio_debugger.is_active) {
         nba_audio_debugger_render(&game->audio_debugger, &game->assets, ren);
+    }
+    if (game->asset_debugger.is_active) {
+        nba_asset_debugger_render(&game->asset_debugger, &game->assets, ren);
     }
 }

@@ -4,6 +4,8 @@
 local out = os.getenv("NBA95_CAPTURE_DIR")
 local menu = os.getenv("NBA95_CAPTURE_MENU") or "rules"
 local scroll_mode = os.getenv("NBA95_CAPTURE_SCROLL") == "1"
+local variant_mode = os.getenv("NBA95_CAPTURE_VARIANTS") == "1"
+local call_mode = os.getenv("NBA95_CAPTURE_CALLS") == "1"
 assert(out and out ~= "", "NBA95_CAPTURE_DIR is not set")
 assert(menu == "rules" or menu == "options", "NBA95_CAPTURE_MENU must be rules or options")
 
@@ -12,11 +14,13 @@ local exec_log = assert(io.open(out .. "/exec_trace.txt", "wb"))
 local apu_log = assert(io.open(out .. "/apu_ports.txt", "wb"))
 local wram_log = assert(io.open(out .. "/wram_writes.txt", "wb"))
 local dsp_log = assert(io.open(out .. "/dsp_writes.txt", "wb"))
+local ppu_log = assert(io.open(out .. "/menu_transition_ppu.txt", "wb"))
+local call_log = assert(io.open(out .. "/menu_transition_calls.txt", "wb"))
 local global_frame = 0
 local title_frame = -1
 local setup_frame = -1
 local PRESS_TITLE_AT = 850
-local LAST_SETUP_FRAME = 900
+local LAST_SETUP_FRAME = 950
 local target_row = menu == "rules" and 4 or 5
 
 local function dump_mem(name, mem_type, size)
@@ -49,6 +53,7 @@ end, emu.callbackType.exec, 0x80E1B1, 0x80E1B1,
     emu.cpuType.snes, emu.memType.snesMemory)
 
 local seen_exec = {}
+local seen_calls = { open = {}, back = {} }
 local pc_ring = {}
 local function phase_for_frame(frame)
     if frame < 470 then return "parent" end
@@ -66,6 +71,26 @@ emu.addMemoryCallback(function(address)
     local phase = phase_for_frame(setup_frame)
     seen_exec[phase] = seen_exec[phase] or {}
     seen_exec[phase][address] = true
+    if call_mode and (phase == "open" or phase == "back") then
+        local opcode = emu.read(address, emu.memType.snesMemory, false)
+        local lo = emu.read(address + 1, emu.memType.snesMemory, false) or 0
+        local hi = emu.read(address + 2, emu.memType.snesMemory, false) or 0
+        local target = nil
+        if opcode == 0x20 then
+            target = (address & 0xFF0000) | lo | (hi << 8) -- JSR abs
+        elseif opcode == 0x22 then
+            local bank = emu.read(address + 3, emu.memType.snesMemory, false) or 0
+            target = lo | (hi << 8) | (bank << 16) -- JSL long
+        end
+        if target then
+            local key = string.format("%06X>%06X", address, target)
+            if not seen_calls[phase][key] then
+                seen_calls[phase][key] = true
+                call_log:write(string.format("first_frame=%d phase=%s caller=%06X target=%06X\n",
+                    setup_frame, phase, address, target))
+            end
+        end
+    end
 end, emu.callbackType.exec, 0x808000, 0xBFFFFF,
     emu.cpuType.snes, emu.memType.snesMemory)
 
@@ -145,7 +170,17 @@ emu.addEventCallback(function()
         end
         if pulse(setup_frame, 470) then input.a = true end
         -- Exercise both value navigation and row navigation inside the menu.
-        if scroll_mode then
+        if variant_mode then
+            if pulse(setup_frame, 650) or pulse(setup_frame, 662) then input.down = true end
+            if pulse(setup_frame, 674) then input.right = true end
+            if menu == "options" then
+                if pulse(setup_frame, 700) then input.right = true end
+                if pulse(setup_frame, 730) or pulse(setup_frame, 742) or
+                   pulse(setup_frame, 754) then input.down = true end
+                if pulse(setup_frame, 770) then input.right = true end
+            end
+            if pulse(setup_frame, 830) then input.start = true end
+        elseif scroll_mode then
             for i = 0, 11 do
                 if pulse(setup_frame, 630 + i * 12) then input.down = true end
             end
@@ -182,18 +217,46 @@ emu.addEventCallback(function()
         -- port, immediately before the first value adjustment.
         dump_mem("menu_vram.bin", emu.memType.snesVideoRam, 0x10000)
         dump_mem("menu_cgram.bin", emu.memType.snesCgRam, 0x200)
+        dump_mem("menu_oam.bin", emu.memType.snesSpriteRam, 0x220)
     end
     if frame == 675 then dump_wram("wram_after_right.bin"); shot("after_right.png") end
     if frame == 725 then dump_wram("wram_after_down.bin"); shot("after_down.png") end
     if frame == 775 then dump_wram("wram_after_left.bin"); shot("after_left.png") end
+    if variant_mode and frame == 690 then
+        dump_mem(menu .. "_off_vram.bin", emu.memType.snesVideoRam, 0x10000)
+        shot(menu .. "_off.png")
+    end
+    if variant_mode and menu == "options" and frame == 715 then
+        dump_mem("options_mono_vram.bin", emu.memType.snesVideoRam, 0x10000)
+        shot("options_mono.png")
+    end
+    if variant_mode and menu == "options" and frame == 790 then
+        dump_mem("options_cpu_vram.bin", emu.memType.snesVideoRam, 0x10000)
+        shot("options_cpu.png")
+    end
     if scroll_mode and frame == 690 then shot("rules_scroll_mid.png") end
     if scroll_mode and frame == 780 then shot("rules_scroll_bottom.png") end
     if frame == 860 then dump_wram("wram_after_back.bin"); shot("after_back.png") end
 
+    if (frame >= 465 and frame <= 630) or (frame >= 825 and frame <= 949) then
+        local st = emu.getState()
+        ppu_log:write(string.format(
+            "%d bright=%s main=%s sub=%s bg1h=%s bg1v=%s bg2h=%s bg2v=%s bg3h=%s bg3v=%s oamBase=%s oamMode=%s\n",
+            frame, tostring(st["ppu.screenBrightness"]),
+            tostring(st["ppu.mainScreenLayers"]), tostring(st["ppu.subScreenLayers"]),
+            tostring(st["ppu.layers[0].hscroll"]), tostring(st["ppu.layers[0].vscroll"]),
+            tostring(st["ppu.layers[1].hscroll"]), tostring(st["ppu.layers[1].vscroll"]),
+            tostring(st["ppu.layers[2].hscroll"]), tostring(st["ppu.layers[2].vscroll"]),
+            tostring(st["ppu.oamBaseAddress"]), tostring(st["ppu.oamMode"])))
+        if frame % 4 == 1 then
+            shot(string.format(frame < 700 and "open_step_%03d.png" or "close_step_%03d.png", frame))
+        end
+    end
+
     if frame >= LAST_SETUP_FRAME then
         write_exec_ranges()
         log:write("capture done\n"); log:close(); exec_log:close(); apu_log:close();
-        wram_log:close(); dsp_log:close()
+        wram_log:close(); dsp_log:close(); ppu_log:close(); call_log:close()
         local done = assert(io.open(out .. "/capture_complete.txt", "wb"))
         done:write("ok\n"); done:close(); emu.stop(0)
     end

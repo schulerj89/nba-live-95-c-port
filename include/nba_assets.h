@@ -57,7 +57,12 @@ typedef enum {
     NBA_ASSET_SET_RULES_CGRAM       = 125,
     NBA_ASSET_SET_OPTIONS_VRAM      = 126,
     NBA_ASSET_SET_OPTIONS_CGRAM     = 127,
-    NBA_ASSET_MAX                   = 128
+    NBA_ASSET_SET_RULES_OAM         = 128,
+    NBA_ASSET_SET_OPTIONS_OAM       = 129,
+    NBA_ASSET_OPTIONS_OFF_VRAM      = 130,
+    NBA_ASSET_OPTIONS_MONO_VRAM     = 131,
+    NBA_ASSET_OPTIONS_CPU_VRAM      = 132,
+    NBA_ASSET_MAX                   = 160
 } NbaAssetId;
 
 typedef struct {

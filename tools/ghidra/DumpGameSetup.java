@@ -117,12 +117,15 @@ public class DumpGameSetup extends GhidraScript {
         if (bank == 0x80) {
             createLabel(toAddr(0xA2BF), "game_setup_build_layers", true);
             listing.setComment(toAddr(0xA2BF), CodeUnit.PLATE_COMMENT,
-                "Builds the Game Setup BG1/BG2/BG3 VRAM state while forced blank is active; " +
-                "releases the first visible entrance frame with BG1/BG2 scrolls at 768.");
+                "Shared Game Setup/Rules/Options layer builder. Runs during the forced-blank " +
+                "load interval after the outgoing BG1/BG2 slide, then releases the new page " +
+                "with both horizontal scrolls at 768.");
             createLabel(toAddr(0xA3B8), "game_setup_frame_update", true);
             listing.setComment(toAddr(0xA3B8), CodeUnit.PLATE_COMMENT,
-                "Drives the 32-frame BG1/BG2 slide, 1..15 INIDISP ramp, delayed BG3 vertical " +
-                "entrance, and steady BG2 scroll.");
+                "Shared page transition/frame sequencer: scrolls BG3 away, moves BG1/BG2 in " +
+                "opposite directions by 8 pixels/frame under the 15-step INIDISP fade, then " +
+                "runs the 32-frame entrance and delayed BG3 vertical staging. Also advances " +
+                "the steady BG2 backdrop scroll.");
             createLabel(toAddr(0xA9E3), "game_setup_apu_command", true);
             listing.setComment(toAddr(0xA9E3), CodeUnit.PLATE_COMMENT,
                 "Game Setup CPU-side music command producer. Writes the $2140-$2143 protocol " +
@@ -151,6 +154,9 @@ public class DumpGameSetup extends GhidraScript {
             createLabel(toAddr(0xD675), "set_rules_draw_value", true);
             listing.setComment(toAddr(0xD47A), CodeUnit.PLATE_COMMENT,
                 "Common Rules value path stores the selected 16-bit value at the working array $7E:16FB + row*2. $81:D491 marks $7E:17AD = 2; Start at $81:D516 copies all 26 bytes to committed Rules $7E:17D1.");
+            listing.setComment(toAddr(0xD491), CodeUnit.PLATE_COMMENT,
+                "Marks Rules state 2; the common dispatcher then reaches the shared $80:A3B8 " +
+                "exit/build/entrance transition instead of swapping pages in one frame.");
         } else if (bank == 0x82) {
             createLabel(toAddr(0x8CD1), "set_options_frame", true);
             createLabel(toAddr(0x8CD9), "set_options_confirm_copy", true);
@@ -163,6 +169,9 @@ public class DumpGameSetup extends GhidraScript {
             createLabel(toAddr(0x9028), "set_options_draw_value", true);
             listing.setComment(toAddr(0x8DC6), CodeUnit.PLATE_COMMENT,
                 "Common Options value path stores the selected 16-bit value at working array $7E:16FB + row*2. Start through $82:8CD9/$82:8D0A copies all 14 bytes to committed Options $7E:17B5.");
+            listing.setComment(toAddr(0x8CD1), CodeUnit.PLATE_COMMENT,
+                "Options frame dispatcher. Open/Start state changes return through the shared " +
+                "$80:A3B8 page exit/build/entrance sequence; this is not an immediate page swap.");
         } else if (bank == 0x87) {
             createLabel(toAddr(0x8C2D), "set_options_apply_live_volume", true);
             listing.setComment(toAddr(0x8C2D), CodeUnit.PLATE_COMMENT,

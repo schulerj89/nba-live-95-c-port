@@ -60,7 +60,9 @@ runtime-PCM fingerprints, and focused SPC700/S-DSP vectors.
 | **Start** | Enter |
 | **Select** | Space / Shift |
 
-F10 toggles the timing HUD and F11 opens the audio debugger.
+F10 toggles the timing HUD, F11 opens the audio debugger, and F12 opens the ROM
+asset browser for pack metadata, CGRAM palettes, paged SNES VRAM tiles, and
+screen-positioned OAM/OBJ reconstruction.
 
 ## Technical notes
 
@@ -70,7 +72,6 @@ F10 toggles the timing HUD and F11 opens the audio debugger.
 - [Game Setup audio](docs/game-setup-audio.md)
 - [Reverse-engineering tools](tools/README.md)
 
-Remaining fidelity work is documented in the subsystem notes. Setup option
-editing still needs the ROM's BG3 glyph writer, and Setup's CPU-side music
-decisions currently use a cycle-timed control trace rather than a direct C port
-of the 65816 sequencer.
+Remaining fidelity work is documented in the subsystem notes. Setup's CPU-side
+music decisions currently use a cycle-timed control trace rather than a direct
+C port of the 65816 sequencer.

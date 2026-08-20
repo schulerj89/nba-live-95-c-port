@@ -211,6 +211,7 @@ void nba_audio_shutdown(NbaAudio *audio) {
     free(audio->setup_sfx_wav);
     audio->setup_sfx_wav = NULL;
     audio->setup_sfx_wav_size = 0;
+    audio->setup_sfx_wav_length = 0;
     printf("[AUDIO] Audio Subsystem shutdown.\n");
 }
 
@@ -234,46 +235,112 @@ void nba_audio_play_wav(NbaAudio *audio, const void *data, size_t size) {
 /**
  * Offset/Address/Size: $80:9DF3 | menu SFX dispatch | commands $49-$4B
  * Subroutines: $80:A9E3/$80:AACD (APU queue), SPC SRCN $1A-$1C
- * Purpose: Plays the same BRR source exposed by the F11 catalog without
- *          stopping Setup's independent waveOut music stream.
+ * Purpose: Keys the packed Setup ARAM/DIR source through the captured S-DSP
+ *          voice registers without stopping Setup's independent music stream.
  */
 void nba_audio_play_setup_sfx(NbaAudio *audio, const NbaAssetPack *assets,
                               uint8_t srcn) {
     if (!audio || !assets || srcn >= 30u) return;
-    const NbaAssetItem *item = nba_assets_get(
-        assets, (NbaAssetId)(NBA_ASSET_SETUP_SAMPLE_BASE + srcn));
-    if (!item || !item->data || item->size < 44u) return;
-    const uint8_t *source = (const uint8_t *)item->data;
-    if (memcmp(source, "RIFF", 4) != 0 || memcmp(source + 8, "WAVE", 4) != 0 ||
-        audio_u16(source + 20) != 1u || audio_u16(source + 34) != 16u ||
-        memcmp(source + 36, "data", 4) != 0 ||
-        audio_u32(source + 40) > item->size - 44u) return;
+    const NbaAssetItem *ram = nba_assets_get(assets, NBA_ASSET_SETUP_SPC_RAM);
+    const NbaAssetItem *dsp = nba_assets_get(assets, NBA_ASSET_SETUP_SPC_DSP);
+    const NbaAssetItem *state_item = nba_assets_get(assets, NBA_ASSET_SETUP_SPC_STATE);
+    if (!ram || ram->size < NBA_SPC_RAM_SIZE ||
+        !dsp || dsp->size < NBA_SPC_DSP_REGS ||
+        !state_item || state_item->size < 20u) return;
+    const uint8_t *state = (const uint8_t *)state_item->data;
+    if (memcmp(state, "NBTSSPC1", 8) != 0 || audio_u32(state + 8) != 1u) return;
+
+    /* Hardware writes captured at the three $80:9DF3 commands.  The F11 WAVs
+     * deliberately expose undecorated BRR sources; menu playback is different:
+     * the resident driver keys voice 1 with these pitch/envelope registers. */
+    uint16_t pitch = srcn == 0x1Au ? 0x05A8u :
+                     srcn == 0x1Bu ? 0x050Au : 0x03C6u;
+    const uint32_t sample_frames = 24000u; /* 0.75 s includes DSP release tail */
+    const size_t pcm_bytes = (size_t)sample_frames * 2u * sizeof(int16_t);
+    const size_t wav_size = 44u + pcm_bytes;
 #if defined(_WIN32)
     PlaySoundA(NULL, NULL, 0);
 #endif
-    if (audio->setup_sfx_wav_size < item->size) {
-        uint8_t *grown = (uint8_t *)realloc(audio->setup_sfx_wav, item->size);
+    if (audio->setup_sfx_wav_size < wav_size) {
+        uint8_t *grown = (uint8_t *)realloc(audio->setup_sfx_wav, wav_size);
         if (!grown) return;
         audio->setup_sfx_wav = grown;
-        audio->setup_sfx_wav_size = item->size;
+        audio->setup_sfx_wav_size = wav_size;
     }
-    memcpy(audio->setup_sfx_wav, source, item->size);
-    uint32_t pcm_bytes = audio_u32(source + 40) & ~1u;
+    NbaSpc *spc = (NbaSpc *)malloc(sizeof(*spc));
+    if (!spc) return;
+    if (!nba_spc_load(spc, ram->data, ram->size, dsp->data, dsp->size,
+                      audio_u16(state + 12), state[14], state[15], state[16],
+                      state[17], state[18])) {
+        free(spc);
+        return;
+    }
+    for (int voice = 0; voice < 8; ++voice) {
+        nba_spc_write_dsp(spc, (uint8_t)(voice * 16 + NBA_DSP_VOL_L), 0);
+        nba_spc_write_dsp(spc, (uint8_t)(voice * 16 + NBA_DSP_VOL_R), 0);
+    }
+    nba_spc_write_dsp(spc, NBA_DSP_KOF, 0xFFu);
+    nba_spc_write_dsp(spc, NBA_DSP_PMON, 0u);
+    nba_spc_write_dsp(spc, NBA_DSP_NON, 0u);
+    nba_spc_write_dsp(spc, NBA_DSP_EON, 0u);
+    nba_spc_render_dsp(spc, (int16_t *)(audio->setup_sfx_wav + 44), 64);
+    const uint8_t base = 0x10u; /* voice 1 */
+    /* The settled default capture writes $40 at the game's 30/45 setting.
+     * Apply the option at the DSP voice, as $87:8C2D does, instead of
+     * attenuating an already-rendered host PCM buffer. */
+    uint32_t voice_volume = ((uint32_t)audio->setup_sfx_volume * 0x40u) / 30u;
+    if (voice_volume > 0x7Fu) voice_volume = 0x7Fu;
+    nba_spc_write_dsp(spc, base + NBA_DSP_VOL_L, (uint8_t)voice_volume);
+    nba_spc_write_dsp(spc, base + NBA_DSP_VOL_R, (uint8_t)voice_volume);
+    nba_spc_write_dsp(spc, base + NBA_DSP_PITCH_L, (uint8_t)pitch);
+    nba_spc_write_dsp(spc, base + NBA_DSP_PITCH_H, (uint8_t)(pitch >> 8));
+    nba_spc_write_dsp(spc, base + NBA_DSP_SRCN, srcn);
+    nba_spc_write_dsp(spc, base + NBA_DSP_ADSR1, 0x8Eu);
+    nba_spc_write_dsp(spc, base + NBA_DSP_ADSR2, 0xE0u);
+    nba_spc_write_dsp(spc, base + NBA_DSP_GAIN, 0u);
+    nba_spc_write_dsp(spc, NBA_DSP_KOF, 0u);
+    nba_spc_write_dsp(spc, NBA_DSP_KON, 0x02u);
+    int16_t *pcm = (int16_t *)(audio->setup_sfx_wav + 44);
+    nba_spc_render_dsp(spc, pcm, (int)sample_frames);
+    free(spc);
+
+    memcpy(audio->setup_sfx_wav, "RIFF", 4);
+    audio_put_u32(audio->setup_sfx_wav + 4, 36u + (uint32_t)pcm_bytes);
+    memcpy(audio->setup_sfx_wav + 8, "WAVEfmt ", 8);
+    audio_put_u32(audio->setup_sfx_wav + 16, 16u);
+    audio_put_u16(audio->setup_sfx_wav + 20, 1u);
+    audio_put_u16(audio->setup_sfx_wav + 22, 2u);
+    audio_put_u32(audio->setup_sfx_wav + 24, NBA_SPC_SAMPLE_RATE);
+    audio_put_u32(audio->setup_sfx_wav + 28, NBA_SPC_SAMPLE_RATE * 4u);
+    audio_put_u16(audio->setup_sfx_wav + 32, 4u);
+    audio_put_u16(audio->setup_sfx_wav + 34, 16u);
+    memcpy(audio->setup_sfx_wav + 36, "data", 4);
+    audio_put_u32(audio->setup_sfx_wav + 40, (uint32_t)pcm_bytes);
+    audio->setup_sfx_wav_length = wav_size;
+
     int peak = 0;
-    for (uint32_t offset = 44; offset < 44u + pcm_bytes; offset += 2u) {
-        int16_t sample = (int16_t)audio_u16(source + offset);
-        int scaled = ((int)sample * (int)audio->setup_sfx_volume) / 45;
-        int magnitude = scaled < 0 ? -scaled : scaled;
+    for (uint32_t i = 0; i < sample_frames * 2u; ++i) {
+        int magnitude = pcm[i] < 0 ? -(int)pcm[i] : (int)pcm[i];
         if (magnitude > peak) peak = magnitude;
-        audio_put_u16(audio->setup_sfx_wav + offset, (uint16_t)(int16_t)scaled);
     }
-    printf("[SETUP] Menu SFX SRCN $%02X (F11 asset %u), volume=%u/45 peak=%d.\n",
-           srcn, (unsigned)(NBA_ASSET_SETUP_SAMPLE_BASE + srcn),
-           audio->setup_sfx_volume, peak);
+    printf("[SETUP] DSP menu SFX SRCN $%02X pitch=$%04X ADSR1/2=$8E/$E0, "
+           "volume=%u/45 DSPVOL=$%02X peak=%d.\n", srcn, pitch,
+           audio->setup_sfx_volume, (unsigned)voice_volume, peak);
 #if defined(_WIN32)
     PlaySoundA((LPCSTR)audio->setup_sfx_wav, NULL,
                SND_MEMORY | SND_ASYNC | SND_NODEFAULT);
 #endif
+}
+
+bool nba_audio_save_setup_sfx_wav(const NbaAudio *audio, const char *path) {
+    if (!audio || !path || !audio->setup_sfx_wav ||
+        audio->setup_sfx_wav_length == 0u) return false;
+    FILE *file = fopen(path, "wb");
+    if (!file) return false;
+    bool ok = fwrite(audio->setup_sfx_wav, 1, audio->setup_sfx_wav_length, file) ==
+              audio->setup_sfx_wav_length;
+    fclose(file);
+    return ok;
 }
 
 void nba_audio_set_setup_sfx_volume(NbaAudio *audio, uint16_t value,

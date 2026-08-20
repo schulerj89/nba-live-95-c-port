@@ -17,6 +17,7 @@ typedef struct {
     void *loop_playback;
     uint8_t *setup_sfx_wav;
     size_t setup_sfx_wav_size;
+    size_t setup_sfx_wav_length;
     uint16_t setup_sfx_volume;
 } NbaAudio;
 
@@ -29,6 +30,7 @@ void nba_audio_set_setup_sfx_volume(NbaAudio *audio, uint16_t value, uint16_t ma
 bool nba_audio_play_title_spc(NbaAudio *audio, const NbaAssetPack *assets);
 bool nba_audio_play_setup_dsp(NbaAudio *audio, const NbaAssetPack *assets);
 bool nba_audio_save_generated_wav(const NbaAudio *audio, const char *path);
+bool nba_audio_save_setup_sfx_wav(const NbaAudio *audio, const char *path);
 void nba_audio_stop(NbaAudio *audio);
 
 #endif /* NBA_AUDIO_H */
