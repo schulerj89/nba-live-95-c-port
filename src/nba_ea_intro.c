@@ -148,7 +148,9 @@ void nba_ea_intro_render_stage2(const NbaAssetPack *assets, NbaRenderer *ren, fl
         }
     }
 
-    /* F512 adds the A tilegroup; derive it from Stage 2 minus the settled E. */
+    /* F512 overwrites the A tilegroup; derive its complete write mask from
+     * every changed Stage 1 -> Stage 2 pixel.  The write includes A-over-E
+     * pixels and transparent cells which erase the underlying E. */
     float pcx = (float)NBA_SNES_WIDTH * 0.5f;
     float pcy = (float)NBA_SNES_HEIGHT * 0.5f;
     float inv_scale = 1.0f / scale;
@@ -163,10 +165,9 @@ void nba_ea_intro_render_stage2(const NbaAssetPack *assets, NbaRenderer *ren, fl
 
             uint32_t index = (uint32_t)ty * width + (uint32_t)tx;
             uint32_t col2 = p2[index];
-            if (nba_ea_intro_pixel_visible(col2) &&
-                !nba_ea_intro_pixel_visible(p1[index])) {
-                uint32_t color = col2;
-                color = nba_ea_intro_flash_color(color, flash_frame);
+            if (col2 != p1[index]) {
+                uint32_t color = nba_ea_intro_pixel_visible(col2) ?
+                    nba_ea_intro_flash_color(col2, flash_frame) : 0xFF000000u;
                 ren->pixels[py * NBA_SNES_WIDTH + px] = color;
             }
         }
@@ -214,7 +215,12 @@ void nba_ea_intro_render_stage3(const NbaAssetPack *assets, NbaRenderer *ren, fl
         }
     }
 
-    /* F52E adds SPORTS; derive it from Stage 3 minus the settled EA. */
+    /* $82:F408 prepares the SPORTS group before $82:F56D's first visible
+     * matrix update; the entry frame still presents the settled EA image. */
+    if (frame == 0) return;
+
+    /* F52E likewise overwrites its whole changed tilegroup, including cells
+     * which replace or clear pixels from the settled EA artwork. */
     float pcx = (float)NBA_SNES_WIDTH * 0.5f;
     float pcy = (float)NBA_SNES_HEIGHT * 0.5f;
     float inv_scale = 1.0f / scale;
@@ -230,10 +236,9 @@ void nba_ea_intro_render_stage3(const NbaAssetPack *assets, NbaRenderer *ren, fl
             uint32_t index = (uint32_t)ty * width + (uint32_t)tx;
             uint32_t col3 = p3[index];
             uint32_t col2 = p2 ? p2[index] : 0;
-            if (nba_ea_intro_pixel_visible(col3) &&
-                !nba_ea_intro_pixel_visible(col2)) {
-                uint32_t color = col3;
-                color = nba_ea_intro_flash_color(color, flash_frame);
+            if (col3 != col2) {
+                uint32_t color = nba_ea_intro_pixel_visible(col3) ?
+                    nba_ea_intro_flash_color(col3, flash_frame) : 0xFF000000u;
                 ren->pixels[py * NBA_SNES_WIDTH + px] = color;
             }
         }

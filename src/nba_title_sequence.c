@@ -14,6 +14,13 @@
 #define TITLE_BG3_MAP 0x0000
 #define TITLE_BG3_CHR 0xC000
 
+/* $80:8640's H/V IRQ pair toggles TMW ($212E) after the title-logo band.
+ * Window 1 is inverted at 0..178, clipping BG1 construction tiles which
+ * extend into the following row/right margin. */
+#define TITLE_BG1_WINDOW_RIGHT 178
+#define TITLE_BG1_WINDOW_SCANLINE 92
+#define TITLE_LIVE_CUE_FRAME 820
+
 static uint16_t title_u16(const uint8_t *p) {
     return (uint16_t)(p[0] | ((uint16_t)p[1] << 8));
 }
@@ -115,7 +122,9 @@ static void title_render_ppu(const NbaTitleSequence *s, NbaRenderer *renderer) {
                     }
                 }
             }
-            if (s->main_screen & 0x01) {
+            bool logo_window_clips = s->decoded_frame < TITLE_LIVE_CUE_FRAME &&
+                y >= TITLE_BG1_WINDOW_SCANLINE && x > TITLE_BG1_WINDOW_RIGHT;
+            if ((s->main_screen & 0x01) && !logo_window_clips) {
                 if (nba_snes_sample_bg(s->vram, TITLE_BG1_MAP, TITLE_BG1_CHR, 4,
                                        false, true, s->bg_hscroll[0],
                                        s->bg_vscroll[0], x, y, &pixel)) {

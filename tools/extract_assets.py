@@ -352,12 +352,18 @@ def create_asset_pack(rom_path, output_path):
     title_cue_trace_bytes = pack_timed_events(
         b"NBTCUE1\0", [(frame, value, 0) for frame, value in cue_events])
 
+    # The endFrame screenshot is the frame Mesen has just presented, while the
+    # VRAM/CGRAM reads in that callback observe memory prepared for the next
+    # presentation.  Delay those deltas by one frame so construction DMAs do
+    # not appear as transient strips beneath the N/B/A/LIVE artwork.
     vram_by_frame = {}
     for frame, address, value in vram_events:
-        vram_by_frame.setdefault(frame, []).append((address, value))
+        if frame + 1 < title_frame_count:
+            vram_by_frame.setdefault(frame + 1, []).append((address, value))
     cgram_by_frame = {}
     for frame, address, value in cgram_events:
-        cgram_by_frame.setdefault(frame, []).append((address, value))
+        if frame + 1 < title_frame_count:
+            cgram_by_frame.setdefault(frame + 1, []).append((address, value))
     rows_by_frame = {row[0]: row for row in frame_rows}
 
     title_ppu_trace = bytearray(struct.pack("<8sII", b"NBTPPU1\0", 1, title_frame_count))

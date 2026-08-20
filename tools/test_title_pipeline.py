@@ -13,11 +13,15 @@ from audio_fingerprint import assert_wav_fingerprint
 
 EXPECTED_CUES = [(235, 1), (469, 2), (586, 3), (703, 4), (820, 5), (938, 6)]
 EXPECTED_RGB_SHA256 = {
-    # Filled from Mesen-verified, software-PPU output. These guard the static
-    # title/light-cycle states plus active and settled credit raster states.
+    # Address-synchronized Mesen frames. The active N/B/A construction frames
+    # specifically guard the endFrame VRAM/CGRAM boundary and BG1 raster clip.
+    240: "298ad35eee65d47f8a580fa41a05fdabb24c90d599fd801ccc8347de91470b7d",
+    480: "b21a3b0f7323dabc2a09b4ee74e950a86adce5bbff72f1c65927ab0bbba43077",
+    600: "73c5792d7ecc78a486172f7da5c60d386c0ed417d91fdb13c03bb711e09b35ef",
+    720: "1510bc88860b49adc5a858d0bc98d1aae005b2baecf09d699ec7cdeb72888b6f",
     840: "94aeb0c07ec8bcbba98532e6322618af8fb574bae6af08dbea90951a1d3c4967",
     960: "1df6a727a484fef0a735f3e2c0acf47e2f7a8e3189ac11957f5debc600b9785e",
-    1320: "f93474ec0ed7002fa9c1a12cf821bd123d4152d68cae1ce421eb0a3be24afc3e",
+    1320: "a28c3e7452442d0a0dcd92f5ffa24b2ec3be9a09a87cc6e86c34873723ef98e2",
     1440: "43a3c225bc5a7a1793474c761e1250b895811c630d4e54c3417d7b3f7f7fbfd9",
 }
 EXPECTED_AUDIO_RMS_EIGHTHS = [

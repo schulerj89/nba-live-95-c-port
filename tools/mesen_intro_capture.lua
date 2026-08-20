@@ -14,6 +14,8 @@ assert(out and out ~= "", "NBA95_CAPTURE_DIR is not set")
 
 local pending = nil
 local captured = {}
+local motion_enabled = os.getenv("NBA95_CAPTURE_MOTION") == "1"
+local motion_frame = -1
 
 local function arm(name)
     if not captured[name] then
@@ -29,12 +31,22 @@ local function on_exec(address, name)
 end
 
 on_exec(0x80FEE6, "legal.png")
+emu.addMemoryCallback(function()
+    if motion_enabled and motion_frame < 0 then motion_frame = 0 end
+end, emu.callbackType.exec, 0x82F2EA, 0x82F2EA,
+    emu.cpuType.snes, emu.memType.snesMemory)
 on_exec(0x82F2FE, "ea_stage_1.png")
 on_exec(0x82F37E, "ea_stage_2.png")
 on_exec(0x82F43A, "ea_stage_3.png")
 on_exec(0x82F492, "ea_stage_4.png")
 
 emu.addEventCallback(function()
+    if motion_frame >= 0 and motion_frame < 123 then
+        local motion = assert(io.open(out .. string.format("/ea_motion_%03d.png", motion_frame), "wb"))
+        motion:write(emu.takeScreenshot())
+        motion:close()
+        motion_frame = motion_frame + 1
+    end
     if pending then
         local file = assert(io.open(out .. "/" .. pending, "wb"))
         file:write(emu.takeScreenshot())
