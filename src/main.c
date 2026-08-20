@@ -56,8 +56,10 @@ int main(int argc, char *argv[]) {
         }
 
         bool timing_debug_test = false;
+        bool enter_setup_test = false;
         for (int i = 1; i < argc; i++) {
             if (strcmp(argv[i], "--timing-debug") == 0) timing_debug_test = true;
+            if (strcmp(argv[i], "--enter-setup") == 0) enter_setup_test = true;
         }
 
         if (timing_debug_test) {
@@ -71,6 +73,13 @@ int main(int argc, char *argv[]) {
 
         /* Step frames to reach desired screen */
         for (int frame = 0; frame < step_frames; frame++) {
+            game.input.pressed = 0;
+
+            if (enter_setup_test) {
+                if (game.state == NBA_STATE_TITLE_SEQUENCE) {
+                    game.input.pressed = NBA_BTN_START; /* skip the title video */
+                }
+            }
             nba_game_tick(&game, 1.0f / 60.0f);
         }
 

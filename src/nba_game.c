@@ -63,6 +63,7 @@ bool nba_game_init(NbaGame *game, const char *rom_path, const char *assets_path)
     game->frame_count = 0;
     nba_audio_debugger_init(&game->audio_debugger);
     nba_title_sequence_init(&game->title_sequence);
+    nba_setup_screen_init(&game->setup, &game->assets);
     game->is_initialized = true;
 
     printf("[GAME] Initialization complete. Entering state NBA_STATE_NINTENDO_LICENSE.\n");
@@ -190,15 +191,20 @@ void nba_game_tick(NbaGame *game, float delta_time) {
                 }
                 game->title_sequence.audio_started = true;
             }
-            if ((game->input.pressed & (NBA_BTN_START | NBA_BTN_A | NBA_BTN_B)) ||
+            if ((game->input.pressed & (NBA_BTN_START | NBA_BTN_A | NBA_BTN_B | NBA_BTN_SELECT)) ||
                 nba_game_timer_frame(game->state_timer) >= NBA_TITLE_SEQUENCE_FRAMES) {
                 nba_audio_stop();
-                game->state = NBA_STATE_MAIN_MENU;
+                game->state = NBA_STATE_GAME_SETUP;
                 game->state_timer = 0.0f;
+                nba_setup_screen_init(&game->setup, &game->assets);
             }
             break;
 
-        case NBA_STATE_MAIN_MENU:
+        case NBA_STATE_GAME_SETUP:
+            /* $80:A3B8 - per-frame Game Setup update: slide-in, backdrop
+             * scroll and row cursor. Music is issued by the APU command
+             * routines at $80:A9E3/$80:AA7B/$80:AACD and is not wired up yet. */
+            nba_setup_screen_update(&game->setup, &game->input, delta_time);
             break;
 
         default:
@@ -331,21 +337,9 @@ void nba_game_render(NbaGame *game) {
                                       game->state_timer);
             break;
 
-        case NBA_STATE_MAIN_MENU: {
-            nba_renderer_clear(ren, 0xFF001830);
-            nba_font_render_text_centered(ren->pixels, NBA_SNES_WIDTH, 30,
-                                          "NBA LIVE '95", col_gold, col_shadow, 2);
-            const char *menu_items[] = {
-                "EXHIBITION", "SEASON", "PLAYOFFS", "SET RULES", "SET OPTIONS"
-            };
-            for (int i = 0; i < 5; ++i) {
-                uint32_t color = i == 0 ? col_gold : col_white;
-                nba_font_render_text_centered(ren->pixels, NBA_SNES_WIDTH,
-                                              80 + i * 20, menu_items[i],
-                                              color, col_shadow, 1);
-            }
+        case NBA_STATE_GAME_SETUP:
+            nba_setup_screen_render(&game->setup, ren);
             break;
-        }
     }
 
     /* Render Timing Debug Overlay [F10] if enabled */
@@ -383,7 +377,7 @@ void nba_game_render(NbaGame *game) {
                 break;
             }
             case NBA_STATE_TITLE_SEQUENCE: state_str = "TITLE SEQUENCE"; break;
-            case NBA_STATE_MAIN_MENU: state_str = "MAIN MENU"; break;
+            case NBA_STATE_GAME_SETUP: state_str = "GAME SETUP"; break;
             default: break;
         }
 

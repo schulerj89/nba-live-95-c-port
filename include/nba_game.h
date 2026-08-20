@@ -8,6 +8,7 @@
 #include "nba_audio_debugger.h"
 #include "nba_ea_intro.h"
 #include "nba_title_sequence.h"
+#include "nba_setup_screen.h"
 
 /* SNES Subroutine Addresses (LoROM Bank $80 and Bank $82) */
 #define SNES_ADDR_RESET_BOOT            0x808020  /* $80:8020 - Cold boot reset handler */
@@ -38,7 +39,7 @@ typedef enum {
     NBA_STATE_NBA_LEGAL_NOTICE,
     NBA_STATE_EA_INTRO,
     NBA_STATE_TITLE_SEQUENCE,
-    NBA_STATE_MAIN_MENU
+    NBA_STATE_GAME_SETUP
 } NbaGameState;
 
 typedef struct {
@@ -52,6 +53,7 @@ typedef struct {
     uint8_t ea_voice_stage;
     NbaAudioDebugger audio_debugger;
     NbaTitleSequence title_sequence;
+    NbaSetupScreen setup;
     bool show_timing_debug;
     bool is_initialized;
 } NbaGame;

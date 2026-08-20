@@ -18,6 +18,7 @@ set(NBA95_SOURCES
     src/nba_renderer.c
     src/nba_ea_intro.c
     src/nba_title_sequence.c
+    src/nba_setup_screen.c
     src/nba_game.c
 )
 

@@ -30,3 +30,7 @@ extracted_wavs/
 ghidra-projects/
 build/ghidra-*
 .analysis/
+
+# Python bytecode
+__pycache__/
+*.pyc
