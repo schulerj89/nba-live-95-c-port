@@ -79,7 +79,7 @@ end, emu.callbackType.exec, 0x82F52D, 0x82F52D,
     emu.cpuType.snes, emu.memType.snesMemory)
 
 emu.addEventCallback(function()
-    if motion_frame >= 0 and motion_frame < 123 then
+    if motion_frame >= 0 and motion_frame < 303 then
         if not mode7_log then
             mode7_log = assert(io.open(out .. "/ea_mode7_state.txt", "wb"))
             mode7_log:write("frame,m7a,m7b,m7c,m7d,m7x,m7y,hscroll,vscroll\n")
@@ -96,6 +96,10 @@ emu.addEventCallback(function()
             tostring(state["ppu.mode7.hscroll"]),
             tostring(state["ppu.mode7.vscroll"])))
         mode7_log:flush()
+        if motion_frame >= 95 then
+            dump_mem(string.format("ea_motion_%03d_cgram.bin", motion_frame),
+                     emu.memType.snesCgRam, 0x200)
+        end
         local motion = assert(io.open(out .. string.format("/ea_motion_%03d.png", motion_frame), "wb"))
         motion:write(emu.takeScreenshot())
         motion:close()
@@ -111,7 +115,8 @@ emu.addEventCallback(function()
 
     if captured["legal.png"] and captured["ea_stage_1.png"] and
        captured["ea_stage_2.png"] and captured["ea_stage_3.png"] and
-       captured["ea_stage_4.png"] then
+       captured["ea_stage_4.png"] and
+       (not motion_enabled or motion_frame >= 303) then
         if mode7_log then mode7_log:close(); mode7_log = nil end
         local done = assert(io.open(out .. "/capture_complete.txt", "wb"))
         done:write("ok\n")

@@ -91,7 +91,7 @@ void nba_ea_intro_render_stage1(const NbaAssetPack *assets, NbaRenderer *ren, fl
         return;
     }
     float scale = nba_ea_intro_mode7_scale(frame);
-    int flash_frame = frame - (NBA_INTRO_ZOOM_FRAMES + 1);
+    int flash_frame = frame - (NBA_INTRO_ZOOM_FRAMES + 2);
 
     /* M7X/M7Y are fixed at $0200: every component shares the screen center. */
     float pcx = (float)NBA_SNES_WIDTH * 0.5f;
@@ -130,18 +130,27 @@ void nba_ea_intro_render_stage2(const NbaAssetPack *assets, NbaRenderer *ren, fl
     const NbaAssetItem *item2 = nba_assets_get(assets, NBA_ASSET_EA_LOGO_STAGE2);
     const NbaAssetItem *item1 = nba_assets_get(assets, NBA_ASSET_EA_LOGO_STAGE1);
     const NbaAssetItem *a_item = nba_assets_get(assets, NBA_ASSET_EA_A_LAYER);
+    const NbaAssetItem *fixed = nba_assets_get(assets, NBA_ASSET_EA_A_FIXED_SEQUENCE);
     if (!item1 || !item1->data || !item2 || !item2->data ||
-        !a_item || !a_item->data || a_item->size < width * height * 4u) return;
+        !a_item || !a_item->data || a_item->size < width * height * 4u ||
+        !fixed || !fixed->data || fixed->size < width * height * 4u * 11u) return;
 
     const uint32_t *p1 = (const uint32_t *)item1->data;
     const uint32_t *a_layer = (const uint32_t *)a_item->data;
     int frame = nba_ea_intro_local_frame(local_t);
-    if (frame >= NBA_INTRO_ZOOM_FRAMES + 1 + NBA_INTRO_FLASH_FRAMES) {
-        nba_ea_intro_render_captured_stage(item2, ren, start_x, start_y);
+    if (frame >= NBA_INTRO_ZOOM_FRAMES + 1) {
+        /* $82:F4C4 has switched ownership to fixed OAM here. Frames 56-66
+         * carry two identity waits, all eight palette writes, and settle. */
+        int fixed_frame = frame - (NBA_INTRO_ZOOM_FRAMES + 1);
+        if (fixed_frame > 10) fixed_frame = 10;
+        NbaAssetItem view = *fixed;
+        size_t frame_pixels = (size_t)width * height;
+        view.data = (const uint32_t *)fixed->data + frame_pixels * fixed_frame;
+        view.size = (uint32_t)(frame_pixels * sizeof(uint32_t));
+        nba_ea_intro_render_captured_stage(&view, ren, start_x, start_y);
         return;
     }
     float scale = nba_ea_intro_mode7_scale(frame);
-    int flash_frame = frame - (NBA_INTRO_ZOOM_FRAMES + 1);
 
     /* The previous E has already settled. Draw it first so the incoming A can occlude it. */
     for (uint32_t r = 0; r < height; r++) {
@@ -165,22 +174,22 @@ void nba_ea_intro_render_stage2(const NbaAssetPack *assets, NbaRenderer *ren, fl
     float pcx = (float)NBA_SNES_WIDTH * 0.5f;
     float pcy = (float)NBA_SNES_HEIGHT * 0.5f;
     float inv_scale = 1.0f / scale;
+    float origin_fix = 2.0f * (1.0f - inv_scale);
 
     for (int py = 0; py < NBA_SNES_HEIGHT; py++) {
-        int ty = (int)floorf(pcy - 2.0f + (float)(py - pcy) * inv_scale -
+        int ty = (int)floorf(pcy - origin_fix + (float)(py - pcy) * inv_scale -
                              (float)start_y + 0.5f);
         if (ty < 0 || ty >= (int)height) continue;
 
         for (int px = 0; px < NBA_SNES_WIDTH; px++) {
-            int tx = (int)floorf(pcx + 2.0f + (float)(px - pcx) * inv_scale -
+            int tx = (int)floorf(pcx + origin_fix + (float)(px - pcx) * inv_scale -
                                  (float)start_x + 0.5f);
             if (tx < 0 || tx >= (int)width) continue;
 
             uint32_t index = (uint32_t)ty * width + (uint32_t)tx;
             uint32_t a_color = a_layer[index];
             if (nba_ea_intro_pixel_visible(a_color)) {
-                uint32_t color = nba_ea_intro_flash_color(a_color, flash_frame);
-                ren->pixels[py * NBA_SNES_WIDTH + px] = color;
+                ren->pixels[py * NBA_SNES_WIDTH + px] = a_color;
             }
         }
     }
@@ -206,7 +215,7 @@ void nba_ea_intro_render_stage3(const NbaAssetPack *assets, NbaRenderer *ren, fl
         return;
     }
     float scale = nba_ea_intro_mode7_scale(frame);
-    int flash_frame = frame - (NBA_INTRO_ZOOM_FRAMES + 1);
+    int flash_frame = frame - (NBA_INTRO_ZOOM_FRAMES + 2);
 
     /* Draw the settled EA first; the incoming SPORTS layer is composited over it. */
     if (p2) {
@@ -262,9 +271,12 @@ void nba_ea_intro_render_stage3(const NbaAssetPack *assets, NbaRenderer *ren, fl
  * Purpose: Renders Stage 4 full completed logo and bottom "ELECTRONIC ARTS" typography banner.
  */
 void nba_ea_intro_render_stage4(const NbaAssetPack *assets, NbaRenderer *ren,
-                               int start_x, int start_y, uint32_t width, uint32_t height) {
+                               int local_frame, int start_x, int start_y,
+                               uint32_t width, uint32_t height) {
     if (!assets || !ren) return;
-    const NbaAssetItem *item4 = nba_assets_get(assets, NBA_ASSET_EA_LOGO_STAGE4);
+    const NbaAssetItem *item4 = nba_assets_get(
+        assets, local_frame >= 31 ? NBA_ASSET_EA_LOGO_FINAL :
+                                    NBA_ASSET_EA_LOGO_STAGE4);
     if (!item4 || !item4->data) return;
 
     const uint32_t *p4 = (const uint32_t *)item4->data;
@@ -327,6 +339,9 @@ void nba_ea_intro_render(const NbaAssetPack *assets, NbaRenderer *ren, float tim
                                    start_x, start_y, width, height);
     } else {
         /* Stage 4: completed logo hold, Mesen motion frame 100 onward. */
-        nba_ea_intro_render_stage4(assets, ren, start_x, start_y, width, height);
+        int local_frame = intro_frame - NBA_INTRO_STAGE1_FRAMES -
+                          NBA_INTRO_STAGE2_FRAMES - NBA_INTRO_STAGE3_FRAMES;
+        nba_ea_intro_render_stage4(assets, ren, local_frame,
+                                   start_x, start_y, width, height);
     }
 }

@@ -43,6 +43,7 @@ void nba_ea_intro_render_stage2(const NbaAssetPack *assets, NbaRenderer *ren, fl
 void nba_ea_intro_render_stage3(const NbaAssetPack *assets, NbaRenderer *ren, float local_t,
                                int start_x, int start_y, uint32_t width, uint32_t height);
 void nba_ea_intro_render_stage4(const NbaAssetPack *assets, NbaRenderer *ren,
-                               int start_x, int start_y, uint32_t width, uint32_t height);
+                               int local_frame, int start_x, int start_y,
+                               uint32_t width, uint32_t height);
 
 #endif /* NBA_EA_INTRO_H */

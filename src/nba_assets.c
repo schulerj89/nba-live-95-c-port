@@ -5,7 +5,7 @@
 
 #define NBA_ASSET_MAGIC "NBA95PAK"
 
-#define NBA_ASSET_PACK_VERSION 2u
+#define NBA_ASSET_PACK_VERSION 4u
 #define NBA_ASSET_HEADER_SIZE 16u
 #define NBA_ASSET_ENTRY_SIZE 24u
 
@@ -24,6 +24,14 @@ static bool asset_load_error(NbaAssetPack *pack, const char *message) {
 static bool asset_metadata_valid(uint32_t id, uint32_t size, uint32_t width,
                                  uint32_t height, uint32_t flags) {
     uint64_t required;
+    if (id == NBA_ASSET_EA_A_FIXED_SEQUENCE) {
+        uint32_t x = flags >> 16;
+        uint32_t y = flags & 0xFFFFu;
+        required = (uint64_t)width * (uint64_t)height * sizeof(uint32_t) * 11u;
+        return width > 0u && height > 0u && width <= NBA_SNES_WIDTH &&
+               height <= NBA_SNES_HEIGHT && x <= NBA_SNES_WIDTH - width &&
+               y <= NBA_SNES_HEIGHT - height && required == size;
+    }
     switch ((NbaAssetId)id) {
         case NBA_ASSET_NINTENDO_LICENSE:
             return width == 128u && height == 11u && size == 176u && flags == 0u;
@@ -38,7 +46,8 @@ static bool asset_metadata_valid(uint32_t id, uint32_t size, uint32_t width,
         case NBA_ASSET_EA_LOGO_STAGE3:
         case NBA_ASSET_EA_LOGO_STAGE4:
         case NBA_ASSET_EA_A_LAYER:
-        case NBA_ASSET_EA_E_LAYER: {
+        case NBA_ASSET_EA_E_LAYER:
+        case NBA_ASSET_EA_LOGO_FINAL: {
             uint32_t x = flags >> 16;
             uint32_t y = flags & 0xFFFFu;
             required = (uint64_t)width * (uint64_t)height * sizeof(uint32_t);
@@ -147,7 +156,9 @@ bool nba_assets_load(NbaAssetPack *pack, const char *asset_path) {
             ea_height = height;
             ea_flags = flags;
         }
-        if ((id == NBA_ASSET_EA_A_LAYER || id == NBA_ASSET_EA_E_LAYER) &&
+        if ((id == NBA_ASSET_EA_A_LAYER || id == NBA_ASSET_EA_E_LAYER ||
+             id == NBA_ASSET_EA_LOGO_FINAL ||
+             id == NBA_ASSET_EA_A_FIXED_SEQUENCE) &&
             (width != ea_width || height != ea_height || flags != ea_flags)) {
             return asset_load_error(pack, "EA letter-layer dimensions are inconsistent");
         }

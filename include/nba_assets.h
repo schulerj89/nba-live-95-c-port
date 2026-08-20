@@ -34,6 +34,8 @@ typedef enum {
     /* $82:F4F6/$82:F512 independent indexed Mode 7 letter tilegroups. */
     NBA_ASSET_EA_A_LAYER            = 70,
     NBA_ASSET_EA_E_LAYER            = 71,
+    NBA_ASSET_EA_LOGO_FINAL         = 72,
+    NBA_ASSET_EA_A_FIXED_SEQUENCE   = 73,
     NBA_ASSET_TITLE_VRAM            = 80,
     NBA_ASSET_TITLE_CGRAM           = 81,
     NBA_ASSET_TITLE_PPU_TRACE       = 82,

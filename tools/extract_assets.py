@@ -114,7 +114,14 @@ def create_asset_pack(rom_path, output_path):
         os.path.join(intro_capture_dir, f"ea_stage_{i}.png")
         for i in range(1, 5)
     ]
-    missing_stages = [path for path in ea_candidates if not os.path.exists(path)]
+    ea_final_candidate = os.path.join(intro_capture_dir, "ea_motion_131.png")
+    ea_a_fixed_candidates = [
+        os.path.join(intro_capture_dir, f"ea_motion_{frame:03d}.png")
+        for frame in range(56, 67)
+    ]
+    missing_stages = [path for path in
+                      ea_candidates + [ea_final_candidate] + ea_a_fixed_candidates
+                      if not os.path.exists(path)]
     if missing_stages:
         raise RuntimeError(
             "Missing EA intro captures: " + ", ".join(missing_stages) +
@@ -126,10 +133,11 @@ def create_asset_pack(rom_path, output_path):
     ea_packed = []
     ea_a_layer_bytes = b""
     ea_e_layer_bytes = b""
+    ea_a_fixed_bytes = bytearray()
 
     if all(os.path.exists(p) for p in ea_candidates):
         snes_frames = []
-        for p in ea_candidates:
+        for p in ea_candidates + [ea_final_candidate]:
             im = Image.open(p).convert('RGB')
             if im.size != (256, 224):
                 raise RuntimeError(
@@ -165,6 +173,22 @@ def create_asset_pack(rom_path, output_path):
                         argb = 0xFF000000 | (int(rgb[0]) << 16) | (int(rgb[1]) << 8) | int(rgb[2])
                         stage_bytes.extend(struct.pack("<I", argb))
             ea_packed.append(stage_bytes)
+
+        # $82:F4C4 flashes the settled A as fixed OAM, not through Mode 7.
+        # Preserve identity frames 56-57, all eight palette steps 58-65, and
+        # the settled frame 66 in one typed sequence payload.
+        for p in ea_a_fixed_candidates:
+            frame = np.array(Image.open(p).convert('RGB'))
+            crop = frame[urmin:urmax+1, ucmin:ucmax+1]
+            for r in range(h4):
+                for c in range(w4):
+                    rgb = crop[r, c]
+                    if np.all(rgb <= 10):
+                        ea_a_fixed_bytes.extend(struct.pack("<I", 0x00000000))
+                    else:
+                        argb = (0xFF000000 | (int(rgb[0]) << 16) |
+                                (int(rgb[1]) << 8) | int(rgb[2]))
+                        ea_a_fixed_bytes.extend(struct.pack("<I", argb))
 
         # $82:F512 returns after $80:8FA3 has written A's independent Mode 7
         # tilegroup. Decode the native interleaved Mode 7 tilemap/character
@@ -625,6 +649,8 @@ def create_asset_pack(rom_path, output_path):
         (6, w4, h4, ea_flags, ea_packed[3]),                  # ASSET_EA_LOGO_STAGE4
         (70, w4, h4, ea_flags, ea_a_layer_bytes),             # ASSET_EA_A_LAYER
         (71, w4, h4, ea_flags, ea_e_layer_bytes),             # ASSET_EA_E_LAYER
+        (72, w4, h4, ea_flags, ea_packed[4]),                 # ASSET_EA_LOGO_FINAL
+        (73, w4, h4, ea_flags, ea_a_fixed_bytes),             # ASSET_EA_A_FIXED_SEQUENCE
     ]
 
     if len(audio_intro_bytes) > 0:
@@ -682,7 +708,7 @@ def create_asset_pack(rom_path, output_path):
                     extra_audio_id += 1
 
     header_magic = b"NBA95PAK"
-    version = 2
+    version = 4
     asset_count = len(assets)
     entry_size = 24 # 6 * 4 bytes
 
