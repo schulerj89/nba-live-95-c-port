@@ -86,16 +86,16 @@ typedef struct {
     NbaTitlePhase phase;
     int hold_frames_left;
     int fade_level;             /* $0562 - INIDISP master brightness 15..0 */
-    float snap_timer;           /* title time forced by $80:F07E, <0 if none */
+    int snap_frame;             /* title frame forced by $80:F07E, <0 if none */
 
 } NbaTitleSequence;
 
 void nba_title_sequence_init(NbaTitleSequence *sequence);
 void nba_title_sequence_snap_complete(NbaTitleSequence *sequence);
-bool nba_title_sequence_advance(NbaTitleSequence *sequence, float timer);
+bool nba_title_sequence_advance(NbaTitleSequence *sequence);
 void nba_title_sequence_render(NbaTitleSequence *sequence,
                                const NbaAssetPack *assets,
                                NbaRenderer *renderer,
-                               float timer);
+                               int frame);
 
 #endif /* NBA_TITLE_SEQUENCE_H */

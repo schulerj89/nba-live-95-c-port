@@ -22,6 +22,7 @@ int main(int argc, char *argv[]) {
     bool title_only_test = false;
     bool setup_only_test = false;
     int step_frames = 30;
+    double tick_rate = 60.0;
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--rom") == 0 && i + 1 < argc) {
@@ -32,6 +33,8 @@ int main(int argc, char *argv[]) {
             is_headless = true;
         } else if (strcmp(argv[i], "--frames") == 0 && i + 1 < argc) {
             step_frames = atoi(argv[++i]);
+        } else if (strcmp(argv[i], "--tick-rate") == 0 && i + 1 < argc) {
+            tick_rate = strtod(argv[++i], NULL);
         } else if (strcmp(argv[i], "--dump-frame") == 0 && i + 1 < argc) {
             dump_frame_path = argv[++i];
         } else if (strcmp(argv[i], "--dump-audio") == 0 && i + 1 < argc) {
@@ -50,6 +53,7 @@ int main(int argc, char *argv[]) {
             printf("  --assets <path>       Path to extracted asset pack (.pak)\n");
             printf("  --headless            Run without opening GUI window\n");
             printf("  --frames <N>          Number of frames to step in headless mode (default: 30)\n");
+            printf("  --tick-rate <Hz>      Headless host tick rate (default: 60.0)\n");
             printf("  --audio-debug         Activate audio sample debugger in headless render\n");
             printf("  --title-only          Start at $80:E01E title state (headless tests)\n");
             printf("  --setup-only          Start at the $80:E600 -> $80:A2BF handoff\n");
@@ -61,6 +65,10 @@ int main(int argc, char *argv[]) {
     }
 
     if (is_headless) {
+        if (step_frames < 0 || tick_rate <= 0.0) {
+            fprintf(stderr, "[HEADLESS] --frames must be non-negative and --tick-rate must be positive.\n");
+            return 1;
+        }
         printf("[HEADLESS] Starting headless verification (ROM: %s, Assets: %s, frames: %d)\n",
                rom_path ? rom_path : "(none)", assets_path ? assets_path : "(none)", step_frames);
         NbaGame game;
@@ -86,12 +94,14 @@ int main(int argc, char *argv[]) {
 
         if (title_only_test) {
             game.state = NBA_STATE_TITLE_SEQUENCE;
+            game.state_frame = 0;
             game.state_timer = 0.0f;
             nba_title_sequence_init(&game.title_sequence);
         }
 
         if (setup_only_test) {
             game.state = NBA_STATE_GAME_SETUP;
+            game.state_frame = 0;
             game.state_timer = 0.0f;
             nba_setup_screen_init(&game.setup, &game.assets);
             game.setup.bgm_started = nba_audio_play_setup_spc(&game.assets);
@@ -127,7 +137,7 @@ int main(int argc, char *argv[]) {
                     game.input.pressed = NBA_BTN_DOWN;
                 }
             }
-            nba_game_tick(&game, 1.0f / 60.0f);
+            nba_game_tick(&game, (float)(1.0 / tick_rate));
         }
 
         nba_game_render(&game);

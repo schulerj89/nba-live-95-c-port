@@ -49,6 +49,7 @@ typedef struct {
     NbaInput input;
     NbaGameState state;
     uint32_t frame_count;
+    uint32_t state_frame;
     float state_timer;
     uint8_t ea_voice_stage;
     NbaAudioDebugger audio_debugger;

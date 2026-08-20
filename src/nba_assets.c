@@ -5,20 +5,21 @@
 
 #define NBA_ASSET_MAGIC "NBA95PAK"
 
-typedef struct {
-    char magic[8];
-    uint32_t version;
-    uint32_t asset_count;
-} PackHeader;
+#define NBA_ASSET_PACK_VERSION 1u
+#define NBA_ASSET_HEADER_SIZE 16u
+#define NBA_ASSET_ENTRY_SIZE 24u
 
-typedef struct {
-    uint32_t id;
-    uint32_t offset;
-    uint32_t size;
-    uint32_t width;
-    uint32_t height;
-    uint32_t flags;
-} PackEntry;
+static uint32_t asset_u32(const uint8_t *p) {
+    return (uint32_t)p[0] | ((uint32_t)p[1] << 8) |
+           ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
+}
+
+static bool asset_load_error(NbaAssetPack *pack, const char *message) {
+    fprintf(stderr, "[ASSETS] Error: %s\n", message);
+    free(pack->raw_data);
+    memset(pack, 0, sizeof(*pack));
+    return false;
+}
 
 /**
  * Offset/Address/Size: 0x000000 | Asset Pack Binary (NBA95PAK) | size: Dynamic (approx 1.45 MB)
@@ -38,7 +39,7 @@ bool nba_assets_load(NbaAssetPack *pack, const char *asset_path) {
     long file_size = ftell(f);
     fseek(f, 0, SEEK_SET);
 
-    if (file_size < (long)(sizeof(PackHeader))) {
+    if (file_size < (long)NBA_ASSET_HEADER_SIZE) {
         fprintf(stderr, "[ASSETS] Error: Asset pack too small (%ld bytes)\n", file_size);
         fclose(f);
         return false;
@@ -61,32 +62,54 @@ bool nba_assets_load(NbaAssetPack *pack, const char *asset_path) {
     fclose(f);
     pack->raw_size = (size_t)file_size;
 
-    PackHeader *hdr = (PackHeader *)pack->raw_data;
-    if (memcmp(hdr->magic, NBA_ASSET_MAGIC, 8) != 0) {
-        fprintf(stderr, "[ASSETS] Error: Invalid asset pack magic: %.8s\n", hdr->magic);
-        free(pack->raw_data);
-        pack->raw_data = NULL;
-        return false;
+    const uint8_t *header = pack->raw_data;
+    if (memcmp(header, NBA_ASSET_MAGIC, 8) != 0) {
+        return asset_load_error(pack, "Invalid asset pack magic");
     }
 
-    pack->item_count = hdr->asset_count;
-    if (pack->item_count > NBA_ASSET_MAX) {
-        pack->item_count = NBA_ASSET_MAX;
+    uint32_t version = asset_u32(header + 8);
+    uint32_t asset_count = asset_u32(header + 12);
+    if (version != NBA_ASSET_PACK_VERSION) {
+        return asset_load_error(pack, "Unsupported asset pack version");
+    }
+    if (asset_count == 0 || asset_count >= NBA_ASSET_MAX) {
+        return asset_load_error(pack, "Invalid asset count");
+    }
+    if (asset_count > (pack->raw_size - NBA_ASSET_HEADER_SIZE) /
+                      NBA_ASSET_ENTRY_SIZE) {
+        return asset_load_error(pack, "Truncated asset directory");
     }
 
-    PackEntry *entries = (PackEntry *)(pack->raw_data + sizeof(PackHeader));
-    for (uint32_t i = 0; i < pack->item_count; i++) {
-        PackEntry *e = &entries[i];
-        if (e->offset + e->size <= pack->raw_size) {
-            pack->items[i].id     = e->id;
-            pack->items[i].offset = e->offset;
-            pack->items[i].size   = e->size;
-            pack->items[i].width  = e->width;
-            pack->items[i].height = e->height;
-            pack->items[i].flags  = e->flags;
-            pack->items[i].data   = pack->raw_data + e->offset;
+    size_t data_start = NBA_ASSET_HEADER_SIZE +
+                        (size_t)asset_count * NBA_ASSET_ENTRY_SIZE;
+    for (uint32_t i = 0; i < asset_count; ++i) {
+        const uint8_t *entry = header + NBA_ASSET_HEADER_SIZE +
+                               (size_t)i * NBA_ASSET_ENTRY_SIZE;
+        uint32_t id = asset_u32(entry);
+        uint32_t offset = asset_u32(entry + 4);
+        uint32_t size = asset_u32(entry + 8);
+        if (id == NBA_ASSET_NONE || id >= NBA_ASSET_MAX) {
+            return asset_load_error(pack, "Asset ID is outside the supported range");
         }
+        for (uint32_t previous = 0; previous < i; ++previous) {
+            if (pack->items[previous].id == id) {
+                return asset_load_error(pack, "Duplicate asset ID");
+            }
+        }
+        if ((size_t)offset < data_start || (size_t)offset > pack->raw_size ||
+            (size_t)size > pack->raw_size - (size_t)offset) {
+            return asset_load_error(pack, "Asset payload is outside the pack");
+        }
+
+        pack->items[i].id = id;
+        pack->items[i].offset = offset;
+        pack->items[i].size = size;
+        pack->items[i].width = asset_u32(entry + 12);
+        pack->items[i].height = asset_u32(entry + 16);
+        pack->items[i].flags = asset_u32(entry + 20);
+        pack->items[i].data = pack->raw_data + offset;
     }
+    pack->item_count = asset_count;
 
     pack->is_loaded = true;
     printf("[ASSETS] Loaded asset pack: '%s' (%zu bytes, %u assets)\n",
@@ -100,13 +123,8 @@ bool nba_assets_load(NbaAssetPack *pack, const char *asset_path) {
  */
 void nba_assets_free(NbaAssetPack *pack) {
     if (!pack) return;
-    if (pack->raw_data) {
-        free(pack->raw_data);
-        pack->raw_data = NULL;
-    }
-    pack->raw_size = 0;
-    pack->item_count = 0;
-    pack->is_loaded = false;
+    free(pack->raw_data);
+    memset(pack, 0, sizeof(*pack));
 }
 
 /**

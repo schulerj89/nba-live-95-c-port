@@ -148,25 +148,29 @@ static void title_render_ppu(const NbaTitleSequence *s, NbaRenderer *renderer) {
     for (int y = 0; y < NBA_SNES_HEIGHT; ++y) {
         for (int x = 0; x < NBA_SNES_WIDTH; ++x) {
             uint32_t color = backdrop;
-            int palette, priority, value, best_z = 0;
+            int palette = 0, priority = 0, value, best_z = 0;
             if (s->main_screen & 0x02) {
                 value = title_sample_bg(s->vram, TITLE_BG2_MAP, TITLE_BG2_CHR, 4,
                                         false, true, s->bg_hscroll[1],
                                         s->bg_vscroll[1], x, y, &palette, &priority);
-                int z = priority ? 8 : 4;
-                if (value >= 0 && z > best_z) {
-                    color = title_color(s->cgram, palette * 16 + value, s->brightness);
-                    best_z = z;
+                if (value >= 0) {
+                    int z = priority ? 8 : 4;
+                    if (z > best_z) {
+                        color = title_color(s->cgram, palette * 16 + value, s->brightness);
+                        best_z = z;
+                    }
                 }
             }
             if (s->main_screen & 0x01) {
                 value = title_sample_bg(s->vram, TITLE_BG1_MAP, TITLE_BG1_CHR, 4,
                                         false, true, s->bg_hscroll[0],
                                         s->bg_vscroll[0], x, y, &palette, &priority);
-                int z = priority ? 9 : 5;
-                if (value >= 0 && z > best_z) {
-                    color = title_color(s->cgram, palette * 16 + value, s->brightness);
-                    best_z = z;
+                if (value >= 0) {
+                    int z = priority ? 9 : 5;
+                    if (z > best_z) {
+                        color = title_color(s->cgram, palette * 16 + value, s->brightness);
+                        best_z = z;
+                    }
                 }
             }
             if (s->main_screen & 0x04) {
@@ -179,10 +183,12 @@ static void title_render_ppu(const NbaTitleSequence *s, NbaRenderer *renderer) {
                     title_sample_bg(s->vram, TITLE_BG3_MAP, TITLE_BG3_CHR, 2,
                                     true, false, bg3_x, bg3_y,
                                     x, y, &palette, &priority);
-                int z = attract ? 10 : (priority ? 3 : 2);
-                if (value >= 0 && z > best_z) {
-                    color = title_color(s->cgram, palette * 4 + value, s->brightness);
-                    best_z = z;
+                if (value >= 0) {
+                    int z = attract ? 10 : (priority ? 3 : 2);
+                    if (z > best_z) {
+                        color = title_color(s->cgram, palette * 4 + value, s->brightness);
+                        best_z = z;
+                    }
                 }
             }
             renderer->pixels[y * NBA_SNES_WIDTH + x] = color;
@@ -197,7 +203,7 @@ void nba_title_sequence_init(NbaTitleSequence *sequence) {
     sequence->trace_offset = NBA_TITLE_PPU_HEADER_SIZE;
     sequence->phase = NBA_TITLE_PHASE_BUILD;
     sequence->fade_level = 15;
-    sequence->snap_timer = -1.0f;
+    sequence->snap_frame = -1;
 }
 
 /**
@@ -207,11 +213,10 @@ void nba_title_sequence_init(NbaTitleSequence *sequence) {
  */
 void nba_title_sequence_snap_complete(NbaTitleSequence *sequence) {
     if (!sequence) return;
-    sequence->snap_timer = (float)NBA_TITLE_BUILD_COMPLETE_FRAMES / 60.0f;
+    sequence->snap_frame = NBA_TITLE_BUILD_COMPLETE_FRAMES;
 }
 
-bool nba_title_sequence_advance(NbaTitleSequence *sequence, float timer) {
-    (void)timer;
+bool nba_title_sequence_advance(NbaTitleSequence *sequence) {
     if (!sequence) return false;
     if (sequence->phase == NBA_TITLE_PHASE_HOLD) {
         if (sequence->hold_frames_left > 0) sequence->hold_frames_left--;
@@ -226,12 +231,11 @@ bool nba_title_sequence_advance(NbaTitleSequence *sequence, float timer) {
 void nba_title_sequence_render(NbaTitleSequence *sequence,
                                const NbaAssetPack *assets,
                                NbaRenderer *renderer,
-                               float timer) {
+                               int frame) {
     if (!sequence || !assets || !renderer) return;
-    if (sequence->snap_timer >= 0.0f) timer = sequence->snap_timer;
+    if (sequence->snap_frame >= 0) frame = sequence->snap_frame;
     const NbaAssetItem *trace = nba_assets_get(assets, NBA_ASSET_TITLE_PPU_TRACE);
-    int target = (int)(timer * 60.0f + 0.5f);
-    if (title_trace_decode_to(sequence, assets, trace, target)) {
+    if (title_trace_decode_to(sequence, assets, trace, frame)) {
         int captured_brightness = sequence->brightness;
         if (sequence->fade_level < 15) {
             sequence->brightness = captured_brightness * sequence->fade_level / 15;

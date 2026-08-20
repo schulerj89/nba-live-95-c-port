@@ -4,8 +4,10 @@
 #include <stdio.h>
 #include <string.h>
 
-static int nba_game_timer_frame(float state_timer) {
-    return (int)(state_timer * 60.0f + 0.5f);
+static void nba_game_enter_state(NbaGame *game, NbaGameState state) {
+    game->state = state;
+    game->state_frame = 0;
+    game->state_timer = 0.0f;
 }
 
 /* SNES INIDISP master-brightness levels are linear values from 0 through 15. */
@@ -19,13 +21,13 @@ static uint32_t nba_game_master_brightness_color(uint32_t color, int brightness)
     return (color & 0xFF000000u) | (r << 16) | (g << 8) | b;
 }
 
-static int nba_game_license_brightness(float state_timer) {
-    int fade_frame = nba_game_timer_frame(state_timer) - NBA_LICENSE_FRAMES;
+static int nba_game_license_brightness(uint32_t state_frame) {
+    int fade_frame = (int)state_frame - NBA_LICENSE_FRAMES;
     return fade_frame <= 0 ? 15 : 15 - fade_frame;
 }
 
-static int nba_game_legal_brightness(float state_timer) {
-    int frame = nba_game_timer_frame(state_timer);
+static int nba_game_legal_brightness(uint32_t state_frame) {
+    int frame = (int)state_frame;
     int fade_out_start = NBA_SCREEN_FADE_FRAMES + NBA_LEGAL_FRAMES;
     if (frame < NBA_SCREEN_FADE_FRAMES) return frame;
     if (frame <= fade_out_start) return 15;
@@ -47,19 +49,22 @@ bool nba_game_init(NbaGame *game, const char *rom_path, const char *assets_path)
     nba_audio_init();
 
     /* Load asset pack if provided via parameter */
-    if (assets_path && assets_path[0] != '\0') {
-        nba_assets_load(&game->assets, assets_path);
+    if (assets_path && assets_path[0] != '\0' &&
+        !nba_assets_load(&game->assets, assets_path)) {
+        nba_audio_shutdown();
+        return false;
     }
 
     if (rom_path && rom_path[0] != '\0') {
         if (!nba_rom_load_file(&game->rom, rom_path)) {
-            printf("[GAME] Warning: Continuing without ROM file.\n");
+            nba_assets_free(&game->assets);
+            nba_audio_shutdown();
+            return false;
         }
     }
 
     /* Setup initial game state */
-    game->state = NBA_STATE_NINTENDO_LICENSE;
-    game->state_timer = 0.0f;
+    nba_game_enter_state(game, NBA_STATE_NINTENDO_LICENSE);
     game->frame_count = 0;
     nba_audio_debugger_init(&game->audio_debugger);
     nba_title_sequence_init(&game->title_sequence);
@@ -123,35 +128,32 @@ void nba_game_tick(NbaGame *game, float delta_time) {
     }
 
     game->state_timer += delta_time;
+    game->state_frame++;
     game->frame_count++;
 
     switch (game->state) {
         case NBA_STATE_BOOT_RESET:
-            if (game->state_timer >= 0.1f) {
-                game->state = NBA_STATE_NINTENDO_LICENSE;
-                game->state_timer = 0.0f;
+            if (game->state_frame >= 6) {
+                nba_game_enter_state(game, NBA_STATE_NINTENDO_LICENSE);
             }
             break;
 
         case NBA_STATE_NINTENDO_LICENSE:
             /* $80:FD9E holds for $78 frames, then $80:CF1B fades brightness to zero. */
             if (game->input.pressed & (NBA_BTN_START | NBA_BTN_A | NBA_BTN_B)) {
-                game->state = NBA_STATE_NBA_LEGAL_NOTICE;
-                game->state_timer = 0.0f;
-            } else if (nba_game_timer_frame(game->state_timer) >=
+                nba_game_enter_state(game, NBA_STATE_NBA_LEGAL_NOTICE);
+            } else if (game->state_frame >=
                        NBA_LICENSE_FRAMES + NBA_SCREEN_FADE_FRAMES) {
-                game->state = NBA_STATE_NBA_LEGAL_NOTICE;
-                game->state_timer = 0.0f;
+                nba_game_enter_state(game, NBA_STATE_NBA_LEGAL_NOTICE);
             }
             break;
 
         case NBA_STATE_NBA_LEGAL_NOTICE:
             /* $80:CF3B fades in, $80:FEE6 holds for $B4 frames, then $80:CF1B fades out. */
             if ((game->input.pressed & (NBA_BTN_START | NBA_BTN_A | NBA_BTN_B)) ||
-                nba_game_timer_frame(game->state_timer) >=
+                game->state_frame >=
                     NBA_SCREEN_FADE_FRAMES + NBA_LEGAL_FRAMES + NBA_SCREEN_FADE_FRAMES) {
-                game->state = NBA_STATE_EA_INTRO;
-                game->state_timer = 0.0f;
+                nba_game_enter_state(game, NBA_STATE_EA_INTRO);
             }
             break;
 
@@ -169,12 +171,10 @@ void nba_game_tick(NbaGame *game, float delta_time) {
             /* Step through the authentic 4 assembly stages (5.05s total hold) or advance on button press */
             if (game->input.pressed & (NBA_BTN_START | NBA_BTN_A | NBA_BTN_B)) {
                 nba_audio_stop();
-                game->state = NBA_STATE_TITLE_SEQUENCE;
-                game->state_timer = 0.0f;
+                nba_game_enter_state(game, NBA_STATE_TITLE_SEQUENCE);
                 nba_title_sequence_init(&game->title_sequence);
-            } else if (game->state_timer >= 5.05f) {
-                game->state = NBA_STATE_TITLE_SEQUENCE;
-                game->state_timer = 0.0f;
+            } else if (game->state_frame >= NBA_INTRO_TOTAL_FRAMES) {
+                nba_game_enter_state(game, NBA_STATE_TITLE_SEQUENCE);
                 nba_title_sequence_init(&game->title_sequence);
             }
             break;
@@ -192,7 +192,7 @@ void nba_game_tick(NbaGame *game, float delta_time) {
              * finished it holds 40 ($80:E5D9 #$0028). Pressing again during the
              * hold does nothing - the count is fixed. */
             if (game->title_sequence.phase == NBA_TITLE_PHASE_BUILD) {
-                int title_frame = nba_game_timer_frame(game->state_timer);
+                int title_frame = (int)game->state_frame;
                 bool build_complete = title_frame >= NBA_TITLE_BUILD_COMPLETE_FRAMES;
                 bool dismissed =
                     (game->input.pressed & (NBA_BTN_START | NBA_BTN_A | NBA_BTN_B)) != 0;
@@ -212,11 +212,10 @@ void nba_game_tick(NbaGame *game, float delta_time) {
                     }
                     game->title_sequence.phase = NBA_TITLE_PHASE_HOLD;
                 }
-            } else if (nba_title_sequence_advance(&game->title_sequence, game->state_timer)) {
+            } else if (nba_title_sequence_advance(&game->title_sequence)) {
                 /* $80:CF1B finished ramping INIDISP to zero. */
                 nba_audio_stop();
-                game->state = NBA_STATE_GAME_SETUP;
-                game->state_timer = 0.0f;
+                nba_game_enter_state(game, NBA_STATE_GAME_SETUP);
                 nba_setup_screen_init(&game->setup, &game->assets);
                 game->setup.bgm_started =
                     nba_audio_play_setup_spc(&game->assets);
@@ -248,7 +247,7 @@ void nba_game_render_nba_legal_notice(NbaGame *game) {
     const NbaAssetItem *item = nba_assets_get(&game->assets, NBA_ASSET_NBA_LEGAL_NOTICE);
     if (item && item->data) {
         uint32_t col_white = nba_game_master_brightness_color(
-            0xFFFFFFFF, nba_game_legal_brightness(game->state_timer));
+            0xFFFFFFFF, nba_game_legal_brightness(game->state_frame));
         const uint8_t *bitmap = (const uint8_t *)item->data;
         int start_y = (int)item->flags; /* Stored start_y in flags */
 
@@ -280,7 +279,8 @@ void nba_game_render_nba_legal_notice(NbaGame *game) {
  */
 void nba_game_render_ea_intro(NbaGame *game) {
     if (!game) return;
-    nba_ea_intro_render(&game->assets, &game->renderer, game->state_timer);
+    nba_ea_intro_render(&game->assets, &game->renderer,
+                        (float)game->state_frame / 60.0f);
 }
 
 /**
@@ -296,7 +296,6 @@ void nba_game_render(NbaGame *game) {
     uint32_t col_black      = 0xFF000000;
     uint32_t col_white      = 0xFFFFFFFF;
     uint32_t col_shadow     = 0xFF202020;
-    uint32_t col_gold       = 0xFFF8B800;
 
     switch (game->state) {
         case NBA_STATE_BOOT_RESET:
@@ -307,7 +306,7 @@ void nba_game_render(NbaGame *game) {
             nba_renderer_clear(ren, col_black);
 
             uint32_t license_white = nba_game_master_brightness_color(
-                col_white, nba_game_license_brightness(game->state_timer));
+                col_white, nba_game_license_brightness(game->state_frame));
 
             const NbaAssetItem *item = nba_assets_get(&game->assets, NBA_ASSET_NINTENDO_LICENSE);
             if (item && item->data) {
@@ -357,7 +356,7 @@ void nba_game_render(NbaGame *game) {
 
         case NBA_STATE_TITLE_SEQUENCE:
             nba_title_sequence_render(&game->title_sequence, &game->assets, ren,
-                                      game->state_timer);
+                                      (int)game->state_frame);
             break;
 
         case NBA_STATE_GAME_SETUP:
@@ -393,9 +392,9 @@ void nba_game_render(NbaGame *game) {
             case NBA_STATE_NBA_LEGAL_NOTICE: state_str = "NBA LEGAL NOTICE"; break;
             case NBA_STATE_EA_INTRO: {
                 state_str = "EA INTRO";
-                if (game->state_timer < 0.533f) stage_str = "STG 1: 'E'";
-                else if (game->state_timer < 1.050f) stage_str = "STG 2: 'A'";
-                else if (game->state_timer < 2.050f) stage_str = "STG 3: 'SPORTS'";
+                if (game->state_frame < 32) stage_str = "STG 1: 'E'";
+                else if (game->state_frame < 63) stage_str = "STG 2: 'A'";
+                else if (game->state_frame < 123) stage_str = "STG 3: 'SPORTS'";
                 else stage_str = "STG 4: 'GAME' (HOLD)";
                 break;
             }
