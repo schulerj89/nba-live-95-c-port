@@ -191,8 +191,35 @@ void nba_game_tick(NbaGame *game, float delta_time) {
                 }
                 game->title_sequence.audio_started = true;
             }
-            if ((game->input.pressed & (NBA_BTN_START | NBA_BTN_A | NBA_BTN_B | NBA_BTN_SELECT)) ||
-                nba_game_timer_frame(game->state_timer) >= NBA_TITLE_SEQUENCE_FRAMES) {
+
+            /* $80:E5C7 - dismissing the title. Bit 7 of $0A4C selects the path:
+             * if the build is still running the ROM snaps it complete via
+             * $80:F07E and holds 120 frames ($80:E5D3 #$0078); if it had already
+             * finished it holds 40 ($80:E5D9 #$0028). Pressing again during the
+             * hold does nothing - the count is fixed. */
+            if (game->title_sequence.phase == NBA_TITLE_PHASE_BUILD) {
+                int title_frame = nba_game_timer_frame(game->state_timer);
+                bool build_complete = title_frame >= NBA_TITLE_BUILD_COMPLETE_FRAMES;
+                bool dismissed =
+                    (game->input.pressed & (NBA_BTN_START | NBA_BTN_A | NBA_BTN_B)) != 0;
+
+                if (dismissed || title_frame >= NBA_TITLE_SEQUENCE_FRAMES) {
+                    if (!build_complete) {
+                        nba_title_sequence_snap_complete(&game->title_sequence);
+                        /* $80:E5F9 DEC A / BPL runs the wait count+1 times. */
+                        game->title_sequence.hold_frames_left = NBA_TITLE_SNAP_HOLD_FRAMES + 1;
+                        printf("[TITLE] Start during build: snapped complete ($80:F07E), "
+                               "holding %d frames.\n", NBA_TITLE_SNAP_HOLD_FRAMES);
+                    } else {
+                        /* $80:E5F9 DEC A / BPL runs the wait count+1 times. */
+                        game->title_sequence.hold_frames_left = NBA_TITLE_COMPLETE_HOLD_FRAMES + 1;
+                        printf("[TITLE] Start after build: holding %d frames.\n",
+                               NBA_TITLE_COMPLETE_HOLD_FRAMES);
+                    }
+                    game->title_sequence.phase = NBA_TITLE_PHASE_HOLD;
+                }
+            } else if (nba_title_sequence_advance(&game->title_sequence, game->state_timer)) {
+                /* $80:CF1B finished ramping INIDISP to zero. */
                 nba_audio_stop();
                 game->state = NBA_STATE_GAME_SETUP;
                 game->state_timer = 0.0f;

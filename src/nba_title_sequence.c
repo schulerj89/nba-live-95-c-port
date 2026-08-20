@@ -79,24 +79,111 @@ static uint32_t title_rgb565_to_argb(uint16_t color) {
     return 0xFF000000u | (r << 16) | (g << 8) | b;
 }
 
+/**
+ * Offset/Address/Size: 0x004F1B | $80:CF1B | size: 0x20
+ * Purpose: Applies the INIDISP master-brightness level ($0562, 15..0) that the
+ *          ROM ramps down during the title fade-out.
+ */
+static uint32_t title_apply_brightness(uint32_t argb, int level) {
+    if (level >= 15) return argb;
+    if (level <= 0) return argb & 0xFF000000u;
+    uint32_t r = ((argb >> 16) & 0xFFu) * (uint32_t)level / 15u;
+    uint32_t g = ((argb >> 8) & 0xFFu) * (uint32_t)level / 15u;
+    uint32_t b = (argb & 0xFFu) * (uint32_t)level / 15u;
+    return (argb & 0xFF000000u) | (r << 16) | (g << 8) | b;
+}
+
+/**
+ * Offset/Address/Size: 0x00601E | $80:E01E | size: 0x1E0
+ * Purpose: Enters the title scene and rewinds the reference stream.
+ */
 void nba_title_sequence_init(NbaTitleSequence *sequence) {
     if (!sequence) return;
     memset(sequence, 0, sizeof(*sequence));
     title_video_rewind(sequence);
+    sequence->phase = NBA_TITLE_PHASE_BUILD;
+    sequence->hold_frames_left = 0;
+    sequence->fade_level = 15;
+    sequence->snap_timer = -1.0f;
 }
 
+/**
+ * Offset/Address/Size: 0x00707E | $80:F07E | size: 0x1F
+ * Subroutines: $80:8627, $80:868C, $80:8BA1 (0x680-byte transfer from $7F:4006)
+ * Purpose: Snaps the title to its finished state. The ROM does this by DMAing
+ *          the completed title tilemap into VRAM in one transfer, so every
+ *          remaining piece appears at once instead of animating in. Here the
+ *          equivalent is jumping the reference stream to the frame where the
+ *          build has finished.
+ */
+void nba_title_sequence_snap_complete(NbaTitleSequence *sequence) {
+    if (!sequence) return;
+    sequence->snap_timer = (float)NBA_TITLE_BUILD_COMPLETE_FRAMES / 60.0f;
+}
+
+/**
+ * Offset/Address/Size: 0x0065C7 | $80:E5C7 | size: 0x4A
+ * Subroutines: $80:F07E (snap), $80:86B0 (frame wait), $80:CF1B (fade out)
+ * Purpose: Runs the title exit. Holds for the ROM's fixed frame count - 120
+ *          frames when the title had to be snapped, 40 when it had already
+ *          finished building - then ramps INIDISP brightness down one step per
+ *          frame. Returns true once the fade has completed and the next scene
+ *          may be entered.
+ */
+bool nba_title_sequence_advance(NbaTitleSequence *sequence, float timer) {
+    (void)timer;
+    if (!sequence) return false;
+
+    switch (sequence->phase) {
+        case NBA_TITLE_PHASE_BUILD:
+            break;
+
+        case NBA_TITLE_PHASE_HOLD:
+            /* $80:E5F9 JSL $80:86B0 / DEC A / BPL $E5F9 */
+            if (sequence->hold_frames_left > 0) {
+                sequence->hold_frames_left--;
+            } else {
+                sequence->phase = NBA_TITLE_PHASE_FADE_OUT;
+                sequence->fade_level = 15;
+            }
+            break;
+
+        case NBA_TITLE_PHASE_FADE_OUT:
+            /* $80:CF1B - DEC $0562 once per frame until it reaches zero */
+            if (sequence->fade_level > 0) {
+                sequence->fade_level--;
+            }
+            if (sequence->fade_level == 0) return true;
+            break;
+    }
+    return false;
+}
+
+/**
+ * Offset/Address/Size: 0x00601E | $80:E01E | size: 0x1E0
+ * Purpose: Draws the title scene, applying the $80:CF1B INIDISP brightness
+ *          level so the fade-out is visible.
+ */
 void nba_title_sequence_render(NbaTitleSequence *sequence,
                                const NbaAssetPack *assets,
                                NbaRenderer *renderer,
                                float timer) {
     if (!sequence || !assets || !renderer) return;
+
+    /* $80:F07E pinned the scene at the finished build; hold there. */
+    if (sequence->snap_timer >= 0.0f) {
+        timer = sequence->snap_timer;
+    }
+
     const NbaAssetItem *video = nba_assets_get(assets, NBA_ASSET_TITLE_SEQUENCE_VIDEO);
     uint32_t fps_num, fps_den, frame_count;
     if (title_video_header(video, &fps_num, &fps_den, &frame_count)) {
         int target = (int)(timer * (float)fps_num / (float)fps_den);
         if (title_video_decode_to(sequence, video, target)) {
+            int level = sequence->fade_level;
             for (int i = 0; i < NBA_SNES_WIDTH * NBA_SNES_HEIGHT; ++i) {
-                renderer->pixels[i] = title_rgb565_to_argb(sequence->framebuffer[i]);
+                uint32_t argb = title_rgb565_to_argb(sequence->framebuffer[i]);
+                renderer->pixels[i] = title_apply_brightness(argb, level);
             }
             return;
         }
