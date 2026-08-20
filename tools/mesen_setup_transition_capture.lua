@@ -5,16 +5,17 @@
 -- an SPC snapshot, and every mirrored $2140-$2143 write with an SPC-cycle
 -- timestamp.  The port packs these hardware/control bytes; no WAV or video is
 -- used at runtime.
-local out = "C:/Users/joshs/Projects/nba-live-95-c-port/.analysis/setup_transition"
+local out = os.getenv("NBA95_CAPTURE_DIR")
+assert(out and out ~= "", "NBA95_CAPTURE_DIR is not set")
 local log = assert(io.open(out .. "/capture_log.txt", "wb"))
 local ppu = assert(io.open(out .. "/ppu_trace.txt", "wb"))
 
-local frame = 0
-local PRESS_AT = 1500
+local title_frame = -1
+local transition_frame = -1
+local fade_seen = false
+local PRESS_AT = 850
 local PRESS_LEN = 8
-local SNAP_AT = 1637
 local CAPTURE_FRAMES = 1800 -- 30 seconds of the CPU-driven Setup sequence
-local LAST_FRAME = SNAP_AT + CAPTURE_FRAMES
 
 local capturing = false
 local base_cycle = 0
@@ -23,12 +24,24 @@ local events = {}
 local event_file = nil
 
 emu.addEventCallback(function()
-    if frame >= PRESS_AT and frame < PRESS_AT + PRESS_LEN then
+    if title_frame >= PRESS_AT and title_frame < PRESS_AT + PRESS_LEN then
         emu.setInput({ start = true }, 0)
     else
         emu.setInput({}, 0)
     end
 end, emu.eventType.inputPolled)
+
+emu.addMemoryCallback(function()
+    if title_frame < 0 then title_frame = 0 end
+end, emu.callbackType.exec, 0x80E1B1, 0x80E1B1,
+    emu.cpuType.snes, emu.memType.snesMemory)
+
+-- $80:E600 calls the 15-step master-brightness fade. The snapshot is armed
+-- here, then taken on the last visible (brightness 1) frame.
+emu.addMemoryCallback(function()
+    fade_seen = true
+end, emu.callbackType.exec, 0x80E600, 0x80E600,
+    emu.cpuType.snes, emu.memType.snesMemory)
 
 local function dump_mem(name, mem_type, size)
     local bytes = {}
@@ -69,10 +82,35 @@ for bank = 0, 0xBF do
 end
 
 emu.addEventCallback(function()
-    frame = frame + 1
+    if title_frame >= 0 and transition_frame < 0 then title_frame = title_frame + 1 end
+    local ok, state = pcall(emu.getState)
 
-    if frame >= 1600 and frame <= 1830 then
-        local ok, state = pcall(emu.getState)
+    if transition_frame < 0 and fade_seen and ok and type(state) == "table" and
+       state["ppu.screenBrightness"] == 1 then
+        transition_frame = 0
+        base_cycle = assert(state["spc.cycle"], "SPC cycle unavailable")
+        dump_mem("spc_ram.bin", emu.memType.spcRam, 0x10000)
+        dump_mem("spc_dsp.bin", emu.memType.spcDspRegisters, 0x80)
+        local f = assert(io.open(out .. "/spc_state.txt", "wb"))
+        f:write(string.format(
+            "pc=%s a=%s x=%s y=%s sp=%s ps=%s cycle=%s frames=%d\n",
+            tostring(state["spc.pc"]), tostring(state["spc.a"]),
+            tostring(state["spc.x"]), tostring(state["spc.y"]),
+            tostring(state["spc.sp"]), tostring(state["spc.ps"]),
+            tostring(base_cycle), CAPTURE_FRAMES))
+        f:close()
+        event_file = assert(io.open(out .. "/apu_cycle_trace.txt", "wb"))
+        event_file:write("# cycle_delta port value\n")
+        capturing = true
+        log:write(string.format("snapshot brightness=1 cycle=%d\n", base_cycle))
+        log:flush()
+    end
+
+    if transition_frame < 0 then return end
+    local frame = transition_frame
+    transition_frame = transition_frame + 1
+
+    if frame <= 230 then
         if ok and type(state) == "table" then
             ppu:write(string.format(
                 "%d forced=%s bright=%s main=%s sub=%s bg1=%s,%s bg2=%s,%s bg3=%s,%s\n",
@@ -89,34 +127,15 @@ emu.addEventCallback(function()
         end
     end
 
-    if frame == SNAP_AT then
-        local ok, state = pcall(emu.getState)
-        assert(ok and type(state) == "table", "SPC state unavailable")
-        base_cycle = assert(state["spc.cycle"], "SPC cycle unavailable")
-        dump_mem("spc_ram.bin", emu.memType.spcRam, 0x10000)
-        dump_mem("spc_dsp.bin", emu.memType.spcDspRegisters, 0x80)
-        local f = assert(io.open(out .. "/spc_state.txt", "wb"))
-        f:write(string.format(
-            "pc=%s a=%s x=%s y=%s sp=%s ps=%s cycle=%s frames=%d\n",
-            tostring(state["spc.pc"]), tostring(state["spc.a"]),
-            tostring(state["spc.x"]), tostring(state["spc.y"]),
-            tostring(state["spc.sp"]), tostring(state["spc.ps"]),
-            tostring(base_cycle), CAPTURE_FRAMES))
-        f:close()
-        event_file = assert(io.open(out .. "/apu_cycle_trace.txt", "wb"))
-        event_file:write("# cycle_delta port value\n")
-        capturing = true
-        log:write(string.format("snapshot frame=%d cycle=%d\n", frame, base_cycle))
-        log:flush()
-    end
-
-    if frame >= LAST_FRAME then
+    if frame >= CAPTURE_FRAMES then
         capturing = false
         flush_events()
         if event_file then event_file:close() end
         ppu:close()
         log:write(string.format("done frames=%d events=%d\n", CAPTURE_FRAMES, event_count))
         log:close()
+        local done = assert(io.open(out .. "/capture_complete.txt", "wb"))
+        done:write("ok\n"); done:close()
         emu.stop(0)
     end
 end, emu.eventType.endFrame)

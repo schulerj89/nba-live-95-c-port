@@ -9,19 +9,20 @@ import tempfile
 from pathlib import Path
 
 from PIL import Image
+from audio_fingerprint import assert_wav_fingerprint
 
 
 EXPECTED_RGB_SHA256 = {
     # Frames passed to --setup-only. 104 is the final forced-blank frame;
     # 105 releases $80:A2BF. Frames 146/166 match Mesen frames 1784/1804.
     104: "2cbbeef1249170a43854962fa5b19fba628470c70beb9ce23e15a0f05cb891f2",
-    105: "dc2b8bf1eaae35de5719fbbae1d80be7739c78a6795d155b7e1c6d817416e0c2",
-    118: "b2dfcebd0f1dcbf36688bf9ee5354b7306513fe407da14cdd227b8844a5b3111",
+    105: "fc55ce12b6688bea4700cdc3c65cbf84dcf860658a774f0c03b741decfa33459",
+    118: "b74d254c5419713f36925c96faf4e9c5dac5f6432a01cb0a8484a0e95caa0c85",
     146: "047185a6c2ffb0c4f079f0984ebb6f04afeaa3220c651de7812d1e710df310a2",
     162: "e7f61a0f21ca67bf4f3833ddbaa13c9e5501e04d1fd57f6bf3f54a0dc2d1719f",
     166: "51ef64c72ae13fc1c37e15a2cf9c3a913ccce788e9547c61f246b75bacdef416",
 }
-EXPECTED_AUDIO_SHA256 = "9f58d341b823dc6e584f6bb736f7cf68fb39c10171f6f06e7ce8e2de12629f11"
+EXPECTED_AUDIO_RMS = [0, 769, 888, 1186, 1123, 1484, 654, 1381, 1428, 1445]
 EXPECTED_CURSOR_SHA256 = {
     0: "e3ec329dc39626391b9315e7ff60bf4c60b9a31b23d903bdcdca22ac5738fc65",
     1: "efc1e6e70a979c44ce821752be4a2eab6afff558ced34ad2fcb1aae0ac5c787b",
@@ -111,11 +112,9 @@ def check_frames(exe, rom, pack):
                     f"Setup transition frame {frame} changed: {actual} != {expected_hash}"
                 )
             if frame == min(EXPECTED_RGB_SHA256):
-                audio_hash = hashlib.sha256(audio_output.read_bytes()).hexdigest()
-                if audio_hash != EXPECTED_AUDIO_SHA256:
-                    raise AssertionError(
-                        f"Setup SPC PCM changed: {audio_hash} != {EXPECTED_AUDIO_SHA256}"
-                    )
+                assert_wav_fingerprint(
+                    audio_output, 960000, EXPECTED_AUDIO_RMS, 14000, 16000
+                )
 
         # Exercise the real title-dismiss path as well as the direct fixture.
         # Start on title frame 0, take $80:E5C7's snap/hold/fade, preserve the

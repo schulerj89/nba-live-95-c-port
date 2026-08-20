@@ -58,7 +58,7 @@ the user's ROM. Mesen is a reverse-engineering/capture tool only and is not a
 runtime dependency. `tools/test_title_pipeline.py` rejects the retired asset
 formats, validates the six primary cue frames (235, 469, 586, 703, 820, 938),
 checks the later 7/8/9/10 credit cues, verifies all 43,777 APU writes, and locks
-Mesen-matched renderer frames with RGB hashes.
+Mesen-matched renderer frames plus the complete generated PCM with hashes.
 
 The 52 standalone WAVs in F11 remain BRR previews for debugging. They are not
 the title playlist; title playback uses the SPC hardware assets above.

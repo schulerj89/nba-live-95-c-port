@@ -46,32 +46,10 @@ static int nba_ea_intro_pixel_visible(uint32_t color) {
     return r > 24 || g > 24 || b > 24;
 }
 
-static int nba_ea_intro_pixel_is_logo(uint32_t color) {
-    uint32_t r = (color >> 16) & 0xFF;
-    uint32_t g = (color >> 8) & 0xFF;
-    uint32_t b = color & 0xFF;
-    return r > 48 && r > g && r > b;
-}
-
-/* Stage 2 capture colors the newly written A tiles peach; the existing E stays orange. */
-static int nba_ea_intro_pixel_is_a(uint32_t color) {
-    uint32_t g = (color >> 8) & 0xFF;
-    uint32_t b = color & 0xFF;
-    return g > 80 && b > 48;
-}
-
-static int nba_ea_intro_pixel_is_fixed_e(uint32_t color) {
-    uint32_t r = (color >> 16) & 0xFF;
-    uint32_t g = (color >> 8) & 0xFF;
-    uint32_t b = color & 0xFF;
-    return r > 48 && g < 80 && b < 48;
-}
-
-static int nba_ea_intro_pixel_is_sports(uint32_t color) {
-    uint32_t r = (color >> 16) & 0xFF;
-    uint32_t g = (color >> 8) & 0xFF;
-    uint32_t b = color & 0xFF;
-    return b > 48 && b > r && b > g;
+static uint32_t nba_ea_intro_final_color(const uint32_t *final_pixels,
+                                        uint32_t index, uint32_t fallback) {
+    uint32_t final_color = final_pixels ? final_pixels[index] : 0;
+    return nba_ea_intro_pixel_visible(final_color) ? final_color : fallback;
 }
 
 /**
@@ -83,12 +61,10 @@ void nba_ea_intro_render_stage1(const NbaAssetPack *assets, NbaRenderer *ren, fl
                                int start_x, int start_y, uint32_t width, uint32_t height) {
     if (!assets || !ren) return;
     const NbaAssetItem *item1 = nba_assets_get(assets, NBA_ASSET_EA_LOGO_STAGE1);
-    const NbaAssetItem *item2 = nba_assets_get(assets, NBA_ASSET_EA_LOGO_STAGE2);
     const NbaAssetItem *item4 = nba_assets_get(assets, NBA_ASSET_EA_LOGO_STAGE4);
-    if ((!item1 || !item1->data) && (!item2 || !item2->data)) return;
+    if (!item1 || !item1->data) return;
 
-    const uint32_t *p1 = (item1 && item1->data) ? (const uint32_t *)item1->data : NULL;
-    const uint32_t *p2 = (item2 && item2->data) ? (const uint32_t *)item2->data : NULL;
+    const uint32_t *p1 = (const uint32_t *)item1->data;
     const uint32_t *p4 = (item4 && item4->data) ? (const uint32_t *)item4->data : NULL;
     int frame = nba_ea_intro_local_frame(local_t);
     float scale = nba_ea_intro_mode7_scale(frame);
@@ -107,11 +83,10 @@ void nba_ea_intro_render_stage1(const NbaAssetPack *assets, NbaRenderer *ren, fl
             int tx = (int)floorf(pcx + (float)(px - pcx) * inv_scale - (float)start_x + 0.5f);
             if (tx < 0 || tx >= (int)width) continue;
 
-            uint32_t source_color = p2 ? p2[ty * width + tx] : p1[ty * width + tx];
-            int is_e = p2 ? nba_ea_intro_pixel_is_fixed_e(source_color)
-                          : nba_ea_intro_pixel_is_logo(source_color);
-            if (is_e) {
-                uint32_t color = p4 ? p4[ty * width + tx] : source_color;
+            uint32_t index = (uint32_t)ty * width + (uint32_t)tx;
+            uint32_t source_color = p1[index];
+            if (nba_ea_intro_pixel_visible(source_color)) {
+                uint32_t color = nba_ea_intro_final_color(p4, index, source_color);
                 color = nba_ea_intro_flash_color(color, flash_frame);
                 ren->pixels[py * NBA_SNES_WIDTH + px] = color;
             }
@@ -128,9 +103,11 @@ void nba_ea_intro_render_stage2(const NbaAssetPack *assets, NbaRenderer *ren, fl
                                int start_x, int start_y, uint32_t width, uint32_t height) {
     if (!assets || !ren) return;
     const NbaAssetItem *item2 = nba_assets_get(assets, NBA_ASSET_EA_LOGO_STAGE2);
+    const NbaAssetItem *item1 = nba_assets_get(assets, NBA_ASSET_EA_LOGO_STAGE1);
     const NbaAssetItem *item4 = nba_assets_get(assets, NBA_ASSET_EA_LOGO_STAGE4);
-    if (!item2 || !item2->data) return;
+    if (!item1 || !item1->data || !item2 || !item2->data) return;
 
+    const uint32_t *p1 = (const uint32_t *)item1->data;
     const uint32_t *p2 = (const uint32_t *)item2->data;
     const uint32_t *p4 = (item4 && item4->data) ? (const uint32_t *)item4->data : NULL;
     int frame = nba_ea_intro_local_frame(local_t);
@@ -142,20 +119,20 @@ void nba_ea_intro_render_stage2(const NbaAssetPack *assets, NbaRenderer *ren, fl
         int py = start_y + (int)r;
         if (py < 0 || py >= NBA_SNES_HEIGHT) continue;
         for (uint32_t c = 0; c < width; c++) {
-            uint32_t source_color = p2[r * width + c];
-            uint32_t final_color = p4 ? p4[r * width + c] : source_color;
-            if (nba_ea_intro_pixel_is_fixed_e(source_color) &&
-                nba_ea_intro_pixel_is_logo(final_color)) {
+            uint32_t index = r * width + c;
+            uint32_t source_color = p1[index];
+            if (nba_ea_intro_pixel_visible(source_color)) {
                 int px = start_x + (int)c;
                 if (px >= 0 && px < NBA_SNES_WIDTH) {
                     /* $82:F3E9 selects A's palette block for F4C4, not this settled E. */
-                    ren->pixels[py * NBA_SNES_WIDTH + px] = final_color;
+                    ren->pixels[py * NBA_SNES_WIDTH + px] =
+                        nba_ea_intro_final_color(p4, index, source_color);
                 }
             }
         }
     }
 
-    /* F512's peach A pixels are the new tilegroup transformed by F56D. */
+    /* F512 adds the A tilegroup; derive it from Stage 2 minus the settled E. */
     float pcx = (float)NBA_SNES_WIDTH * 0.5f;
     float pcy = (float)NBA_SNES_HEIGHT * 0.5f;
     float inv_scale = 1.0f / scale;
@@ -168,10 +145,12 @@ void nba_ea_intro_render_stage2(const NbaAssetPack *assets, NbaRenderer *ren, fl
             int tx = (int)floorf(pcx + (float)(px - pcx) * inv_scale - (float)start_x + 0.5f);
             if (tx < 0 || tx >= (int)width) continue;
 
-            uint32_t col2 = p2[ty * width + tx];
-            uint32_t final_color = p4 ? p4[ty * width + tx] : col2;
-            if (nba_ea_intro_pixel_is_a(col2) && nba_ea_intro_pixel_is_logo(final_color)) {
-                uint32_t color = nba_ea_intro_flash_color(final_color, flash_frame);
+            uint32_t index = (uint32_t)ty * width + (uint32_t)tx;
+            uint32_t col2 = p2[index];
+            if (nba_ea_intro_pixel_visible(col2) &&
+                !nba_ea_intro_pixel_visible(p1[index])) {
+                uint32_t color = nba_ea_intro_final_color(p4, index, col2);
+                color = nba_ea_intro_flash_color(color, flash_frame);
                 ren->pixels[py * NBA_SNES_WIDTH + px] = color;
             }
         }
@@ -204,21 +183,21 @@ void nba_ea_intro_render_stage3(const NbaAssetPack *assets, NbaRenderer *ren, fl
             int py = start_y + (int)r;
             if (py < 0 || py >= NBA_SNES_HEIGHT) continue;
             for (uint32_t c = 0; c < width; c++) {
-                uint32_t source_color = p2[r * width + c];
-                uint32_t final_color = p4 ? p4[r * width + c] : source_color;
-                if (nba_ea_intro_pixel_is_logo(source_color) &&
-                    nba_ea_intro_pixel_is_logo(final_color)) {
+                uint32_t index = r * width + c;
+                uint32_t source_color = p2[index];
+                if (nba_ea_intro_pixel_visible(source_color)) {
                     int px = start_x + (int)c;
                     if (px >= 0 && px < NBA_SNES_WIDTH) {
                         /* $82:F43A selects SPORTS' palette block for F4C4, not settled EA. */
-                        ren->pixels[py * NBA_SNES_WIDTH + px] = final_color;
+                        ren->pixels[py * NBA_SNES_WIDTH + px] =
+                            nba_ea_intro_final_color(p4, index, source_color);
                     }
                 }
             }
         }
     }
 
-    /* F52E's blue pixels identify the new SPORTS tilegroup transformed by F56D. */
+    /* F52E adds SPORTS; derive it from Stage 3 minus the settled EA. */
     float pcx = (float)NBA_SNES_WIDTH * 0.5f;
     float pcy = (float)NBA_SNES_HEIGHT * 0.5f;
     float inv_scale = 1.0f / scale;
@@ -231,10 +210,13 @@ void nba_ea_intro_render_stage3(const NbaAssetPack *assets, NbaRenderer *ren, fl
             int tx = (int)floorf(pcx + (float)(px - pcx) * inv_scale - (float)start_x + 0.5f);
             if (tx < 0 || tx >= (int)width) continue;
 
-            uint32_t col3 = p3[ty * width + tx];
-            uint32_t final_color = p4 ? p4[ty * width + tx] : col3;
-            if (nba_ea_intro_pixel_is_sports(col3) && nba_ea_intro_pixel_is_sports(final_color)) {
-                uint32_t color = nba_ea_intro_flash_color(final_color, flash_frame);
+            uint32_t index = (uint32_t)ty * width + (uint32_t)tx;
+            uint32_t col3 = p3[index];
+            uint32_t col2 = p2 ? p2[index] : 0;
+            if (nba_ea_intro_pixel_visible(col3) &&
+                !nba_ea_intro_pixel_visible(col2)) {
+                uint32_t color = nba_ea_intro_final_color(p4, index, col3);
+                color = nba_ea_intro_flash_color(color, flash_frame);
                 ren->pixels[py * NBA_SNES_WIDTH + px] = color;
             }
         }

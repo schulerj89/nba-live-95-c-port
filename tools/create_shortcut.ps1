@@ -1,8 +1,14 @@
+param(
+    [Parameter(Mandatory = $true)]
+    [string]$RomPath
+)
+
 $desktop = [Environment]::GetFolderPath('Desktop')
 $shortcutPath = Join-Path $desktop "NBA Live '95 (C Port).lnk"
-$targetExe = "C:\Users\joshs\Projects\nba-live-95-c-port\build\nba95_port.exe"
-$workingDir = "C:\Users\joshs\Projects\nba-live-95-c-port"
-$arguments = '--rom "F:\Games\SNES\NBA Live 95 (USA).sfc" --assets "C:\Users\joshs\Projects\nba-live-95-c-port\build\nba95_assets.pak"'
+$workingDir = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
+$targetExe = Join-Path $workingDir 'build\nba95_port.exe'
+$assetPack = Join-Path $workingDir 'build\nba95_assets.pak'
+$arguments = "--rom `"$RomPath`" --assets `"$assetPack`""
 
 $wshShell = New-Object -ComObject WScript.Shell
 $shortcut = $wshShell.CreateShortcut($shortcutPath)

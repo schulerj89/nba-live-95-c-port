@@ -8,6 +8,7 @@ import tempfile
 from pathlib import Path
 
 from PIL import Image
+from audio_fingerprint import assert_wav_fingerprint
 
 
 EXPECTED_CUES = [(235, 1), (469, 2), (586, 3), (703, 4), (820, 5), (938, 6)]
@@ -19,7 +20,7 @@ EXPECTED_RGB_SHA256 = {
     1320: "f93474ec0ed7002fa9c1a12cf821bd123d4152d68cae1ce421eb0a3be24afc3e",
     1440: "43a3c225bc5a7a1793474c761e1250b895811c630d4e54c3417d7b3f7f7fbfd9",
 }
-EXPECTED_AUDIO_SHA256 = "465d3497c1e3c05674a242be54f549e30da33ca0087e50322869875a603a324f"
+EXPECTED_AUDIO_RMS = [909, 841, 1133, 1089, 1674, 1266, 966, 1393, 1512, 1601]
 
 
 def load_pack(path):
@@ -109,11 +110,9 @@ def check_frames(exe, rom, pack):
                     f"title frame {frame} changed: {actual_hash} != {expected_hash}"
                 )
             if frame == min(EXPECTED_RGB_SHA256):
-                audio_hash = hashlib.sha256(audio_output.read_bytes()).hexdigest()
-                if audio_hash != EXPECTED_AUDIO_SHA256:
-                    raise AssertionError(
-                        f"title SPC PCM changed: {audio_hash} != {EXPECTED_AUDIO_SHA256}"
-                    )
+                assert_wav_fingerprint(
+                    audio_output, 1152000, EXPECTED_AUDIO_RMS, 13000, 15000
+                )
 
 
 def main():

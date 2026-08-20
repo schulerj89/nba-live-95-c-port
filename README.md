@@ -1,38 +1,51 @@
-# NBA Live '95 - SNES Native C Port
+# NBA Live '95 native C port
 
-A high-performance, native C port and decompilation of **NBA Live '95** for the Super Nintendo Entertainment System (SNES).
+An in-progress native C99 port of the US SNES release of NBA Live '95. The
+current playable path covers the Nintendo license, NBA legal screen, EA SPORTS
+intro, animated title, and Game Setup entrance/menu.
 
-## Architecture & Subsystems
+Graphics and audio come from a user-supplied ROM-derived asset pack. The title
+and Game Setup music run the original SPC700 driver and BRR samples; the pack
+does not contain rendered title video or mixed title/Setup songs.
 
-- **Native C Implementation**: Direct C99 architecture with no heavy third-party dependencies.
-- **Hardware Register Emulation**: Replicates the 65816 boot sequence (`$80:8020`), PPU forced blanking (`$2100 = 0x8F`), VMAIN configuration (`$2115 = 0x80`), FastROM enablement (`$420D = 0x01`), NMI & auto-joypad interrupts (`$4200 = 0x81`), VRAM/CGRAM management, and frame pacing.
-- **Accurate Font & Graphics Pipeline**: Reconstructs authentic SNES font glyphs and BGR555 color palettes.
-- **Native Win32 Presentation**: Low-latency 59.94 Hz frame timer (`QueryPerformanceCounter` & `timeBeginPeriod(1)`) with `StretchDIBits` rendering.
+## Requirements
 
-## Building & Running
+- Windows 10/11 and Visual Studio 2022 with the Desktop C++ workload
+- Python 3.10+ with `pip install -r requirements.txt`
+- The verified US ROM with normalized SHA-256
+  `2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870`
+- Mesen 2 for regenerating the ignored hardware-state captures
 
-### Prerequisites
-- CMake 3.16+
-- Visual Studio 2022 (MSVC C/C++ compiler) or Clang/GCC
+CMake 3.16+ is optional. `build.ps1` and CMake consume the same
+`nba95_sources.txt` manifest.
 
-### Build Command
+## Reproduce, build, and test
+
+Enable script file I/O in Mesen, then create the ignored `.analysis` captures:
+
 ```powershell
-.\build.ps1
+.\tools\capture_assets.ps1 -RomPath '<path-to-rom>' -MesenPath '<path-to-Mesen.exe>'
 ```
 
-### Running GUI
+Extract a fresh pack, compile at MSVC `/W4`, and run every regression:
+
 ```powershell
-.\build.ps1 -Run -RomPath "F:\Games\SNES\NBA Live 95 (USA).sfc"
+.\build.ps1 -RomPath '<path-to-rom>' -ExtractAssets -Test
 ```
 
-### Headless Frame Capture / Automated Test
+Run the GUI:
+
 ```powershell
-.\build.ps1 -Headless -RomPath "F:\Games\SNES\NBA Live 95 (USA).sfc" -DumpFrame "build\nintendo_license.bmp"
+.\build.ps1 -RomPath '<path-to-rom>' -Run
 ```
+
+The tests lock intro/title/Setup pixels, both title-exit paths, all Setup cursor
+rows, malformed-pack handling, ROM identity, 59.94/60 Hz equivalence, robust
+runtime-PCM fingerprints, and focused SPC700/S-DSP vectors.
 
 ## Controls
 
-| SNES Button | Keyboard Key |
+| SNES button | Keyboard |
 |---|---|
 | **D-Pad Up** | Up Arrow / W |
 | **D-Pad Down** | Down Arrow / S |
@@ -46,3 +59,18 @@ A high-performance, native C port and decompilation of **NBA Live '95** for the 
 | **R Trigger** | E |
 | **Start** | Enter |
 | **Select** | Space / Shift |
+
+F10 toggles the timing HUD and F11 opens the audio debugger.
+
+## Technical notes
+
+- [Title visuals and audio](docs/post-ea-title-audio.md)
+- [Title-to-Setup transition](docs/title-to-setup-transition.md)
+- [Game Setup rendering](docs/game-setup-screen.md)
+- [Game Setup audio](docs/game-setup-audio.md)
+- [Reverse-engineering tools](tools/README.md)
+
+Remaining fidelity work is documented in the subsystem notes. Setup option
+editing still needs the ROM's BG3 glyph writer, and Setup's CPU-side music
+decisions currently use a cycle-timed control trace rather than a direct C port
+of the 65816 sequencer.

@@ -8,11 +8,11 @@ it (Ghidra headless). Nothing is inferred. The addresses the previous pass used
 ## Reproducing the measurements
 
 Mesen's Lua sandbox blocks file I/O by default. Set
-`Debug.ScriptWindow.AllowIoOsAccess = true` in `Mesen2/settings.json`
-(a backup of the original is at `settings.json.bak-nba95`).
+`Debug.ScriptWindow.AllowIoOsAccess = true` in `Mesen2/settings.json`, then use
+the repository capture wrapper:
 
-```bash
-"C:\Users\joshs\AppData\Local\Microsoft\WinGet\Packages\SourMesen.Mesen2_Microsoft.Winget.Source_8wekyb3d8bbwe\Mesen.exe" "F:\Games\SNES\NBA Live 95 (USA).sfc" tools\mesen_setup_capture.lua
+```powershell
+.\tools\capture_assets.ps1 -RomPath '<path-to-rom>' -MesenPath '<path-to-Mesen.exe>'
 ```
 
 | script | produces |
@@ -71,11 +71,13 @@ parked at y=225 (off screen), so OBJ contributes nothing.
 
 ## Scroll behaviour (measured per frame)
 
-Handoff/loading:
+Handoff/loading (the capture now uses routine-relative frames; the historical
+global frame numbers are included only to relate the original trace):
 
-- frame 1637 is the last visible title-fade frame (brightness 1)
-- frames 1638-1742 are forced blank while the next scene is built
-- frame 1743 releases forced blank at brightness 1 with BG1/BG2 scroll 768
+- `$80:E600` enters the 15-step fade; the brightness-1 frame is capture frame 0
+- the following 105 frames are forced blank while the next scene is built
+- `$80:A2BF` builds the Setup layers; forced blank then releases at brightness
+  1 with BG1/BG2 scroll 768
 
 Entrance, 32 frames:
 
@@ -156,184 +158,11 @@ Two PPU details were needed to land this pixel-exactly:
 - Vertical scroll is offset by one — the first displayed scanline shows
   tilemap line `vscroll + 1`.
 
-## Still outstanding
+## Rendering status
 
 1. **Option values.** Changing Mode/Style/Level/Quarter needs the ROM glyph
    renderer that writes into the BG3 tile canvas.
 
-Current accuracy against the ROM frame: **100 % of pixels identical** (0 of
-57344 differing, max channel delta 0), with the gold highlight in place.
-
-## Title screen exit (Start during the build)
-
-`$80:E5C7` is the routine that runs when the title is dismissed. It branches on
-bit 7 of `$0A4C`, the "build already finished" flag:
-
-```
-80:E5C7  LDA !$0A4C
-80:E5CA  BIT #$0080
-80:E5CD  BNE $E5D9        ; already complete -> skip the snap
-80:E5CF  JSL $80:F07E     ; snap the title to its finished state
-80:E5D3  LDA #$0078       ; ...and hold 120 frames
-80:E5D6  PHA
-80:E5D7  BRA $E5DD
-80:E5D9  LDA #$0028       ; already complete -> hold 40 frames
-80:E5DC  PHA
-80:E5DD  ...              ; load palette $80:E7D1 through $80:8A02
-80:E5F9  JSL $80:86B0     ; wait one frame
-80:E5FD  DEC A
-80:E5FE  BPL $E5F9        ; runs count+1 times
-80:E600  JSL $80:CF1B     ; fade out, then hand off to the next scene
-```
-
-`$80:F07E` does the snap by DMAing the finished title tilemap — 0x680 bytes
-from `$7F:4006` — into VRAM in a single transfer, so the remaining pieces
-appear at once instead of continuing to animate in.
-
-`$80:CF1B` is the fade: `DEC $0562` once per frame until the brightness level
-reaches zero.
-
-These addresses came from a differential exec trace — the title screen traced
-once with Start pressed and once without (`tools/mesen_title_trace.lua`); the
-listed ranges are the ones that only execute on the pressed run.
-
-### Measured against the ROM
-
-| | ROM | port |
-|---|---|---|
-| press mid-build -> fade begins | 124 frames | 124 frames |
-| press after build -> fade begins | 44 frames | 44 frames |
-| snap latency | ~4 frames | 2 frames |
-| fade length | 15 INIDISP steps | 15 steps |
-
-The 124 and 44 figures are `#$0078`/`#$0028` plus one, because `DEC A / BPL`
-runs the wait loop count+1 times, plus the ROM's input-detection latency.
-
-**A second press during the hold does nothing.** Verified directly: pressing
-Start at frame 1450 and again at 1500 produces a fade at exactly the same
-frame as the single press. The hold is a fixed count, so the transition is
-snap -> fixed hold -> fade, not snap -> wait for a second press.
-
-The port needs one derived constant the ROM does not have. Its title is driven
-by a reference frame stream rather than a tilemap, so the snap seeks that
-stream to the point where the build has finished:
-`NBA_TITLE_BUILD_COMPLETE_FRAMES = 965`, measured from the port's own stream
-(the title scene starts at frame 649 and the build completes at 1614).
-
-## Game Setup music (implemented)
-
-The screen genuinely has a sequenced track. Polling the DSP every frame across
-the settled screen (`tools/mesen_dsp_activity.lua`) shows **315 pitch/sample
-changes and 233 note re-triggers over 700 frames**, across voices using sample
-numbers 0, 4, 8, 13, 19, 20, 21, 23. It is not a held chord and not a stream.
-
-The whole CPU-to-driver interface is four bytes. The ports are mirrored across
-banks `$00`-`$3F` and `$80`-`$BF`; hooking every mirror shows that Setup is
-CPU-driven, averaging roughly 142 writes per frame. The final capture starts on
-frame 1637, snapshots SPC RAM/DSP/CPU state, then records 30 seconds containing
-**102,445 writes** with `spc.cycle` timestamps. The binary asset is control data,
-not rendered PCM.
-
-### What is built
-
-`src/nba_spc.c` is the in-game SPC700 + S-DSP core. Asset IDs 88-91 hold SPC
-RAM, DSP registers, SPC CPU state, and the cycle-timed `$2140-$2143` trace.
-`nba_audio_play_setup_spc` resumes the driver and synthesizes 32 kHz stereo PCM
-in memory. Mesen's `spc.cycle` uses 2.048 MHz half-cycle units, so extraction
-normalizes each delta by two into the core's 1.024 MHz domain; the DSP then
-emits one sample per 32 SPC cycles. No Setup WAV is present in the asset pack.
-
-```
-build\spc_render.exe .analysis\setup_capture\spc_ram.bin .analysis\setup_capture\spc_dsp.bin 0x06B2 7 22 99 255 0 8 out.wav
-```
-
-Working so far:
-
-- the SPC700 core executes the real driver, cycling through `$048B`, `$04DA`,
-  `$044A`, `$0497`, `$044D`, `$0548`
-- the DSP decodes BRR from the sample directory at `$0200` and produces clean
-  tonal output (harmonics at 605/1210/1816 Hz, 97% of energy below 5 kHz)
-- timers tick at the right rates — 1156 ticks/second across T0/T1/T2, matching
-  500 + 432 + 182 Hz for targets `$10`/`$2C`/`$94`
-- the driver polls the timer 38,340 times a second, so its wait loop is live
-
-Two things had to be fixed to get that far. `$F4`-`$F7` are the CPU-facing
-output latches: what the SPC reads back is whatever the 65816 last wrote, so
-SPC writes must not change the read value. Without that the snapshot resumes
-mid-handshake and the driver spins forever at `$0443`
-(`MOV A,$F4` / `BNE $0443`). And a timer target of 0 means 256, not 0.
-
-### The divergence, and what it actually was
-
-A differential PC trace settled it. `tools/mesen_spc_trace.lua` captures an APU
-snapshot and logs the next 60,000 SPC700 PCs from that exact instant;
-`spc_render ... pctrace` does the same through this core, and the two streams
-are diffed.
-
-The first divergence was at instruction 370, at `$048D`. The code there is:
-
-```
-048B  E4 FD     MOV A,$FD      ; timer 0 output
-048D  D0 01     BNE $0490      ; no tick -> fall through to the RET
-048F  6F        RET
-0490  C4 73     MOV $73,A      ; process the tick
-```
-
-But the timers were not the problem: `$0490` executes **119 times in both**
-traces, and `$0548`, `$04DA`, `$0495`, `$0497`, `$0499` all execute exactly 952
-times in both. The tick path was already correct.
-
-The real signal was the PC histogram: Mesen executes **106 distinct addresses,
-this core only 29**. The first address Mesen reaches that the core never does
-is `$0451`, entered from:
-
-```
-044A  3F 8B 04  CALL $048B     ; run one tick
-044D  E4 F4     MOV A,$F4      ; read APU port 0
-044F  F0 F9     BEQ $044A      ; loop while the port is empty
-0451  ...                      ; a command arrived - process it
-```
-
-**There is no bad opcode.** The driver idles in that loop until the 65816 hands
-it a command, and this core was faithfully idling because nothing was feeding
-the ports.
-
-The reason that was missed earlier is a capture bug of mine: the APU ports are
-mirrored across banks `$00`-`$3F` and `$80`-`$BF`, and the first version of
-`tools/mesen_apu_ports.lua` hooked only `$00`/`$80`. That reported 24 writes.
-Hooking every mirror reports **71,065** over the same span — about 142 writes
-per frame, in groups of `port1/port2/port3 = params; port0 = $0B; port0 = $00`.
-
-So the Game Setup music is **CPU-driven**: the SPC700 driver is a playback
-engine and the 65816 sequences it, several commands per frame.
-
-### Validation history
-
-`tools/spc_replay_main.c` feeds the recorded port stream back into the core and
-renders a WAV:
-
-```
-build\spc_replay.exe .analysis\setup_capture\trace_spc_ram.bin .analysis\setup_capture\trace_spc_dsp.bin 0x06B2 7 22 99 255 0 .analysis\setup_capture\apu_ports.txt 1900 6 out.wav
-```
-
-With the real command stream the core produces music, not a held tone —
-envelope std 688 across 0.125s windows versus 27 before, RMS ranging 278-2498.
-Comparing its DSP registers against Mesen's own per-frame log:
-
-| | match |
-|---|---|
-| voice pitch | 1840/2880 (63.9%) |
-| voice sample number | 1814/2880 (63.0%) |
-
-At the start the earlier frame-stamped replay was essentially exact, but it
-drifted because writes were distributed evenly inside each video frame. The
-runtime path replaces that approximation with the new SPC-cycle timestamps;
-the DSP emits one sample every 32 SPC cycles, so commands land at the correct
-audio sample.
-
-### Remaining audio work
-
-The authentic next step would be a direct C port of the 65816 sequencer at
-`$80:A9E3`, `$80:AA7B`, and `$80:AACD`. The current implementation is already
-ROM-driver/BRR synthesis rather than a music recording, but its CPU-side
-command decisions are replayed from cycle-timed control data in the asset pack.
+The captured settled reference frame is **100% pixel-identical** (0 of 57,344
+pixels differ), including the gold highlight. Transition and cursor-row hashes
+are enforced by `tools/test_setup_transition.py`.

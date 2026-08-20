@@ -1,8 +1,10 @@
 """Locate captured VRAM regions inside the ROM to find their uncompressed source."""
 import os, sys
 
+if len(sys.argv) != 2:
+    raise SystemExit("Usage: python find_vram_in_rom.py <rom>")
 root = os.path.join(os.path.dirname(__file__), "..")
-rom = open(r"F:\Games\SNES\NBA Live 95 (USA).sfc", "rb").read()
+rom = open(sys.argv[1], "rb").read()
 vram = open(os.path.join(root, ".analysis", "setup_capture", "vram.bin"), "rb").read()
 
 def lorom_addr(pc):

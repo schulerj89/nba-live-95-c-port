@@ -1,8 +1,9 @@
 import os, sys, struct, wave
 
-rom_path = r"F:\Games\SNES\NBA Live 95 (USA).sfc"
-if len(sys.argv) > 1:
-    rom_path = sys.argv[1]
+if len(sys.argv) < 2:
+    print("Usage: python extract_all_wavs.py <rom> [output-directory]")
+    sys.exit(2)
+rom_path = sys.argv[1]
 
 if not os.path.exists(rom_path):
     print(f"Error: ROM not found at {rom_path}")
@@ -11,7 +12,8 @@ if not os.path.exists(rom_path):
 with open(rom_path, "rb") as f:
     rom = f.read()
 
-out_dir = r"c:\Users\joshs\Projects\nba-live-95-c-port\extracted_wavs"
+out_dir = sys.argv[2] if len(sys.argv) > 2 else os.path.join(
+    os.path.dirname(__file__), "..", "extracted_wavs")
 os.makedirs(out_dir, exist_ok=True)
 
 def decode_brr_fast(data):

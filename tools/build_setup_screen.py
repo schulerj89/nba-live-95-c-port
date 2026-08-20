@@ -116,7 +116,7 @@ def verify(vram, cgram):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--rom", default=r"F:\Games\SNES\NBA Live 95 (USA).sfc")
+    ap.add_argument("--rom", required=True)
     ap.add_argument("--from-frame", type=int, default=1700)
     ap.add_argument("--to-frame", type=int, default=1790)
     ap.add_argument("--verify", action="store_true")

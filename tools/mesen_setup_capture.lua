@@ -2,17 +2,29 @@
 -- screen plus full PPU/APU state and a per-frame BG scroll log.
 -- This Mesen build: emu.setInput(inputTable, port); memTypes are snesVideoRam /
 -- snesCgRam / snesWorkRam / spcRam / snesSpriteRam.
-local out = "C:/Users/joshs/Projects/nba-live-95-c-port/.analysis/setup_capture"
+local out = os.getenv("NBA95_CAPTURE_DIR")
+assert(out and out ~= "", "NBA95_CAPTURE_DIR is not set")
 local log = assert(io.open(out .. "/capture_log.txt", "wb"))
 local scrolllog = assert(io.open(out .. "/scroll_log.txt", "wb"))
 
-local frame = 0
-local PRESS_AT = 1500
+local title_frame = -1
+local setup_frame = -1
+local PRESS_AT = 850
 local PRESS_LEN = 8
-local SHOT_FROM = 1560
-local SHOT_TO = 2100
-local STATE_AT = 1900
-local LAST_FRAME = 2120
+local SHOT_FROM = 0
+local SHOT_TO = 460
+local STATE_AT = 300
+local LAST_FRAME = 480
+
+emu.addMemoryCallback(function()
+    if title_frame < 0 then title_frame = 0 end
+end, emu.callbackType.exec, 0x80E1B1, 0x80E1B1,
+    emu.cpuType.snes, emu.memType.snesMemory)
+
+emu.addMemoryCallback(function()
+    if title_frame >= PRESS_AT and setup_frame < 0 then setup_frame = 0 end
+end, emu.callbackType.exec, 0x80A2BF, 0x80A2BF,
+    emu.cpuType.snes, emu.memType.snesMemory)
 
 local function dumpMem(name, memType, size)
     if memType == nil then
@@ -41,7 +53,7 @@ local function dumpTable(f, t, prefix, depth)
 end
 
 emu.addEventCallback(function()
-    if frame >= PRESS_AT and frame < PRESS_AT + PRESS_LEN then
+    if title_frame >= PRESS_AT and title_frame < PRESS_AT + PRESS_LEN then
         emu.setInput({ start = true }, 0)
     else
         emu.setInput({ }, 0)
@@ -49,9 +61,12 @@ emu.addEventCallback(function()
 end, emu.eventType.inputPolled)
 
 emu.addEventCallback(function()
-    frame = frame + 1
+    if title_frame >= 0 and setup_frame < 0 then title_frame = title_frame + 1 end
+    if setup_frame < 0 then return end
+    local frame = setup_frame
+    setup_frame = setup_frame + 1
 
-    if frame >= SHOT_FROM - 60 and frame <= SHOT_TO then
+    if frame >= SHOT_FROM and frame <= SHOT_TO then
         local ok, st = pcall(emu.getState)
         if ok and type(st) == "table" and st.ppu and st.ppu.layers then
             local L = st.ppu.layers
@@ -91,6 +106,8 @@ emu.addEventCallback(function()
     if frame >= LAST_FRAME then
         log:write("capture done\n")
         log:close(); scrolllog:close()
+        local done = assert(io.open(out .. "/capture_complete.txt", "wb"))
+        done:write("ok\n"); done:close()
         emu.stop(0)
     end
 end, emu.eventType.endFrame)

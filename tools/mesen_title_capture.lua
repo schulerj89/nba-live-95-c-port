@@ -7,7 +7,8 @@
 -- VRAM/CGRAM/OAM, WRAM, CPU->APU port writes, and writes to the title music cue
 -- mailbox $064A.  tools/extract_assets.py validates and packs these files; the
 -- C port, not Mesen, renders the tiles and synthesizes the BRR samples.
-local out = "C:/Users/joshs/Projects/nba-live-95-c-port/.analysis/title_capture"
+local out = os.getenv("NBA95_CAPTURE_DIR")
+assert(out and out ~= "", "NBA95_CAPTURE_DIR is not set")
 
 local log = assert(io.open(out .. "/capture_log.txt", "wb"))
 local apu = assert(io.open(out .. "/apu_ports.txt", "wb"))
@@ -177,6 +178,8 @@ emu.addEventCallback(function()
         vram_writes:close(); cgram_writes:close(); oam_writes:close()
         log:write("# done title_frames=" .. math.max(title_frame, 0) .. "\n")
         log:close()
+        local done = assert(io.open(out .. "/capture_complete.txt", "wb"))
+        done:write("ok\n"); done:close()
         emu.stop(0)
     end
 end, emu.eventType.endFrame)
