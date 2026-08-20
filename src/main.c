@@ -31,6 +31,9 @@ int main(int argc, char *argv[]) {
     const char *setup_menu = NULL;
     int setup_menu_row = 0;
     int setup_menu_right = 0;
+    int setup_main_row = -1;
+    int setup_main_right = 0;
+    int setup_main_left = 0;
     bool setup_menu_confirm = false;
     bool setup_menu_b = false;
 
@@ -81,6 +84,12 @@ int main(int argc, char *argv[]) {
             setup_menu_row = atoi(argv[++i]);
         } else if (strcmp(argv[i], "--setup-menu-right") == 0 && i + 1 < argc) {
             setup_menu_right = atoi(argv[++i]);
+        } else if (strcmp(argv[i], "--setup-main-row") == 0 && i + 1 < argc) {
+            setup_main_row = atoi(argv[++i]);
+        } else if (strcmp(argv[i], "--setup-main-right") == 0 && i + 1 < argc) {
+            setup_main_right = atoi(argv[++i]);
+        } else if (strcmp(argv[i], "--setup-main-left") == 0 && i + 1 < argc) {
+            setup_main_left = atoi(argv[++i]);
         } else if (strcmp(argv[i], "--setup-menu-confirm") == 0) {
             setup_menu_confirm = true;
         } else if (strcmp(argv[i], "--setup-menu-b") == 0) {
@@ -105,6 +114,9 @@ int main(int argc, char *argv[]) {
             printf("  --setup-menu-right N  Apply N right-value adjustments\n");
             printf("  --setup-menu-confirm  Press Start to commit submenu values\n");
             printf("  --setup-menu-b        Press ignored B after scripted edits\n");
+            printf("  --setup-main-row N    Select main Setup row 0..3\n");
+            printf("  --setup-main-right N  Apply N right adjustments on the main row\n");
+            printf("  --setup-main-left N   Apply N left adjustments on the main row\n");
             printf("  --spc-self-test       Run deterministic SPC700/S-DSP core vectors\n");
             printf("  --dump-frame <file>   Save rendered frame to 24-bit BMP image\n");
             printf("  --dump-audio <file>   Save the active runtime-synthesized WAV\n");
@@ -133,7 +145,10 @@ int main(int argc, char *argv[]) {
             return 1;
         }
         if (setup_menu_row < 0 || setup_menu_row > 1000 ||
-            setup_menu_right < 0 || setup_menu_right > 1000) {
+            setup_menu_right < 0 || setup_menu_right > 1000 ||
+            setup_main_row < -1 || setup_main_row > 3 ||
+            setup_main_right < 0 || setup_main_right > 1000 ||
+            setup_main_left < 0 || setup_main_left > 1000) {
             fprintf(stderr, "[HEADLESS] Invalid Setup menu row or adjustment count.\n");
             return 1;
         }
@@ -153,6 +168,9 @@ int main(int argc, char *argv[]) {
         bool setup_menu_done = false;
         int setup_menu_moves_done = 0;
         int setup_menu_right_done = 0;
+        int setup_main_right_done = 0;
+        int setup_main_left_done = 0;
+        bool setup_main_done = setup_main_row < 0;
         for (int i = 1; i < argc; i++) {
             if (strcmp(argv[i], "--timing-debug") == 0) timing_debug_test = true;
             if (strcmp(argv[i], "--enter-setup") == 0) enter_setup = true;
@@ -244,6 +262,21 @@ int main(int argc, char *argv[]) {
                     }
                 }
             }
+            if (!setup_main_done && game.state == NBA_STATE_GAME_SETUP &&
+                game.setup_screen.page == NBA_SETUP_PAGE_MAIN &&
+                game.setup_screen.frame >= NBA_SETUP_BG3_SETTLE_FRAME) {
+                if ((int)game.setup_screen.row != setup_main_row) {
+                    game.input.pressed = NBA_BTN_DOWN;
+                } else if (setup_main_right_done < setup_main_right) {
+                    game.input.pressed = NBA_BTN_RIGHT;
+                    setup_main_right_done++;
+                } else if (setup_main_left_done < setup_main_left) {
+                    game.input.pressed = NBA_BTN_LEFT;
+                    setup_main_left_done++;
+                } else {
+                    setup_main_done = true;
+                }
+            }
             nba_game_tick(&game, (float)(1.0 / tick_rate));
         }
         if (asset_debug_id >= 0) {
@@ -293,6 +326,12 @@ int main(int argc, char *argv[]) {
                        s->working_rules[report_row] : s->working_options[report_row],
                    strcmp(setup_menu, "rules") == 0 ?
                        s->config.rules[report_row] : s->config.options[report_row]);
+        }
+        if (setup_main_row >= 0) {
+            const NbaSetupScreen *s = &game.setup_screen;
+            printf("[SETUP MAIN TEST] row=%d mode=%u style=%u level=%u quarter=%u\n",
+                   (int)s->row, s->config.main_values[0], s->config.main_values[1],
+                   s->config.main_values[2], s->config.main_values[3]);
         }
 
         nba_game_render(&game);

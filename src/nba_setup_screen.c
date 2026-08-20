@@ -12,6 +12,8 @@ static const uint16_t setup_rule_max[NBA_SETUP_RULE_COUNT] = {
 static const uint16_t setup_option_max[NBA_SETUP_OPTION_COUNT] = {
     45, 45, 2, 1, 1, 1, 1
 };
+static const uint16_t setup_main_max[NBA_SETUP_MAIN_VALUE_COUNT] = { 3, 2, 2, 3 };
+static const uint16_t setup_main_defaults[NBA_SETUP_MAIN_VALUE_COUNT] = { 0, 1, 0, 0 };
 
 static bool setup_menu_assets_ready(const NbaSetupScreen *s) {
     return s && s->rules_vram && s->rules_cgram && s->rules_oam &&
@@ -227,6 +229,8 @@ void nba_setup_screen_init(NbaSetupScreen *s, const NbaAssetPack *assets) {
     s->row = NBA_SETUP_ROW_MODE;
     s->page = NBA_SETUP_PAGE_MAIN;
     {
+        memcpy(s->config.main_values, setup_main_defaults,
+               sizeof(s->config.main_values));
         static const uint16_t default_rules[NBA_SETUP_RULE_COUNT] = {
             45, 45, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
         };
@@ -245,6 +249,18 @@ void nba_setup_screen_init(NbaSetupScreen *s, const NbaAssetPack *assets) {
     const NbaAssetItem *options_off = nba_assets_get(assets, NBA_ASSET_OPTIONS_OFF_VRAM);
     const NbaAssetItem *options_mono = nba_assets_get(assets, NBA_ASSET_OPTIONS_MONO_VRAM);
     const NbaAssetItem *options_cpu = nba_assets_get(assets, NBA_ASSET_OPTIONS_CPU_VRAM);
+    static const NbaAssetId main_variant_ids[10] = {
+        NBA_ASSET_SETUP_MODE_SEASON_VRAM,
+        NBA_ASSET_SETUP_MODE_PLAYOFFS_VRAM,
+        NBA_ASSET_SETUP_MODE_LOAD_SERIES_VRAM,
+        NBA_ASSET_SETUP_STYLE_CUSTOM_VRAM,
+        NBA_ASSET_SETUP_STYLE_ARCADE_VRAM,
+        NBA_ASSET_SETUP_LEVEL_STARTER_VRAM,
+        NBA_ASSET_SETUP_LEVEL_ALL_STAR_VRAM,
+        NBA_ASSET_SETUP_QUARTER_5_VRAM,
+        NBA_ASSET_SETUP_QUARTER_8_VRAM,
+        NBA_ASSET_SETUP_QUARTER_12_VRAM
+    };
     if (rules_vram && rules_vram->size == 0x10000u) s->rules_vram = rules_vram->data;
     if (rules_cgram && rules_cgram->size == 0x200u) s->rules_cgram = rules_cgram->data;
     if (options_vram && options_vram->size == 0x10000u) s->options_vram = options_vram->data;
@@ -254,6 +270,20 @@ void nba_setup_screen_init(NbaSetupScreen *s, const NbaAssetPack *assets) {
     if (options_off && options_off->size == 0x10000u) s->options_off_vram = options_off->data;
     if (options_mono && options_mono->size == 0x10000u) s->options_mono_vram = options_mono->data;
     if (options_cpu && options_cpu->size == 0x10000u) s->options_cpu_vram = options_cpu->data;
+    if (s->has_gfx) {
+        s->main_value_vram[0][0] = s->vram; /* Exhibition */
+        s->main_value_vram[1][1] = s->vram; /* Simulation */
+        s->main_value_vram[2][0] = s->vram; /* Rookie */
+        s->main_value_vram[3][0] = s->vram; /* 3 Minutes */
+    }
+    for (int index = 0; index < 10; ++index) {
+        const NbaAssetItem *item = nba_assets_get(assets, main_variant_ids[index]);
+        const uint8_t *data = item && item->size == 0x10000u ? item->data : NULL;
+        if (index < 3) s->main_value_vram[0][index + 1] = data;
+        else if (index < 5) s->main_value_vram[1][index == 3 ? 2 : 0] = data;
+        else if (index < 7) s->main_value_vram[2][index - 4] = data;
+        else s->main_value_vram[3][index - 6] = data;
+    }
     s->is_initialized = true;
 
     printf("[SETUP] Entered 105-frame forced-blank build before $80:A2BF.\n");
@@ -393,6 +423,21 @@ NbaSetupSound nba_setup_screen_update(NbaSetupScreen *s, const NbaInput *input) 
     if (input->pressed & NBA_BTN_DOWN) {
         s->row = (NbaSetupRow)((s->row + 1) % NBA_SETUP_ROW_COUNT);
     }
+    if ((input->pressed & (NBA_BTN_LEFT | NBA_BTN_RIGHT)) &&
+        s->row < NBA_SETUP_ROW_RULES) {
+        int row = (int)s->row;
+        uint16_t old_value = s->config.main_values[row];
+        uint16_t max = setup_main_max[row];
+        uint16_t new_value = (input->pressed & NBA_BTN_LEFT) ?
+            (old_value == 0u ? max : (uint16_t)(old_value - 1u)) :
+            (old_value >= max ? 0u : (uint16_t)(old_value + 1u));
+        /* The ROM redraws these values into BG3 at $7E:16FB + row*2.
+         * Refuse a state whose captured game-authored glyph canvas is absent. */
+        if (s->main_value_vram[row][new_value]) {
+            s->config.main_values[row] = new_value;
+            return NBA_SETUP_SOUND_ADJUST;
+        }
+    }
     if (input->pressed & NBA_BTN_A) {
         if (s->row == NBA_SETUP_ROW_RULES && setup_menu_assets_ready(s)) {
             memcpy(s->working_rules, s->config.rules, sizeof(s->working_rules));
@@ -429,6 +474,37 @@ static void setup_restore_bg2_rect(const NbaSetupScreen *s, NbaRenderer *ren,
                     pixel.palette * 16 + pixel.color_index, 15, 0, 0, 0);
             }
             ren->pixels[py * NBA_SNES_WIDTH + px] = out;
+        }
+    }
+}
+
+/* $80:A77C selects the active main-page value and the generic BG3 writer
+ * stores it at $7E:16FB + row*2. Copy the resulting game-authored glyph
+ * pixels from the corresponding captured VRAM state. */
+static void setup_render_main_values(const NbaSetupScreen *s, NbaRenderer *ren) {
+    if (!s || s->page != NBA_SETUP_PAGE_MAIN) return;
+    for (int row = 0; row < NBA_SETUP_MAIN_VALUE_COUNT; ++row) {
+        uint16_t value = s->config.main_values[row];
+        if (value == setup_main_defaults[row] || value > setup_main_max[row]) continue;
+        const uint8_t *source_vram = s->main_value_vram[row][value];
+        if (!source_vram) continue;
+        int top = nba_setup_screen_row_band_top((NbaSetupRow)row);
+        setup_restore_bg2_rect(s, ren, s->vram, s->cgram, 138, top, 110, 16);
+        for (int py = 0; py < 16; ++py) {
+            for (int px = 0; px < 110; ++px) {
+                NbaSnesBgPixel pixel;
+                int x = 138 + px, y = top + py;
+                if (!nba_snes_sample_bg(source_vram, NBA_SETUP_BG3_TILEMAP,
+                                        NBA_SETUP_BG3_CHR, 2, false, true,
+                                        0, 0, x, y, &pixel)) continue;
+                bool highlighted = row == (int)s->row;
+                ren->pixels[y * NBA_SNES_WIDTH + x] = nba_snes_cgram_color(
+                    s->cgram, pixel.palette * 4 + pixel.color_index,
+                    s->brightness,
+                    highlighted ? NBA_SETUP_MATH_SUB_R : 0,
+                    highlighted ? NBA_SETUP_MATH_SUB_G : 0,
+                    highlighted ? NBA_SETUP_MATH_SUB_B : 0);
+            }
         }
     }
 }
@@ -697,6 +773,8 @@ void nba_setup_screen_render(const NbaSetupScreen *s, NbaRenderer *ren) {
             ren->pixels[y * NBA_SNES_WIDTH + x] = out;
         }
     }
-    if (s->transition == NBA_SETUP_TRANSITION_NONE)
+    if (s->transition == NBA_SETUP_TRANSITION_NONE) {
+        setup_render_main_values(s, ren);
         setup_render_menu_values(s, ren, vram, cgram);
+    }
 }

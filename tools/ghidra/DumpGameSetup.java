@@ -138,7 +138,18 @@ public class DumpGameSetup extends GhidraScript {
                 "Queues per-voice parameters and command $0B through $2140-$2143.");
             createLabel(toAddr(0x9DEA), "setup_menu_input_dispatch", true);
             listing.setComment(toAddr(0x9DEA), CodeUnit.PLATE_COMMENT,
-                "Shared Game Setup controller dispatch reached before Rules/Options row and value handlers.");
+                "Shared Game Setup controller dispatch reached before main-page and Rules/Options " +
+                "row/value handlers. Main-page Left/Right emits command $49 and updates the " +
+                "16-bit working values at $7E:16FB/$16FD/$16FF/$1701.");
+            createLabel(toAddr(0xA62D), "game_setup_main_row_state", true);
+            listing.setComment(toAddr(0xA62D), CodeUnit.PLATE_COMMENT,
+                "Selects the six-row main Game Setup cursor state. Up/Down wraps across Mode, " +
+                "Style, Level, Quarter, Set Rules, and Set Options and emits command $4A.");
+            createLabel(toAddr(0xA77C), "game_setup_main_value_dispatch", true);
+            listing.setComment(toAddr(0xA77C), CodeUnit.PLATE_COMMENT,
+                "Dispatches the selected main-page value for the BG3 proportional-glyph writer. " +
+                "Mesen confirms cycles Exhibition/Season/Playoffs/Load Series; " +
+                "Arcade/Simulation/Custom; Rookie/Starter/All-Star; and 3/5/8/12 Minutes.");
         } else if (bank == 0x81) {
             createLabel(toAddr(0xF9F1), "game_setup_hdma_window_init", true);
             listing.setComment(toAddr(0xF9F1), CodeUnit.PLATE_COMMENT,

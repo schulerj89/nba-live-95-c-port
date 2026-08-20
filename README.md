@@ -64,6 +64,10 @@ F10 toggles the timing HUD, F11 opens the audio debugger, and F12 opens the ROM
 asset browser for pack metadata, CGRAM palettes, paged SNES VRAM tiles, and
 screen-positioned OAM/OBJ reconstruction.
 
+On Game Setup, Left/Right changes Mode, Style, Level, and Quarter length using
+the original game cycles and menu sounds. These choices remain in the running
+session while entering and returning from Set Rules or Set Options.
+
 ## Technical notes
 
 - [Title visuals and audio](docs/post-ea-title-audio.md)

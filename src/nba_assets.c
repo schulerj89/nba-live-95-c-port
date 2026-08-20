@@ -5,7 +5,7 @@
 
 #define NBA_ASSET_MAGIC "NBA95PAK"
 
-#define NBA_ASSET_PACK_VERSION 6u
+#define NBA_ASSET_PACK_VERSION 7u
 #define NBA_ASSET_HEADER_SIZE 16u
 #define NBA_ASSET_ENTRY_SIZE 24u
 
@@ -47,6 +47,16 @@ static bool asset_metadata_valid(uint32_t id, uint32_t size, uint32_t width,
         case NBA_ASSET_OPTIONS_OFF_VRAM:
         case NBA_ASSET_OPTIONS_MONO_VRAM:
         case NBA_ASSET_OPTIONS_CPU_VRAM:
+        case NBA_ASSET_SETUP_MODE_SEASON_VRAM:
+        case NBA_ASSET_SETUP_MODE_PLAYOFFS_VRAM:
+        case NBA_ASSET_SETUP_MODE_LOAD_SERIES_VRAM:
+        case NBA_ASSET_SETUP_STYLE_CUSTOM_VRAM:
+        case NBA_ASSET_SETUP_STYLE_ARCADE_VRAM:
+        case NBA_ASSET_SETUP_LEVEL_STARTER_VRAM:
+        case NBA_ASSET_SETUP_LEVEL_ALL_STAR_VRAM:
+        case NBA_ASSET_SETUP_QUARTER_5_VRAM:
+        case NBA_ASSET_SETUP_QUARTER_8_VRAM:
+        case NBA_ASSET_SETUP_QUARTER_12_VRAM:
             return size == 0x10000u && width == 0u && height == 0u && flags == 0u;
 
         case NBA_ASSET_SETUP_CGRAM:

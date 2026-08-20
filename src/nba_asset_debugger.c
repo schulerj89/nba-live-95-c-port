@@ -29,6 +29,8 @@ static const uint8_t *asset_palette_for(const NbaAssetPack *assets,
     if (id == NBA_ASSET_SET_OPTIONS_VRAM) palette = NBA_ASSET_SET_OPTIONS_CGRAM;
     if (id == NBA_ASSET_OPTIONS_OFF_VRAM || id == NBA_ASSET_OPTIONS_MONO_VRAM ||
         id == NBA_ASSET_OPTIONS_CPU_VRAM) palette = NBA_ASSET_SET_OPTIONS_CGRAM;
+    if (id >= NBA_ASSET_SETUP_MODE_SEASON_VRAM &&
+        id <= NBA_ASSET_SETUP_QUARTER_12_VRAM) palette = NBA_ASSET_SETUP_CGRAM;
     const NbaAssetItem *item = nba_assets_get(assets, palette);
     return item && item->size == 0x200u ? (const uint8_t *)item->data : NULL;
 }

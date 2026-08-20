@@ -165,6 +165,25 @@ The captured settled reference frame is **100% pixel-identical** (0 of 57,344
 pixels differ), including the gold highlight. Transition and cursor-row hashes
 are enforced by `tools/test_setup_transition.py`.
 
+## Main Setup values
+
+The four value rows on the parent Game Setup page are live 16-bit working
+values at `$7E:16FB`, `$7E:16FD`, `$7E:16FF`, and `$7E:1701`. Left/Right wraps
+through the exact Mesen-observed cycles:
+
+| Row | Values |
+|---|---|
+| Mode | Exhibition, Season, Playoffs, Load Series |
+| Style | Arcade, Simulation, Custom |
+| Level | Rookie, Starter, All-Star |
+| Quarter | 3 Minutes, 5 Minutes, 8 Minutes, 12 Minutes |
+
+`$80:9DEA` dispatches the input, `$80:A62D` selects the row state, and
+`$80:A77C` selects the value passed to the proportional BG3 glyph writer.
+Every accepted adjustment uses command `$49`/SRCN `$1A`, while row movement
+uses `$4A`/SRCN `$1B`. The port stores these values in `NbaSetupConfig` so
+they survive Rules/Options round trips for the running session.
+
 ## Set Rules and Set Options
 
 `tools/mesen_setup_menus_capture.lua` records both submenus after their slide,
@@ -204,7 +223,7 @@ apply slider changes immediately; the port applies Music Volume to the
 still-running Setup music stream and applies SFX Volume to the independently
 synthesized menu voice.
 
-Asset-pack version 6 adds Rules/Options VRAM/CGRAM/OAM plus exact OFF, MONO,
+Asset-pack version 7 adds Rules/Options VRAM/CGRAM/OAM plus exact OFF, MONO,
 and CPU BG3 states. Bars/arrows are decoded from captured OAM and OBJ tiles;
 the full Rules bar objects provide the game's shared dynamic bar tiles, while
 the Options OAM capture remains a packed, debugger-visible default-position
@@ -215,3 +234,9 @@ bars/arrows to Mesen pixel oracles, locks the open/return transition stages and
 OFF/MONO/CPU states, and exercises clamp, wrap, ignored-B, live SFX gain, and
 working-versus-committed behavior. It also fingerprints the exact WAV output,
 pitch, envelope, and shape for all three menu SRCNs.
+
+Version 7 also carries ten main-page BG3 value states captured after the ROM's
+own writer produced Season, Playoffs, Load Series, Custom, Arcade, Starter,
+All-Star, and the 5/8/12-minute quarter choices. Rendering copies only those
+game-authored glyph pixels, allowing independent combinations without a host
+font or screenshot composite.

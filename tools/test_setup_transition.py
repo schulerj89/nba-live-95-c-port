@@ -39,8 +39,8 @@ EXPECTED_AUDIO_RMS_EIGHTHS = [
 ]
 EXPECTED_AUDIO_BAND_PPM = [889127, 48767, 32034, 14587, 14255, 1068, 162]
 EXPECTED_AUDIO_CHANNEL_RMS = [3363, 3363]
-EXPECTED_ASSET_DEBUGGER_SHA256 = "5b962fb7443c787b0b46cd7484b443f234dd83c8787776de12676c4114b29c15"
-EXPECTED_OAM_DEBUGGER_SHA256 = "695489b5b830dce04b9a965a05514379d20a8aca59117843c12bcf1252f76d9f"
+EXPECTED_ASSET_DEBUGGER_SHA256 = "e5a981af3fc5e60c5553c4fa0eb9abbeb276f5e7bf1eedbf6878f26194425d9e"
+EXPECTED_OAM_DEBUGGER_SHA256 = "154e59fbf555636e7702fced12ba3cf7b61370a07331a1b80da8a95e2951c0fe"
 EXPECTED_RENDERED_MENU_SFX_SHA256 = {
     0x1A: "447a1ea48a94e2036ff0bdf1f4c5248d6284daec0b723b9a966f841976e703c4",
     0x1B: "96de89e954e4e8f75e555625abba5bf4380b8868b3263776a4cc27a6285de664",
@@ -115,6 +115,40 @@ EXPECTED_MENU_ASSET_SHA256 = {
     130: "42cd32dc8df82febef1936d3f1c2600e070e32797cee09690b0ea802ff529bf1",
     131: "e98b9ea84551ff95e47d3eb479d7705ba47232d994b40889eedb9762dc0cba06",
     132: "6b184355c9acc37a6c367f0ef4a52aaa6df5feb3cec26757a885cf3d2fb14849",
+    133: "e4a55372bda54cce7014e114beb38fe30662f6e15437aaedad9e49d27fe54fbd",
+    134: "d1446eb4b7c6f6d275a980f3b39e98129817fc84071f8151ae90b82ff79d8c60",
+    135: "69dd72dc97b50cae9817effd52c29f5a9ff1bba5276221a4f5cdba1d7dbf960d",
+    136: "b231ec61fa3e439ef7e9600d81d9840dfbbc2595114d4e634e62951320c12c14",
+    137: "56e0c8bfb349bc77de2234141861f8fe0736723141bbd71398dc19e56db2f44e",
+    138: "a037d5934c9a6b839b167828336af0b9d1bcce4bd98faa13ac32e2578fc5694f",
+    139: "6d199ebab13adc93aef1ed3abcab3a77219e8d1e7d7811e89bfab3074d78256d",
+    140: "abb16640b4954cc1d968305a345c3703a0447eb47fcbc5c98cc3af7d53e45887",
+    141: "ed829c237970e861f130a6b7966ee0ef911623cd39d56c142238ec95432d2102",
+    142: "e01ff3a82d09d77d018ed79f2b54fd7620f975b523c680690d15efeea8b6adfa",
+}
+EXPECTED_MAIN_VALUE_RGB_SHA256 = {
+    (0, 1): "e4204d3c33d0bae2680ad2a2ac2f5cc14ceec6e4bc4e8bee2f35cad05a0efdc9",
+    (0, 2): "96be8085c9ae412d13fb265a992b99a49dad540aa6a7b8f696c0b348a71c0fb4",
+    (0, 3): "2f952c609272ebab6fbc1f8388a1e91671b11001590de6c0a716fbb0ed120ba7",
+    (1, 1): "e6607c9e642194429b9e8de48359e82325ea18b08da7e98619f9d77bc3838a0f",
+    (1, 2): "a59cc2515140ccd18c36b91bbf74177eb27f8eb552f70e2038f41d86a69bfbcc",
+    (2, 1): "0d0eec20edddc55dc5ae41f4595b2b1a30e6c82050b0f14524f4adfe95a8ca04",
+    (2, 2): "5a550fa69536f7dea18be1157c7f55365baa31a37db456203851e7cc5b1e0070",
+    (3, 1): "e4ae718f8545e18560eebcfebf5e344773bcbda67e04f50b8e194d6671813a91",
+    (3, 2): "908bc9d71553bc3809404d8175c59760dfcaad0087eb916a1e0e767ab32ad3a7",
+    (3, 3): "9dfd7625c2fa4673816530a112c54d17ed3127e533375aec3a74565918473ad3",
+}
+MESEN_MAIN_VALUE_GLYPH_SHA256 = {
+    (0, 1): "dc35ee3889bed4f3c86a90e3a0acbee1a63d9fdf94d0de173f5437dde770268d",
+    (0, 2): "cecbb02cd80d6a4d416881873a326623a3bd7f544d3fba3a86a91110027e2125",
+    (0, 3): "b4cd582b37282e5ae24fc9561beb10532290512aa04d2c5e9353744f05ab2f7d",
+    (1, 1): "ef4d6d61b67848d8e3d5550403e8a3d95085aa46fa7c00a0e16798034b15dbfd",
+    (1, 2): "c99ceee59e9b4ecd50cae573ab869e91780d0e2e4436d85c72df9a6ad62e6a85",
+    (2, 1): "f31de1b931dd30ced18dccf02abea99ff8aeaa9ee67027395f91dc99108ed6d4",
+    (2, 2): "a5c4bf9f2197084dc28d5001cf6c30cd6c4fc8e4e1d7b064d437770fead998c5",
+    (3, 1): "74afa56375a738feda3cf44e8890466735e48d4bb2b82ae40b6f3af6b7ea16a3",
+    (3, 2): "35a31c28e8684ccf2240f6e52a61d28bd3a000d929aa5b275d65c52a23fae731",
+    (3, 3): "b9f40f561ec4e6e772a6d5aced4207e96412bfd49f1287cae00bf6a9e24d1d80",
 }
 SETUP_LOOP_START = 2053956
 SETUP_LOOP_END = 4048365
@@ -125,7 +159,7 @@ def load_pack(path):
     if len(data) < 16 or data[:8] != b"NBA95PAK":
         raise AssertionError("invalid asset pack")
     version, count = struct.unpack_from("<II", data, 8)
-    if version != 6 or 16 + count * 24 > len(data):
+    if version != 7 or 16 + count * 24 > len(data):
         raise AssertionError("invalid asset directory")
     assets = {}
     for index in range(count):
@@ -143,7 +177,7 @@ def load_pack(path):
 def check_pack(pack_path):
     raw, assets = load_pack(pack_path)
     required = {16, 17, 88, 89, 90, 91, 92, 93, 120, 121, 122,
-                124, 125, 126, 127, 128, 129, 130, 131, 132}
+                *range(124, 143)}
     if not required.issubset(assets):
         raise AssertionError(f"missing Setup assets: {sorted(required - assets.keys())}")
     if len(assets[16]) != 0x10000 or len(assets[17]) != 0x200:
@@ -255,6 +289,25 @@ def check_frames(exe, rom, pack):
         )
         if "[SETUP TEST] page=0" not in incomplete.stdout:
             raise AssertionError("incomplete pack opened Options with fallback graphics")
+
+        missing_main_raw = bytearray(pack.read_bytes())
+        _, main_count = struct.unpack_from("<II", missing_main_raw, 8)
+        for index in range(main_count):
+            entry_offset = 16 + index * 24
+            if struct.unpack_from("<I", missing_main_raw, entry_offset)[0] == 133:
+                struct.pack_into("<I", missing_main_raw, entry_offset, 149)
+                break
+        missing_main_pack = Path(directory) / "missing_season_variant.pak"
+        missing_main_pack.write_bytes(missing_main_raw)
+        missing_main = subprocess.run(
+            [str(exe), "--headless", "--setup-only", "--setup-main-row", "0",
+             "--setup-main-right", "1", "--frames", "200", "--rom", str(rom),
+             "--assets", str(missing_main_pack)],
+            text=True, capture_output=True, check=True,
+        )
+        if "mode=0 style=1 level=0 quarter=0" not in missing_main.stdout or \
+                "DSP menu SFX SRCN $1A" in missing_main.stdout:
+            raise AssertionError("missing main value asset used fallback graphics/state")
 
         asset_debug = Path(directory) / "asset_debug_options_vram.bmp"
         subprocess.run(
@@ -397,6 +450,88 @@ def check_frames(exe, rom, pack):
             actual = hashlib.sha256(Image.open(output).convert("RGB").tobytes()).hexdigest()
             if actual != expected_hash:
                 raise AssertionError(f"Setup cursor row {down_count} changed")
+
+        # Main Setup writes four 16-bit values at $7E:16FB + row*2. Verify
+        # every non-default state, the shared $49 adjustment sound, and a
+        # compact pixel oracle derived from the corresponding Mesen capture.
+        expected_states = {
+            (0, 1): (1, 1, 0, 0), (0, 2): (2, 1, 0, 0),
+            (0, 3): (3, 1, 0, 0), (1, 1): (0, 2, 0, 0),
+            (1, 2): (0, 0, 0, 0), (2, 1): (0, 1, 1, 0),
+            (2, 2): (0, 1, 2, 0), (3, 1): (0, 1, 0, 1),
+            (3, 2): (0, 1, 0, 2), (3, 3): (0, 1, 0, 3),
+        }
+        for (row, rights), expected_hash in EXPECTED_MAIN_VALUE_RGB_SHA256.items():
+            output = Path(directory) / f"setup_main_{row}_{rights}.bmp"
+            result = subprocess.run(
+                [str(exe), "--headless", "--setup-only", "--setup-main-row", str(row),
+                 "--setup-main-right", str(rights), "--rom", str(rom),
+                 "--assets", str(pack), "--frames", "200", "--dump-frame", str(output)],
+                text=True, capture_output=True, check=True,
+            )
+            if "DSP menu SFX SRCN $1A" not in result.stdout:
+                raise AssertionError(f"main Setup row {row} did not dispatch adjust SFX")
+            match = re.search(
+                r"\[SETUP MAIN TEST\] row=\d+ mode=(\d+) style=(\d+) "
+                r"level=(\d+) quarter=(\d+)", result.stdout,
+            )
+            if not match or tuple(map(int, match.groups())) != expected_states[(row, rights)]:
+                raise AssertionError(f"main Setup row {row} state changed: {result.stdout}")
+            image = Image.open(output).convert("RGB")
+            if hashlib.sha256(image.tobytes()).hexdigest() != expected_hash:
+                raise AssertionError(f"main Setup row {row} value {rights} frame changed")
+            top = 70 + row * 18
+            glyph = bytearray()
+            for y in range(top, top + 16):
+                for x in range(138, 248):
+                    color = image.getpixel((x, y))
+                    if color[0] >= 100 and color[1] >= 50:
+                        glyph.extend((x - 138, y - top, *color))
+            if hashlib.sha256(glyph).hexdigest() != \
+                    MESEN_MAIN_VALUE_GLYPH_SHA256[(row, rights)]:
+                raise AssertionError(f"main Setup row {row} glyph differs from Mesen")
+
+        for row, maximum, defaults in ((0, 3, (0, 1, 0, 0)),
+                                       (1, 2, (0, 1, 0, 0)),
+                                       (2, 2, (0, 1, 0, 0)),
+                                       (3, 3, (0, 1, 0, 0))):
+            wrap = subprocess.run(
+                [str(exe), "--headless", "--setup-only", "--setup-main-row", str(row),
+                 "--setup-main-right", str(maximum + 1), "--rom", str(rom),
+                 "--assets", str(pack), "--frames", "200"],
+                text=True, capture_output=True, check=True,
+            )
+            match = re.search(r"mode=(\d+) style=(\d+) level=(\d+) quarter=(\d+)",
+                              wrap.stdout)
+            if not match or tuple(map(int, match.groups())) != defaults:
+                raise AssertionError(f"main Setup row {row} no longer wraps")
+
+        left_states = {
+            0: (3, 1, 0, 0), 1: (0, 0, 0, 0),
+            2: (0, 1, 2, 0), 3: (0, 1, 0, 3),
+        }
+        for row, expected in left_states.items():
+            left = subprocess.run(
+                [str(exe), "--headless", "--setup-only", "--setup-main-row", str(row),
+                 "--setup-main-left", "1", "--rom", str(rom), "--assets", str(pack),
+                 "--frames", "200"],
+                text=True, capture_output=True, check=True,
+            )
+            match = re.search(r"mode=(\d+) style=(\d+) level=(\d+) quarter=(\d+)",
+                              left.stdout)
+            if not match or tuple(map(int, match.groups())) != expected or \
+                    "DSP menu SFX SRCN $1A" not in left.stdout:
+                raise AssertionError(f"main Setup row {row} left cycle changed")
+
+        persisted = subprocess.run(
+            [str(exe), "--headless", "--setup-only", "--setup-main-row", "3",
+             "--setup-main-right", "1", "--setup-menu", "rules",
+             "--setup-menu-confirm", "--rom", str(rom), "--assets", str(pack),
+             "--frames", "650"],
+            text=True, capture_output=True, check=True,
+        )
+        if "mode=0 style=1 level=0 quarter=1" not in persisted.stdout:
+            raise AssertionError("main Setup values did not survive a Rules round trip")
 
         # The settled Rules/Options pages are rendered from the captured ROM
         # VRAM/CGRAM, not recreated screenshots or host fonts.

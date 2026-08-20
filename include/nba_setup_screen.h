@@ -32,6 +32,10 @@
 #define SNES_ADDR_SETUP_FRAME_UPDATE   0x80A3B8
 #define SNES_ADDR_SETUP_ROW_STATE      0x80A62D
 #define SNES_ADDR_SETUP_OPTION_DISPATCH 0x80A77C
+#define SNES_WRAM_SETUP_MODE           0x7E16FB
+#define SNES_WRAM_SETUP_STYLE          0x7E16FD
+#define SNES_WRAM_SETUP_LEVEL          0x7E16FF
+#define SNES_WRAM_SETUP_QUARTER        0x7E1701
 #define SNES_ADDR_SETUP_APU_COMMAND    0x80A9E3
 #define SNES_ADDR_SETUP_APU_HANDSHAKE  0x80AA7B
 #define SNES_ADDR_SETUP_APU_QUEUE      0x80AACD
@@ -147,8 +151,10 @@ typedef enum {
 
 #define NBA_SETUP_RULE_COUNT   13
 #define NBA_SETUP_OPTION_COUNT 7
+#define NBA_SETUP_MAIN_VALUE_COUNT 4
 
 typedef struct {
+    uint16_t main_values[NBA_SETUP_MAIN_VALUE_COUNT]; /* working block $7E:16FB */
     uint16_t rules[NBA_SETUP_RULE_COUNT];    /* ROM commit block $7E:17D1 */
     uint16_t options[NBA_SETUP_OPTION_COUNT];/* ROM commit block $7E:17B5 */
 } NbaSetupConfig;
@@ -188,6 +194,7 @@ typedef struct {
     const uint8_t *options_off_vram;
     const uint8_t *options_mono_vram;
     const uint8_t *options_cpu_vram;
+    const uint8_t *main_value_vram[NBA_SETUP_MAIN_VALUE_COUNT][4];
     NbaSetupConfig config;
     uint16_t working_rules[NBA_SETUP_RULE_COUNT];
     uint16_t working_options[NBA_SETUP_OPTION_COUNT];

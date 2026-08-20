@@ -528,6 +528,31 @@ def create_asset_pack(rom_path, output_path):
     options_mono_vram_bytes = read_setup_menu_capture("options", "options_mono_vram.bin", 0x10000)
     options_cpu_vram_bytes = read_setup_menu_capture("options", "options_cpu_vram.bin", 0x10000)
 
+    setup_main_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..",
+                                  ".analysis", "setup_main")
+    def read_setup_main_capture(filename):
+        path = os.path.join(setup_main_dir, filename)
+        if not os.path.exists(path):
+            raise RuntimeError(f"Missing main Game Setup capture: {path}. Run "
+                               "tools/mesen_setup_main_capture.lua first.")
+        data = open(path, "rb").read()
+        if len(data) != 0x10000:
+            raise RuntimeError(f"Invalid {path}: expected 65536 bytes, got {len(data)}")
+        return data
+
+    setup_main_variant_bytes = [
+        read_setup_main_capture("row0_step1_vram.bin"), # Season
+        read_setup_main_capture("row0_step2_vram.bin"), # Playoffs
+        read_setup_main_capture("row0_step3_vram.bin"), # Load Series
+        read_setup_main_capture("row1_step1_vram.bin"), # Custom
+        read_setup_main_capture("row1_step2_vram.bin"), # Arcade
+        read_setup_main_capture("row2_step1_vram.bin"), # Starter
+        read_setup_main_capture("row2_step2_vram.bin"), # All-Star
+        read_setup_main_capture("row3_step1_vram.bin"), # 5 Minutes
+        read_setup_main_capture("row3_step2_vram.bin"), # 8 Minutes
+        read_setup_main_capture("row3_step3_vram.bin"), # 12 Minutes
+    ]
+
     # ------------------------------------------------------------------
     # Title -> Game Setup audio handoff. The snapshot is taken on ROM frame
     # 1637 (the last visible title-fade frame). Every subsequent mirrored
@@ -713,6 +738,8 @@ def create_asset_pack(rom_path, output_path):
         (131, 0, 0, 0, options_mono_vram_bytes),
         (132, 0, 0, 0, options_cpu_vram_bytes),
     ])
+    assets.extend((133 + index, 0, 0, 0, data)
+                  for index, data in enumerate(setup_main_variant_bytes))
 
     # Extract all other audio samples from ROM into asset pack for debugger
     rom_sample_offsets = [
@@ -741,7 +768,7 @@ def create_asset_pack(rom_path, output_path):
                     extra_audio_id += 1
 
     header_magic = b"NBA95PAK"
-    version = 6
+    version = 7
     asset_count = len(assets)
     entry_size = 24 # 6 * 4 bytes
 

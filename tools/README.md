@@ -12,6 +12,7 @@
 | `mesen_setup_capture.lua` | settled Setup VRAM/CGRAM and PPU state |
 | `mesen_setup_transition_capture.lua` | Setup entrance VRAM deltas and cycle-timed APU writes; `NBA95_CAPTURE_MOTION=1` also saves frame oracles |
 | `mesen_setup_menus_capture.lua` | Rules/Options VRAM/CGRAM/OAM, full open/return PPU timing, WRAM commits and DSP sounds; set `NBA95_CAPTURE_MENU=rules` or `options`, `NBA95_CAPTURE_VARIANTS=1` for OFF/MONO/CPU, or `NBA95_CAPTURE_CALLS=1` for deduplicated JSR/JSL targets |
+| `mesen_setup_main_capture.lua` | Main Game Setup Mode/Style/Level/Quarter value cycles, exact BG3 VRAM states, `$7E:16FB` working values, and executing CPU paths |
 
 `extract_assets.py` validates those captures and the ROM, then writes the asset
 pack. Its minimal 65816 decompressor lives in `snes65816_decompressor.py`.
