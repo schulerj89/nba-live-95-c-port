@@ -19,8 +19,8 @@ int main(int argc, char *argv[]) {
     const char *dump_audio_path = NULL;
     bool is_headless = false;
     bool audio_debug_test = false;
-    bool title_only_test = false;
-    bool setup_only_test = false;
+    bool start_at_title = false;
+    bool start_at_setup = false;
     int step_frames = 30;
     double tick_rate = 60.0;
 
@@ -42,9 +42,9 @@ int main(int argc, char *argv[]) {
         } else if (strcmp(argv[i], "--audio-debug") == 0) {
             audio_debug_test = true;
         } else if (strcmp(argv[i], "--title-only") == 0) {
-            title_only_test = true;
+            start_at_title = true;
         } else if (strcmp(argv[i], "--setup-only") == 0) {
-            setup_only_test = true;
+            start_at_setup = true;
         } else if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
             printf("NBA Live '95 Native C Port\n");
             printf("Usage: nba95_port.exe [options]\n\n");
@@ -78,12 +78,12 @@ int main(int argc, char *argv[]) {
         }
 
         bool timing_debug_test = false;
-        bool enter_setup_test = false;
+        bool enter_setup = false;
         int title_press_frame = -1;
         int setup_down_count = 0;
         for (int i = 1; i < argc; i++) {
             if (strcmp(argv[i], "--timing-debug") == 0) timing_debug_test = true;
-            if (strcmp(argv[i], "--enter-setup") == 0) enter_setup_test = true;
+            if (strcmp(argv[i], "--enter-setup") == 0) enter_setup = true;
             if (strcmp(argv[i], "--title-press") == 0 && i + 1 < argc) title_press_frame = atoi(argv[++i]);
             if (strcmp(argv[i], "--setup-down") == 0 && i + 1 < argc) setup_down_count = atoi(argv[++i]);
         }
@@ -92,31 +92,32 @@ int main(int argc, char *argv[]) {
             game.show_timing_debug = true;
         }
 
-        if (title_only_test) {
+        if (start_at_title) {
             game.state = NBA_STATE_TITLE_SEQUENCE;
             game.state_frame = 0;
             game.state_timer = 0.0f;
             nba_title_sequence_init(&game.title_sequence);
         }
 
-        if (setup_only_test) {
+        if (start_at_setup) {
             game.state = NBA_STATE_GAME_SETUP;
             game.state_frame = 0;
             game.state_timer = 0.0f;
-            nba_setup_screen_init(&game.setup, &game.assets);
-            game.setup.bgm_started = nba_audio_play_setup_spc(&game.assets);
+            nba_setup_screen_init(&game.setup_screen, &game.assets);
+            nba_audio_play_setup_spc(&game.audio, &game.assets);
         }
 
         if (audio_debug_test) {
             game.audio_debugger.is_active = true;
-            nba_audio_debugger_update(&game.audio_debugger, &game.assets, &game.input);
+            nba_audio_debugger_update(&game.audio_debugger, &game.audio,
+                                      &game.assets, &game.input);
         }
 
         /* Step frames to reach desired screen */
         for (int frame = 0; frame < step_frames; frame++) {
             game.input.pressed = 0;
 
-            if (enter_setup_test) {
+            if (enter_setup) {
                 if (game.state == NBA_STATE_TITLE_SEQUENCE) {
                     game.input.pressed = NBA_BTN_START; /* skip the title video */
                 }
@@ -131,8 +132,8 @@ int main(int argc, char *argv[]) {
             /* --setup-down N: step the Game Setup cursor down N rows, one press
              * every 8 frames once the screen has settled. */
             if (setup_down_count > 0 && game.state == NBA_STATE_GAME_SETUP &&
-                game.setup.frame > NBA_SETUP_ENTER_FRAMES) {
-                int since = game.setup.frame - NBA_SETUP_ENTER_FRAMES;
+                game.setup_screen.frame > NBA_SETUP_ENTER_FRAMES) {
+                int since = game.setup_screen.frame - NBA_SETUP_ENTER_FRAMES;
                 if (since % 8 == 1 && (since / 8) < setup_down_count) {
                     game.input.pressed = NBA_BTN_DOWN;
                 }
@@ -154,7 +155,7 @@ int main(int argc, char *argv[]) {
 
         if (dump_audio_path) {
             printf("[HEADLESS] Saving synthesized audio to: %s\n", dump_audio_path);
-            if (!nba_audio_save_generated_wav(dump_audio_path)) {
+            if (!nba_audio_save_generated_wav(&game.audio, dump_audio_path)) {
                 fprintf(stderr, "[HEADLESS] Failed to write synthesized audio.\n");
                 nba_game_shutdown(&game);
                 return 1;
@@ -167,5 +168,5 @@ int main(int argc, char *argv[]) {
     }
 
     /* Normal Win32 graphical execution */
-    return win32_run_game(rom_path, assets_path, title_only_test, setup_only_test);
+    return win32_run_game(rom_path, assets_path, start_at_title, start_at_setup);
 }

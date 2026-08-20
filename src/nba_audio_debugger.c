@@ -108,8 +108,9 @@ void nba_audio_debugger_toggle(NbaAudioDebugger *dbg) {
  * Offset/Address/Size: N/A | Host Input / Sample Navigation | size: N/A
  * Purpose: Scans loaded audio assets, processes Up/Down selection, and triggers instant sample playback.
  */
-void nba_audio_debugger_update(NbaAudioDebugger *dbg, const NbaAssetPack *assets, const NbaInput *input) {
-    if (!dbg || !assets || !input) return;
+void nba_audio_debugger_update(NbaAudioDebugger *dbg, NbaAudio *audio,
+                               const NbaAssetPack *assets, const NbaInput *input) {
+    if (!dbg || !audio || !assets || !input) return;
 
     /* Build table of audio asset indices from pack */
     dbg->total_audio_items = 0;
@@ -165,7 +166,7 @@ void nba_audio_debugger_update(NbaAudioDebugger *dbg, const NbaAssetPack *assets
                 get_sample_info(item, name, sizeof(name), &dur);
                 printf("[DEBUGGER] Playing: [%02d/%02d] %s (%.2fs, %u bytes)\n",
                        dbg->selected_index + 1, dbg->total_audio_items, name, dur, item->size);
-                nba_audio_play_wav(item->data, (size_t)item->size);
+                nba_audio_play_wav(audio, item->data, (size_t)item->size);
             }
         }
     }

@@ -1,4 +1,5 @@
 #include "nba_setup_screen.h"
+#include "nba_snes_ppu.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -16,33 +17,6 @@
  *          the PPU's subtract-mode colour math is applied first ($2131 with
  *          $2132's fixed colour), then the INIDISP brightness.
  */
-static uint32_t setup_color(const uint8_t *cgram, int index, int brightness,
-                            bool color_math) {
-    uint16_t w = (uint16_t)(cgram[(index * 2) & 0x1FF] |
-                            ((uint16_t)cgram[(index * 2 + 1) & 0x1FF] << 8));
-    int r = w & 0x1F;
-    int g = (w >> 5) & 0x1F;
-    int b = (w >> 10) & 0x1F;
-
-    if (color_math) {
-        /* $2131 subtract mode against the $2132 fixed colour, clamped at 0. */
-        r -= NBA_SETUP_MATH_SUB_R; if (r < 0) r = 0;
-        g -= NBA_SETUP_MATH_SUB_G; if (g < 0) g = 0;
-        b -= NBA_SETUP_MATH_SUB_B; if (b < 0) b = 0;
-    }
-
-    /* Standard SNES 5->8 bit expansion, matching the PPU: (v << 3) | (v >> 2). */
-    uint32_t r8 = (uint32_t)((r << 3) | (r >> 2));
-    uint32_t g8 = (uint32_t)((g << 3) | (g >> 2));
-    uint32_t b8 = (uint32_t)((b << 3) | (b >> 2));
-    if (brightness < 15) {
-        r8 = r8 * (uint32_t)brightness / 15u;
-        g8 = g8 * (uint32_t)brightness / 15u;
-        b8 = b8 * (uint32_t)brightness / 15u;
-    }
-    return 0xFF000000u | (r8 << 16) | (g8 << 8) | b8;
-}
-
 /**
  * Offset/Address/Size: 0x7F6800 | HDMA ch7 table -> $2126/$2127 | size: 0x1C5
  * Purpose: Returns the first scanline of the colour-math window band for a
@@ -59,60 +33,12 @@ int nba_setup_screen_row_band_top(NbaSetupRow row) {
  * Offset/Address/Size: N/A | Tile pixel fetch | size: N/A
  * Purpose: Reads one pixel out of a planar 2bpp or 4bpp SNES tile.
  */
-static int setup_tile_pixel(const uint8_t *vram, int chr_base, int tile,
-                            int bpp, int x, int y) {
-    int off = (chr_base + tile * 8 * bpp) & 0xFFFF;
-    int bit = 7 - x;
-    int value = 0;
-    for (int plane = 0; plane < bpp; plane += 2) {
-        int lo = vram[(off + y * 2 + plane * 8) & 0xFFFF];
-        int hi = vram[(off + y * 2 + 1 + plane * 8) & 0xFFFF];
-        value |= ((lo >> bit) & 1) << plane;
-        value |= ((hi >> bit) & 1) << (plane + 1);
-    }
-    return value;
-}
-
 /**
  * Offset/Address/Size: N/A | Background layer sample | size: N/A
  * Purpose: Samples one background layer at a screen pixel, honouring the
  *          tilemap quadrant layout, per-tile palette and H/V flip bits.
  *          Returns -1 where the layer is transparent (colour index 0).
  */
-static int setup_sample_bg(const uint8_t *vram, int map_base, int chr_base,
-                           int bpp, bool wide, bool tall,
-                           int hscroll, int vscroll, int x, int y,
-                           int *out_palette) {
-    int map_w = wide ? 512 : 256;
-    int map_h = tall ? 512 : 256;
-    int px = ((x + hscroll) % map_w + map_w) % map_w;
-    /* The PPU's vertical scroll is offset by one: the first displayed scanline
-     * shows tilemap line vscroll+1, not vscroll. */
-    int py = ((y + vscroll + 1) % map_h + map_h) % map_h;
-    int tx = px >> 3;
-    int ty = py >> 3;
-
-    int quadrant = 0;
-    if (wide && tx >= 32) quadrant += 1;
-    if (tall && ty >= 32) quadrant += wide ? 2 : 1;
-
-    int entry_index = map_base + quadrant * 0x800 + ((ty & 31) * 32 + (tx & 31)) * 2;
-    uint16_t entry = (uint16_t)(vram[entry_index & 0xFFFF] |
-                                ((uint16_t)vram[(entry_index + 1) & 0xFFFF] << 8));
-    int tile = entry & 0x3FF;
-    int palette = (entry >> 10) & 7;
-    int hflip = (entry >> 14) & 1;
-    int vflip = (entry >> 15) & 1;
-
-    int sx = hflip ? 7 - (px & 7) : (px & 7);
-    int sy = vflip ? 7 - (py & 7) : (py & 7);
-    int value = setup_tile_pixel(vram, chr_base, tile, bpp, sx, sy);
-    if (value == 0) return -1;
-
-    *out_palette = palette;
-    return value;
-}
-
 /**
  * Offset/Address/Size: 0x00A2BF | $80:A2BF | size: 0xA2
  * Subroutines: $80:C62B (decompressor), $80:CB8F (DMA helper), $81:F9F1 (HDMA)
@@ -158,8 +84,7 @@ void nba_setup_screen_init(NbaSetupScreen *s, const NbaAssetPack *assets) {
  *          15-step brightness ramp, then holds the settled scroll values and
  *          advances the backdrop one pixel every third frame.
  */
-void nba_setup_screen_update(NbaSetupScreen *s, const NbaInput *input, float delta_time) {
-    (void)delta_time;
+void nba_setup_screen_update(NbaSetupScreen *s, const NbaInput *input) {
     if (!s || !s->is_initialized) return;
 
     s->frame++;
@@ -236,7 +161,7 @@ void nba_setup_screen_render(const NbaSetupScreen *s, NbaRenderer *ren) {
 
     const uint8_t *vram = s->vram;
     const uint8_t *cgram = s->cgram;
-    uint32_t backdrop = setup_color(cgram, 0, s->brightness, false);
+    uint32_t backdrop = nba_snes_cgram_color(cgram, 0, s->brightness, 0, 0, 0);
 
     /* HDMA ch7 opens window 1 over the active row only; colour math is enabled
      * for BG3 alone ($2131 = 4), so just this band of BG3 pixels is subtracted. */
@@ -249,33 +174,37 @@ void nba_setup_screen_render(const NbaSetupScreen *s, NbaRenderer *ren) {
 
         for (int x = 0; x < NBA_SNES_WIDTH; ++x) {
             uint32_t out = backdrop;
-            int palette = 0;
-            int value;
+            NbaSnesBgPixel pixel;
 
             if (s->main_screen & 0x02) {
-                value = setup_sample_bg(vram, NBA_SETUP_BG2_TILEMAP, NBA_SETUP_BG2_CHR,
-                                        4, true, false,
-                                        s->bg2_hscroll, s->bg2_vscroll, x, y, &palette);
-                if (value >= 0) {
-                    out = setup_color(cgram, palette * 16 + value, s->brightness, false);
+                if (nba_snes_sample_bg(vram, NBA_SETUP_BG2_TILEMAP, NBA_SETUP_BG2_CHR,
+                                       4, true, false, s->bg2_hscroll,
+                                       s->bg2_vscroll, x, y, &pixel)) {
+                    out = nba_snes_cgram_color(cgram,
+                        pixel.palette * 16 + pixel.color_index,
+                        s->brightness, 0, 0, 0);
                 }
             }
 
             if (s->main_screen & 0x01) {
-                value = setup_sample_bg(vram, NBA_SETUP_BG1_TILEMAP, NBA_SETUP_BG1_CHR,
-                                        4, true, false,
-                                        s->bg1_hscroll, NBA_SETUP_BG1_VSCROLL, x, y, &palette);
-                if (value >= 0) {
-                    out = setup_color(cgram, palette * 16 + value, s->brightness, false);
+                if (nba_snes_sample_bg(vram, NBA_SETUP_BG1_TILEMAP, NBA_SETUP_BG1_CHR,
+                                       4, true, false, s->bg1_hscroll,
+                                       NBA_SETUP_BG1_VSCROLL, x, y, &pixel)) {
+                    out = nba_snes_cgram_color(cgram,
+                        pixel.palette * 16 + pixel.color_index,
+                        s->brightness, 0, 0, 0);
                 }
             }
 
             if (s->main_screen & 0x04) {
-                value = setup_sample_bg(vram, NBA_SETUP_BG3_TILEMAP, NBA_SETUP_BG3_CHR,
-                                        2, false, true, 0, s->bg3_vscroll,
-                                        x, y, &palette);
-                if (value >= 0) {
-                    out = setup_color(cgram, palette * 4 + value, s->brightness, in_band);
+                if (nba_snes_sample_bg(vram, NBA_SETUP_BG3_TILEMAP, NBA_SETUP_BG3_CHR,
+                                       2, false, true, 0, s->bg3_vscroll,
+                                       x, y, &pixel)) {
+                    out = nba_snes_cgram_color(cgram,
+                        pixel.palette * 4 + pixel.color_index, s->brightness,
+                        in_band ? NBA_SETUP_MATH_SUB_R : 0,
+                        in_band ? NBA_SETUP_MATH_SUB_G : 0,
+                        in_band ? NBA_SETUP_MATH_SUB_B : 0);
                 }
             }
 

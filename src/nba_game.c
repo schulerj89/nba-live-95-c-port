@@ -46,19 +46,19 @@ bool nba_game_init(NbaGame *game, const char *rom_path, const char *assets_path)
 
     nba_renderer_init(&game->renderer);
     nba_font_init();
-    nba_audio_init();
+    nba_audio_init(&game->audio);
 
     /* Load asset pack if provided via parameter */
     if (assets_path && assets_path[0] != '\0' &&
         !nba_assets_load(&game->assets, assets_path)) {
-        nba_audio_shutdown();
+        nba_audio_shutdown(&game->audio);
         return false;
     }
 
     if (rom_path && rom_path[0] != '\0') {
         if (!nba_rom_load_file(&game->rom, rom_path)) {
             nba_assets_free(&game->assets);
-            nba_audio_shutdown();
+            nba_audio_shutdown(&game->audio);
             return false;
         }
     }
@@ -68,7 +68,6 @@ bool nba_game_init(NbaGame *game, const char *rom_path, const char *assets_path)
     game->frame_count = 0;
     nba_audio_debugger_init(&game->audio_debugger);
     nba_title_sequence_init(&game->title_sequence);
-    nba_setup_screen_init(&game->setup, &game->assets);
     game->is_initialized = true;
 
     printf("[GAME] Initialization complete. Entering state NBA_STATE_NINTENDO_LICENSE.\n");
@@ -81,7 +80,7 @@ bool nba_game_init(NbaGame *game, const char *rom_path, const char *assets_path)
  */
 void nba_game_shutdown(NbaGame *game) {
     if (!game) return;
-    nba_audio_shutdown();
+    nba_audio_shutdown(&game->audio);
     if (game->assets.is_loaded) {
         nba_assets_free(&game->assets);
     }
@@ -120,7 +119,8 @@ void nba_game_tick(NbaGame *game, float delta_time) {
     }
 
     /* Update audio debugger navigation / playback */
-    nba_audio_debugger_update(&game->audio_debugger, &game->assets, &game->input);
+    nba_audio_debugger_update(&game->audio_debugger, &game->audio,
+                              &game->assets, &game->input);
 
     /* If audio debugger is active, freeze game state progression */
     if (game->audio_debugger.is_active) {
@@ -159,18 +159,19 @@ void nba_game_tick(NbaGame *game, float delta_time) {
 
         case NBA_STATE_EA_INTRO:
             /* Trigger EA intro voice/audio if present in asset pack and not yet played */
-            if (game->ea_voice_stage == 0) {
+            if (!game->ea_intro_audio_started) {
                 const NbaAssetItem *audio_item = nba_assets_get(&game->assets, NBA_ASSET_AUDIO_EA_INTRO);
                 if (audio_item && audio_item->data && audio_item->size > 0) {
                     printf("[AUDIO] Playing EA Sports intro voice sequence (%u bytes, 5.05s total)...\n", audio_item->size);
-                    nba_audio_play_wav(audio_item->data, (size_t)audio_item->size);
-                    game->ea_voice_stage = 1;
+                    nba_audio_play_wav(&game->audio, audio_item->data,
+                                       (size_t)audio_item->size);
+                    game->ea_intro_audio_started = true;
                 }
             }
 
             /* Step through the authentic 4 assembly stages (5.05s total hold) or advance on button press */
             if (game->input.pressed & (NBA_BTN_START | NBA_BTN_A | NBA_BTN_B)) {
-                nba_audio_stop();
+                nba_audio_stop(&game->audio);
                 nba_game_enter_state(game, NBA_STATE_TITLE_SEQUENCE);
                 nba_title_sequence_init(&game->title_sequence);
             } else if (game->state_frame >= NBA_INTRO_TOTAL_FRAMES) {
@@ -182,7 +183,7 @@ void nba_game_tick(NbaGame *game, float delta_time) {
         case NBA_STATE_TITLE_SEQUENCE:
             /* $80:E01E enters the NBA shield/title scene immediately after $82:AC0E. */
             if (!game->title_sequence.audio_started) {
-                nba_audio_play_title_spc(&game->assets);
+                nba_audio_play_title_spc(&game->audio, &game->assets);
                 game->title_sequence.audio_started = true;
             }
 
@@ -214,11 +215,10 @@ void nba_game_tick(NbaGame *game, float delta_time) {
                 }
             } else if (nba_title_sequence_advance(&game->title_sequence)) {
                 /* $80:CF1B finished ramping INIDISP to zero. */
-                nba_audio_stop();
+                nba_audio_stop(&game->audio);
                 nba_game_enter_state(game, NBA_STATE_GAME_SETUP);
-                nba_setup_screen_init(&game->setup, &game->assets);
-                game->setup.bgm_started =
-                    nba_audio_play_setup_spc(&game->assets);
+                nba_setup_screen_init(&game->setup_screen, &game->assets);
+                nba_audio_play_setup_spc(&game->audio, &game->assets);
             }
             break;
 
@@ -226,7 +226,7 @@ void nba_game_tick(NbaGame *game, float delta_time) {
             /* $80:A3B8 - per-frame Game Setup update: slide-in, backdrop
              * scroll and row cursor. $80:A9E3/$80:AA7B/$80:AACD feed the
              * cycle-timed SPC command path started at the title handoff. */
-            nba_setup_screen_update(&game->setup, &game->input, delta_time);
+            nba_setup_screen_update(&game->setup_screen, &game->input);
             break;
 
         default:
@@ -360,7 +360,7 @@ void nba_game_render(NbaGame *game) {
             break;
 
         case NBA_STATE_GAME_SETUP:
-            nba_setup_screen_render(&game->setup, ren);
+            nba_setup_screen_render(&game->setup_screen, ren);
             break;
     }
 
@@ -405,7 +405,8 @@ void nba_game_render(NbaGame *game) {
 
         snprintf(l1, sizeof(l1), "TIMING DEBUG [F10]");
         snprintf(l2, sizeof(l2), "ST: %-10s %s", state_str, stage_str);
-        snprintf(l3, sizeof(l3), "F:%04u  T:%4.2fs  VOICE:%u", game->frame_count, game->state_timer, game->ea_voice_stage);
+        snprintf(l3, sizeof(l3), "F:%04u  T:%4.2fs  VOICE:%s", game->frame_count,
+                 game->state_timer, game->ea_intro_audio_started ? "ON" : "OFF");
 
         nba_font_render_text(ren->pixels, NBA_SNES_WIDTH, bx + 6, by + 4, l1, col_yellow, col_shadow, 1);
         nba_font_render_text(ren->pixels, NBA_SNES_WIDTH, bx + 6, by + 14, l2, col_white, col_shadow, 1);

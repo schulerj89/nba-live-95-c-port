@@ -1,5 +1,6 @@
 #include "nba_title_sequence.h"
 #include "nba_font.h"
+#include "nba_snes_ppu.h"
 #include <string.h>
 
 #define TITLE_PPU_MAGIC "NBTPPU1\0"
@@ -94,81 +95,35 @@ static bool title_trace_decode_to(NbaTitleSequence *s, const NbaAssetPack *asset
     return true;
 }
 
-static uint32_t title_color(const uint8_t *cgram, int index, int brightness) {
-    uint16_t word = (uint16_t)(cgram[(index * 2) & 0x1FF] |
-                               ((uint16_t)cgram[(index * 2 + 1) & 0x1FF] << 8));
-    uint32_t r = word & 31u, g = (word >> 5) & 31u, b = (word >> 10) & 31u;
-    r = (r << 3) | (r >> 2); g = (g << 3) | (g >> 2); b = (b << 3) | (b >> 2);
-    if (brightness < 15) {
-        if (brightness < 0) brightness = 0;
-        r = r * (uint32_t)brightness / 15u;
-        g = g * (uint32_t)brightness / 15u;
-        b = b * (uint32_t)brightness / 15u;
-    }
-    return 0xFF000000u | (r << 16) | (g << 8) | b;
-}
-
-static int title_tile_pixel(const uint8_t *vram, int chr_base, int tile,
-                            int bpp, int x, int y) {
-    int off = (chr_base + tile * 8 * bpp) & 0xFFFF;
-    int bit = 7 - x, value = 0;
-    for (int plane = 0; plane < bpp; plane += 2) {
-        int lo = vram[(off + y * 2 + plane * 8) & 0xFFFF];
-        int hi = vram[(off + y * 2 + 1 + plane * 8) & 0xFFFF];
-        value |= ((lo >> bit) & 1) << plane;
-        value |= ((hi >> bit) & 1) << (plane + 1);
-    }
-    return value;
-}
-
-static int title_sample_bg(const uint8_t *vram, int map_base, int chr_base,
-                           int bpp, bool wide, bool tall, int hscroll, int vscroll,
-                           int x, int y, int *palette, int *priority) {
-    int map_w = wide ? 512 : 256, map_h = tall ? 512 : 256;
-    int px = ((x + hscroll) % map_w + map_w) % map_w;
-    int py = ((y + vscroll + 1) % map_h + map_h) % map_h;
-    int tx = px >> 3, ty = py >> 3, quadrant = 0;
-    if (wide && tx >= 32) quadrant++;
-    if (tall && ty >= 32) quadrant += wide ? 2 : 1;
-    int entry_off = map_base + quadrant * 0x800 +
-                    ((ty & 31) * 32 + (tx & 31)) * 2;
-    uint16_t entry = (uint16_t)(vram[entry_off & 0xFFFF] |
-                                ((uint16_t)vram[(entry_off + 1) & 0xFFFF] << 8));
-    int sx = (entry & 0x4000) ? 7 - (px & 7) : (px & 7);
-    int sy = (entry & 0x8000) ? 7 - (py & 7) : (py & 7);
-    int value = title_tile_pixel(vram, chr_base, entry & 0x3FF, bpp, sx, sy);
-    if (!value) return -1;
-    *palette = (entry >> 10) & 7;
-    *priority = (entry >> 13) & 1;
-    return value;
-}
-
 static void title_render_ppu(const NbaTitleSequence *s, NbaRenderer *renderer) {
-    uint32_t backdrop = title_color(s->cgram, 0, s->brightness);
+    uint32_t backdrop = nba_snes_cgram_color(s->cgram, 0, s->brightness, 0, 0, 0);
     for (int y = 0; y < NBA_SNES_HEIGHT; ++y) {
         for (int x = 0; x < NBA_SNES_WIDTH; ++x) {
             uint32_t color = backdrop;
-            int palette = 0, priority = 0, value, best_z = 0;
+            NbaSnesBgPixel pixel = {0};
+            int best_z = 0;
             if (s->main_screen & 0x02) {
-                value = title_sample_bg(s->vram, TITLE_BG2_MAP, TITLE_BG2_CHR, 4,
-                                        false, true, s->bg_hscroll[1],
-                                        s->bg_vscroll[1], x, y, &palette, &priority);
-                if (value >= 0) {
-                    int z = priority ? 8 : 4;
+                if (nba_snes_sample_bg(s->vram, TITLE_BG2_MAP, TITLE_BG2_CHR, 4,
+                                       false, true, s->bg_hscroll[1],
+                                       s->bg_vscroll[1], x, y, &pixel)) {
+                    int z = pixel.priority ? 8 : 4;
                     if (z > best_z) {
-                        color = title_color(s->cgram, palette * 16 + value, s->brightness);
+                        color = nba_snes_cgram_color(s->cgram,
+                            pixel.palette * 16 + pixel.color_index,
+                            s->brightness, 0, 0, 0);
                         best_z = z;
                     }
                 }
             }
             if (s->main_screen & 0x01) {
-                value = title_sample_bg(s->vram, TITLE_BG1_MAP, TITLE_BG1_CHR, 4,
-                                        false, true, s->bg_hscroll[0],
-                                        s->bg_vscroll[0], x, y, &palette, &priority);
-                if (value >= 0) {
-                    int z = priority ? 9 : 5;
+                if (nba_snes_sample_bg(s->vram, TITLE_BG1_MAP, TITLE_BG1_CHR, 4,
+                                       false, true, s->bg_hscroll[0],
+                                       s->bg_vscroll[0], x, y, &pixel)) {
+                    int z = pixel.priority ? 9 : 5;
                     if (z > best_z) {
-                        color = title_color(s->cgram, palette * 16 + value, s->brightness);
+                        color = nba_snes_cgram_color(s->cgram,
+                            pixel.palette * 16 + pixel.color_index,
+                            s->brightness, 0, 0, 0);
                         best_z = z;
                     }
                 }
@@ -179,14 +134,15 @@ static void title_render_ppu(const NbaTitleSequence *s, NbaRenderer *renderer) {
                     ((s->attract_delay == 0 || s->attract_delay == 0xFFFF) ? 8 : 0);
                 int bg3_x = attract ? (y < 186 ? credit_top_x : 0) : s->bg_hscroll[2];
                 int bg3_y = attract ? (y < 186 ? -83 : s->credit_y) : s->bg_vscroll[2];
-                value = (attract && y < 0x90) ? -1 :
-                    title_sample_bg(s->vram, TITLE_BG3_MAP, TITLE_BG3_CHR, 2,
-                                    true, false, bg3_x, bg3_y,
-                                    x, y, &palette, &priority);
-                if (value >= 0) {
-                    int z = attract ? 10 : (priority ? 3 : 2);
+                bool visible = !(attract && y < 0x90) &&
+                    nba_snes_sample_bg(s->vram, TITLE_BG3_MAP, TITLE_BG3_CHR, 2,
+                                       true, false, bg3_x, bg3_y, x, y, &pixel);
+                if (visible) {
+                    int z = attract ? 10 : (pixel.priority ? 3 : 2);
                     if (z > best_z) {
-                        color = title_color(s->cgram, palette * 4 + value, s->brightness);
+                        color = nba_snes_cgram_color(s->cgram,
+                            pixel.palette * 4 + pixel.color_index,
+                            s->brightness, 0, 0, 0);
                         best_z = z;
                     }
                 }

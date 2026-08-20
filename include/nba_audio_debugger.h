@@ -4,6 +4,7 @@
 #include "nba_types.h"
 #include "nba_assets.h"
 #include "nba_renderer.h"
+#include "nba_audio.h"
 
 typedef struct {
     bool is_active;
@@ -15,7 +16,8 @@ typedef struct {
 
 void nba_audio_debugger_init(NbaAudioDebugger *dbg);
 void nba_audio_debugger_toggle(NbaAudioDebugger *dbg);
-void nba_audio_debugger_update(NbaAudioDebugger *dbg, const NbaAssetPack *assets, const NbaInput *input);
+void nba_audio_debugger_update(NbaAudioDebugger *dbg, NbaAudio *audio,
+                               const NbaAssetPack *assets, const NbaInput *input);
 void nba_audio_debugger_render(const NbaAudioDebugger *dbg, const NbaAssetPack *assets, NbaRenderer *ren);
 
 #endif /* NBA_AUDIO_DEBUGGER_H */

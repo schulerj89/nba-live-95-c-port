@@ -50,19 +50,9 @@ if (!(Test-Path $VcVars)) {
 
 $ConsoleExePath = Join-Path $BuildDir "nba95_port.exe"
 
-$CommonSources = @(
-    "src\nba_rom.c",
-    "src\nba_assets.c",
-    "src\nba_audio.c",
-    "src\nba_spc.c",
-    "src\nba_audio_debugger.c",
-    "src\nba_font.c",
-    "src\nba_renderer.c",
-    "src\nba_ea_intro.c",
-    "src\nba_title_sequence.c",
-    "src\nba_setup_screen.c",
-    "src\nba_game.c"
-)
+$SourceManifest = Join-Path $Root "nba95_sources.txt"
+$Sources = Get-Content -LiteralPath $SourceManifest | ForEach-Object { $_.Trim() } |
+    Where-Object { $_ -and !$_.StartsWith('#') }
 
 $IncludePath = Join-Path $Root "include"
 
@@ -71,7 +61,7 @@ $CompileBatchContent = @"
 @echo off
 call "$VcVars" > nul
 echo Compiling nba95_port.exe (CLI/Test runner)...
-cl.exe /nologo /W3 /O2 /MD /utf-8 /I "$IncludePath" /Fe"$ConsoleExePath" /Fo"$ObjDir\\" "$Root\src\main.c" "$Root\src\win32_game_main.c" $(($CommonSources | ForEach-Object { "`"$Root\$_`"" }) -join ' ') user32.lib gdi32.lib winmm.lib
+cl.exe /nologo /W4 /O2 /MD /utf-8 /I "$IncludePath" /Fe"$ConsoleExePath" /Fo"$ObjDir\\" $(($Sources | ForEach-Object { "`"$Root\$($_ -replace '/', '\')`"" }) -join ' ') user32.lib gdi32.lib winmm.lib
 if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
 "@
 

@@ -7,21 +7,8 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 
 include_directories(include)
 
-set(NBA95_SOURCES
-    src/main.c
-    src/win32_game_main.c
-    src/nba_rom.c
-    src/nba_assets.c
-    src/nba_audio.c
-    src/nba_spc.c
-    src/nba_audio_debugger.c
-    src/nba_font.c
-    src/nba_renderer.c
-    src/nba_ea_intro.c
-    src/nba_title_sequence.c
-    src/nba_setup_screen.c
-    src/nba_game.c
-)
+file(STRINGS "${CMAKE_SOURCE_DIR}/nba95_sources.txt" NBA95_SOURCES)
+list(FILTER NBA95_SOURCES EXCLUDE REGEX "^[ \\t]*(#|$)")
 
 add_executable(nba95_port ${NBA95_SOURCES})
 

@@ -141,12 +141,11 @@ typedef struct {
     uint8_t sub_screen;
 
     NbaSetupRow row;
-    bool bgm_started;
     bool is_initialized;
 } NbaSetupScreen;
 
 void nba_setup_screen_init(NbaSetupScreen *s, const NbaAssetPack *assets);
-void nba_setup_screen_update(NbaSetupScreen *s, const NbaInput *input, float delta_time);
+void nba_setup_screen_update(NbaSetupScreen *s, const NbaInput *input);
 int  nba_setup_screen_row_band_top(NbaSetupRow row);
 void nba_setup_screen_render(const NbaSetupScreen *s, NbaRenderer *ren);
 
