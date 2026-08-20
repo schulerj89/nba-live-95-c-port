@@ -4,6 +4,7 @@ param(
     [switch]$ExtractAssets,
     [switch]$Run,
     [switch]$Headless,
+    [switch]$Test,
     [int]$Frames = 30,
     [string]$DumpFrame = ''
 )
@@ -53,6 +54,7 @@ $CommonSources = @(
     "src\nba_rom.c",
     "src\nba_assets.c",
     "src\nba_audio.c",
+    "src\nba_spc.c",
     "src\nba_audio_debugger.c",
     "src\nba_font.c",
     "src\nba_renderer.c",
@@ -83,6 +85,20 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host "Build complete:" -ForegroundColor Green
 Write-Host "  Executable: $ConsoleExePath"
+
+if ($Test) {
+    if ([string]::IsNullOrEmpty($RomPath) -or !(Test-Path -LiteralPath $RomPath)) {
+        throw "-Test requires -RomPath."
+    }
+    if ([string]::IsNullOrEmpty($AssetPack) -or !(Test-Path -LiteralPath $AssetPack)) {
+        throw "-Test requires a generated asset pack."
+    }
+    & python (Join-Path $Root "tools\test_title_pipeline.py") `
+        --pack $AssetPack --exe $ConsoleExePath --rom $RomPath
+    if ($LASTEXITCODE -ne 0) {
+        throw "Title regression tests failed with exit code $LASTEXITCODE"
+    }
+}
 
 if ($Headless -or $DumpFrame) {
     Write-Host "Running headless verification..." -ForegroundColor Yellow

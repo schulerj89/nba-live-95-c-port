@@ -58,7 +58,7 @@
 #define NBA_TITLE_FADE_FRAMES          15   /* $80:CF1B - INIDISP 15..0         */
 
 #define NBA_TITLE_SEQUENCE_FRAMES      2160 /* 36 seconds: build plus cue-timed credits */
-#define NBA_TITLE_VIDEO_HEADER_SIZE    32
+#define NBA_TITLE_PPU_HEADER_SIZE      16
 
 typedef enum {
     NBA_TITLE_PHASE_BUILD = 0,  /* pieces still assembling                  */
@@ -68,15 +68,26 @@ typedef enum {
 
 typedef struct {
     bool audio_started;
+    bool gfx_loaded;
     int decoded_frame;
-    size_t video_offset;
+    size_t trace_offset;
+
+    uint8_t vram[0x10000];
+    uint8_t cgram[0x200];
+    int bg_hscroll[3];
+    int bg_vscroll[3];
+    int brightness;
+    uint8_t main_screen;
+    int credit_x;
+    int credit_y;
+    int attract_index;
+    int attract_delay;
 
     NbaTitlePhase phase;
     int hold_frames_left;
     int fade_level;             /* $0562 - INIDISP master brightness 15..0 */
     float snap_timer;           /* title time forced by $80:F07E, <0 if none */
 
-    uint16_t framebuffer[NBA_SNES_WIDTH * NBA_SNES_HEIGHT];
 } NbaTitleSequence;
 
 void nba_title_sequence_init(NbaTitleSequence *sequence);

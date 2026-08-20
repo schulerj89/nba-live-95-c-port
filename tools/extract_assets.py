@@ -674,8 +674,7 @@ import os
 import sys
 import struct
 import argparse
-import shutil
-import subprocess
+import re
 from PIL import Image
 import numpy as np
 
@@ -1003,150 +1002,139 @@ def create_asset_pack(rom_path, output_path):
             audio_intro_bytes = make_wav_bytes(composite.tolist(), sample_rate=16000)
             print(f"[ASSET EXTRACTOR] Built complete 4-part intro slogan track: {len(audio_intro_bytes)} WAV bytes (5.05s)")
 
-    # The $80:E01E title is a composed PPU/SPC sequence rather than one flat ROM
-    # bitmap or BRR stream. Pack clean Mesen reference frames and its recorded SPC
-    # mix so the native renderer/audio path preserves the observed composition,
-    # credit progression, timing, and original soundtrack.
-    title_sequence_frames = []
-    screenshot_dir = os.path.join(os.environ.get("OneDrive", ""), "Documents", "Mesen2", "Screenshots")
-    for filename in ("NBA Live 95 (USA)_001.png", "NBA Live 95 (USA)_002.png",
-                     "NBA Live 95 (USA)_000.png"):
-        frame_path = os.path.join(screenshot_dir, filename)
-        if not os.path.exists(frame_path):
-            continue
-        image = Image.open(frame_path).convert("RGB").resize((256, 224), Image.Resampling.NEAREST)
-        frame_bytes = bytearray()
-        for r, g, b in np.asarray(image).reshape(-1, 3):
-            frame_bytes.extend(struct.pack("<I", 0xFF000000 | (int(r) << 16) |
-                                           (int(g) << 8) | int(b)))
-        title_sequence_frames.append(frame_bytes)
-        print(f"[ASSET EXTRACTOR] Packed post-EA title keyframe: {frame_path}")
+    # ------------------------------------------------------------------
+    # $80:E01E title hardware state. Unlike the retired captured-video path,
+    # these assets contain no rendered frames and no mixed audio. Mesen is used
+    # as a hardware-state dumper: the port renders the ROM's planar tiles and
+    # runs the ROM's SPC700 driver/BRR bank itself.
+    title_capture_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                     "..", ".analysis", "title_capture")
 
-    def encode_title_reference(avi_path, start_seconds=26.0, duration_seconds=36.0,
-                               fps=30, width=256, height=224):
-        ffmpeg = shutil.which("ffmpeg")
-        if not ffmpeg:
-            print("[ASSET EXTRACTOR] ffmpeg unavailable; skipping title video stream")
-            return bytearray(), bytearray()
-        command = [ffmpeg, "-v", "error", "-ss", str(start_seconds),
-                   "-t", str(duration_seconds), "-i", avi_path, "-an",
-                   "-vf", f"fps={fps}", "-f", "rawvideo", "-pix_fmt", "rgb24", "pipe:1"]
-        process = subprocess.Popen(command, stdout=subprocess.PIPE)
-        raw_size = width * height * 3
-        records = bytearray()
-        previous = None
-        count = 0
-        while True:
-            raw = process.stdout.read(raw_size)
-            if len(raw) != raw_size:
-                break
-            rgb = np.frombuffer(raw, dtype=np.uint8).reshape(-1, 3)
-            colors = (((rgb[:, 0].astype(np.uint16) >> 3) << 11) |
-                      ((rgb[:, 1].astype(np.uint16) >> 2) << 5) |
-                      (rgb[:, 2].astype(np.uint16) >> 3))
-            changed = (np.arange(colors.size, dtype=np.int32) if previous is None
-                       else np.flatnonzero(colors != previous))
-            runs = []
-            if changed.size:
-                split_points = np.flatnonzero(np.diff(changed) != 1) + 1
-                for indices in np.split(changed, split_points):
-                    start = int(indices[0])
-                    length = int(indices.size)
-                    runs.append((start, length,
-                                 colors[start:start + length].astype('<u2').tobytes()))
-            payload = bytearray(struct.pack("<I", len(runs)))
-            for start, length, pixels in runs:
-                payload.extend(struct.pack("<HH", start, length))
-                payload.extend(pixels)
-            records.extend(struct.pack("<I", len(payload)))
-            records.extend(payload)
-            previous = colors.copy()
-            count += 1
-        process.stdout.close()
-        if process.wait() != 0 or count == 0:
-            print("[ASSET EXTRACTOR] Failed to decode Mesen title reference")
-            return bytearray(), bytearray()
-        header = b"NBTITLE1" + struct.pack("<6I", 1, width, height, fps, 1, count)
+    def read_required(name, expected_size=None):
+        path = os.path.join(title_capture_dir, name)
+        if not os.path.exists(path):
+            raise RuntimeError(f"Missing title hardware capture: {path}. Run "
+                               "tools/mesen_title_capture.lua with the ROM first.")
+        data = open(path, "rb").read()
+        if expected_size is not None and len(data) != expected_size:
+            raise RuntimeError(f"Invalid {name}: expected {expected_size} bytes, got {len(data)}")
+        return data
 
-        audio_command = [ffmpeg, "-v", "error", "-ss", str(start_seconds),
-                         "-t", str(duration_seconds), "-i", avi_path, "-vn",
-                         "-ac", "1", "-ar", "22050", "-acodec", "pcm_s16le",
-                         "-f", "s16le", "pipe:1"]
-        pcm = subprocess.run(audio_command, stdout=subprocess.PIPE, check=True).stdout
-        wav_header = struct.pack('<4sI4s4sIHHIIHH4sI', b'RIFF', 36 + len(pcm),
-                                 b'WAVE', b'fmt ', 16, 1, 1, 22050, 44100,
-                                 2, 16, b'data', len(pcm))
-        print(f"[ASSET EXTRACTOR] Encoded {count} cue-aligned title frames from Mesen")
-        return header + records, wav_header + pcm
+    def parse_text_events(name, hex_fields=()):
+        events = []
+        for raw in read_required(name).decode("ascii").splitlines():
+            if not raw or raw.startswith("#"):
+                continue
+            fields = raw.split()
+            events.append(tuple(int(v, 16 if i in hex_fields else 10)
+                                for i, v in enumerate(fields)))
+        return events
 
-    title_video_bytes = bytearray()
-    mesen_title_audio = bytearray()
-    mesen_avi = os.path.join(os.environ.get("OneDrive", ""), "Documents", "Mesen2",
-                             "Avi", "NBA Live 95 (USA).avi")
-    if os.path.exists(mesen_avi):
-        title_video_bytes, mesen_title_audio = encode_title_reference(mesen_avi)
+    title_vram_bytes = read_required("initial_vram.bin", 0x10000)
+    title_cgram_bytes = read_required("initial_cgram.bin", 0x200)
+    title_spc_ram_bytes = read_required("initial_spc_ram.bin", 0x10000)
+    title_spc_dsp_bytes = read_required("initial_spc_dsp.bin", 0x80)
 
-    title_audio_bytes = mesen_title_audio
-    for audio_path in (os.path.join(os.path.dirname(output_path), "post_ea_title_sequence.wav"),
-                       os.path.join(os.path.dirname(rom_path), "post_ea_title_sequence.wav")):
-        if len(title_audio_bytes) == 0 and os.path.exists(audio_path):
-            with open(audio_path, "rb") as audio_file:
-                title_audio_bytes = audio_file.read()
-            print(f"[ASSET EXTRACTOR] Packed Mesen post-EA title audio: {len(title_audio_bytes)} bytes")
-            break
+    state_text = read_required("initial_state.txt").decode("ascii")
+    def state_int(key):
+        match = re.search(r"^" + re.escape(key) + r"=(-?\d+)$", state_text, re.MULTILINE)
+        if not match:
+            raise RuntimeError(f"Title capture is missing state key {key}")
+        return int(match.group(1))
+    title_spc_state_bytes = b"NBTSPC1\0" + struct.pack(
+        "<IH6B", 1, state_int("spc.pc"), state_int("spc.a"),
+        state_int("spc.x"), state_int("spc.y"), state_int("spc.sp"),
+        state_int("spc.ps"), 0)
+
+    apu_events = parse_text_events("apu_ports.txt", (2,))
+    cue_events = parse_text_events("cues.txt")
+    frame_rows = parse_text_events("ppu_frames.txt")
+    vram_events = parse_text_events("vram_writes.txt", (1, 2))
+    cgram_events = parse_text_events("cgram_writes.txt", (1, 2))
+    if not frame_rows:
+        raise RuntimeError("Title PPU trace is empty")
+    title_frame_count = max(row[0] for row in frame_rows) + 1
+
+    def pack_timed_events(magic, events):
+        packed = bytearray(struct.pack("<8sIII", magic, 1, title_frame_count, len(events)))
+        for frame, field, value in events:
+            if frame < 0 or frame >= title_frame_count or field < 0 or field > 255:
+                raise RuntimeError(f"Invalid event in {magic!r}: {(frame, field, value)}")
+            packed.extend(struct.pack("<HBB", frame, field, value))
+        return bytes(packed)
+
+    title_apu_trace_bytes = pack_timed_events(b"NBTAPU1\0", apu_events)
+    title_cue_trace_bytes = pack_timed_events(
+        b"NBTCUE1\0", [(frame, value, 0) for frame, value in cue_events])
+
+    vram_by_frame = {}
+    for frame, address, value in vram_events:
+        vram_by_frame.setdefault(frame, []).append((address, value))
+    cgram_by_frame = {}
+    for frame, address, value in cgram_events:
+        cgram_by_frame.setdefault(frame, []).append((address, value))
+    rows_by_frame = {row[0]: row for row in frame_rows}
+
+    title_ppu_trace = bytearray(struct.pack("<8sII", b"NBTPPU1\0", 1, title_frame_count))
+    last_row = frame_rows[0]
+    for frame in range(title_frame_count):
+        row = rows_by_frame.get(frame, last_row)
+        last_row = row
+        if len(row) != 13:
+            raise RuntimeError(f"Invalid PPU state row: {row}")
+        vw = vram_by_frame.get(frame, [])
+        cw = cgram_by_frame.get(frame, [])
+        title_ppu_trace.extend(struct.pack("<BB10H2H", row[1], row[2],
+                                           *row[3:13], len(vw), len(cw)))
+        for address, value in vw:
+            title_ppu_trace.extend(struct.pack("<HB", address, value))
+        for address, value in cw:
+            title_ppu_trace.extend(struct.pack("<HB", address, value))
+
+    expected_primary_cues = [(1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6)]
+    actual_primary_cues = [(i + 1, event[1]) for i, event in enumerate(cue_events[:6])]
+    if actual_primary_cues != expected_primary_cues:
+        raise RuntimeError(f"Unexpected title cue order: {actual_primary_cues}")
+    print(f"[ASSET EXTRACTOR] Packed ROM title hardware state: {title_frame_count} frames, "
+          f"{len(apu_events)} APU writes, {len(cue_events)} cues, "
+          f"{len(vram_events)} VRAM and {len(cgram_events)} CGRAM changes")
 
 
 
-        # ------------------------------------------------------------------
-        # Game Setup screen ($80:A2BF cluster) graphics.
-        #
-        # The screen is SNES BG Mode 1 built from three layers whose tile data
-        # the ROM produces by running its own decompressor ($80:C62B) and then
-        # DMAing the result into VRAM. The pointer sequence was captured live
-        # from the running ROM (tools/mesen_decomp_trace.lua):
-        #
-        #   $AE:A0AF, $AE:C446, $A6:C5FC -> BG2 chr   (blue gradient backdrop,
-        #                                              NBA watermark, EA SPORTS)
-        #   $AE:D153                     -> BG2 tilemap
-        #   $AF:97AA, $AC:FD74           -> BG1 chr/tilemap (header banner)
-        #   $97:FF6D, $AF:F2DC           -> BG3 text canvas + glyph tiles
-        #   $AE:FA10 (CGADD $30, 0xA0)   -> palettes 3..7
-        #   $A8:FFF1 (CGADD $49, 0x0E)   -> palette 4 tail
-        #   $AF:9072 (CGADD $59, 0x0E)   -> palette 5 tail
-        #
-        # tools/build_setup_screen.py replays that sequence offline and
-        # reproduces BG2's chr byte-for-byte. The remaining regions are built
-        # by CPU writes that depend on accumulated decompressor state, so the
-        # authoritative VRAM/CGRAM image is taken from a Mesen state capture
-        # (tools/mesen_setup_capture.lua). Both are ROM data, and neither is
-        # committed - .analysis/ and *.bin are ignored, same as the ROM itself.
-        setup_vram_bytes = b""
-        setup_cgram_bytes = b""
-        capture_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                   "..", ".analysis", "setup_capture")
-        vram_path = os.path.join(capture_dir, "vram.bin")
-        cgram_path = os.path.join(capture_dir, "cgram.bin")
-        if os.path.exists(vram_path) and os.path.exists(cgram_path):
-            setup_vram_bytes = open(vram_path, "rb").read()
-            setup_cgram_bytes = open(cgram_path, "rb").read()
-            print(f"[ASSET EXTRACTOR] Game Setup VRAM {len(setup_vram_bytes)} bytes, "
-                  f"CGRAM {len(setup_cgram_bytes)} bytes")
+    # ------------------------------------------------------------------
+    # Game Setup screen ($80:A2BF cluster) graphics.
+    #
+    # The screen is SNES BG Mode 1 built from three layers whose tile data
+    # the ROM produces by running its own decompressor ($80:C62B) and then
+    # DMAing the result into VRAM. The pointer sequence was captured live
+    # from the running ROM (tools/mesen_decomp_trace.lua).
+    setup_vram_bytes = b""
+    setup_cgram_bytes = b""
+    capture_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                               "..", ".analysis", "setup_capture")
+    vram_path = os.path.join(capture_dir, "vram.bin")
+    cgram_path = os.path.join(capture_dir, "cgram.bin")
+    if os.path.exists(vram_path) and os.path.exists(cgram_path):
+        setup_vram_bytes = open(vram_path, "rb").read()
+        setup_cgram_bytes = open(cgram_path, "rb").read()
+        print(f"[ASSET EXTRACTOR] Game Setup VRAM {len(setup_vram_bytes)} bytes, "
+              f"CGRAM {len(setup_cgram_bytes)} bytes")
 
-            # Cross-check the capture against data decompressed from the ROM.
-            try:
-                emu = Snes65816Decompressor(rom_data)
-                emu.decompress(0xAE, 0xC446, 0x7F, 0x2000)
-                blob = bytes(emu.wram[0x12000:0x12000 + 0x3C0])
-                if blob and blob in setup_vram_bytes[0x2000:0x6000]:
-                    print("[ASSET EXTRACTOR] Verified BG2 chr against ROM decompressor "
-                          "($AE:C446 via $80:C62B)")
-                else:
-                    print("[ASSET EXTRACTOR] Warning: BG2 chr did not match the ROM decompressor")
-            except Exception as ex:
-                print(f"[ASSET EXTRACTOR] Warning: setup-screen ROM cross-check failed: {ex}")
-        else:
-            print("[ASSET EXTRACTOR] Game Setup capture missing; run:")
-            print("    Mesen.exe <rom> tools/mesen_setup_capture.lua")
+        # Cross-check the capture against data decompressed from the ROM.
+        try:
+            emu = Snes65816Decompressor(rom_data)
+            emu.decompress(0xAE, 0xC446, 0x7F, 0x2000)
+            blob = bytes(emu.wram[0x12000:0x12000 + 0x3C0])
+            if blob and blob in setup_vram_bytes[0x2000:0x6000]:
+                print("[ASSET EXTRACTOR] Verified BG2 chr against ROM decompressor "
+                      "($AE:C446 via $80:C62B)")
+            else:
+                print("[ASSET EXTRACTOR] Warning: BG2 chr did not match the ROM decompressor")
+        except Exception as ex:
+            print(f"[ASSET EXTRACTOR] Warning: setup-screen ROM cross-check failed: {ex}")
+    else:
+        print("[ASSET EXTRACTOR] Game Setup capture missing; run:")
+        print("    Mesen.exe <rom> tools/mesen_setup_capture.lua")
 
     assets = [
         (1, 128, 11, 0, nintendo_license_bytes),               # ASSET_NINTENDO_LICENSE
@@ -1167,12 +1155,16 @@ def create_asset_pack(rom_path, output_path):
         assets.append((10, 0, 0, 0, audio_sports_bytes))       # ASSET_AUDIO_EA_SPORTS
     if len(audio_game_bytes) > 0:
         assets.append((11, 0, 0, 0, audio_game_bytes))         # ASSET_AUDIO_EA_GAME
-    for frame_index, frame_bytes in enumerate(title_sequence_frames[:3]):
-        assets.append((12 + frame_index, 256, 224, 0, frame_bytes))
-    if len(title_audio_bytes) > 0:
-        assets.append((15, 0, 0, 0, title_audio_bytes))
-    if len(title_video_bytes) > 0:
-        assets.append((68, 256, 224, 30, title_video_bytes))
+    assets.extend([
+        (80, 0, 0, 0, title_vram_bytes),
+        (81, 0, 0, 0, title_cgram_bytes),
+        (82, 0, 0, 0, bytes(title_ppu_trace)),
+        (83, 0, 0, 0, title_spc_ram_bytes),
+        (84, 0, 0, 0, title_spc_dsp_bytes),
+        (85, 0, 0, 0, title_spc_state_bytes),
+        (86, 0, 0, 0, title_apu_trace_bytes),
+        (87, 0, 0, 0, title_cue_trace_bytes),
+    ])
 
     # Extract all other audio samples from ROM into asset pack for debugger
     rom_sample_offsets = [

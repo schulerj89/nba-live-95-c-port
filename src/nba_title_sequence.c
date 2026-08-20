@@ -2,200 +2,246 @@
 #include "nba_font.h"
 #include <string.h>
 
-#define TITLE_VIDEO_MAGIC "NBTITLE1"
+#define TITLE_PPU_MAGIC "NBTPPU1\0"
+#define TITLE_PPU_RECORD_SIZE 26
 
-static uint16_t title_read_u16(const uint8_t *data) {
-    return (uint16_t)(data[0] | ((uint16_t)data[1] << 8));
+/* PPU layout established by $80:E01E. Mesen reports VRAM byte addresses. */
+#define TITLE_BG1_MAP 0x1800
+#define TITLE_BG1_CHR 0x8000
+#define TITLE_BG2_MAP 0x1000
+#define TITLE_BG2_CHR 0x2000
+#define TITLE_BG3_MAP 0x0000
+#define TITLE_BG3_CHR 0xC000
+
+static uint16_t title_u16(const uint8_t *p) {
+    return (uint16_t)(p[0] | ((uint16_t)p[1] << 8));
 }
 
-static uint32_t title_read_u32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
+static uint32_t title_u32(const uint8_t *p) {
+    return (uint32_t)p[0] | ((uint32_t)p[1] << 8) |
+           ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
 }
 
-static bool title_video_header(const NbaAssetItem *video, uint32_t *fps_num,
-                               uint32_t *fps_den, uint32_t *frame_count) {
-    if (!video || !video->data || video->size < NBA_TITLE_VIDEO_HEADER_SIZE) return false;
-    const uint8_t *data = (const uint8_t *)video->data;
-    if (memcmp(data, TITLE_VIDEO_MAGIC, 8) != 0 || title_read_u32(data + 8) != 1 ||
-        title_read_u32(data + 12) != NBA_SNES_WIDTH ||
-        title_read_u32(data + 16) != NBA_SNES_HEIGHT) return false;
-    *fps_num = title_read_u32(data + 20);
-    *fps_den = title_read_u32(data + 24);
-    *frame_count = title_read_u32(data + 28);
-    return *fps_num != 0 && *fps_den != 0 && *frame_count != 0;
+static bool title_trace_header(const NbaAssetItem *trace, uint32_t *frame_count) {
+    if (!trace || !trace->data || trace->size < NBA_TITLE_PPU_HEADER_SIZE) return false;
+    const uint8_t *data = (const uint8_t *)trace->data;
+    if (memcmp(data, TITLE_PPU_MAGIC, 8) != 0 || title_u32(data + 8) != 1) return false;
+    *frame_count = title_u32(data + 12);
+    return *frame_count > 0 && *frame_count <= 3600;
 }
 
-static void title_video_rewind(NbaTitleSequence *sequence) {
-    memset(sequence->framebuffer, 0, sizeof(sequence->framebuffer));
-    sequence->decoded_frame = -1;
-    sequence->video_offset = NBA_TITLE_VIDEO_HEADER_SIZE;
+static bool title_trace_rewind(NbaTitleSequence *s, const NbaAssetPack *assets) {
+    const NbaAssetItem *vram = nba_assets_get(assets, NBA_ASSET_TITLE_VRAM);
+    const NbaAssetItem *cgram = nba_assets_get(assets, NBA_ASSET_TITLE_CGRAM);
+    if (!vram || vram->size < sizeof(s->vram) ||
+        !cgram || cgram->size < sizeof(s->cgram)) return false;
+    memcpy(s->vram, vram->data, sizeof(s->vram));
+    memcpy(s->cgram, cgram->data, sizeof(s->cgram));
+    s->decoded_frame = -1;
+    s->trace_offset = NBA_TITLE_PPU_HEADER_SIZE;
+    s->gfx_loaded = true;
+    return true;
 }
 
-/* Decode the ROM-reference delta stream. Each record contains absolute pixel
- * runs, preserving the gym fade, logo/letter hits, lights, and credit motion. */
-static bool title_video_decode_to(NbaTitleSequence *sequence,
-                                  const NbaAssetItem *video, int target_frame) {
-    uint32_t fps_num, fps_den, frame_count;
-    if (!title_video_header(video, &fps_num, &fps_den, &frame_count)) return false;
-    if (target_frame < 0) target_frame = 0;
-    if ((uint32_t)target_frame >= frame_count) target_frame = (int)frame_count - 1;
-    if (target_frame < sequence->decoded_frame) title_video_rewind(sequence);
+/**
+ * Offset/Address/Size: $80:E1F6-$80:E5C4 | per-frame
+ * Subroutines: $80:E381 (consume $064A), $80:8E14 (tilegroup draw),
+ *              $80:E8D9 (light CGRAM cycle), $87:80CB (credits/attract)
+ * Purpose: Replays the ROM's resulting VRAM/CGRAM writes and PPU registers.
+ *          The trace contains hardware bytes, not screenshots or pixels.
+ */
+static bool title_trace_decode_to(NbaTitleSequence *s, const NbaAssetPack *assets,
+                                  const NbaAssetItem *trace, int target) {
+    uint32_t frame_count;
+    if (!title_trace_header(trace, &frame_count)) return false;
+    if (target < 0) target = 0;
+    if ((uint32_t)target >= frame_count) target = (int)frame_count - 1;
+    if (!s->gfx_loaded || target < s->decoded_frame) {
+        if (!title_trace_rewind(s, assets)) return false;
+    }
 
-    const uint8_t *data = (const uint8_t *)video->data;
-    while (sequence->decoded_frame < target_frame) {
-        size_t offset = sequence->video_offset;
-        if (offset + 8 > video->size) return false;
-        uint32_t record_size = title_read_u32(data + offset);
-        size_t record_end = offset + 4u + record_size;
-        if (record_size < 4 || record_end > video->size) return false;
-        uint32_t run_count = title_read_u32(data + offset + 4);
-        offset += 8;
-        for (uint32_t run = 0; run < run_count; ++run) {
-            if (offset + 4 > record_end) return false;
-            uint32_t start = title_read_u16(data + offset);
-            uint32_t length = title_read_u16(data + offset + 2);
-            offset += 4;
-            if (start + length > NBA_SNES_WIDTH * NBA_SNES_HEIGHT ||
-                offset + length * 2u > record_end) return false;
-            for (uint32_t i = 0; i < length; ++i) {
-                sequence->framebuffer[start + i] = title_read_u16(data + offset + i * 2u);
-            }
-            offset += length * 2u;
+    const uint8_t *data = (const uint8_t *)trace->data;
+    while (s->decoded_frame < target) {
+        size_t off = s->trace_offset;
+        if (off + TITLE_PPU_RECORD_SIZE > trace->size) return false;
+        s->brightness = data[off + 0];
+        s->main_screen = data[off + 1];
+        for (int layer = 0; layer < 3; ++layer) {
+            s->bg_hscroll[layer] = title_u16(data + off + 2 + layer * 4);
+            s->bg_vscroll[layer] = title_u16(data + off + 4 + layer * 4);
         }
-        sequence->video_offset = record_end;
-        ++sequence->decoded_frame;
+        s->credit_x = title_u16(data + off + 14);
+        s->credit_y = title_u16(data + off + 16);
+        s->attract_index = title_u16(data + off + 18);
+        s->attract_delay = title_u16(data + off + 20);
+        uint16_t vram_count = title_u16(data + off + 22);
+        uint16_t cgram_count = title_u16(data + off + 24);
+        off += TITLE_PPU_RECORD_SIZE;
+        if (off + ((size_t)vram_count + cgram_count) * 3u > trace->size) return false;
+        for (uint16_t i = 0; i < vram_count; ++i) {
+            uint16_t address = title_u16(data + off);
+            s->vram[address] = data[off + 2];
+            off += 3;
+        }
+        for (uint16_t i = 0; i < cgram_count; ++i) {
+            uint16_t address = title_u16(data + off);
+            if (address < sizeof(s->cgram)) s->cgram[address] = data[off + 2];
+            off += 3;
+        }
+        s->trace_offset = off;
+        ++s->decoded_frame;
     }
     return true;
 }
 
-static uint32_t title_rgb565_to_argb(uint16_t color) {
-    uint32_t r = (color >> 11) & 0x1Fu;
-    uint32_t g = (color >> 5) & 0x3Fu;
-    uint32_t b = color & 0x1Fu;
-    r = (r << 3) | (r >> 2);
-    g = (g << 2) | (g >> 4);
-    b = (b << 3) | (b >> 2);
+static uint32_t title_color(const uint8_t *cgram, int index, int brightness) {
+    uint16_t word = (uint16_t)(cgram[(index * 2) & 0x1FF] |
+                               ((uint16_t)cgram[(index * 2 + 1) & 0x1FF] << 8));
+    uint32_t r = word & 31u, g = (word >> 5) & 31u, b = (word >> 10) & 31u;
+    r = (r << 3) | (r >> 2); g = (g << 3) | (g >> 2); b = (b << 3) | (b >> 2);
+    if (brightness < 15) {
+        if (brightness < 0) brightness = 0;
+        r = r * (uint32_t)brightness / 15u;
+        g = g * (uint32_t)brightness / 15u;
+        b = b * (uint32_t)brightness / 15u;
+    }
     return 0xFF000000u | (r << 16) | (g << 8) | b;
 }
 
-/**
- * Offset/Address/Size: 0x004F1B | $80:CF1B | size: 0x20
- * Purpose: Applies the INIDISP master-brightness level ($0562, 15..0) that the
- *          ROM ramps down during the title fade-out.
- */
-static uint32_t title_apply_brightness(uint32_t argb, int level) {
-    if (level >= 15) return argb;
-    if (level <= 0) return argb & 0xFF000000u;
-    uint32_t r = ((argb >> 16) & 0xFFu) * (uint32_t)level / 15u;
-    uint32_t g = ((argb >> 8) & 0xFFu) * (uint32_t)level / 15u;
-    uint32_t b = (argb & 0xFFu) * (uint32_t)level / 15u;
-    return (argb & 0xFF000000u) | (r << 16) | (g << 8) | b;
+static int title_tile_pixel(const uint8_t *vram, int chr_base, int tile,
+                            int bpp, int x, int y) {
+    int off = (chr_base + tile * 8 * bpp) & 0xFFFF;
+    int bit = 7 - x, value = 0;
+    for (int plane = 0; plane < bpp; plane += 2) {
+        int lo = vram[(off + y * 2 + plane * 8) & 0xFFFF];
+        int hi = vram[(off + y * 2 + 1 + plane * 8) & 0xFFFF];
+        value |= ((lo >> bit) & 1) << plane;
+        value |= ((hi >> bit) & 1) << (plane + 1);
+    }
+    return value;
 }
 
-/**
- * Offset/Address/Size: 0x00601E | $80:E01E | size: 0x1E0
- * Purpose: Enters the title scene and rewinds the reference stream.
- */
+static int title_sample_bg(const uint8_t *vram, int map_base, int chr_base,
+                           int bpp, bool wide, bool tall, int hscroll, int vscroll,
+                           int x, int y, int *palette, int *priority) {
+    int map_w = wide ? 512 : 256, map_h = tall ? 512 : 256;
+    int px = ((x + hscroll) % map_w + map_w) % map_w;
+    int py = ((y + vscroll + 1) % map_h + map_h) % map_h;
+    int tx = px >> 3, ty = py >> 3, quadrant = 0;
+    if (wide && tx >= 32) quadrant++;
+    if (tall && ty >= 32) quadrant += wide ? 2 : 1;
+    int entry_off = map_base + quadrant * 0x800 +
+                    ((ty & 31) * 32 + (tx & 31)) * 2;
+    uint16_t entry = (uint16_t)(vram[entry_off & 0xFFFF] |
+                                ((uint16_t)vram[(entry_off + 1) & 0xFFFF] << 8));
+    int sx = (entry & 0x4000) ? 7 - (px & 7) : (px & 7);
+    int sy = (entry & 0x8000) ? 7 - (py & 7) : (py & 7);
+    int value = title_tile_pixel(vram, chr_base, entry & 0x3FF, bpp, sx, sy);
+    if (!value) return -1;
+    *palette = (entry >> 10) & 7;
+    *priority = (entry >> 13) & 1;
+    return value;
+}
+
+static void title_render_ppu(const NbaTitleSequence *s, NbaRenderer *renderer) {
+    uint32_t backdrop = title_color(s->cgram, 0, s->brightness);
+    for (int y = 0; y < NBA_SNES_HEIGHT; ++y) {
+        for (int x = 0; x < NBA_SNES_WIDTH; ++x) {
+            uint32_t color = backdrop;
+            int palette, priority, value, best_z = 0;
+            if (s->main_screen & 0x02) {
+                value = title_sample_bg(s->vram, TITLE_BG2_MAP, TITLE_BG2_CHR, 4,
+                                        false, true, s->bg_hscroll[1],
+                                        s->bg_vscroll[1], x, y, &palette, &priority);
+                int z = priority ? 8 : 4;
+                if (value >= 0 && z > best_z) {
+                    color = title_color(s->cgram, palette * 16 + value, s->brightness);
+                    best_z = z;
+                }
+            }
+            if (s->main_screen & 0x01) {
+                value = title_sample_bg(s->vram, TITLE_BG1_MAP, TITLE_BG1_CHR, 4,
+                                        false, true, s->bg_hscroll[0],
+                                        s->bg_vscroll[0], x, y, &palette, &priority);
+                int z = priority ? 9 : 5;
+                if (value >= 0 && z > best_z) {
+                    color = title_color(s->cgram, palette * 16 + value, s->brightness);
+                    best_z = z;
+                }
+            }
+            if (s->main_screen & 0x04) {
+                bool attract = s->attract_index != 0xFFFF;
+                int credit_top_x = s->credit_x -
+                    ((s->attract_delay == 0 || s->attract_delay == 0xFFFF) ? 8 : 0);
+                int bg3_x = attract ? (y < 186 ? credit_top_x : 0) : s->bg_hscroll[2];
+                int bg3_y = attract ? (y < 186 ? -83 : s->credit_y) : s->bg_vscroll[2];
+                value = (attract && y < 0x90) ? -1 :
+                    title_sample_bg(s->vram, TITLE_BG3_MAP, TITLE_BG3_CHR, 2,
+                                    true, false, bg3_x, bg3_y,
+                                    x, y, &palette, &priority);
+                int z = attract ? 10 : (priority ? 3 : 2);
+                if (value >= 0 && z > best_z) {
+                    color = title_color(s->cgram, palette * 4 + value, s->brightness);
+                    best_z = z;
+                }
+            }
+            renderer->pixels[y * NBA_SNES_WIDTH + x] = color;
+        }
+    }
+}
+
 void nba_title_sequence_init(NbaTitleSequence *sequence) {
     if (!sequence) return;
     memset(sequence, 0, sizeof(*sequence));
-    title_video_rewind(sequence);
+    sequence->decoded_frame = -1;
+    sequence->trace_offset = NBA_TITLE_PPU_HEADER_SIZE;
     sequence->phase = NBA_TITLE_PHASE_BUILD;
-    sequence->hold_frames_left = 0;
     sequence->fade_level = 15;
     sequence->snap_timer = -1.0f;
 }
 
 /**
  * Offset/Address/Size: 0x00707E | $80:F07E | size: 0x1F
- * Subroutines: $80:8627, $80:868C, $80:8BA1 (0x680-byte transfer from $7F:4006)
- * Purpose: Snaps the title to its finished state. The ROM does this by DMAing
- *          the completed title tilemap into VRAM in one transfer, so every
- *          remaining piece appears at once instead of animating in. Here the
- *          equivalent is jumping the reference stream to the frame where the
- *          build has finished.
+ * Subroutines: $80:8627, $80:868C, $80:8BA1 (0x680-byte finished tilemap DMA)
+ * Purpose: Advances the hardware trace to the ROM's completed-title state.
  */
 void nba_title_sequence_snap_complete(NbaTitleSequence *sequence) {
     if (!sequence) return;
     sequence->snap_timer = (float)NBA_TITLE_BUILD_COMPLETE_FRAMES / 60.0f;
 }
 
-/**
- * Offset/Address/Size: 0x0065C7 | $80:E5C7 | size: 0x4A
- * Subroutines: $80:F07E (snap), $80:86B0 (frame wait), $80:CF1B (fade out)
- * Purpose: Runs the title exit. Holds for the ROM's fixed frame count - 120
- *          frames when the title had to be snapped, 40 when it had already
- *          finished building - then ramps INIDISP brightness down one step per
- *          frame. Returns true once the fade has completed and the next scene
- *          may be entered.
- */
 bool nba_title_sequence_advance(NbaTitleSequence *sequence, float timer) {
     (void)timer;
     if (!sequence) return false;
-
-    switch (sequence->phase) {
-        case NBA_TITLE_PHASE_BUILD:
-            break;
-
-        case NBA_TITLE_PHASE_HOLD:
-            /* $80:E5F9 JSL $80:86B0 / DEC A / BPL $E5F9 */
-            if (sequence->hold_frames_left > 0) {
-                sequence->hold_frames_left--;
-            } else {
-                sequence->phase = NBA_TITLE_PHASE_FADE_OUT;
-                sequence->fade_level = 15;
-            }
-            break;
-
-        case NBA_TITLE_PHASE_FADE_OUT:
-            /* $80:CF1B - DEC $0562 once per frame until it reaches zero */
-            if (sequence->fade_level > 0) {
-                sequence->fade_level--;
-            }
-            if (sequence->fade_level == 0) return true;
-            break;
+    if (sequence->phase == NBA_TITLE_PHASE_HOLD) {
+        if (sequence->hold_frames_left > 0) sequence->hold_frames_left--;
+        else { sequence->phase = NBA_TITLE_PHASE_FADE_OUT; sequence->fade_level = 15; }
+    } else if (sequence->phase == NBA_TITLE_PHASE_FADE_OUT) {
+        if (sequence->fade_level > 0) sequence->fade_level--;
+        if (sequence->fade_level == 0) return true;
     }
     return false;
 }
 
-/**
- * Offset/Address/Size: 0x00601E | $80:E01E | size: 0x1E0
- * Purpose: Draws the title scene, applying the $80:CF1B INIDISP brightness
- *          level so the fade-out is visible.
- */
 void nba_title_sequence_render(NbaTitleSequence *sequence,
                                const NbaAssetPack *assets,
                                NbaRenderer *renderer,
                                float timer) {
     if (!sequence || !assets || !renderer) return;
-
-    /* $80:F07E pinned the scene at the finished build; hold there. */
-    if (sequence->snap_timer >= 0.0f) {
-        timer = sequence->snap_timer;
-    }
-
-    const NbaAssetItem *video = nba_assets_get(assets, NBA_ASSET_TITLE_SEQUENCE_VIDEO);
-    uint32_t fps_num, fps_den, frame_count;
-    if (title_video_header(video, &fps_num, &fps_den, &frame_count)) {
-        int target = (int)(timer * (float)fps_num / (float)fps_den);
-        if (title_video_decode_to(sequence, video, target)) {
-            int level = sequence->fade_level;
-            for (int i = 0; i < NBA_SNES_WIDTH * NBA_SNES_HEIGHT; ++i) {
-                uint32_t argb = title_rgb565_to_argb(sequence->framebuffer[i]);
-                renderer->pixels[i] = title_apply_brightness(argb, level);
-            }
-            return;
+    if (sequence->snap_timer >= 0.0f) timer = sequence->snap_timer;
+    const NbaAssetItem *trace = nba_assets_get(assets, NBA_ASSET_TITLE_PPU_TRACE);
+    int target = (int)(timer * 60.0f + 0.5f);
+    if (title_trace_decode_to(sequence, assets, trace, target)) {
+        int captured_brightness = sequence->brightness;
+        if (sequence->fade_level < 15) {
+            sequence->brightness = captured_brightness * sequence->fade_level / 15;
         }
+        title_render_ppu(sequence, renderer);
+        sequence->brightness = captured_brightness;
+        return;
     }
-
     nba_renderer_clear(renderer, 0xFF000000u);
-    for (int y = 0; y < NBA_SNES_HEIGHT; y += 16) {
-        nba_renderer_draw_rect(renderer, 0, y, NBA_SNES_WIDTH, 1, 0xFF182028u);
-    }
-    nba_font_render_text_centered(renderer->pixels, NBA_SNES_WIDTH, 78,
-                                  "NBA LIVE 95", 0xFF20A0C0u, 0xFF000000u, 2);
-    nba_font_render_text_centered(renderer->pixels, NBA_SNES_WIDTH, 190,
-                                  "(C) 1994 ELECTRONIC ARTS",
+    nba_font_render_text_centered(renderer->pixels, NBA_SNES_WIDTH, 100,
+                                  "TITLE HARDWARE ASSETS MISSING",
                                   0xFFFFFFFFu, 0xFF000000u, 1);
 }

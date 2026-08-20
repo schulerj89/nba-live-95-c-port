@@ -52,6 +52,13 @@ public class DumpBank80IntroHelpers extends GhidraScript {
         listing.setComment(toAddr(0xE01E), CodeUnit.PLATE_COMMENT,
             "Post-EA title scene. Loads gym/logo graphics, starts a 1000-frame title window, " +
             "and consumes music-synchronization cues from $064A.");
+        createLabel(toAddr(0xE1B1), "title_fade_in_loop", true);
+        listing.setComment(toAddr(0xE1B1), CodeUnit.PRE_COMMENT,
+            "Four-frame pre-roll followed by the 0..15 INIDISP title fade used as the port capture origin.");
+        createLabel(toAddr(0xE2AF), "title_palette_animation_update", true);
+        listing.setComment(toAddr(0xE2AF), CodeUnit.PRE_COMMENT,
+            "Advances the active title element's palette animation through $187A/$187C/$187E/$1880/$1882.");
+        createLabel(toAddr(0xE381), "title_consume_music_cue", true);
         listing.setComment(toAddr(0xE381), CodeUnit.PRE_COMMENT,
             "Consume and clear $064A. Cue blocks 1..6 construct N, B, A, LIVE, 95, then enable the light cycle; " +
             "7..11 are alternate/repeated transition cues.");
@@ -67,6 +74,12 @@ public class DumpBank80IntroHelpers extends GhidraScript {
             "Cue 5: 95 logo stage.");
         listing.setComment(toAddr(0xE548), CodeUnit.PRE_COMMENT,
             "Cue 6: enable $80:E8D9 palette cycling for the lights surrounding 95.");
+        createLabel(toAddr(0xE5C7), "title_exit_or_snap", true);
+        listing.setComment(toAddr(0xE5C7), CodeUnit.PLATE_COMMENT,
+            "Title dismissal: snap incomplete build through $80:F07E, hold 120/40 frames, then fade out.");
+        createLabel(toAddr(0xF07E), "title_snap_finished_tilemap", true);
+        listing.setComment(toAddr(0xF07E), CodeUnit.PLATE_COMMENT,
+            "Copies the completed 0x680-byte tilemap from $7F:4006 so an early Start shows the finished logo.");
         listing.setComment(toAddr(0xE8CF), CodeUnit.PLATE_COMMENT,
             "HIRQ callback that enables the title window mask at the configured scanline.");
         listing.setComment(toAddr(0xE8D9), CodeUnit.PLATE_COMMENT,

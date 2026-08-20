@@ -37,7 +37,8 @@ public class DumpBank87Title extends GhidraScript {
                            "derive_team_runtime_values", "gameplay_scene_setup" };
         String[] comments = {
             "Called when $80:E01E's 1000-frame title timer expires; prepares attract-mode state.",
-            "Called once per title frame after attract setup; advances the attract transition, not the initial title build.",
+            "Called once per title frame after attract setup. Drives credit motion with $0615 (X), $1872 (Y), " +
+            "$186C (credit index) and $186E (delay); it does not construct the initial N/B/A/LIVE/95 build.",
             "Derives capped runtime values from team selections; this is not a title-music command.",
             "Initializes the later gameplay/transition scene; this is not the title-song start."
         };
@@ -48,6 +49,10 @@ public class DumpBank87Title extends GhidraScript {
             if (getFunctionAt(address) == null) createFunction(address, names[i]);
             currentProgram.getListing().setComment(address, CodeUnit.PLATE_COMMENT, comments[i]);
         }
+        currentProgram.getListing().setComment(toAddr(0x80DC), CodeUnit.PRE_COMMENT,
+            "Slide the active credit: $0615 moves by four pixels and $1872 by two until the hold/exit bounds are reached.");
+        currentProgram.getListing().setComment(toAddr(0x8114), CodeUnit.PRE_COMMENT,
+            "Select the next credit motion direction from table $87:825C using $186C.");
 
         try (PrintWriter writer = new PrintWriter(output, "UTF-8")) {
             writer.println("NBA Live '95 (USA) - bank $87 title/attract routines");

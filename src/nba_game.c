@@ -182,13 +182,7 @@ void nba_game_tick(NbaGame *game, float delta_time) {
         case NBA_STATE_TITLE_SEQUENCE:
             /* $80:E01E enters the NBA shield/title scene immediately after $82:AC0E. */
             if (!game->title_sequence.audio_started) {
-                const NbaAssetItem *title_audio = nba_assets_get(
-                    &game->assets, NBA_ASSET_AUDIO_TITLE_SEQUENCE);
-                if (title_audio && title_audio->data && title_audio->size > 0) {
-                    printf("[AUDIO] Playing post-EA NBA Live 95 title sequence (%u bytes)...\n",
-                           title_audio->size);
-                    nba_audio_play_wav(title_audio->data, (size_t)title_audio->size);
-                }
+                nba_audio_play_title_spc(&game->assets);
                 game->title_sequence.audio_started = true;
             }
 

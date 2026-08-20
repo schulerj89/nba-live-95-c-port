@@ -2,6 +2,7 @@
 #define NBA_AUDIO_H
 
 #include "nba_types.h"
+#include "nba_assets.h"
 #include <stddef.h>
 
 /* SNES APU Communication & Sound Driver Routine Addresses */
@@ -13,6 +14,7 @@
 void nba_audio_init(void);
 void nba_audio_shutdown(void);
 void nba_audio_play_wav(const void *data, size_t size);
+bool nba_audio_play_title_spc(const NbaAssetPack *assets);
 void nba_audio_stop(void);
 
 #endif /* NBA_AUDIO_H */

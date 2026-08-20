@@ -27,14 +27,18 @@ typedef enum {
     NBA_ASSET_AUDIO_EA_A       = 9,
     NBA_ASSET_AUDIO_EA_SPORTS  = 10,
     NBA_ASSET_AUDIO_EA_GAME    = 11,
-    NBA_ASSET_TITLE_SEQUENCE_FRAME1 = 12,
-    NBA_ASSET_TITLE_SEQUENCE_FRAME2 = 13,
-    NBA_ASSET_TITLE_SEQUENCE_FRAME3 = 14,
-    NBA_ASSET_AUDIO_TITLE_SEQUENCE  = 15,
+    /* IDs 12-15 were the removed screenshot/WAV title shortcut. */
     NBA_ASSET_SETUP_VRAM            = 16,
     NBA_ASSET_SETUP_CGRAM           = 17,
     NBA_ASSET_DEBUG_AUDIO_BASE      = 18,
-    NBA_ASSET_TITLE_SEQUENCE_VIDEO  = 68,
+    NBA_ASSET_TITLE_VRAM            = 80,
+    NBA_ASSET_TITLE_CGRAM           = 81,
+    NBA_ASSET_TITLE_PPU_TRACE       = 82,
+    NBA_ASSET_TITLE_SPC_RAM         = 83,
+    NBA_ASSET_TITLE_SPC_DSP         = 84,
+    NBA_ASSET_TITLE_SPC_STATE       = 85,
+    NBA_ASSET_TITLE_APU_TRACE       = 86,
+    NBA_ASSET_TITLE_CUE_TRACE       = 87,
     NBA_ASSET_MAX                   = 128
 } NbaAssetId;
 
