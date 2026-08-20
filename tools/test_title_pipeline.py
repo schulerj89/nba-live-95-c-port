@@ -2,7 +2,6 @@
 
 import argparse
 import hashlib
-import os
 import struct
 import subprocess
 import tempfile
@@ -20,6 +19,7 @@ EXPECTED_RGB_SHA256 = {
     1320: "f93474ec0ed7002fa9c1a12cf821bd123d4152d68cae1ce421eb0a3be24afc3e",
     1440: "43a3c225bc5a7a1793474c761e1250b895811c630d4e54c3417d7b3f7f7fbfd9",
 }
+EXPECTED_AUDIO_SHA256 = "465d3497c1e3c05674a242be54f549e30da33ca0087e50322869875a603a324f"
 
 
 def load_pack(path):
@@ -93,9 +93,12 @@ def check_frames(exe, rom, pack):
     with tempfile.TemporaryDirectory(prefix="nba95-title-test-") as directory:
         for frame, expected_hash in EXPECTED_RGB_SHA256.items():
             output = Path(directory) / f"title_{frame}.bmp"
+            audio_output = Path(directory) / "title_runtime.wav"
             command = [str(exe), "--headless", "--title-only", "--rom", str(rom),
                        "--assets", str(pack), "--frames", str(frame),
                        "--dump-frame", str(output)]
+            if frame == min(EXPECTED_RGB_SHA256):
+                command.extend(["--dump-audio", str(audio_output)])
             result = subprocess.run(command, text=True, capture_output=True, check=True)
             if "Synthesized title through SPC700/S-DSP" not in result.stdout:
                 raise AssertionError("title did not use the SPC700/S-DSP runtime path")
@@ -105,6 +108,12 @@ def check_frames(exe, rom, pack):
                 raise AssertionError(
                     f"title frame {frame} changed: {actual_hash} != {expected_hash}"
                 )
+            if frame == min(EXPECTED_RGB_SHA256):
+                audio_hash = hashlib.sha256(audio_output.read_bytes()).hexdigest()
+                if audio_hash != EXPECTED_AUDIO_SHA256:
+                    raise AssertionError(
+                        f"title SPC PCM changed: {audio_hash} != {EXPECTED_AUDIO_SHA256}"
+                    )
 
 
 def main():

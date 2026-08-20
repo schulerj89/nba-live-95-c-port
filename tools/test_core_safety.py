@@ -104,6 +104,11 @@ def main():
     parser.add_argument("--rom", required=True, type=Path)
     args = parser.parse_args()
 
+    result = run(args.exe, "--spc-self-test")
+    require_success(result, "SPC700/S-DSP self-test")
+    if "[SPC TEST] PASS" not in result.stdout:
+        raise AssertionError("SPC700/S-DSP self-test did not report PASS")
+
     with tempfile.TemporaryDirectory(prefix="nba95-core-safety-") as temp:
         directory = Path(temp)
         valid_pack = check_asset_loader(args.exe, directory)

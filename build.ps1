@@ -98,6 +98,11 @@ if ($Test) {
     if ($LASTEXITCODE -ne 0) {
         throw "Core safety regression tests failed with exit code $LASTEXITCODE"
     }
+    & python (Join-Path $Root "tools\test_intro_sequence.py") `
+        --pack $AssetPack --exe $ConsoleExePath --rom $RomPath
+    if ($LASTEXITCODE -ne 0) {
+        throw "Intro sequence regression tests failed with exit code $LASTEXITCODE"
+    }
 }
 
 if ($Headless -or $DumpFrame) {

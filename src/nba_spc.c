@@ -907,3 +907,58 @@ void nba_spc_render(NbaSpc *spc, int16_t *out, int frames) {
         out[f * 2 + 1] = r;
     }
 }
+
+bool nba_spc_self_test(void) {
+    /* Representative CPU data path: MOV A,#$12; ADC A,#$34; MOV $20,A. */
+    NbaSpc cpu;
+    memset(&cpu, 0, sizeof(cpu));
+    cpu.pc = 0x0200;
+    cpu.sp = 0xFF;
+    cpu.ram[0x0200] = 0xE8; cpu.ram[0x0201] = 0x12;
+    cpu.ram[0x0202] = 0x88; cpu.ram[0x0203] = 0x34;
+    cpu.ram[0x0204] = 0xC4; cpu.ram[0x0205] = 0x20;
+    spc_step(&cpu);
+    spc_step(&cpu);
+    spc_step(&cpu);
+    if (cpu.a != 0x46 || cpu.ram[0x20] != 0x46 || cpu.pc != 0x0206) {
+        return false;
+    }
+
+    /* Timer and CPU-facing APU-port behavior through the public core API. */
+    uint8_t ram[NBA_SPC_RAM_SIZE] = {0};
+    uint8_t dsp[NBA_SPC_DSP_REGS] = {0};
+    ram[0x0200] = 0x2F; ram[0x0201] = 0xFE; /* BRA $0200 */
+    ram[0x00FA] = 1;
+    NbaSpc timer;
+    if (!nba_spc_load(&timer, ram, sizeof(ram), dsp, sizeof(dsp),
+                      0x0200, 0, 0, 0, 0xFF, 0)) {
+        return false;
+    }
+    int16_t samples[16] = {0};
+    nba_spc_render(&timer, samples, 8);
+    if (timer.timer_out[0] == 0) return false;
+    nba_spc_write_port(&timer, 2, 0x5A);
+    if (timer.ram[0x00F6] != 0x5A) return false;
+
+    /* Filter-0 BRR vector: nibbles 2/-2 decode to alternating 1/-1. */
+    NbaSpc brr;
+    memset(&brr, 0, sizeof(brr));
+    brr.voice[0].brr_addr = 0x0300;
+    brr.ram[0x0300] = 0x01; /* end block, shift 0, filter 0 */
+    memset(&brr.ram[0x0301], 0x2E, 8);
+    brr_decode_block(&brr, 0);
+    if (brr.voice[0].ring_write != 16 || !brr.voice[0].reached_end) return false;
+    for (int i = 0; i < 16; ++i) {
+        int expected = (i & 1) ? -1 : 1;
+        if (brr.voice[0].ring[i] != expected) return false;
+    }
+
+    /* Fast ADSR attack must advance and remain in the 11-bit envelope range. */
+    brr.voice[0].active = true;
+    brr.voice[0].phase = NBA_ENV_ATTACK;
+    brr.dsp[NBA_DSP_ADSR1] = 0x8F;
+    brr.dsp[NBA_DSP_ADSR2] = 0x00;
+    for (int i = 0; i < 64; ++i) env_run(&brr, 0);
+    if (brr.voice[0].env <= 0 || brr.voice[0].env > 0x7FF) return false;
+    return true;
+}

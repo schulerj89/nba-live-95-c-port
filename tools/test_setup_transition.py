@@ -21,6 +21,16 @@ EXPECTED_RGB_SHA256 = {
     162: "e7f61a0f21ca67bf4f3833ddbaa13c9e5501e04d1fd57f6bf3f54a0dc2d1719f",
     166: "51ef64c72ae13fc1c37e15a2cf9c3a913ccce788e9547c61f246b75bacdef416",
 }
+EXPECTED_AUDIO_SHA256 = "9f58d341b823dc6e584f6bb736f7cf68fb39c10171f6f06e7ce8e2de12629f11"
+EXPECTED_CURSOR_SHA256 = {
+    0: "e3ec329dc39626391b9315e7ff60bf4c60b9a31b23d903bdcdca22ac5738fc65",
+    1: "efc1e6e70a979c44ce821752be4a2eab6afff558ced34ad2fcb1aae0ac5c787b",
+    2: "9fcfb2c5ec4c2fe5245c8f0ba166aa771f18ea27eb433f618a81c49b2b600ad8",
+    3: "05567ed02467a3b7248729e6ca591c26f417274d1a38bbd3c14b5bcc2cc970ce",
+    4: "ca995057d4f8848287c0422f307dd31330297eccb82019bbce7b0e7baa7c2354",
+    5: "80d54ec7fc3fde9e6ad83a976b3b342c90ad59f06ddc24f59cf7f669b2b823c8",
+    6: "e3ec329dc39626391b9315e7ff60bf4c60b9a31b23d903bdcdca22ac5738fc65",
+}
 
 
 def load_pack(path):
@@ -78,10 +88,14 @@ def check_frames(exe, rom, pack):
     with tempfile.TemporaryDirectory(prefix="nba95-setup-test-") as directory:
         for frame, expected_hash in EXPECTED_RGB_SHA256.items():
             output = Path(directory) / f"setup_{frame}.bmp"
+            audio_output = Path(directory) / "setup_runtime.wav"
+            command = [str(exe), "--headless", "--setup-only", "--rom", str(rom),
+                       "--assets", str(pack), "--frames", str(frame),
+                       "--dump-frame", str(output)]
+            if frame == min(EXPECTED_RGB_SHA256):
+                command.extend(["--dump-audio", str(audio_output)])
             result = subprocess.run(
-                [str(exe), "--headless", "--setup-only", "--rom", str(rom),
-                 "--assets", str(pack), "--frames", str(frame),
-                 "--dump-frame", str(output)],
+                command,
                 text=True, capture_output=True, check=True,
             )
             match = re.search(
@@ -96,6 +110,12 @@ def check_frames(exe, rom, pack):
                 raise AssertionError(
                     f"Setup transition frame {frame} changed: {actual} != {expected_hash}"
                 )
+            if frame == min(EXPECTED_RGB_SHA256):
+                audio_hash = hashlib.sha256(audio_output.read_bytes()).hexdigest()
+                if audio_hash != EXPECTED_AUDIO_SHA256:
+                    raise AssertionError(
+                        f"Setup SPC PCM changed: {audio_hash} != {EXPECTED_AUDIO_SHA256}"
+                    )
 
         # Exercise the real title-dismiss path as well as the direct fixture.
         # Start on title frame 0, take $80:E5C7's snap/hold/fade, preserve the
@@ -114,6 +134,35 @@ def check_frames(exe, rom, pack):
         ).hexdigest()
         if integrated_hash != EXPECTED_RGB_SHA256[105]:
             raise AssertionError("title-to-Setup integration timing changed")
+
+        # Both $80:E5C7 paths must reach the same first visible Setup frame:
+        # 120-frame snap hold while building, and 40-frame hold once complete.
+        for press_frame, total_frames in ((100, 343), (1000, 1163)):
+            output = Path(directory) / f"title_exit_{press_frame}.bmp"
+            result = subprocess.run(
+                [str(exe), "--headless", "--title-only", "--title-press",
+                 str(press_frame), "--rom", str(rom), "--assets", str(pack),
+                 "--frames", str(total_frames), "--dump-frame", str(output)],
+                text=True, capture_output=True, check=True,
+            )
+            if "Synthesized Game Setup through SPC700/S-DSP" not in result.stdout:
+                raise AssertionError(f"title exit at {press_frame} did not reach Setup")
+            actual = hashlib.sha256(Image.open(output).convert("RGB").tobytes()).hexdigest()
+            if actual != EXPECTED_RGB_SHA256[105]:
+                raise AssertionError(f"title exit timing changed for press {press_frame}")
+
+        # All six HDMA highlight rows plus one wrap back to row zero.
+        for down_count, expected_hash in EXPECTED_CURSOR_SHA256.items():
+            output = Path(directory) / f"setup_cursor_{down_count}.bmp"
+            subprocess.run(
+                [str(exe), "--headless", "--setup-only", "--setup-down",
+                 str(down_count), "--rom", str(rom), "--assets", str(pack),
+                 "--frames", "200", "--dump-frame", str(output)],
+                text=True, capture_output=True, check=True,
+            )
+            actual = hashlib.sha256(Image.open(output).convert("RGB").tobytes()).hexdigest()
+            if actual != expected_hash:
+                raise AssertionError(f"Setup cursor row {down_count} changed")
 
 
 def main():

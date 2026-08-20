@@ -134,4 +134,7 @@ void nba_spc_write_port(NbaSpc *spc, int port, uint8_t value);
 /** Render `frames` stereo samples at 32000 Hz into `out` (2 shorts per frame). */
 void nba_spc_render(NbaSpc *spc, int16_t *out, int frames);
 
+/** Deterministic opcode, timer, port, BRR, and envelope regression vectors. */
+bool nba_spc_self_test(void);
+
 #endif /* NBA_SPC_H */

@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include "nba_game.h"
 #include "nba_audio.h"
+#include "nba_spc.h"
 
 extern int win32_run_game(const char *rom_path, const char *assets_path,
                           bool title_only, bool setup_only);
@@ -21,6 +22,7 @@ int main(int argc, char *argv[]) {
     bool audio_debug_test = false;
     bool start_at_title = false;
     bool start_at_setup = false;
+    bool spc_self_test = false;
     int step_frames = 30;
     double tick_rate = 60.0;
 
@@ -45,6 +47,8 @@ int main(int argc, char *argv[]) {
             start_at_title = true;
         } else if (strcmp(argv[i], "--setup-only") == 0) {
             start_at_setup = true;
+        } else if (strcmp(argv[i], "--spc-self-test") == 0) {
+            spc_self_test = true;
         } else if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
             printf("NBA Live '95 Native C Port\n");
             printf("Usage: nba95_port.exe [options]\n\n");
@@ -57,11 +61,21 @@ int main(int argc, char *argv[]) {
             printf("  --audio-debug         Activate audio sample debugger in headless render\n");
             printf("  --title-only          Start at $80:E01E title state (headless tests)\n");
             printf("  --setup-only          Start at the $80:E600 -> $80:A2BF handoff\n");
+            printf("  --spc-self-test       Run deterministic SPC700/S-DSP core vectors\n");
             printf("  --dump-frame <file>   Save rendered frame to 24-bit BMP image\n");
             printf("  --dump-audio <file>   Save the active runtime-synthesized WAV\n");
             printf("  --help, -h            Show this help text\n");
             return 0;
         }
+    }
+
+    if (spc_self_test) {
+        if (!nba_spc_self_test()) {
+            fprintf(stderr, "[SPC TEST] FAIL\n");
+            return 1;
+        }
+        printf("[SPC TEST] PASS: opcodes, timers, ports, BRR, and envelopes\n");
+        return 0;
     }
 
     if (is_headless) {
