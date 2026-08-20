@@ -16,6 +16,21 @@ local pending = nil
 local captured = {}
 local motion_enabled = os.getenv("NBA95_CAPTURE_MOTION") == "1"
 local motion_frame = -1
+local a_vram_captured = false
+
+local function dump_mem(name, mem_type, size)
+    local chunks = {}
+    for base = 0, size - 1, 4096 do
+        local bytes = {}
+        local limit = math.min(base + 4095, size - 1)
+        for i = base, limit do
+            bytes[#bytes + 1] = string.char(emu.read(i, mem_type, false) or 0)
+        end
+        chunks[#chunks + 1] = table.concat(bytes)
+    end
+    local f = assert(io.open(out .. "/" .. name, "wb"))
+    f:write(table.concat(chunks)); f:close()
+end
 
 local function arm(name)
     if not captured[name] then
@@ -39,6 +54,18 @@ on_exec(0x82F2FE, "ea_stage_1.png")
 on_exec(0x82F37E, "ea_stage_2.png")
 on_exec(0x82F43A, "ea_stage_3.png")
 on_exec(0x82F492, "ea_stage_4.png")
+
+-- $82:F512 returns at $82:F52D after $80:8FA3 has written A's independent
+-- Mode 7 tilegroup. Preserve the planar hardware source before the zoom loop;
+-- this avoids trying to recover layer ownership from a flattened screenshot.
+emu.addMemoryCallback(function()
+    if not a_vram_captured then
+        dump_mem("ea_a_mode7_vram.bin", emu.memType.snesVideoRam, 0x10000)
+        dump_mem("ea_a_mode7_cgram.bin", emu.memType.snesCgRam, 0x200)
+        a_vram_captured = true
+    end
+end, emu.callbackType.exec, 0x82F52D, 0x82F52D,
+    emu.cpuType.snes, emu.memType.snesMemory)
 
 emu.addEventCallback(function()
     if motion_frame >= 0 and motion_frame < 123 then

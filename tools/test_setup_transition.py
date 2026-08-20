@@ -28,16 +28,16 @@ EXPECTED_RGB_SHA256 = {
     166: "51ef64c72ae13fc1c37e15a2cf9c3a913ccce788e9547c61f246b75bacdef416",
 }
 EXPECTED_AUDIO_RMS_EIGHTHS = [
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4202, 3667, 2211,
-    1393, 29, 1269, 1030, 382, 1019, 0, 4245, 2244, 3969, 1639, 3946,
-    2422, 5275, 2916, 1214, 4702, 3929, 3545, 4195, 3385, 1090, 2921,
-    3195, 3020, 3098, 3462, 2474, 3752, 3884, 2569, 1636, 372, 1187,
-    967, 530, 826, 0, 4039, 2554, 3889, 1838, 3881, 2483, 4974, 3149,
-    1011, 4252, 3937, 3897, 3885, 4092, 1314, 1717, 3919, 2936, 3246,
-    2867, 3141, 1877, 5236, 2920,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6123, 4989, 3945,
+    3471, 1069, 1139, 888, 1505, 811, 404, 4485, 2990, 4451, 2948, 4595,
+    3179, 5502, 3725, 1098, 4764, 4607, 3960, 4541, 4196, 2192, 2887,
+    3940, 3612, 3854, 4021, 3740, 5273, 5603, 4133, 3521, 1826, 1086,
+    903, 1483, 755, 404, 4160, 3388, 4422, 3201, 4388, 3193, 5181, 4132,
+    1219, 4300, 4395, 4198, 4282, 4748, 2550, 2683, 4479, 3927, 4439,
+    3793, 3971, 3214, 5939, 4129,
 ]
-EXPECTED_AUDIO_BAND_PPM = [945108, 17425, 14738, 9732, 6803, 3644, 2550]
-EXPECTED_AUDIO_CHANNEL_RMS = [2740, 2734]
+EXPECTED_AUDIO_BAND_PPM = [889127, 48767, 32034, 14587, 14255, 1068, 162]
+EXPECTED_AUDIO_CHANNEL_RMS = [3363, 3363]
 
 # Compact oracle derived from the independently recorded Mesen WAV beginning
 # at its last-title-fade boundary (198.32 s). Raw emulator PCM is not shipped.
@@ -144,6 +144,23 @@ def check_pack(pack_path):
     if b"post_ea_game_setup.wav" in raw:
         raise AssertionError("recorded Setup WAV name returned")
 
+    # F11 must expose the exact streamed BRR directory used by Setup. Asset
+    # metadata is width=SRCN, height=start, flags=loop; payload is audition WAV.
+    directory = assets[88][0x200:0x278]
+    entries = {}
+    _, count = struct.unpack_from("<II", raw, 8)
+    for index in range(count):
+        entry = struct.unpack_from("<6I", raw, 16 + index * 24)
+        entries[entry[0]] = entry
+    for srcn in range(30):
+        asset_id = 94 + srcn
+        if asset_id not in assets or assets[asset_id][:4] != b"RIFF":
+            raise AssertionError(f"F11 is missing Setup SRCN ${srcn:02X}")
+        start, loop = struct.unpack_from("<HH", directory, srcn * 4)
+        _, _, _, packed_srcn, packed_start, packed_loop = entries[asset_id]
+        if (packed_srcn, packed_start, packed_loop) != (srcn, start, loop):
+            raise AssertionError(f"Setup SRCN ${srcn:02X} pointer metadata changed")
+
 
 def check_frames(exe, rom, pack):
     with tempfile.TemporaryDirectory(prefix="nba95-setup-test-") as directory:
@@ -175,7 +192,7 @@ def check_frames(exe, rom, pack):
                 assert_wav_fingerprint(
                     audio_output, 960000, EXPECTED_AUDIO_RMS_EIGHTHS,
                     EXPECTED_AUDIO_BAND_PPM, EXPECTED_AUDIO_CHANNEL_RMS,
-                    0.9892, 18000, 19000
+                    0.9966, 24000, 25500
                 )
                 _, features, _ = wav_fingerprint(audio_output)
                 actual = np.asarray(features["rms_eighths"], dtype=float)
@@ -186,7 +203,7 @@ def check_frames(exe, rom, pack):
                     actual[active] / actual[active].mean() -
                     oracle[active] / oracle[active].mean()
                 ))
-                if correlation < 0.85 or normalized_error > 0.30:
+                if correlation < 0.97 or normalized_error > 0.10:
                     raise AssertionError(
                         "Setup PCM no longer follows the Mesen onset oracle: "
                         f"correlation={correlation:.3f}, error={normalized_error:.3f}"

@@ -119,10 +119,12 @@ void nba_ea_intro_render_stage2(const NbaAssetPack *assets, NbaRenderer *ren, fl
     if (!assets || !ren) return;
     const NbaAssetItem *item2 = nba_assets_get(assets, NBA_ASSET_EA_LOGO_STAGE2);
     const NbaAssetItem *item1 = nba_assets_get(assets, NBA_ASSET_EA_LOGO_STAGE1);
-    if (!item1 || !item1->data || !item2 || !item2->data) return;
+    const NbaAssetItem *a_item = nba_assets_get(assets, NBA_ASSET_EA_A_LAYER);
+    if (!item1 || !item1->data || !item2 || !item2->data ||
+        !a_item || !a_item->data || a_item->size < width * height * 4u) return;
 
     const uint32_t *p1 = (const uint32_t *)item1->data;
-    const uint32_t *p2 = (const uint32_t *)item2->data;
+    const uint32_t *a_layer = (const uint32_t *)a_item->data;
     int frame = nba_ea_intro_local_frame(local_t);
     if (frame >= NBA_INTRO_ZOOM_FRAMES + NBA_INTRO_FLASH_FRAMES) {
         nba_ea_intro_render_captured_stage(item2, ren, start_x, start_y);
@@ -148,9 +150,8 @@ void nba_ea_intro_render_stage2(const NbaAssetPack *assets, NbaRenderer *ren, fl
         }
     }
 
-    /* F512 overwrites the A tilegroup; derive its complete write mask from
-     * every changed Stage 1 -> Stage 2 pixel.  The write includes A-over-E
-     * pixels and transparent cells which erase the underlying E. */
+    /* F512 draws A as an independent indexed Mode 7 tilegroup over the
+     * settled E. Transparent A cells do not erase E. */
     float pcx = (float)NBA_SNES_WIDTH * 0.5f;
     float pcy = (float)NBA_SNES_HEIGHT * 0.5f;
     float inv_scale = 1.0f / scale;
@@ -164,10 +165,9 @@ void nba_ea_intro_render_stage2(const NbaAssetPack *assets, NbaRenderer *ren, fl
             if (tx < 0 || tx >= (int)width) continue;
 
             uint32_t index = (uint32_t)ty * width + (uint32_t)tx;
-            uint32_t col2 = p2[index];
-            if (col2 != p1[index]) {
-                uint32_t color = nba_ea_intro_pixel_visible(col2) ?
-                    nba_ea_intro_flash_color(col2, flash_frame) : 0xFF000000u;
+            uint32_t a_color = a_layer[index];
+            if (nba_ea_intro_pixel_visible(a_color)) {
+                uint32_t color = nba_ea_intro_flash_color(a_color, flash_frame);
                 ren->pixels[py * NBA_SNES_WIDTH + px] = color;
             }
         }

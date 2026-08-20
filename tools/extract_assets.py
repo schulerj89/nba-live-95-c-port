@@ -124,6 +124,7 @@ def create_asset_pack(rom_path, output_path):
     w4, h4 = 0, 0
     ea_flags = 0
     ea_packed = []
+    ea_a_layer_bytes = b""
 
     if all(os.path.exists(p) for p in ea_candidates):
         snes_frames = []
@@ -163,6 +164,52 @@ def create_asset_pack(rom_path, output_path):
                         argb = 0xFF000000 | (int(rgb[0]) << 16) | (int(rgb[1]) << 8) | int(rgb[2])
                         stage_bytes.extend(struct.pack("<I", argb))
             ea_packed.append(stage_bytes)
+
+        # $82:F512 returns after $80:8FA3 has written A's independent Mode 7
+        # tilegroup. Decode the native interleaved Mode 7 tilemap/character
+        # plane: even VRAM bytes select tiles and odd bytes hold indexed pixels.
+        vram_path = os.path.join(intro_capture_dir, "ea_a_mode7_vram.bin")
+        cgram_path = os.path.join(intro_capture_dir, "ea_a_mode7_cgram.bin")
+        if not os.path.exists(vram_path) or not os.path.exists(cgram_path):
+            raise RuntimeError("Missing $82:F512 Mode 7 hardware capture; "
+                               "re-run tools/mesen_intro_capture.lua")
+        mode7_vram = open(vram_path, "rb").read()
+        mode7_cgram = open(cgram_path, "rb").read()
+        if len(mode7_vram) != 0x10000 or len(mode7_cgram) != 0x200:
+            raise RuntimeError("Invalid $82:F512 Mode 7 VRAM/CGRAM capture")
+        mode7 = np.zeros((1024, 1024), dtype=np.uint8)
+        for tile_y in range(128):
+            for tile_x in range(128):
+                tile = mode7_vram[(tile_y * 128 + tile_x) * 2]
+                for pixel_y in range(8):
+                    for pixel_x in range(8):
+                        word = tile * 64 + pixel_y * 8 + pixel_x
+                        mode7[tile_y * 8 + pixel_y,
+                              tile_x * 8 + pixel_x] = mode7_vram[word * 2 + 1]
+
+        # F512's A uses palette indices $41-$4F. M7X/M7Y and the captured
+        # scroll origin map source (382,402) to native screen (0,0).
+        a_source = (mode7 >= 0x41) & (mode7 <= 0x4F)
+        ys, xs = np.where(a_source)
+        if (xs.min(), ys.min(), xs.max(), ys.max()) != (494, 449, 572, 524):
+            raise RuntimeError("Unexpected $82:F512 A tilegroup bounds")
+        a_layer = np.zeros((h4, w4), dtype=np.uint32)
+        for source_y, source_x in zip(ys, xs):
+            local_x = int(source_x) - 382 - ucmin
+            local_y = int(source_y) - 402 - urmin
+            if not (0 <= local_x < w4 and 0 <= local_y < h4):
+                raise RuntimeError("$82:F512 A pixel maps outside the EA canvas")
+            index = int(mode7[source_y, source_x])
+            bgr = mode7_cgram[index * 2] | (mode7_cgram[index * 2 + 1] << 8)
+            r5, g5, b5 = bgr & 31, (bgr >> 5) & 31, (bgr >> 10) & 31
+            r8, g8, b8 = ((r5 << 3) | (r5 >> 2),
+                          (g5 << 3) | (g5 >> 2),
+                          (b5 << 3) | (b5 >> 2))
+            a_layer[local_y, local_x] = (
+                0xFF000000 | (r8 << 16) | (g8 << 8) | b8)
+        ea_a_layer_bytes = a_layer.tobytes()
+        print(f"[ASSET EXTRACTOR] Decoded $82:F512 Mode 7 A layer: "
+              f"{len(xs)} indexed source pixels")
 
     # 7. Audio: EA Intro Voice / Sound Effect
     def decode_brr_to_pcm(data):
@@ -446,7 +493,11 @@ def create_asset_pack(rom_path, output_path):
             raise RuntimeError(f"Invalid {name}: expected {expected_size} bytes, got {len(data)}")
         return data
 
-    setup_spc_ram_bytes = read_setup_transition("spc_ram.bin", 0x10000)
+    # The transition-origin ARAM still contains the outgoing title bank. The
+    # ROM uploads Setup's 30-source BRR directory during forced blank; capture
+    # that completed bank immediately before the first Setup KON.
+    setup_spc_ram_bytes = read_setup_transition(
+        "setup_music_spc_ram.bin", 0x10000)
     setup_spc_dsp_bytes = read_setup_transition("spc_dsp.bin", 0x80)
     setup_state_text = read_setup_transition("spc_state.txt").decode("ascii")
 
@@ -541,6 +592,22 @@ def create_asset_pack(rom_path, output_path):
     print(f"[ASSET EXTRACTOR] Packed Game Setup S-DSP program: "
           f"{len(setup_dsp_events)} cycle-timed register writes")
 
+    setup_sample_assets = []
+    setup_dir = setup_spc_dsp_bytes[0x5D] << 8
+    for srcn in range(30):
+        entry = setup_dir + srcn * 4
+        start = setup_spc_ram_bytes[entry] | (setup_spc_ram_bytes[entry + 1] << 8)
+        loop = setup_spc_ram_bytes[entry + 2] | (setup_spc_ram_bytes[entry + 3] << 8)
+        if start == 0:
+            raise RuntimeError(f"Setup SRCN ${srcn:02X} has no BRR start address")
+        pcm, _ = decode_brr_to_pcm(setup_spc_ram_bytes[start:])
+        if not pcm:
+            raise RuntimeError(f"Setup SRCN ${srcn:02X} has invalid BRR data at ${start:04X}")
+        setup_sample_assets.append(
+            (94 + srcn, srcn, start, loop, make_wav_bytes(pcm, sample_rate=32000)))
+    print(f"[ASSET EXTRACTOR] Packed F11 Setup BRR catalog: "
+          f"{len(setup_sample_assets)} sources from S-DSP DIR ${setup_dir:04X}")
+
     assets = [
         (1, 128, 11, 0, nintendo_license_bytes),               # ASSET_NINTENDO_LICENSE
         (2, 256, num_legal_rows, start_y_legal, nba_legal_bytes), # ASSET_NBA_LEGAL_NOTICE (flags = start_y)
@@ -548,6 +615,7 @@ def create_asset_pack(rom_path, output_path):
         (4, w4, h4, ea_flags, ea_packed[1]),                  # ASSET_EA_LOGO_STAGE2
         (5, w4, h4, ea_flags, ea_packed[2]),                  # ASSET_EA_LOGO_STAGE3
         (6, w4, h4, ea_flags, ea_packed[3]),                  # ASSET_EA_LOGO_STAGE4
+        (70, w4, h4, ea_flags, ea_a_layer_bytes),             # ASSET_EA_A_LAYER
     ]
 
     if len(audio_intro_bytes) > 0:
@@ -576,6 +644,7 @@ def create_asset_pack(rom_path, output_path):
         (92, 0, 0, 0, bytes(setup_ppu_trace)),
         (93, 0, 0, 0, bytes(setup_dsp_trace)),
     ])
+    assets.extend(setup_sample_assets)
 
     # Extract all other audio samples from ROM into asset pack for debugger
     rom_sample_offsets = [

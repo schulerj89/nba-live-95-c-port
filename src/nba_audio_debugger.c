@@ -51,6 +51,15 @@ static void get_sample_info(const NbaAssetItem *item, char *name_buf, size_t nam
     }
     if (out_dur) *out_dur = dur;
 
+    if (item->id >= NBA_ASSET_SETUP_SAMPLE_BASE &&
+        item->id <= NBA_ASSET_SETUP_SAMPLE_LAST) {
+        /* width=SRCN, height=BRR start, flags=loop address.  These values are
+         * resolved from Setup's live $0200 S-DSP directory at first key-on. */
+        snprintf(name_buf, name_size, "SETUP %02X @%04X",
+                 item->width & 0xFFu, item->height & 0xFFFFu);
+        return;
+    }
+
     switch (item->id) {
         case NBA_ASSET_AUDIO_EA_INTRO:
             snprintf(name_buf, name_size, "EA INTRO COMP");

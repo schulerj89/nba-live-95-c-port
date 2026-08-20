@@ -20,6 +20,11 @@
 #define TITLE_BG1_WINDOW_RIGHT 178
 #define TITLE_BG1_WINDOW_SCANLINE 92
 #define TITLE_LIVE_CUE_FRAME 820
+/* $87:800F installs $87:8211 at V=$64; it arms $87:8230 at V=$BE. */
+#define TITLE_CREDIT_ENABLE_SCANLINE 144
+/* IRQ V=$BE maps to visible line 186 after the SNES four-line raster offset. */
+#define TITLE_CREDIT_SCROLL_SCANLINE 186
+#define TITLE_BG_FETCH_X_OFFSET 8
 
 static uint16_t title_u16(const uint8_t *p) {
     return (uint16_t)(p[0] | ((uint16_t)p[1] << 8));
@@ -139,11 +144,17 @@ static void title_render_ppu(const NbaTitleSequence *s, NbaRenderer *renderer) {
             }
             if (s->main_screen & 0x04) {
                 bool attract = s->attract_index != 0xFFFF;
+                /* $87:8211/$87:8230 split BG3 by scanline. $186E gates the
+                 * animation in $87:80CB but never changes scroll position. */
                 int credit_top_x = s->credit_x -
-                    ((s->attract_delay == 0 || s->attract_delay == 0xFFFF) ? 8 : 0);
-                int bg3_x = attract ? (y < 186 ? credit_top_x : 0) : s->bg_hscroll[2];
-                int bg3_y = attract ? (y < 186 ? -83 : s->credit_y) : s->bg_vscroll[2];
-                bool visible = !(attract && y < 0x90) &&
+                    (s->credit_x != 0 ? TITLE_BG_FETCH_X_OFFSET : 0);
+                int bg3_x = attract ?
+                    (y < TITLE_CREDIT_SCROLL_SCANLINE ? credit_top_x : 0) :
+                    s->bg_hscroll[2];
+                int bg3_y = attract ?
+                    (y < TITLE_CREDIT_SCROLL_SCANLINE ? -83 : s->credit_y) :
+                    s->bg_vscroll[2];
+                bool visible = !(attract && y < TITLE_CREDIT_ENABLE_SCANLINE) &&
                     nba_snes_sample_bg(s->vram, TITLE_BG3_MAP, TITLE_BG3_CHR, 2,
                                        true, false, bg3_x, bg3_y, x, y, &pixel);
                 if (visible) {

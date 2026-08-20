@@ -238,11 +238,11 @@ bool nba_audio_play_title_spc(NbaAudio *audio, const NbaAssetPack *assets) {
  * Offset/Address/Size: $80:E600 -> $80:A2BF/$80:A3B8 | 30-second trace
  * Subroutines: $80:A9E3 (command), $80:AA7B (handshake), $80:AACD (queue)
  * Purpose: $80:A9E3/$80:AA7B/$80:AACD produce the captured $2140-$2143
- *          command stream; the resident SPC700 driver turns those commands
- *          into the captured $F2/$F3 S-DSP register program.  Replaying that
- *          downstream program avoids CPU-core timing drift while this engine
- *          still decodes and mixes the ROM's BRR bank live.  The asset pack
- *          contains hardware/control state only, never mixed Setup PCM.
+ *          command stream. The resident SPC700 driver first streams Setup's
+ *          30-source BRR bank into ARAM, then emits the captured $F2/$F3
+ *          program. Asset 88 is that bank at the first KON, so replay keeps
+ *          the source/pitch/envelope choices while C decodes BRR live. The
+ *          asset pack contains no mixed Setup PCM.
  */
 bool nba_audio_play_setup_dsp(NbaAudio *audio, const NbaAssetPack *assets) {
     static const NbaSpcTrackSpec spec = {

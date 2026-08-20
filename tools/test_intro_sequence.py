@@ -20,6 +20,11 @@ EXPECTED_RGB_SHA256 = {
     # Mesen captures at $82:F2FE, $82:F37E, and $82:F43A.
     376: "7ee22a4cf926958bc27b86efca80f1be27d64d4f4f0043fc3e28290a59583d70",
     377: "9caa2274655a0717d4de3f05b3e5ea1e59f4be44f469232d28f68ea469f24e87",
+    # Intermediate A zoom frames guard the independent $82:F512 Mode 7 layer;
+    # same-color E/A overlap must remain filled rather than turning into holes.
+    386: "65fde20b33b508ec54e583601c62c54099d730e357fe62f2cba05524b112bf1c",
+    394: "b8d89a1e709edcc867fae72b72cfd948f5b4577a5cdedbb5b61348d64ebe2250",
+    402: "1c458a82ecfe1756e3c076eb72988e54bee5a8c267eb5620c2d450149e57dd8f",
     407: "36359d7a2c5661d1af9cbeedb43ede90f5c5c06e60eac8ab457df1f60fde918e",
     408: "36359d7a2c5661d1af9cbeedb43ede90f5c5c06e60eac8ab457df1f60fde918e",
     467: "f99613ef471cf5e9e6a259166e85e422b24c1f60062397cf2a3f881e38aaf677",

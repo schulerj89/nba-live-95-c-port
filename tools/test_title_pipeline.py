@@ -131,6 +131,22 @@ def check_frames(exe, rom, pack):
                     0.6154, 26000, 27000
                 )
 
+        # $87:8230 scrolls successive names vertically below a stationary role
+        # title. Guard the old delay==0 bug that shifted PROGRAMMING left by 8
+        # pixels as the next name began moving.
+        role_crops = []
+        for frame in (1500, 1510):
+            output = Path(directory) / f"credit_role_{frame}.bmp"
+            subprocess.run(
+                [str(exe), "--headless", "--title-only", "--rom", str(rom),
+                 "--assets", str(pack), "--frames", str(frame),
+                 "--dump-frame", str(output)],
+                text=True, capture_output=True, check=True,
+            )
+            role_crops.append(Image.open(output).convert("RGB").crop((0, 170, 180, 186)))
+        if role_crops[0].tobytes() != role_crops[1].tobytes():
+            raise AssertionError("multi-name credit role shifted during vertical scroll")
+
 
 def main():
     parser = argparse.ArgumentParser()

@@ -31,6 +31,8 @@ local dsp_addr = 0
 local dsp_event_count = 0
 local dsp_events = {}
 local dsp_event_file = nil
+local music_snapshot_taken = false
+local music_snapshot_cycle = 0
 local entrance_vram = nil
 local entrance_cgram = nil
 
@@ -116,6 +118,19 @@ emu.addMemoryCallback(function(_, value)
     if type(cycle) ~= "number" then return end
     local delta = cycle - base_cycle
     if delta < 0 then return end
+    -- The title snapshot predates the CPU -> SPC sample-bank upload.  Preserve
+    -- the ARAM/DSP state at the first Setup key-on, after the ROM has finished
+    -- streaming the BRR directory that the following SRCN writes select.
+    if not music_snapshot_taken and dsp_addr == 0x4C and value ~= 0 and
+       delta >= 1024000 * 2 * 3 / 2 then
+        dump_mem("setup_music_spc_ram.bin", emu.memType.spcRam, 0x10000)
+        dump_mem("setup_music_spc_dsp.bin", emu.memType.spcDspRegisters, 0x80)
+        local snapshot = assert(io.open(out .. "/setup_music_snapshot.txt", "wb"))
+        snapshot:write(string.format("cycle_delta=%d\n", delta))
+        snapshot:close()
+        music_snapshot_taken = true
+        music_snapshot_cycle = delta
+    end
     dsp_event_count = dsp_event_count + 1
     dsp_events[#dsp_events + 1] = string.format("%d %02X %02X", delta, dsp_addr, value)
     if #dsp_events >= 2048 then flush_dsp_events() end
@@ -218,8 +233,8 @@ emu.addEventCallback(function()
         entrance_vram_writes:write("# done\n"); entrance_vram_writes:close()
         entrance_cgram_writes:write("# done\n"); entrance_cgram_writes:close()
         log:write(string.format(
-            "done frames=%d apu_events=%d dsp_events=%d\n",
-            CAPTURE_FRAMES, event_count, dsp_event_count))
+            "done frames=%d apu_events=%d dsp_events=%d music_snapshot_cycle=%d\n",
+            CAPTURE_FRAMES, event_count, dsp_event_count, music_snapshot_cycle))
         log:close()
         local done = assert(io.open(out .. "/capture_complete.txt", "wb"))
         done:write("ok\n"); done:close()

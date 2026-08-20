@@ -31,6 +31,8 @@ typedef enum {
     NBA_ASSET_SETUP_VRAM            = 16,
     NBA_ASSET_SETUP_CGRAM           = 17,
     NBA_ASSET_DEBUG_AUDIO_BASE      = 18,
+    /* $82:F512's independent indexed Mode 7 A tilegroup. */
+    NBA_ASSET_EA_A_LAYER            = 70,
     NBA_ASSET_TITLE_VRAM            = 80,
     NBA_ASSET_TITLE_CGRAM           = 81,
     NBA_ASSET_TITLE_PPU_TRACE       = 82,
@@ -45,6 +47,9 @@ typedef enum {
     NBA_ASSET_SETUP_APU_TRACE       = 91,
     NBA_ASSET_SETUP_PPU_TRACE       = 92,
     NBA_ASSET_SETUP_DSP_TRACE       = 93,
+    /* 30 BRR sources from Setup's streamed SPC directory, exposed by F11. */
+    NBA_ASSET_SETUP_SAMPLE_BASE     = 94,
+    NBA_ASSET_SETUP_SAMPLE_LAST     = 123,
     NBA_ASSET_MAX                   = 128
 } NbaAssetId;
 
