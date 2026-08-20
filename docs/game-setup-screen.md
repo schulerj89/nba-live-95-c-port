@@ -211,3 +211,58 @@ by a reference frame stream rather than a tilemap, so the snap seeks that
 stream to the point where the build has finished:
 `NBA_TITLE_BUILD_COMPLETE_FRAMES = 965`, measured from the port's own stream
 (the title scene starts at frame 649 and the build completes at 1614).
+
+## Game Setup music (in progress — not yet playing)
+
+The screen genuinely has a sequenced track. Polling the DSP every frame across
+the settled screen (`tools/mesen_dsp_activity.lua`) shows **315 pitch/sample
+changes and 233 note re-triggers over 700 frames**, across voices using sample
+numbers 0, 4, 8, 13, 19, 20, 21, 23. It is not a held chord and not a stream.
+
+The whole CPU-to-driver interface is four bytes. Capturing every 65816 write to
+`$2140`-`$2143` (`tools/mesen_apu_ports.lua`) over the screen gives just **24
+writes, all in one burst at frame 1637**: eight commands of the form
+`port1 = N; port0 = $05; port0 = $00` for N = 7 down to 1. After that the CPU
+says nothing and the driver sequences on its own — which is why an APU snapshot
+is enough to resume the music without emulating the 65816 side.
+
+### What is built
+
+`src/nba_spc.c` is an SPC700 + S-DSP core that resumes the ROM's own driver
+from a captured snapshot (`tools/mesen_spc_capture.lua` writes `spc_ram.bin`,
+`spc_dsp.bin` and `spc_state.txt`). `tools/spc_render_main.c` renders it to a
+WAV offline so it can be checked without the game loop:
+
+```
+build\spc_render.exe .analysis\setup_capture\spc_ram.bin .analysis\setup_capture\spc_dsp.bin 0x06B2 7 22 99 255 0 8 out.wav
+```
+
+Working so far:
+
+- the SPC700 core executes the real driver, cycling through `$048B`, `$04DA`,
+  `$044A`, `$0497`, `$044D`, `$0548`
+- the DSP decodes BRR from the sample directory at `$0200` and produces clean
+  tonal output (harmonics at 605/1210/1816 Hz, 97% of energy below 5 kHz)
+- timers tick at the right rates — 1156 ticks/second across T0/T1/T2, matching
+  500 + 432 + 182 Hz for targets `$10`/`$2C`/`$94`
+- the driver polls the timer 38,340 times a second, so its wait loop is live
+
+Two things had to be fixed to get that far. `$F4`-`$F7` are the CPU-facing
+output latches: what the SPC reads back is whatever the 65816 last wrote, so
+SPC writes must not change the read value. Without that the snapshot resumes
+mid-handshake and the driver spins forever at `$0443`
+(`MOV A,$F4` / `BNE $0443`). And a timer target of 0 means 256, not 0.
+
+### What is wrong
+
+The driver gets its tick but issues only **2 DSP writes per second**, so no
+notes are keyed and the output is silent — or, before the port fix, one held
+tone. The sequencer is not running its note-processing path after the tick,
+which points at a CPU bug on that branch rather than anything in the DSP.
+
+Next step is a differential trace: log the SPC700 PC and register file from
+Mesen for a few thousand instructions from the snapshot point, run the same
+from this core, and diff to find the first divergent instruction.
+
+`nba_spc.c` is deliberately **not** in the game build until it plays correctly.
+The port is silent on this screen rather than falling back to a recording.
