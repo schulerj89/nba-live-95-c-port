@@ -1,7 +1,8 @@
 -- Differential exec trace of the title screen. Run once with PRESS_ENABLED
 -- true and once false; addresses unique to the pressed run are the input
 -- handling and snap-to-complete path.
-local out = "C:/Users/joshs/Projects/nba-live-95-c-port/.analysis/title_input"
+local out = os.getenv("NBA95_CAPTURE_DIR")
+assert(out and out ~= "", "NBA95_CAPTURE_DIR is not set")
 local PRESS_ENABLED = true
 local TAG = "press"
 

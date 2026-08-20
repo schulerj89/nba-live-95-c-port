@@ -22,7 +22,16 @@ EXPECTED_RGB_SHA256 = {
     162: "e7f61a0f21ca67bf4f3833ddbaa13c9e5501e04d1fd57f6bf3f54a0dc2d1719f",
     166: "51ef64c72ae13fc1c37e15a2cf9c3a913ccce788e9547c61f246b75bacdef416",
 }
-EXPECTED_AUDIO_RMS = [0, 769, 888, 1186, 1123, 1484, 654, 1381, 1428, 1445]
+EXPECTED_AUDIO_RMS_EIGHTHS = [
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2176, 1866, 1141,
+    716, 53, 582, 530, 197, 597, 253, 2026, 1118, 2005, 848, 843, 533,
+    306, 518, 622, 2378, 1786, 758, 130, 8, 0, 1483, 1607, 1543, 1544,
+    758, 282, 1894, 1958, 1298, 866, 193, 559, 497, 273, 558, 0, 692,
+    531, 1963, 944, 500, 1066, 2470, 1508, 650, 2069, 1990, 2126, 1221,
+    845, 396, 883, 1853, 1469, 1565, 1506, 1587, 755, 1417, 1143,
+]
+EXPECTED_AUDIO_BAND_PPM = [902909, 17235, 20758, 14528, 18469, 12957, 13144]
+EXPECTED_AUDIO_CHANNEL_RMS = [1218, 1394]
 EXPECTED_CURSOR_SHA256 = {
     0: "e3ec329dc39626391b9315e7ff60bf4c60b9a31b23d903bdcdca22ac5738fc65",
     1: "efc1e6e70a979c44ce821752be4a2eab6afff558ced34ad2fcb1aae0ac5c787b",
@@ -113,7 +122,9 @@ def check_frames(exe, rom, pack):
                 )
             if frame == min(EXPECTED_RGB_SHA256):
                 assert_wav_fingerprint(
-                    audio_output, 960000, EXPECTED_AUDIO_RMS, 14000, 16000
+                    audio_output, 960000, EXPECTED_AUDIO_RMS_EIGHTHS,
+                    EXPECTED_AUDIO_BAND_PPM, EXPECTED_AUDIO_CHANNEL_RMS,
+                    0.4890, 14000, 16000
                 )
 
         # Exercise the real title-dismiss path as well as the direct fixture.

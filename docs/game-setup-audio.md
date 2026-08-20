@@ -25,9 +25,10 @@ emits one sample per 32 SPC cycles. No Setup WAV is present in the asset pack.
 
 The supported proof path is `nba95_port.exe --headless --setup-only
 --dump-audio <output.wav>`; `tools/test_setup_transition.py` locks its format,
-duration, peak range, and per-second RMS profile. A whole-file hash is avoided
-because fresh Mesen captures can begin at a slightly different SPC phase while
-producing the same waveform envelope.
+duration, peak range, eighth-second onset/RMS profile, coarse spectral bands,
+channel energy, and stereo correlation. A whole-file hash is avoided because
+fresh Mesen captures can begin at a slightly different SPC phase while
+producing the same musical output.
 
 Working so far:
 

@@ -1,7 +1,8 @@
 -- Trace title-time writes to BG scroll/window registers. This isolates raster
 -- effects that are not represented by a single end-of-frame PPU state value.
-local out = "C:/Users/joshs/Projects/nba-live-95-c-port/.analysis/title_capture/ppu_register_writes.txt"
-local file = assert(io.open(out, "wb"))
+local out = os.getenv("NBA95_CAPTURE_DIR")
+assert(out and out ~= "", "NBA95_CAPTURE_DIR is not set")
+local file = assert(io.open(out .. "/ppu_register_writes.txt", "wb"))
 file:write("# title_frame register value\n")
 file:flush()
 

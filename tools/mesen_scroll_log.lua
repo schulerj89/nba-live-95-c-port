@@ -1,7 +1,8 @@
 -- Log per-frame BG scroll + HDMA state on the Game Setup screen.
 -- Mesen's emu.getState() returns a FLAT table keyed by dotted paths, e.g.
 -- st["ppu.layers[0].hscroll"].
-local out = "C:/Users/joshs/Projects/nba-live-95-c-port/.analysis/setup_capture"
+local out = os.getenv("NBA95_CAPTURE_DIR")
+assert(out and out ~= "", "NBA95_CAPTURE_DIR is not set")
 local f = assert(io.open(out .. "/scroll_log.txt", "wb"))
 f:write("# loaded\n")
 f:flush()

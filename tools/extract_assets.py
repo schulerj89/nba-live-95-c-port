@@ -2,11 +2,27 @@ import os
 import sys
 import struct
 import argparse
+import hashlib
 from PIL import Image
 import numpy as np
 
 import re
 from snes65816_decompressor import Snes65816Decompressor
+
+NBA_ROM_EXPECTED_SHA256 = "2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870"
+
+
+def load_verified_rom(path):
+    with open(path, "rb") as rom_file:
+        raw = rom_file.read()
+    header_size = 512 if len(raw) % 1024 == 512 else 0
+    normalized = raw[header_size:]
+    actual = hashlib.sha256(normalized).hexdigest()
+    if actual != NBA_ROM_EXPECTED_SHA256:
+        raise RuntimeError(
+            f"ROM SHA-256 mismatch: expected {NBA_ROM_EXPECTED_SHA256}, got {actual}"
+        )
+    return normalized
 
 def decode_4bpp_tile(tile_bytes):
     pixels = np.zeros((8, 8), dtype=np.uint8)
@@ -31,6 +47,7 @@ def bgr555_to_argb(w):
 def create_asset_pack(rom_path, output_path):
     print(f"[ASSET EXTRACTOR] Extracting assets from ROM: {rom_path}")
     print(f"[ASSET EXTRACTOR] Output asset pack: {output_path}")
+    rom_data = load_verified_rom(rom_path)
 
     out_dir = os.path.dirname(output_path)
     if out_dir and not os.path.exists(out_dir):
@@ -206,10 +223,7 @@ def create_asset_pack(rom_path, output_path):
     audio_sports_bytes = bytearray()
     audio_game_bytes = bytearray()
 
-    if os.path.exists(rom_path):
-        with open(rom_path, "rb") as rf:
-            rom_data = rf.read()
-
+    if rom_data:
         # Extract authentic 4-part voice clips from ROM:
         # 1. "E" sample: ROM 0x12D9C5 (3492 bytes BRR, 6208 PCM samples, 0.39s)
         # 2. "A" sample: ROM 0x12801C (5580 bytes BRR, 9920 PCM samples, 0.62s)

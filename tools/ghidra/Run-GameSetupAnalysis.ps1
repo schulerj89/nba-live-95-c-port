@@ -1,8 +1,8 @@
 [CmdletBinding()]
 param(
-    [string]$RomPath = 'F:\Games\SNES\NBA Live 95 (USA).sfc',
-    [string]$GhidraHome = 'C:\Users\joshs\Downloads\ghidra_11.3_PUBLIC_20250205\ghidra_11.3_PUBLIC',
-    [string]$JdkHome = 'C:\Users\joshs\Downloads\jdk-21\jdk-21.0.6+7'
+    [Parameter(Mandatory = $true)][string]$RomPath,
+    [Parameter(Mandatory = $true)][string]$GhidraHome,
+    [Parameter(Mandatory = $true)][string]$JdkHome
 )
 
 $ErrorActionPreference = 'Stop'

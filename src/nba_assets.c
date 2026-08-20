@@ -21,6 +21,35 @@ static bool asset_load_error(NbaAssetPack *pack, const char *message) {
     return false;
 }
 
+static bool asset_metadata_valid(uint32_t id, uint32_t size, uint32_t width,
+                                 uint32_t height, uint32_t flags) {
+    uint64_t required;
+    switch ((NbaAssetId)id) {
+        case NBA_ASSET_NINTENDO_LICENSE:
+            return width == 128u && height == 11u && size == 176u && flags == 0u;
+
+        case NBA_ASSET_NBA_LEGAL_NOTICE:
+            return width == NBA_SNES_WIDTH && height > 0u &&
+                   height <= NBA_SNES_HEIGHT && flags <= NBA_SNES_HEIGHT - height &&
+                   size == 32u * height;
+
+        case NBA_ASSET_EA_LOGO_STAGE1:
+        case NBA_ASSET_EA_LOGO_STAGE2:
+        case NBA_ASSET_EA_LOGO_STAGE3:
+        case NBA_ASSET_EA_LOGO_STAGE4: {
+            uint32_t x = flags >> 16;
+            uint32_t y = flags & 0xFFFFu;
+            required = (uint64_t)width * (uint64_t)height * sizeof(uint32_t);
+            return width > 0u && height > 0u && width <= NBA_SNES_WIDTH &&
+                   height <= NBA_SNES_HEIGHT && x <= NBA_SNES_WIDTH - width &&
+                   y <= NBA_SNES_HEIGHT - height && required == size;
+        }
+
+        default:
+            return true;
+    }
+}
+
 /**
  * Offset/Address/Size: 0x000000 | Asset Pack Binary (NBA95PAK) | size: Dynamic (approx 1.45 MB)
  * Purpose: Loads pre-extracted authentic ROM bitmaps, palettes, and BRR->PCM audio assets.
@@ -82,12 +111,16 @@ bool nba_assets_load(NbaAssetPack *pack, const char *asset_path) {
 
     size_t data_start = NBA_ASSET_HEADER_SIZE +
                         (size_t)asset_count * NBA_ASSET_ENTRY_SIZE;
+    uint32_t ea_width = 0, ea_height = 0, ea_flags = 0;
     for (uint32_t i = 0; i < asset_count; ++i) {
         const uint8_t *entry = header + NBA_ASSET_HEADER_SIZE +
                                (size_t)i * NBA_ASSET_ENTRY_SIZE;
         uint32_t id = asset_u32(entry);
         uint32_t offset = asset_u32(entry + 4);
         uint32_t size = asset_u32(entry + 8);
+        uint32_t width = asset_u32(entry + 12);
+        uint32_t height = asset_u32(entry + 16);
+        uint32_t flags = asset_u32(entry + 20);
         if (id == NBA_ASSET_NONE || id >= NBA_ASSET_MAX) {
             return asset_load_error(pack, "Asset ID is outside the supported range");
         }
@@ -100,13 +133,25 @@ bool nba_assets_load(NbaAssetPack *pack, const char *asset_path) {
             (size_t)size > pack->raw_size - (size_t)offset) {
             return asset_load_error(pack, "Asset payload is outside the pack");
         }
+        if (!asset_metadata_valid(id, size, width, height, flags)) {
+            return asset_load_error(pack, "Asset metadata does not match its payload type");
+        }
+        if (id >= NBA_ASSET_EA_LOGO_STAGE1 && id <= NBA_ASSET_EA_LOGO_STAGE4) {
+            if (ea_width != 0u &&
+                (width != ea_width || height != ea_height || flags != ea_flags)) {
+                return asset_load_error(pack, "EA stage dimensions are inconsistent");
+            }
+            ea_width = width;
+            ea_height = height;
+            ea_flags = flags;
+        }
 
         pack->items[i].id = id;
         pack->items[i].offset = offset;
         pack->items[i].size = size;
-        pack->items[i].width = asset_u32(entry + 12);
-        pack->items[i].height = asset_u32(entry + 16);
-        pack->items[i].flags = asset_u32(entry + 20);
+        pack->items[i].width = width;
+        pack->items[i].height = height;
+        pack->items[i].flags = flags;
         pack->items[i].data = pack->raw_data + offset;
     }
     pack->item_count = asset_count;

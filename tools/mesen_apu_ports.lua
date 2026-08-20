@@ -3,7 +3,8 @@
 --
 -- The ports are mirrored across banks $00-$3F and $80-$BF, so every mirror has
 -- to be hooked; hooking only $00/$80 misses most of the traffic.
-local out = "C:/Users/joshs/Projects/nba-live-95-c-port/.analysis/setup_capture"
+local out = os.getenv("NBA95_CAPTURE_DIR")
+assert(out and out ~= "", "NBA95_CAPTURE_DIR is not set")
 local f = assert(io.open(out .. "/apu_ports.txt", "wb"))
 f:write("# loaded\n")
 f:flush()

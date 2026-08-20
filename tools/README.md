@@ -28,7 +28,8 @@ Pass `-CaptureName intro_capture`, `title_capture`, `setup_capture`, or
 
 The remaining `mesen_*.lua`, Python render/decoder helpers, `spc_render_main.c`,
 and `spc_replay_main.c` are diagnostic tools. They are not runtime dependencies
-or part of the normal build.
+or part of the normal build. Set `NBA95_CAPTURE_DIR` to the desired output
+directory before running a diagnostic Mesen script.
 
 The Ghidra wrappers under `tools/ghidra` regenerate labeled listings and
 decompilation notes. Supply their `-GhidraHome` and `-JdkHome` parameters on a

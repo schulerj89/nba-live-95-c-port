@@ -1,6 +1,7 @@
 -- Dump HDMA channel configuration and table contents on the settled Game Setup
 -- screen, to find what drives the gold selected-row highlight.
-local out = "C:/Users/joshs/Projects/nba-live-95-c-port/.analysis/setup_capture"
+local out = os.getenv("NBA95_CAPTURE_DIR")
+assert(out and out ~= "", "NBA95_CAPTURE_DIR is not set")
 local f = assert(io.open(out .. "/hdma_dump.txt", "wb"))
 f:write("# loaded\n")
 f:flush()

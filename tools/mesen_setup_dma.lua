@@ -1,7 +1,8 @@
 -- Log every DMA into VRAM/CGRAM while the Game Setup screen loads, plus the set
 -- of routines executing once it is live. This yields the authoritative source
 -- addresses and routine list to follow in Ghidra.
-local out = "C:/Users/joshs/Projects/nba-live-95-c-port/.analysis/setup_capture"
+local out = os.getenv("NBA95_CAPTURE_DIR")
+assert(out and out ~= "", "NBA95_CAPTURE_DIR is not set")
 local dmalog = assert(io.open(out .. "/dma_log.txt", "wb"))
 local log = assert(io.open(out .. "/dma_run_log.txt", "wb"))
 

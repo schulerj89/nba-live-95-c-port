@@ -1,7 +1,8 @@
 -- Walk HDMA channel 7's window table ($7F:6800 -> $2126/$2127) on the Game
 -- Setup screen. Dumps it with the cursor on row 0 and again after moving down,
 -- so the band that produces the gold selected-row highlight can be located.
-local out = "C:/Users/joshs/Projects/nba-live-95-c-port/.analysis/setup_capture"
+local out = os.getenv("NBA95_CAPTURE_DIR")
+assert(out and out ~= "", "NBA95_CAPTURE_DIR is not set")
 local f = assert(io.open(out .. "/hdma_window.txt", "wb"))
 f:write("# loaded\n")
 f:flush()

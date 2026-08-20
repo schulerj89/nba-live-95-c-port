@@ -3,7 +3,8 @@
 -- addr/bank, $10/$12 = destination addr/bank. Also records the VRAM address
 -- ($2116/$2117), CGRAM address ($2121) and VMAIN ($2115) in effect per DMA, so
 -- the whole load can be replayed offline from the ROM alone.
-local out = "C:/Users/joshs/Projects/nba-live-95-c-port/.analysis/setup_capture"
+local out = os.getenv("NBA95_CAPTURE_DIR")
+assert(out and out ~= "", "NBA95_CAPTURE_DIR is not set")
 local f = assert(io.open(out .. "/decomp_trace.txt", "wb"))
 f:write("# loaded\n")
 f:flush()

@@ -1,6 +1,7 @@
 -- Dump the full 128 KiB of WRAM on the Game Setup screen (banks $7E and $7F),
 -- so HDMA tables living in bank $7F can be read offline.
-local out = "C:/Users/joshs/Projects/nba-live-95-c-port/.analysis/setup_capture"
+local out = os.getenv("NBA95_CAPTURE_DIR")
+assert(out and out ~= "", "NBA95_CAPTURE_DIR is not set")
 local log = assert(io.open(out .. "/wram_full_log.txt", "wb"))
 log:write("# loaded\n") log:flush()
 

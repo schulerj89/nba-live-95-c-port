@@ -1,7 +1,8 @@
 -- Capture an APU snapshot and, from that exact instant, log the SPC700 PC for
 -- the next N instructions. Running the same snapshot through the port's own
 -- core and diffing the PC streams locates the first divergent instruction.
-local out = "C:/Users/joshs/Projects/nba-live-95-c-port/.analysis/setup_capture"
+local out = os.getenv("NBA95_CAPTURE_DIR")
+assert(out and out ~= "", "NBA95_CAPTURE_DIR is not set")
 local log = assert(io.open(out .. "/spc_trace_log.txt", "wb"))
 log:write("# loaded\n")
 log:flush()

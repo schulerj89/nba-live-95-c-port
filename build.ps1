@@ -25,7 +25,7 @@ if ($ExtractAssets -or (![string]::IsNullOrEmpty($RomPath) -and (Test-Path $RomP
     $ExtractorScript = Join-Path $Root "tools\extract_assets.py"
     & python $ExtractorScript --rom $RomPath --output $DefaultAssetPack
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "Warning: Asset extraction script returned non-zero exit code." -ForegroundColor Yellow
+        throw "Asset extraction failed with exit code $LASTEXITCODE"
     }
 }
 

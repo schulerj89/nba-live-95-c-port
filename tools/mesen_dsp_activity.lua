@@ -1,7 +1,8 @@
 -- Poll the DSP each frame on the Game Setup screen and log per-voice pitch and
 -- envelope. If the driver is sequencing, these change continuously; if the
 -- screen is silent or holding one chord, they do not.
-local out = "C:/Users/joshs/Projects/nba-live-95-c-port/.analysis/setup_capture"
+local out = os.getenv("NBA95_CAPTURE_DIR")
+assert(out and out ~= "", "NBA95_CAPTURE_DIR is not set")
 local f = assert(io.open(out .. "/dsp_activity.txt", "wb"))
 f:write("# loaded\n")
 f:flush()

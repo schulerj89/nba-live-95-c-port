@@ -1,7 +1,8 @@
 -- Boot NBA Live '95, press Start on the title screen, and capture the frames
 -- around the Game Setup transition.
 -- NOTE: this Mesen build's signature is emu.setInput(inputTable, port).
-local out = "C:/Users/joshs/Projects/nba-live-95-c-port/.analysis/setup_capture"
+local out = os.getenv("NBA95_CAPTURE_DIR")
+assert(out and out ~= "", "NBA95_CAPTURE_DIR is not set")
 local log = assert(io.open(out .. "/sweep_log.txt", "wb"))
 
 local frame = 0

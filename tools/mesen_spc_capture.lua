@@ -2,7 +2,8 @@
 -- 64 KiB SPC RAM, the 128 DSP registers, and the SPC700 CPU registers.
 -- Together these are everything an SPC player needs to resume the ROM's own
 -- sequencer, so the port can stream the sample bank instead of a WAV rip.
-local out = "C:/Users/joshs/Projects/nba-live-95-c-port/.analysis/setup_capture"
+local out = os.getenv("NBA95_CAPTURE_DIR")
+assert(out and out ~= "", "NBA95_CAPTURE_DIR is not set")
 local log = assert(io.open(out .. "/spc_capture.txt", "wb"))
 log:write("# loaded\n")
 log:flush()

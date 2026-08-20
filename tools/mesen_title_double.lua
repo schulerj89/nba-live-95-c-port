@@ -1,6 +1,7 @@
 -- Press Start mid-build (snap the title complete), then press Start again
 -- during the hold, to see whether the second press short-circuits the fade.
-local out = "C:/Users/joshs/Projects/nba-live-95-c-port/.analysis/title_input"
+local out = os.getenv("NBA95_CAPTURE_DIR")
+assert(out and out ~= "", "NBA95_CAPTURE_DIR is not set")
 local log = assert(io.open(out .. "/double.txt", "wb"))
 log:write("# loaded\n") log:flush()
 
