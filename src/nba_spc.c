@@ -17,6 +17,10 @@
 
 static void dsp_write(NbaSpc *s, uint8_t addr, uint8_t value);
 unsigned nba_spc_dbg_timer_reads = 0, nba_spc_dbg_dsp_writes = 0, nba_spc_dbg_timer_ticks = 0;
+/* debug: optional SPC700 PC trace, used to diff against Mesen */
+unsigned short *nba_spc_dbg_pc_buf = 0;
+int nba_spc_dbg_pc_cap = 0;
+int nba_spc_dbg_pc_len = 0;
 
 static uint8_t spc_read(NbaSpc *s, uint16_t addr) {
     if (addr >= 0x00F0 && addr <= 0x00FF) {
@@ -147,6 +151,9 @@ static const uint8_t spc_cycles[256] = {
 
 /* Execute one instruction, return cycles consumed. */
 static int spc_step(NbaSpc *s) {
+    if (nba_spc_dbg_pc_buf && nba_spc_dbg_pc_len < nba_spc_dbg_pc_cap) {
+        nba_spc_dbg_pc_buf[nba_spc_dbg_pc_len++] = s->pc;
+    }
     uint8_t op = fetch(s);
     int cycles = spc_cycles[op];
     uint8_t t8; uint16_t t16, addr;
@@ -859,6 +866,11 @@ bool nba_spc_load(NbaSpc *spc,
     gauss_init();
     spc->is_loaded = true;
     return true;
+}
+
+void nba_spc_write_port(NbaSpc *spc, int port, uint8_t value) {
+    if (!spc || port < 0 || port > 3) return;
+    spc->ram[0x00F4 + port] = value;
 }
 
 void nba_spc_render(NbaSpc *spc, int16_t *out, int frames) {

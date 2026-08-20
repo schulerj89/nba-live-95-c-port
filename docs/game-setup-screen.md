@@ -253,16 +253,85 @@ SPC writes must not change the read value. Without that the snapshot resumes
 mid-handshake and the driver spins forever at `$0443`
 (`MOV A,$F4` / `BNE $0443`). And a timer target of 0 means 256, not 0.
 
-### What is wrong
+### The divergence, and what it actually was
 
-The driver gets its tick but issues only **2 DSP writes per second**, so no
-notes are keyed and the output is silent — or, before the port fix, one held
-tone. The sequencer is not running its note-processing path after the tick,
-which points at a CPU bug on that branch rather than anything in the DSP.
+A differential PC trace settled it. `tools/mesen_spc_trace.lua` captures an APU
+snapshot and logs the next 60,000 SPC700 PCs from that exact instant;
+`spc_render ... pctrace` does the same through this core, and the two streams
+are diffed.
 
-Next step is a differential trace: log the SPC700 PC and register file from
-Mesen for a few thousand instructions from the snapshot point, run the same
-from this core, and diff to find the first divergent instruction.
+The first divergence was at instruction 370, at `$048D`. The code there is:
 
-`nba_spc.c` is deliberately **not** in the game build until it plays correctly.
-The port is silent on this screen rather than falling back to a recording.
+```
+048B  E4 FD     MOV A,$FD      ; timer 0 output
+048D  D0 01     BNE $0490      ; no tick -> fall through to the RET
+048F  6F        RET
+0490  C4 73     MOV $73,A      ; process the tick
+```
+
+But the timers were not the problem: `$0490` executes **119 times in both**
+traces, and `$0548`, `$04DA`, `$0495`, `$0497`, `$0499` all execute exactly 952
+times in both. The tick path was already correct.
+
+The real signal was the PC histogram: Mesen executes **106 distinct addresses,
+this core only 29**. The first address Mesen reaches that the core never does
+is `$0451`, entered from:
+
+```
+044A  3F 8B 04  CALL $048B     ; run one tick
+044D  E4 F4     MOV A,$F4      ; read APU port 0
+044F  F0 F9     BEQ $044A      ; loop while the port is empty
+0451  ...                      ; a command arrived - process it
+```
+
+**There is no bad opcode.** The driver idles in that loop until the 65816 hands
+it a command, and this core was faithfully idling because nothing was feeding
+the ports.
+
+The reason that was missed earlier is a capture bug of mine: the APU ports are
+mirrored across banks `$00`-`$3F` and `$80`-`$BF`, and the first version of
+`tools/mesen_apu_ports.lua` hooked only `$00`/`$80`. That reported 24 writes.
+Hooking every mirror reports **71,065** over the same span — about 142 writes
+per frame, in groups of `port1/port2/port3 = params; port0 = $0B; port0 = $00`.
+
+So the Game Setup music is **CPU-driven**: the SPC700 driver is a playback
+engine and the 65816 sequences it, several commands per frame.
+
+### Validation
+
+`tools/spc_replay_main.c` feeds the recorded port stream back into the core and
+renders a WAV:
+
+```
+build\spc_replay.exe .analysis\setup_capture\trace_spc_ram.bin .analysis\setup_capture\trace_spc_dsp.bin 0x06B2 7 22 99 255 0 .analysis\setup_capture\apu_ports.txt 1900 6 out.wav
+```
+
+With the real command stream the core produces music, not a held tone —
+envelope std 688 across 0.125s windows versus 27 before, RMS ranging 278-2498.
+Comparing its DSP registers against Mesen's own per-frame log:
+
+| | match |
+|---|---|
+| voice pitch | 1840/2880 (63.9%) |
+| voice sample number | 1814/2880 (63.0%) |
+
+At the start the agreement is essentially exact — at frame 1900 all eight
+pitches and sample numbers match and envelopes are within a few counts — and it
+drifts over several seconds. That drift is the replay harness, which places
+each frame's writes at evenly spaced points rather than at their real cycle
+offsets; commands eventually land a little early or late and the sequence
+desyncs. It is not evidence of a bad instruction.
+
+### What is left
+
+Two options, in order of preference:
+
+1. **Port the 65816 sequencer.** The commands come from the routines already
+   identified at `$80:A9E3`, `$80:AA7B` and `$80:AACD`. This is the real port:
+   the game generates its own music commands and the SPC core plays them.
+2. **Cycle-timestamp the command stream.** Capture the port writes with SPC
+   cycle counts rather than frame numbers and replay them at those offsets.
+   That would tighten the sync well past 64%, but it is still replaying
+   recorded control data rather than generating it.
+
+`nba_spc.c` stays out of the game build until one of those lands.

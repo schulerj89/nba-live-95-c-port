@@ -8,6 +8,8 @@
 #include <string.h>
 #include "nba_spc.h"
 extern unsigned nba_spc_dbg_timer_reads, nba_spc_dbg_dsp_writes, nba_spc_dbg_timer_ticks;
+extern unsigned short *nba_spc_dbg_pc_buf;
+extern int nba_spc_dbg_pc_cap, nba_spc_dbg_pc_len;
 
 static void put32(FILE *f, unsigned v) { fputc(v & 255, f); fputc((v >> 8) & 255, f); fputc((v >> 16) & 255, f); fputc((v >> 24) & 255, f); }
 static void put16(FILE *f, unsigned v) { fputc(v & 255, f); fputc((v >> 8) & 255, f); }
@@ -36,6 +38,17 @@ int main(int argc, char **argv) {
     int frames = (int)(seconds * NBA_SPC_SAMPLE_RATE);
     short *buf = (short *)malloc((size_t)frames * 4);
     if (!buf) return 1;
+    if (argc > 11 && strcmp(argv[11], "pctrace") == 0) {
+        int cap = 60000;
+        nba_spc_dbg_pc_buf = (unsigned short *)malloc((size_t)cap * 2);
+        nba_spc_dbg_pc_cap = cap;
+        while (nba_spc_dbg_pc_len < cap) nba_spc_render(&spc, buf, 64);
+        FILE *pf = fopen(".analysis/setup_capture/port_pc.txt", "wb");
+        for (int i = 0; i < nba_spc_dbg_pc_len; ++i) fprintf(pf, "%04X\n", nba_spc_dbg_pc_buf[i]);
+        fclose(pf);
+        printf("wrote %d PCs\n", nba_spc_dbg_pc_len);
+        return 0;
+    }
     if (argc > 11) {
         /* sample the SPC700 PC to see whether the driver is advancing */
         int hist_n = 0;

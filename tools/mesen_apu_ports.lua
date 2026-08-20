@@ -1,6 +1,8 @@
 -- Record every 65816 write to the APU ports $2140-$2143 around the Game Setup
--- screen. These four bytes are the whole CPU->sound-driver interface, so the
--- captured stream is what the port must replay to make the driver sequence.
+-- screen. These four bytes are the whole CPU->sound-driver interface.
+--
+-- The ports are mirrored across banks $00-$3F and $80-$BF, so every mirror has
+-- to be hooked; hooking only $00/$80 misses most of the traffic.
 local out = "C:/Users/joshs/Projects/nba-live-95-c-port/.analysis/setup_capture"
 local f = assert(io.open(out .. "/apu_ports.txt", "wb"))
 f:write("# loaded\n")
@@ -22,15 +24,18 @@ emu.addEventCallback(function()
     end
 end, emu.eventType.inputPolled)
 
-for port = 0, 3 do
-    for _, base in ipairs({ 0x002140, 0x802140 }) do
-        local a = base + port
-        emu.addMemoryCallback(function(addr, value)
-            if logging then
-                f:write(string.format("%d %d %02X\n", frame, port, value))
-                f:flush()
-            end
-        end, emu.callbackType.write, a, a, emu.cpuType.snes, emu.memType.snesMemory)
+local function onWrite(addr, value)
+    if logging then
+        f:write(string.format("%d %d %02X\n", frame, addr & 3, value))
+        f:flush()
+    end
+end
+
+for bank = 0, 0xBF do
+    if bank <= 0x3F or bank >= 0x80 then
+        local base = bank * 0x10000 + 0x2140
+        emu.addMemoryCallback(onWrite, emu.callbackType.write, base, base + 3,
+            emu.cpuType.snes, emu.memType.snesMemory)
     end
 end
 

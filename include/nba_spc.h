@@ -123,6 +123,14 @@ bool nba_spc_load(NbaSpc *spc,
                   uint16_t pc, uint8_t a, uint8_t x, uint8_t y,
                   uint8_t sp, uint8_t psw);
 
+/**
+ * Deliver one 65816 write to an APU port ($2140-$2143 on the CPU side, which
+ * the SPC700 reads at $F4-$F7). The music is driven by the CPU: on the Game
+ * Setup screen the 65816 issues roughly 142 port writes per frame, and the
+ * driver only advances the song when it sees them.
+ */
+void nba_spc_write_port(NbaSpc *spc, int port, uint8_t value);
+
 /** Render `frames` stereo samples at 32000 Hz into `out` (2 shorts per frame). */
 void nba_spc_render(NbaSpc *spc, int16_t *out, int frames);
 
