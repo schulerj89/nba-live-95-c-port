@@ -58,10 +58,12 @@ int main(int argc, char *argv[]) {
         bool timing_debug_test = false;
         bool enter_setup_test = false;
         int title_press_frame = -1;
+        int setup_down_count = 0;
         for (int i = 1; i < argc; i++) {
             if (strcmp(argv[i], "--timing-debug") == 0) timing_debug_test = true;
             if (strcmp(argv[i], "--enter-setup") == 0) enter_setup_test = true;
             if (strcmp(argv[i], "--title-press") == 0 && i + 1 < argc) title_press_frame = atoi(argv[++i]);
+            if (strcmp(argv[i], "--setup-down") == 0 && i + 1 < argc) setup_down_count = atoi(argv[++i]);
         }
 
         if (timing_debug_test) {
@@ -87,6 +89,16 @@ int main(int argc, char *argv[]) {
              * Mesen experiment used to time $80:E5C7's hold and fade. */
             if (title_press_frame >= 0 && frame == title_press_frame) {
                 game.input.pressed = NBA_BTN_START;
+            }
+
+            /* --setup-down N: step the Game Setup cursor down N rows, one press
+             * every 8 frames once the screen has settled. */
+            if (setup_down_count > 0 && game.state == NBA_STATE_GAME_SETUP &&
+                game.setup.frame > NBA_SETUP_ENTER_FRAMES) {
+                int since = game.setup.frame - NBA_SETUP_ENTER_FRAMES;
+                if (since % 8 == 1 && (since / 8) < setup_down_count) {
+                    game.input.pressed = NBA_BTN_DOWN;
+                }
             }
             nba_game_tick(&game, 1.0f / 60.0f);
         }

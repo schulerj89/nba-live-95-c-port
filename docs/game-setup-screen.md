@@ -23,6 +23,11 @@ Mesen's Lua sandbox blocks file I/O by default. Set
 | `tools/mesen_scroll_log.lua` | `scroll_log.txt` — per-frame BG scroll / brightness |
 | `tools/ghidra/Run-GameSetupAnalysis.ps1` | listings + decompilation for the traced ranges |
 | `tools/build_setup_screen.py` | replays the ROM decompressor offline; `--verify` diffs against the capture |
+| `tools/mesen_hdma_dump.lua` | HDMA channel config on the live screen |
+| `tools/mesen_hdma_window.lua` | walks HDMA ch7's window table |
+| `tools/mesen_wram_full.lua` | full 128 KiB WRAM dump (banks $7E and $7F) |
+| `tools/mesen_row_bands.lua` | screenshots the cursor on each row |
+| `tools/mesen_title_trace.lua` | differential exec trace of the title screen |
 
 Mesen API notes that cost time to discover:
 
@@ -106,25 +111,50 @@ tiles and the ROM renders glyphs into the tile data itself, which is why
 changing an option value requires the ROM's glyph routine rather than a
 character-to-tile table.
 
+## Selected-row highlight (solved)
+
+The active row is gold and the rest white, done with colour math rather than a
+second palette:
+
+- `$2131 CGADSUB` — colour math enabled for BG3 only, subtract mode
+- `$2130 CGWSEL` — use the fixed colour, not the subscreen
+- `$2132 COLDATA` — `25952` = R 0, G 11, B 25 in 5-bit channels
+- window 1 gates the colour window (`ppu.window[0].activeLayers[5]=true`)
+- **HDMA channel 7** rewrites `$2126`/`$2127` (window 1 left/right) per
+  scanline from a table at `$7F:6800`, opening the window only over the
+  active row
+
+Subtracting (0,11,25) from white (31,31,31) gives (31,20,6) = RGB
+(255,165,49); from the grey (22,22,22) it gives (22,11,0) = (181,90,0). Both
+match the ROM's pixels exactly.
+
+The HDMA table decodes to a 16-scanline band over the selected row and a
+closed window everywhere else. Band tops for cursor rows 0–5: 70, 88, 106,
+124, 156, 174 — an 18px pitch with an extra 14px gap before "Set Rules".
+All six bands were verified against ROM captures and match exactly.
+
+Note `$420C` is **write-only**: reading it returns open bus, which reads as
+`00` and makes HDMA look disabled when it is running. Read the channel
+registers at `$4300`–`$437F` instead, and watch the current-table pointer at
+`$43x8`/`$43x9` advance to confirm a channel is live.
+
+Two PPU details were needed to land this pixel-exactly:
+
+- 5-bit to 8-bit colour is `(v << 3) | (v >> 2)`, not `v * 255 / 31`. The
+  naive form is off by one on several levels and cost ~25% of the pixel match.
+- Vertical scroll is offset by one — the first displayed scanline shows
+  tilemap line `vscroll + 1`.
+
 ## Still outstanding
 
-1. **Selected-row highlight.** The ROM draws the active row gold
-   (`255,165,49`); every other row is white. It is not OBJ (sprites are off
-   screen), not a tilemap palette (all BG3 entries use palette 0), and BG3
-   palette 0 holds no gold. It is therefore a per-scanline palette change
-   driven by the HDMA tables set up at `$81:F9F1`. Capturing those tables is
-   the next step.
-2. **Colour math / gradient.** The subtract-mode colour math with BG3 as
-   subscreen is not implemented; the right side of the backdrop is the largest
-   remaining pixel difference against the ROM.
-3. **Option values.** Changing Mode/Style/Level/Quarter needs the ROM glyph
+1. **Option values.** Changing Mode/Style/Level/Quarter needs the ROM glyph
    renderer that writes into the BG3 tile canvas.
-4. **Music.** The screen drives the SPC through `$2140`–`$2143` at `$80:A9E3`,
+2. **Music.** The screen drives the SPC through `$2140`–`$2143` at `$80:A9E3`,
    `$80:AA7B` and `$80:AACD`. `spcram.bin` holds the live SPC image. The port
    should sequence those samples rather than play a captured WAV.
 
-Current accuracy against the ROM frame: **67.9 % of pixels identical**, with
-the differences concentrated in the gradient and the missing gold row.
+Current accuracy against the ROM frame: **100 % of pixels identical** (0 of
+57344 differing, max channel delta 0), with the gold highlight in place.
 
 ## Title screen exit (Start during the build)
 

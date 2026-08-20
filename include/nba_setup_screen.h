@@ -69,6 +69,40 @@
 #define NBA_SETUP_MAIN_SETTLED  0x17   /* BG1 + BG2 + BG3 + OBJ              */
 #define NBA_SETUP_SUB_SETTLED   0x04   /* BG3 on subscreen (colour math)     */
 
+/**
+ * Selected-row highlight.
+ *
+ * The active row is drawn gold while every other row stays white, and it is
+ * done with colour math rather than a second palette. Verified on hardware:
+ *
+ *   - $2131 CGADSUB  = colour math enabled for BG3 only, subtract mode
+ *                      (ppu.colorMathEnabled=4, colorMathSubtractMode=true)
+ *   - $2130 CGWSEL   = use the fixed colour, not the subscreen
+ *                      (ppu.colorMathAddSubscreen=false)
+ *   - $2132 COLDATA  = 25952 -> R 0, G 11, B 25 in 5-bit channels
+ *   - window 1 gates the colour window (ppu.window[0].activeLayers[5]=true)
+ *   - HDMA channel 7 rewrites $2126/$2127 (window 1 left/right) per scanline
+ *     from a table at $7F:6800, opening the window only over the active row.
+ *
+ * Subtracting (0,11,25) from white (31,31,31) gives (31,20,6) = RGB
+ * (255,165,49), and from the grey (22,22,22) gives (22,11,0) = (181,90,0).
+ * Both match the ROM's pixels exactly.
+ *
+ * The HDMA table decodes to: window closed everywhere except a 16-scanline
+ * band over the selected row. Measured band tops, cursor row 0 through 5:
+ * 70, 88, 106, 124, 156, 174 - an 18px pitch with an extra 14px gap before
+ * "Set Rules", matching the blank line on screen.
+ */
+#define SNES_ADDR_SETUP_HDMA_WINDOW    0x7F6800  /* HDMA ch7 table -> $2126/$2127 */
+#define NBA_SETUP_FIXED_COLOR          25952     /* $2132 COLDATA: R0 G11 B25     */
+#define NBA_SETUP_MATH_SUB_R           0
+#define NBA_SETUP_MATH_SUB_G           11
+#define NBA_SETUP_MATH_SUB_B           25
+#define NBA_SETUP_HIGHLIGHT_TOP        70        /* first band, cursor row 0      */
+#define NBA_SETUP_HIGHLIGHT_HEIGHT     16        /* scanlines the window is open  */
+#define NBA_SETUP_ROW_PITCH            18
+#define NBA_SETUP_ROW_GAP_BEFORE_RULES 14        /* blank line above "Set Rules"  */
+
 typedef enum {
     NBA_SETUP_ROW_MODE = 0,
     NBA_SETUP_ROW_STYLE,
@@ -99,6 +133,7 @@ typedef struct {
 
 void nba_setup_screen_init(NbaSetupScreen *s, const NbaAssetPack *assets);
 void nba_setup_screen_update(NbaSetupScreen *s, const NbaInput *input, float delta_time);
+int  nba_setup_screen_row_band_top(NbaSetupRow row);
 void nba_setup_screen_render(const NbaSetupScreen *s, NbaRenderer *ren);
 
 #endif /* NBA_SETUP_SCREEN_H */

@@ -12,20 +12,47 @@
 
 /**
  * Offset/Address/Size: N/A | CGRAM colour fetch | size: N/A
- * Purpose: Converts a BGR555 CGRAM entry to ARGB8888 with INIDISP brightness.
+ * Purpose: Converts a BGR555 CGRAM entry to ARGB8888. When color_math is set
+ *          the PPU's subtract-mode colour math is applied first ($2131 with
+ *          $2132's fixed colour), then the INIDISP brightness.
  */
-static uint32_t setup_color(const uint8_t *cgram, int index, int brightness) {
+static uint32_t setup_color(const uint8_t *cgram, int index, int brightness,
+                            bool color_math) {
     uint16_t w = (uint16_t)(cgram[(index * 2) & 0x1FF] |
                             ((uint16_t)cgram[(index * 2 + 1) & 0x1FF] << 8));
-    uint32_t r = (w & 0x1Fu) * 255u / 31u;
-    uint32_t g = ((w >> 5) & 0x1Fu) * 255u / 31u;
-    uint32_t b = ((w >> 10) & 0x1Fu) * 255u / 31u;
-    if (brightness < 15) {
-        r = r * (uint32_t)brightness / 15u;
-        g = g * (uint32_t)brightness / 15u;
-        b = b * (uint32_t)brightness / 15u;
+    int r = w & 0x1F;
+    int g = (w >> 5) & 0x1F;
+    int b = (w >> 10) & 0x1F;
+
+    if (color_math) {
+        /* $2131 subtract mode against the $2132 fixed colour, clamped at 0. */
+        r -= NBA_SETUP_MATH_SUB_R; if (r < 0) r = 0;
+        g -= NBA_SETUP_MATH_SUB_G; if (g < 0) g = 0;
+        b -= NBA_SETUP_MATH_SUB_B; if (b < 0) b = 0;
     }
-    return 0xFF000000u | (r << 16) | (g << 8) | b;
+
+    /* Standard SNES 5->8 bit expansion, matching the PPU: (v << 3) | (v >> 2). */
+    uint32_t r8 = (uint32_t)((r << 3) | (r >> 2));
+    uint32_t g8 = (uint32_t)((g << 3) | (g >> 2));
+    uint32_t b8 = (uint32_t)((b << 3) | (b >> 2));
+    if (brightness < 15) {
+        r8 = r8 * (uint32_t)brightness / 15u;
+        g8 = g8 * (uint32_t)brightness / 15u;
+        b8 = b8 * (uint32_t)brightness / 15u;
+    }
+    return 0xFF000000u | (r8 << 16) | (g8 << 8) | b8;
+}
+
+/**
+ * Offset/Address/Size: 0x7F6800 | HDMA ch7 table -> $2126/$2127 | size: 0x1C5
+ * Purpose: Returns the first scanline of the colour-math window band for a
+ *          cursor row. The ROM feeds these bounds to window 1 per scanline via
+ *          HDMA; the port derives them from the same measured geometry.
+ */
+int nba_setup_screen_row_band_top(NbaSetupRow row) {
+    int top = NBA_SETUP_HIGHLIGHT_TOP + (int)row * NBA_SETUP_ROW_PITCH;
+    if (row >= NBA_SETUP_ROW_RULES) top += NBA_SETUP_ROW_GAP_BEFORE_RULES;
+    return top;
 }
 
 /**
@@ -59,7 +86,9 @@ static int setup_sample_bg(const uint8_t *vram, int map_base, int chr_base,
     int map_w = wide ? 512 : 256;
     int map_h = tall ? 512 : 256;
     int px = ((x + hscroll) % map_w + map_w) % map_w;
-    int py = ((y + vscroll) % map_h + map_h) % map_h;
+    /* The PPU's vertical scroll is offset by one: the first displayed scanline
+     * shows tilemap line vscroll+1, not vscroll. */
+    int py = ((y + vscroll + 1) % map_h + map_h) % map_h;
     int tx = px >> 3;
     int ty = py >> 3;
 
@@ -176,9 +205,17 @@ void nba_setup_screen_render(const NbaSetupScreen *s, NbaRenderer *ren) {
 
     const uint8_t *vram = s->vram;
     const uint8_t *cgram = s->cgram;
-    uint32_t backdrop = setup_color(cgram, 0, s->brightness);
+    uint32_t backdrop = setup_color(cgram, 0, s->brightness, false);
+
+    /* HDMA ch7 opens window 1 over the active row only; colour math is enabled
+     * for BG3 alone ($2131 = 4), so just this band of BG3 pixels is subtracted. */
+    int band_top = nba_setup_screen_row_band_top(s->row);
+    int band_bottom = band_top + NBA_SETUP_HIGHLIGHT_HEIGHT;
+    bool math_active = (s->main_screen & NBA_SETUP_SUB_SETTLED) != 0;
 
     for (int y = 0; y < NBA_SNES_HEIGHT; ++y) {
+        bool in_band = math_active && y >= band_top && y < band_bottom;
+
         for (int x = 0; x < NBA_SNES_WIDTH; ++x) {
             uint32_t out = backdrop;
             int palette = 0;
@@ -188,20 +225,26 @@ void nba_setup_screen_render(const NbaSetupScreen *s, NbaRenderer *ren) {
                 value = setup_sample_bg(vram, NBA_SETUP_BG2_TILEMAP, NBA_SETUP_BG2_CHR,
                                         4, true, false,
                                         s->bg2_hscroll, s->bg2_vscroll, x, y, &palette);
-                if (value >= 0) out = setup_color(cgram, palette * 16 + value, s->brightness);
+                if (value >= 0) {
+                    out = setup_color(cgram, palette * 16 + value, s->brightness, false);
+                }
             }
 
             if (s->main_screen & 0x01) {
                 value = setup_sample_bg(vram, NBA_SETUP_BG1_TILEMAP, NBA_SETUP_BG1_CHR,
                                         4, true, false,
                                         s->bg1_hscroll, NBA_SETUP_BG1_VSCROLL, x, y, &palette);
-                if (value >= 0) out = setup_color(cgram, palette * 16 + value, s->brightness);
+                if (value >= 0) {
+                    out = setup_color(cgram, palette * 16 + value, s->brightness, false);
+                }
             }
 
             if (s->main_screen & 0x04) {
                 value = setup_sample_bg(vram, NBA_SETUP_BG3_TILEMAP, NBA_SETUP_BG3_CHR,
                                         2, false, true, 0, 0, x, y, &palette);
-                if (value >= 0) out = setup_color(cgram, palette * 4 + value, s->brightness);
+                if (value >= 0) {
+                    out = setup_color(cgram, palette * 4 + value, s->brightness, in_band);
+                }
             }
 
             ren->pixels[y * NBA_SNES_WIDTH + x] = out;
