@@ -64,6 +64,19 @@
 #define NBA_SETUP_ENTER_FRAMES      32
 #define NBA_SETUP_FADE_FRAMES       15
 
+/* $80:E600 hands control to the next state after the title fade. The ROM then
+ * holds forced blank for frames 1638..1742 while $80:A2BF builds the three
+ * layers. Frame 1743 is the first visible Setup entrance frame. */
+#define NBA_SETUP_FORCED_BLANK_FRAMES 105
+
+/* After the BG1/BG2 slide, the ROM stages the BG3 text canvas through the
+ * exact $212C/$212D and vertical-scroll sequence captured at frames 1782-1801. */
+#define NBA_SETUP_BG3_PREP_FRAME      39
+#define NBA_SETUP_BG3_FLASH_FRAME     40
+#define NBA_SETUP_BG3_SETTLE_FRAME    57
+#define NBA_SETUP_BG3_START_VSCROLL   252
+#define NBA_SETUP_BG3_SCROLL_STEP     14
+
 /* Main/sub screen designation ($212C/$212D) before and after the slide-in */
 #define NBA_SETUP_MAIN_ENTER    0x03   /* BG1 + BG2                          */
 #define NBA_SETUP_MAIN_SETTLED  0x17   /* BG1 + BG2 + BG3 + OBJ              */
@@ -118,10 +131,11 @@ typedef struct {
     const uint8_t *cgram;   /* 512 B CGRAM image  (asset 17) */
     bool has_gfx;
 
-    int frame;              /* frames since the screen was entered */
+    int frame;              /* -105 forced-blank load; 0 = first visible frame */
     int bg1_hscroll;
     int bg2_hscroll;
     int bg2_vscroll;
+    int bg3_vscroll;
     int brightness;         /* INIDISP 0..15 */
     uint8_t main_screen;
     uint8_t sub_screen;

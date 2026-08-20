@@ -1136,6 +1136,67 @@ def create_asset_pack(rom_path, output_path):
         print("[ASSET EXTRACTOR] Game Setup capture missing; run:")
         print("    Mesen.exe <rom> tools/mesen_setup_capture.lua")
 
+    # ------------------------------------------------------------------
+    # Title -> Game Setup audio handoff. The snapshot is taken on ROM frame
+    # 1637 (the last visible title-fade frame). Every subsequent mirrored
+    # $2140-$2143 write is stamped with `spc.cycle`, so the port can run the
+    # original SPC700/BRR driver without a captured or mixed WAV.
+    setup_transition_dir = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "..", ".analysis",
+        "setup_transition")
+
+    def read_setup_transition(name, expected_size=None):
+        path = os.path.join(setup_transition_dir, name)
+        if not os.path.exists(path):
+            raise RuntimeError(f"Missing Game Setup transition capture: {path}. Run "
+                               "tools/mesen_setup_transition_capture.lua with the ROM first.")
+        data = open(path, "rb").read()
+        if expected_size is not None and len(data) != expected_size:
+            raise RuntimeError(f"Invalid {name}: expected {expected_size} bytes, got {len(data)}")
+        return data
+
+    setup_spc_ram_bytes = read_setup_transition("spc_ram.bin", 0x10000)
+    setup_spc_dsp_bytes = read_setup_transition("spc_dsp.bin", 0x80)
+    setup_state_text = read_setup_transition("spc_state.txt").decode("ascii")
+
+    def setup_state_int(key):
+        match = re.search(r"(?:^|\s)" + re.escape(key) + r"=(-?\d+)(?:\s|$)",
+                          setup_state_text)
+        if not match:
+            raise RuntimeError(f"Game Setup capture is missing state key {key}")
+        return int(match.group(1))
+
+    setup_frames = setup_state_int("frames")
+    setup_spc_state_bytes = b"NBTSSPC1" + struct.pack(
+        "<IH6B", 1, setup_state_int("pc"), setup_state_int("a"),
+        setup_state_int("x"), setup_state_int("y"), setup_state_int("sp"),
+        setup_state_int("ps"), 0)
+
+    setup_apu_events = []
+    previous_cycle = -1
+    for raw in read_setup_transition("apu_cycle_trace.txt").decode("ascii").splitlines():
+        if not raw or raw.startswith("#"):
+            continue
+        cycle_text, port_text, value_text = raw.split()
+        # Mesen exposes `spc.cycle` in 2.048 MHz half-cycle units. The C core
+        # uses the SPC700's 1.024 MHz cycle domain, so normalize at pack time.
+        event = (int(cycle_text) // 2, int(port_text), int(value_text, 16))
+        if event[0] < previous_cycle or not 0 <= event[1] <= 3 or not 0 <= event[2] <= 255:
+            raise RuntimeError(f"Invalid Game Setup APU event: {event}")
+        previous_cycle = event[0]
+        setup_apu_events.append(event)
+
+    max_setup_cycles = setup_frames * 1024000 // 60
+    if not setup_apu_events or setup_apu_events[-1][0] > max_setup_cycles:
+        raise RuntimeError("Game Setup APU trace extends beyond its declared duration")
+
+    setup_apu_trace = bytearray(struct.pack(
+        "<8sIII", b"NBTSAPU1", 1, setup_frames, len(setup_apu_events)))
+    for cycle, port, value in setup_apu_events:
+        setup_apu_trace.extend(struct.pack("<IBB", cycle, port, value))
+    print(f"[ASSET EXTRACTOR] Packed Game Setup SPC state: {setup_frames} frames, "
+          f"{len(setup_apu_events)} cycle-timed APU writes")
+
     assets = [
         (1, 128, 11, 0, nintendo_license_bytes),               # ASSET_NINTENDO_LICENSE
         (2, 256, num_legal_rows, start_y_legal, nba_legal_bytes), # ASSET_NBA_LEGAL_NOTICE (flags = start_y)
@@ -1164,6 +1225,10 @@ def create_asset_pack(rom_path, output_path):
         (85, 0, 0, 0, title_spc_state_bytes),
         (86, 0, 0, 0, title_apu_trace_bytes),
         (87, 0, 0, 0, title_cue_trace_bytes),
+        (88, 0, 0, 0, setup_spc_ram_bytes),
+        (89, 0, 0, 0, setup_spc_dsp_bytes),
+        (90, 0, 0, 0, setup_spc_state_bytes),
+        (91, 0, 0, 0, bytes(setup_apu_trace)),
     ])
 
     # Extract all other audio samples from ROM into asset pack for debugger

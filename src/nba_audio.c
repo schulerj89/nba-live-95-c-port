@@ -11,6 +11,7 @@
 #endif
 
 static uint8_t *g_generated_wav;
+static size_t g_generated_wav_size;
 
 static uint16_t audio_u16(const uint8_t *p) {
     return (uint16_t)(p[0] | ((uint16_t)p[1] << 8));
@@ -165,15 +166,141 @@ bool nba_audio_play_title_spc(const NbaAssetPack *assets) {
 
     nba_audio_stop();
     g_generated_wav = wav;
+    g_generated_wav_size = 44u + pcm_bytes;
 #if defined(_WIN32)
     if (!PlaySoundA((LPCSTR)g_generated_wav, NULL, SND_MEMORY | SND_ASYNC | SND_NODEFAULT)) {
-        free(g_generated_wav); g_generated_wav = NULL;
+        free(g_generated_wav); g_generated_wav = NULL; g_generated_wav_size = 0;
         return false;
     }
 #endif
     printf("[AUDIO] Synthesized title through SPC700/S-DSP: %u frames, %u APU writes.\n",
            frame_count, event_count);
     return true;
+}
+
+/**
+ * Offset/Address/Size: $80:E600 -> $80:A2BF/$80:A3B8 | 30-second trace
+ * Subroutines: $80:A9E3 (command), $80:AA7B (handshake), $80:AACD (queue)
+ * Purpose: Resumes the ROM's SPC700 driver on the final title-fade frame and
+ *          delivers the Game Setup CPU command stream at its captured SPC
+ *          cycle offsets. The asset pack contains SPC/BRR hardware state and
+ *          control writes, never a mixed Setup WAV.
+ */
+bool nba_audio_play_setup_spc(const NbaAssetPack *assets) {
+    const NbaAssetItem *ram_item = nba_assets_get(assets, NBA_ASSET_SETUP_SPC_RAM);
+    const NbaAssetItem *dsp_item = nba_assets_get(assets, NBA_ASSET_SETUP_SPC_DSP);
+    const NbaAssetItem *state_item = nba_assets_get(assets, NBA_ASSET_SETUP_SPC_STATE);
+    const NbaAssetItem *trace_item = nba_assets_get(assets, NBA_ASSET_SETUP_APU_TRACE);
+    if (!ram_item || ram_item->size < NBA_SPC_RAM_SIZE ||
+        !dsp_item || dsp_item->size < NBA_SPC_DSP_REGS ||
+        !state_item || state_item->size < 20 ||
+        !trace_item || trace_item->size < 20) {
+        fprintf(stderr, "[AUDIO] Game Setup SPC assets are missing or truncated.\n");
+        return false;
+    }
+
+    const uint8_t *state = (const uint8_t *)state_item->data;
+    const uint8_t *trace = (const uint8_t *)trace_item->data;
+    if (memcmp(state, "NBTSSPC1", 8) != 0 || audio_u32(state + 8) != 1 ||
+        memcmp(trace, "NBTSAPU1", 8) != 0 || audio_u32(trace + 8) != 1) {
+        fprintf(stderr, "[AUDIO] Unsupported Game Setup SPC asset format.\n");
+        return false;
+    }
+
+    uint32_t frame_count = audio_u32(trace + 12);
+    uint32_t event_count = audio_u32(trace + 16);
+    if (frame_count == 0 || frame_count > 7200 ||
+        event_count > (trace_item->size - 20u) / 6u) {
+        fprintf(stderr, "[AUDIO] Invalid Game Setup APU trace dimensions.\n");
+        return false;
+    }
+
+    uint32_t sample_count = (uint32_t)(((uint64_t)frame_count * NBA_SPC_SAMPLE_RATE) / 60u);
+    size_t pcm_bytes = (size_t)sample_count * 2u * sizeof(int16_t);
+    if (pcm_bytes > SIZE_MAX - 44u) return false;
+
+    NbaSpc *spc = (NbaSpc *)malloc(sizeof(*spc));
+    uint8_t *wav = (uint8_t *)malloc(44u + pcm_bytes);
+    if (!spc || !wav) {
+        free(spc); free(wav);
+        return false;
+    }
+    if (!nba_spc_load(spc, ram_item->data, ram_item->size,
+                      dsp_item->data, dsp_item->size,
+                      audio_u16(state + 12), state[14], state[15],
+                      state[16], state[17], state[18])) {
+        free(spc); free(wav);
+        return false;
+    }
+
+    memcpy(wav, "RIFF", 4); audio_put_u32(wav + 4, 36u + (uint32_t)pcm_bytes);
+    memcpy(wav + 8, "WAVEfmt ", 8); audio_put_u32(wav + 16, 16);
+    audio_put_u16(wav + 20, 1); audio_put_u16(wav + 22, 2);
+    audio_put_u32(wav + 24, NBA_SPC_SAMPLE_RATE);
+    audio_put_u32(wav + 28, NBA_SPC_SAMPLE_RATE * 4u);
+    audio_put_u16(wav + 32, 4); audio_put_u16(wav + 34, 16);
+    memcpy(wav + 36, "data", 4); audio_put_u32(wav + 40, (uint32_t)pcm_bytes);
+
+    int16_t *pcm = (int16_t *)(wav + 44);
+    uint32_t rendered = 0;
+    uint32_t previous_cycle = 0;
+    for (uint32_t i = 0; i < event_count; ++i) {
+        const uint8_t *event = trace + 20u + i * 6u;
+        uint32_t cycle = audio_u32(event);
+        if (cycle < previous_cycle || event[4] > 3) {
+            free(spc); free(wav);
+            fprintf(stderr, "[AUDIO] Invalid Game Setup cycle event.\n");
+            return false;
+        }
+        previous_cycle = cycle;
+        uint32_t target = cycle / NBA_SPC_CYCLES_PER_SAMPLE;
+        if (target > sample_count) target = sample_count;
+        if (target > rendered) {
+            nba_spc_render(spc, pcm + rendered * 2u, (int)(target - rendered));
+            rendered = target;
+        }
+        nba_spc_write_port(spc, event[4], event[5]);
+    }
+    if (rendered < sample_count) {
+        nba_spc_render(spc, pcm + rendered * 2u, (int)(sample_count - rendered));
+    }
+    free(spc);
+
+    int peak = 0;
+    for (uint32_t i = 0; i < sample_count * 2u; ++i) {
+        int magnitude = pcm[i] < 0 ? -(int)pcm[i] : (int)pcm[i];
+        if (magnitude > peak) peak = magnitude;
+    }
+    if (peak == 0) {
+        free(wav);
+        fprintf(stderr, "[AUDIO] Game Setup SPC synthesis produced silence.\n");
+        return false;
+    }
+
+    nba_audio_stop();
+    g_generated_wav = wav;
+    g_generated_wav_size = 44u + pcm_bytes;
+#if defined(_WIN32)
+    if (!PlaySoundA((LPCSTR)g_generated_wav, NULL,
+                    SND_MEMORY | SND_ASYNC | SND_NODEFAULT)) {
+        free(g_generated_wav); g_generated_wav = NULL; g_generated_wav_size = 0;
+        return false;
+    }
+#endif
+    printf("[AUDIO] Synthesized Game Setup through SPC700/S-DSP: "
+           "%u frames, %u cycle-timed APU writes, peak=%d.\n",
+           frame_count, event_count, peak);
+    return true;
+}
+
+bool nba_audio_save_generated_wav(const char *path) {
+    if (!path || !g_generated_wav || g_generated_wav_size < 44) return false;
+    FILE *file = fopen(path, "wb");
+    if (!file) return false;
+    bool ok = fwrite(g_generated_wav, 1, g_generated_wav_size, file) ==
+              g_generated_wav_size;
+    fclose(file);
+    return ok;
 }
 
 /**
@@ -186,4 +313,5 @@ void nba_audio_stop(void) {
 #endif
     free(g_generated_wav);
     g_generated_wav = NULL;
+    g_generated_wav_size = 0;
 }

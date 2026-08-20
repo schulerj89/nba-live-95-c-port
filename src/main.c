@@ -3,8 +3,10 @@
 #include <string.h>
 #include <stdbool.h>
 #include "nba_game.h"
+#include "nba_audio.h"
 
-extern int win32_run_game(const char *rom_path, const char *assets_path, bool title_only);
+extern int win32_run_game(const char *rom_path, const char *assets_path,
+                          bool title_only, bool setup_only);
 
 /**
  * Offset/Address/Size: N/A | Application Entry Point / CLI Dispatcher | size: N/A
@@ -14,9 +16,11 @@ int main(int argc, char *argv[]) {
     const char *rom_path = NULL;
     const char *assets_path = NULL;
     const char *dump_frame_path = NULL;
+    const char *dump_audio_path = NULL;
     bool is_headless = false;
     bool audio_debug_test = false;
     bool title_only_test = false;
+    bool setup_only_test = false;
     int step_frames = 30;
 
     for (int i = 1; i < argc; i++) {
@@ -30,10 +34,14 @@ int main(int argc, char *argv[]) {
             step_frames = atoi(argv[++i]);
         } else if (strcmp(argv[i], "--dump-frame") == 0 && i + 1 < argc) {
             dump_frame_path = argv[++i];
+        } else if (strcmp(argv[i], "--dump-audio") == 0 && i + 1 < argc) {
+            dump_audio_path = argv[++i];
         } else if (strcmp(argv[i], "--audio-debug") == 0) {
             audio_debug_test = true;
         } else if (strcmp(argv[i], "--title-only") == 0) {
             title_only_test = true;
+        } else if (strcmp(argv[i], "--setup-only") == 0) {
+            setup_only_test = true;
         } else if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
             printf("NBA Live '95 Native C Port\n");
             printf("Usage: nba95_port.exe [options]\n\n");
@@ -44,7 +52,9 @@ int main(int argc, char *argv[]) {
             printf("  --frames <N>          Number of frames to step in headless mode (default: 30)\n");
             printf("  --audio-debug         Activate audio sample debugger in headless render\n");
             printf("  --title-only          Start at $80:E01E title state (headless tests)\n");
+            printf("  --setup-only          Start at the $80:E600 -> $80:A2BF handoff\n");
             printf("  --dump-frame <file>   Save rendered frame to 24-bit BMP image\n");
+            printf("  --dump-audio <file>   Save the active runtime-synthesized WAV\n");
             printf("  --help, -h            Show this help text\n");
             return 0;
         }
@@ -78,6 +88,13 @@ int main(int argc, char *argv[]) {
             game.state = NBA_STATE_TITLE_SEQUENCE;
             game.state_timer = 0.0f;
             nba_title_sequence_init(&game.title_sequence);
+        }
+
+        if (setup_only_test) {
+            game.state = NBA_STATE_GAME_SETUP;
+            game.state_timer = 0.0f;
+            nba_setup_screen_init(&game.setup, &game.assets);
+            game.setup.bgm_started = nba_audio_play_setup_spc(&game.assets);
         }
 
         if (audio_debug_test) {
@@ -125,11 +142,20 @@ int main(int argc, char *argv[]) {
             }
         }
 
+        if (dump_audio_path) {
+            printf("[HEADLESS] Saving synthesized audio to: %s\n", dump_audio_path);
+            if (!nba_audio_save_generated_wav(dump_audio_path)) {
+                fprintf(stderr, "[HEADLESS] Failed to write synthesized audio.\n");
+                nba_game_shutdown(&game);
+                return 1;
+            }
+        }
+
         nba_game_shutdown(&game);
         printf("[HEADLESS] Headless execution completed successfully.\n");
         return 0;
     }
 
     /* Normal Win32 graphical execution */
-    return win32_run_game(rom_path, assets_path, title_only_test);
+    return win32_run_game(rom_path, assets_path, title_only_test, setup_only_test);
 }

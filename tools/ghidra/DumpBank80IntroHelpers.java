@@ -77,6 +77,10 @@ public class DumpBank80IntroHelpers extends GhidraScript {
         createLabel(toAddr(0xE5C7), "title_exit_or_snap", true);
         listing.setComment(toAddr(0xE5C7), CodeUnit.PLATE_COMMENT,
             "Title dismissal: snap incomplete build through $80:F07E, hold 120/40 frames, then fade out.");
+        listing.setComment(toAddr(0xE600), CodeUnit.PRE_COMMENT,
+            "Calls $80:CF1B for the final title fade. The following scene transition force-blanks " +
+            "frames 1638..1742 while Game Setup graphics/audio state are prepared; $80:A2BF " +
+            "releases the first Setup entrance frame at 1743.");
         createLabel(toAddr(0xF07E), "title_snap_finished_tilemap", true);
         listing.setComment(toAddr(0xF07E), CodeUnit.PLATE_COMMENT,
             "Copies the completed 0x680-byte tilemap from $7F:4006 so an early Start shows the finished logo.");

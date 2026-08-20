@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include "nba_game.h"
+#include "nba_audio.h"
 
 typedef struct {
     BITMAPINFO info;
@@ -124,7 +125,8 @@ static LRESULT CALLBACK win32_wnd_proc(HWND hwnd, UINT msg, WPARAM wparam, LPARA
  * Offset/Address/Size: N/A | Win32 Host Application Entry | size: N/A
  * Purpose: Creates desktop application window, initializes 60 FPS pacing timer, and hosts message/render pump.
  */
-int win32_run_game(const char *rom_path, const char *assets_path, bool title_only) {
+int win32_run_game(const char *rom_path, const char *assets_path,
+                   bool title_only, bool setup_only) {
     HINSTANCE hInstance = GetModuleHandleA(NULL);
 
     WNDCLASSA wc = {0};
@@ -174,6 +176,13 @@ int win32_run_game(const char *rom_path, const char *assets_path, bool title_onl
         g_game.state = NBA_STATE_TITLE_SEQUENCE;
         g_game.state_timer = 0.0f;
         nba_title_sequence_init(&g_game.title_sequence);
+    }
+
+    if (setup_only) {
+        g_game.state = NBA_STATE_GAME_SETUP;
+        g_game.state_timer = 0.0f;
+        nba_setup_screen_init(&g_game.setup, &g_game.assets);
+        g_game.setup.bgm_started = nba_audio_play_setup_spc(&g_game.assets);
     }
 
     /* Pacing timer setup: 59.94 Hz SNES frame rate */

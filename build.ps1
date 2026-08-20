@@ -98,6 +98,11 @@ if ($Test) {
     if ($LASTEXITCODE -ne 0) {
         throw "Title regression tests failed with exit code $LASTEXITCODE"
     }
+    & python (Join-Path $Root "tools\test_setup_transition.py") `
+        --pack $AssetPack --exe $ConsoleExePath --rom $RomPath
+    if ($LASTEXITCODE -ne 0) {
+        throw "Game Setup transition regression tests failed with exit code $LASTEXITCODE"
+    }
 }
 
 if ($Headless -or $DumpFrame) {

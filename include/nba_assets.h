@@ -39,6 +39,10 @@ typedef enum {
     NBA_ASSET_TITLE_SPC_STATE       = 85,
     NBA_ASSET_TITLE_APU_TRACE       = 86,
     NBA_ASSET_TITLE_CUE_TRACE       = 87,
+    NBA_ASSET_SETUP_SPC_RAM         = 88,
+    NBA_ASSET_SETUP_SPC_DSP         = 89,
+    NBA_ASSET_SETUP_SPC_STATE       = 90,
+    NBA_ASSET_SETUP_APU_TRACE       = 91,
     NBA_ASSET_MAX                   = 128
 } NbaAssetId;
 

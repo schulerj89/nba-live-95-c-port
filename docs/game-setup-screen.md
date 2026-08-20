@@ -71,6 +71,12 @@ parked at y=225 (off screen), so OBJ contributes nothing.
 
 ## Scroll behaviour (measured per frame)
 
+Handoff/loading:
+
+- frame 1637 is the last visible title-fade frame (brightness 1)
+- frames 1638-1742 are forced blank while the next scene is built
+- frame 1743 releases forced blank at brightness 1 with BG1/BG2 scroll 768
+
 Entrance, 32 frames:
 
 - BG1 hscroll `768 → 512`, 8 px/frame
@@ -84,6 +90,11 @@ Steady state:
 - BG2 hscroll `0`, **vscroll +1 every 3 frames** (0.3333 px/frame, no drift
   over 210 frames) — this is the scrolling backdrop
 - BG3 `0 / 0` fixed
+
+BG3 is deliberately delayed after the 32-frame BG1/BG2 slide. Its vertical
+scroll changes `280 -> 252 -> ... -> 14 -> 0` across frames 1782-1801 while
+`$212C/$212D` stage the text layer. Releasing the final VRAM image immediately
+was the source of the port's glitchy transition.
 
 ## Asset pipeline
 
@@ -149,9 +160,6 @@ Two PPU details were needed to land this pixel-exactly:
 
 1. **Option values.** Changing Mode/Style/Level/Quarter needs the ROM glyph
    renderer that writes into the BG3 tile canvas.
-2. **Music.** The screen drives the SPC through `$2140`–`$2143` at `$80:A9E3`,
-   `$80:AA7B` and `$80:AACD`. `spcram.bin` holds the live SPC image. The port
-   should sequence those samples rather than play a captured WAV.
 
 Current accuracy against the ROM frame: **100 % of pixels identical** (0 of
 57344 differing, max channel delta 0), with the gold highlight in place.
@@ -212,26 +220,28 @@ stream to the point where the build has finished:
 `NBA_TITLE_BUILD_COMPLETE_FRAMES = 965`, measured from the port's own stream
 (the title scene starts at frame 649 and the build completes at 1614).
 
-## Game Setup music (in progress — not yet playing)
+## Game Setup music (implemented)
 
 The screen genuinely has a sequenced track. Polling the DSP every frame across
 the settled screen (`tools/mesen_dsp_activity.lua`) shows **315 pitch/sample
 changes and 233 note re-triggers over 700 frames**, across voices using sample
 numbers 0, 4, 8, 13, 19, 20, 21, 23. It is not a held chord and not a stream.
 
-The whole CPU-to-driver interface is four bytes. Capturing every 65816 write to
-`$2140`-`$2143` (`tools/mesen_apu_ports.lua`) over the screen gives just **24
-writes, all in one burst at frame 1637**: eight commands of the form
-`port1 = N; port0 = $05; port0 = $00` for N = 7 down to 1. After that the CPU
-says nothing and the driver sequences on its own — which is why an APU snapshot
-is enough to resume the music without emulating the 65816 side.
+The whole CPU-to-driver interface is four bytes. The ports are mirrored across
+banks `$00`-`$3F` and `$80`-`$BF`; hooking every mirror shows that Setup is
+CPU-driven, averaging roughly 142 writes per frame. The final capture starts on
+frame 1637, snapshots SPC RAM/DSP/CPU state, then records 30 seconds containing
+**102,445 writes** with `spc.cycle` timestamps. The binary asset is control data,
+not rendered PCM.
 
 ### What is built
 
-`src/nba_spc.c` is an SPC700 + S-DSP core that resumes the ROM's own driver
-from a captured snapshot (`tools/mesen_spc_capture.lua` writes `spc_ram.bin`,
-`spc_dsp.bin` and `spc_state.txt`). `tools/spc_render_main.c` renders it to a
-WAV offline so it can be checked without the game loop:
+`src/nba_spc.c` is the in-game SPC700 + S-DSP core. Asset IDs 88-91 hold SPC
+RAM, DSP registers, SPC CPU state, and the cycle-timed `$2140-$2143` trace.
+`nba_audio_play_setup_spc` resumes the driver and synthesizes 32 kHz stereo PCM
+in memory. Mesen's `spc.cycle` uses 2.048 MHz half-cycle units, so extraction
+normalizes each delta by two into the core's 1.024 MHz domain; the DSP then
+emits one sample per 32 SPC cycles. No Setup WAV is present in the asset pack.
 
 ```
 build\spc_render.exe .analysis\setup_capture\spc_ram.bin .analysis\setup_capture\spc_dsp.bin 0x06B2 7 22 99 255 0 8 out.wav
@@ -297,7 +307,7 @@ per frame, in groups of `port1/port2/port3 = params; port0 = $0B; port0 = $00`.
 So the Game Setup music is **CPU-driven**: the SPC700 driver is a playback
 engine and the 65816 sequences it, several commands per frame.
 
-### Validation
+### Validation history
 
 `tools/spc_replay_main.c` feeds the recorded port stream back into the core and
 renders a WAV:
@@ -315,23 +325,15 @@ Comparing its DSP registers against Mesen's own per-frame log:
 | voice pitch | 1840/2880 (63.9%) |
 | voice sample number | 1814/2880 (63.0%) |
 
-At the start the agreement is essentially exact — at frame 1900 all eight
-pitches and sample numbers match and envelopes are within a few counts — and it
-drifts over several seconds. That drift is the replay harness, which places
-each frame's writes at evenly spaced points rather than at their real cycle
-offsets; commands eventually land a little early or late and the sequence
-desyncs. It is not evidence of a bad instruction.
+At the start the earlier frame-stamped replay was essentially exact, but it
+drifted because writes were distributed evenly inside each video frame. The
+runtime path replaces that approximation with the new SPC-cycle timestamps;
+the DSP emits one sample every 32 SPC cycles, so commands land at the correct
+audio sample.
 
-### What is left
+### Remaining audio work
 
-Two options, in order of preference:
-
-1. **Port the 65816 sequencer.** The commands come from the routines already
-   identified at `$80:A9E3`, `$80:AA7B` and `$80:AACD`. This is the real port:
-   the game generates its own music commands and the SPC core plays them.
-2. **Cycle-timestamp the command stream.** Capture the port writes with SPC
-   cycle counts rather than frame numbers and replay them at those offsets.
-   That would tighten the sync well past 64%, but it is still replaying
-   recorded control data rather than generating it.
-
-`nba_spc.c` stays out of the game build until one of those lands.
+The authentic next step would be a direct C port of the 65816 sequencer at
+`$80:A9E3`, `$80:AA7B`, and `$80:AACD`. The current implementation is already
+ROM-driver/BRR synthesis rather than a music recording, but its CPU-side
+command decisions are replayed from cycle-timed control data in the asset pack.

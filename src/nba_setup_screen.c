@@ -134,17 +134,21 @@ void nba_setup_screen_init(NbaSetupScreen *s, const NbaAssetPack *assets) {
         printf("[SETUP] Game Setup layer image missing from the asset pack.\n");
     }
 
-    s->frame = 0;
+    /* $80:E600 has completed the title fade, but $80:A2BF does not release
+     * forced blank until 105 frames later. Keep that hardware loading interval
+     * in the scene instead of exposing partially initialized Setup layers. */
+    s->frame = -NBA_SETUP_FORCED_BLANK_FRAMES;
     s->bg1_hscroll = NBA_SETUP_ENTER_BG1_START;
     s->bg2_hscroll = NBA_SETUP_ENTER_BG2_START;
-    s->bg2_vscroll = 0;
-    s->brightness = 1;
+    s->bg2_vscroll = -1;
+    s->bg3_vscroll = 280;
+    s->brightness = 0;
     s->main_screen = NBA_SETUP_MAIN_ENTER;
     s->sub_screen = 0;
     s->row = NBA_SETUP_ROW_MODE;
     s->is_initialized = true;
 
-    printf("[SETUP] Game Setup screen built ($80:A2BF).\n");
+    printf("[SETUP] Entered 105-frame forced-blank build before $80:A2BF.\n");
 }
 
 /**
@@ -160,6 +164,8 @@ void nba_setup_screen_update(NbaSetupScreen *s, const NbaInput *input, float del
 
     s->frame++;
 
+    if (s->frame < 0) return;
+
     if (s->frame <= NBA_SETUP_ENTER_FRAMES) {
         int step = s->frame * NBA_SETUP_ENTER_SCROLL_STEP;
         s->bg1_hscroll = NBA_SETUP_ENTER_BG1_START - step;
@@ -171,12 +177,37 @@ void nba_setup_screen_update(NbaSetupScreen *s, const NbaInput *input, float del
         s->bg1_hscroll = NBA_SETUP_BG1_HSCROLL;
         s->bg2_hscroll = NBA_SETUP_BG2_HSCROLL;
         s->brightness = 15;
-        s->main_screen = NBA_SETUP_MAIN_SETTLED;
-        s->sub_screen = NBA_SETUP_SUB_SETTLED;
     }
 
-    /* Backdrop scroll: +1 px every third frame, running through the slide-in. */
-    s->bg2_vscroll = (s->frame / NBA_SETUP_SCROLL_PERIOD) & 0x1FF;
+    /* The live register trace starts BG2 at $3FF (-1) and advances to zero on
+     * entrance frame 3, then continues one pixel every third frame. */
+    s->bg2_vscroll = s->frame / NBA_SETUP_SCROLL_PERIOD - 1;
+
+    /* $80:A3B8 stages the BG3 canvas separately after BG1/BG2 have settled.
+     * The one-frame $17 designation at frame 40 and the $13 interval are real
+     * $212C writes in the ROM, not renderer artifacts. */
+    if (s->frame < NBA_SETUP_BG3_PREP_FRAME) {
+        s->bg3_vscroll = 280;
+        s->main_screen = NBA_SETUP_MAIN_ENTER;
+        s->sub_screen = 0;
+    } else if (s->frame == NBA_SETUP_BG3_PREP_FRAME) {
+        s->bg3_vscroll = NBA_SETUP_BG3_START_VSCROLL;
+        s->main_screen = NBA_SETUP_MAIN_ENTER;
+        s->sub_screen = 0;
+    } else {
+        int scroll_frame = s->frame - NBA_SETUP_BG3_FLASH_FRAME;
+        int vscroll = NBA_SETUP_BG3_START_VSCROLL -
+                      scroll_frame * NBA_SETUP_BG3_SCROLL_STEP;
+        s->bg3_vscroll = vscroll > 0 ? vscroll : 0;
+        if (s->frame == NBA_SETUP_BG3_FLASH_FRAME ||
+            s->frame >= NBA_SETUP_BG3_SETTLE_FRAME) {
+            s->main_screen = NBA_SETUP_MAIN_SETTLED;
+        } else {
+            s->main_screen = 0x13; /* BG1 + BG2 + OBJ while BG3 moves */
+        }
+        s->sub_screen = s->frame >= NBA_SETUP_BG3_SETTLE_FRAME
+                            ? NBA_SETUP_SUB_SETTLED : 0;
+    }
 
     if (!input) return;
 
@@ -198,7 +229,7 @@ void nba_setup_screen_update(NbaSetupScreen *s, const NbaInput *input, float del
 void nba_setup_screen_render(const NbaSetupScreen *s, NbaRenderer *ren) {
     if (!s || !ren) return;
 
-    if (!s->has_gfx) {
+    if (!s->has_gfx || s->frame < 0) {
         nba_renderer_clear(ren, 0xFF000000u);
         return;
     }
@@ -211,7 +242,7 @@ void nba_setup_screen_render(const NbaSetupScreen *s, NbaRenderer *ren) {
      * for BG3 alone ($2131 = 4), so just this band of BG3 pixels is subtracted. */
     int band_top = nba_setup_screen_row_band_top(s->row);
     int band_bottom = band_top + NBA_SETUP_HIGHLIGHT_HEIGHT;
-    bool math_active = (s->main_screen & NBA_SETUP_SUB_SETTLED) != 0;
+    bool math_active = (s->sub_screen & NBA_SETUP_SUB_SETTLED) != 0;
 
     for (int y = 0; y < NBA_SNES_HEIGHT; ++y) {
         bool in_band = math_active && y >= band_top && y < band_bottom;
@@ -241,7 +272,8 @@ void nba_setup_screen_render(const NbaSetupScreen *s, NbaRenderer *ren) {
 
             if (s->main_screen & 0x04) {
                 value = setup_sample_bg(vram, NBA_SETUP_BG3_TILEMAP, NBA_SETUP_BG3_CHR,
-                                        2, false, true, 0, 0, x, y, &palette);
+                                        2, false, true, 0, s->bg3_vscroll,
+                                        x, y, &palette);
                 if (value >= 0) {
                     out = setup_color(cgram, palette * 4 + value, s->brightness, in_band);
                 }

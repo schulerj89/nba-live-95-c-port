@@ -18,6 +18,7 @@ import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Instruction;
 import ghidra.program.model.listing.Listing;
+import ghidra.program.model.listing.CodeUnit;
 
 public class DumpGameSetup extends GhidraScript {
 
@@ -81,6 +82,32 @@ public class DumpGameSetup extends GhidraScript {
             if (getFunctionAt(a) == null) {
                 createFunction(a, String.format("sub_%s_%04X", bankStr, r.start));
             }
+        }
+
+        Listing listing = currentProgram.getListing();
+        if (bank == 0x80) {
+            createLabel(toAddr(0xA2BF), "game_setup_build_layers", true);
+            listing.setComment(toAddr(0xA2BF), CodeUnit.PLATE_COMMENT,
+                "Builds the Game Setup BG1/BG2/BG3 VRAM state while forced blank is active; " +
+                "releases the first visible entrance frame with BG1/BG2 scrolls at 768.");
+            createLabel(toAddr(0xA3B8), "game_setup_frame_update", true);
+            listing.setComment(toAddr(0xA3B8), CodeUnit.PLATE_COMMENT,
+                "Drives the 32-frame BG1/BG2 slide, 1..15 INIDISP ramp, delayed BG3 vertical " +
+                "entrance, and steady BG2 scroll.");
+            createLabel(toAddr(0xA9E3), "game_setup_apu_command", true);
+            listing.setComment(toAddr(0xA9E3), CodeUnit.PLATE_COMMENT,
+                "Game Setup CPU-side music command producer. Writes the $2140-$2143 protocol " +
+                "that keeps the resident SPC700 driver sequencing BRR samples.");
+            createLabel(toAddr(0xAA7B), "game_setup_apu_handshake", true);
+            listing.setComment(toAddr(0xAA7B), CodeUnit.PLATE_COMMENT,
+                "Waits for and acknowledges the SPC700 command-port handshake.");
+            createLabel(toAddr(0xAACD), "game_setup_apu_queue", true);
+            listing.setComment(toAddr(0xAACD), CodeUnit.PLATE_COMMENT,
+                "Queues per-voice parameters and command $0B through $2140-$2143.");
+        } else if (bank == 0x81) {
+            createLabel(toAddr(0xF9F1), "game_setup_hdma_window_init", true);
+            listing.setComment(toAddr(0xF9F1), CodeUnit.PLATE_COMMENT,
+                "Initializes HDMA channel 7 for the selected-row color-math window.");
         }
 
         File listingOut = new File(outDir, "setup_bank" + bankStr + "_listing.txt");

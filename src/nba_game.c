@@ -218,13 +218,15 @@ void nba_game_tick(NbaGame *game, float delta_time) {
                 game->state = NBA_STATE_GAME_SETUP;
                 game->state_timer = 0.0f;
                 nba_setup_screen_init(&game->setup, &game->assets);
+                game->setup.bgm_started =
+                    nba_audio_play_setup_spc(&game->assets);
             }
             break;
 
         case NBA_STATE_GAME_SETUP:
             /* $80:A3B8 - per-frame Game Setup update: slide-in, backdrop
-             * scroll and row cursor. Music is issued by the APU command
-             * routines at $80:A9E3/$80:AA7B/$80:AACD and is not wired up yet. */
+             * scroll and row cursor. $80:A9E3/$80:AA7B/$80:AACD feed the
+             * cycle-timed SPC command path started at the title handoff. */
             nba_setup_screen_update(&game->setup, &game->input, delta_time);
             break;
 

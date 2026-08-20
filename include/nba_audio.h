@@ -15,6 +15,8 @@ void nba_audio_init(void);
 void nba_audio_shutdown(void);
 void nba_audio_play_wav(const void *data, size_t size);
 bool nba_audio_play_title_spc(const NbaAssetPack *assets);
+bool nba_audio_play_setup_spc(const NbaAssetPack *assets);
+bool nba_audio_save_generated_wav(const char *path);
 void nba_audio_stop(void);
 
 #endif /* NBA_AUDIO_H */
