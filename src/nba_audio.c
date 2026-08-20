@@ -237,16 +237,18 @@ bool nba_audio_play_title_spc(NbaAudio *audio, const NbaAssetPack *assets) {
 /**
  * Offset/Address/Size: $80:E600 -> $80:A2BF/$80:A3B8 | 30-second trace
  * Subroutines: $80:A9E3 (command), $80:AA7B (handshake), $80:AACD (queue)
- * Purpose: Resumes the ROM's SPC700 driver on the final title-fade frame and
- *          delivers the Game Setup CPU command stream at its captured SPC
- *          cycle offsets. The asset pack contains SPC/BRR hardware state and
- *          control writes, never a mixed Setup WAV.
+ * Purpose: $80:A9E3/$80:AA7B/$80:AACD produce the captured $2140-$2143
+ *          command stream; the resident SPC700 driver turns those commands
+ *          into the captured $F2/$F3 S-DSP register program.  Replaying that
+ *          downstream program avoids CPU-core timing drift while this engine
+ *          still decodes and mixes the ROM's BRR bank live.  The asset pack
+ *          contains hardware/control state only, never mixed Setup PCM.
  */
-bool nba_audio_play_setup_spc(NbaAudio *audio, const NbaAssetPack *assets) {
+bool nba_audio_play_setup_dsp(NbaAudio *audio, const NbaAssetPack *assets) {
     static const NbaSpcTrackSpec spec = {
         NBA_ASSET_SETUP_SPC_RAM, NBA_ASSET_SETUP_SPC_DSP,
-        NBA_ASSET_SETUP_SPC_STATE, NBA_ASSET_SETUP_APU_TRACE,
-        "NBTSSPC1", "NBTSAPU1", "Game Setup", 7200, 6
+        NBA_ASSET_SETUP_SPC_STATE, NBA_ASSET_SETUP_DSP_TRACE,
+        "NBTSSPC1", "NBTSDSP1", "Game Setup", 7200, 6
     };
     if (!audio || !assets) return false;
     NbaSpcTrackRender render;
@@ -257,24 +259,24 @@ bool nba_audio_play_setup_spc(NbaAudio *audio, const NbaAssetPack *assets) {
     for (uint32_t i = 0; i < render.event_count; ++i) {
         const uint8_t *event = render.trace + 20u + i * 6u;
         uint32_t cycle = audio_u32(event);
-        if (cycle < previous_cycle || event[4] > 3) {
+        if (cycle < previous_cycle || event[4] >= NBA_SPC_DSP_REGS) {
             audio_discard_render(&render);
-            fprintf(stderr, "[AUDIO] Invalid Game Setup cycle event.\n");
+            fprintf(stderr, "[AUDIO] Invalid Game Setup DSP cycle event.\n");
             return false;
         }
         previous_cycle = cycle;
         uint32_t target = cycle / NBA_SPC_CYCLES_PER_SAMPLE;
         if (target > render.sample_count) target = render.sample_count;
         if (target > rendered) {
-            nba_spc_render(render.spc, render.pcm + rendered * 2u,
-                           (int)(target - rendered));
+            nba_spc_render_dsp(render.spc, render.pcm + rendered * 2u,
+                               (int)(target - rendered));
             rendered = target;
         }
-        nba_spc_write_port(render.spc, event[4], event[5]);
+        nba_spc_write_dsp(render.spc, event[4], event[5]);
     }
     if (rendered < render.sample_count) {
-        nba_spc_render(render.spc, render.pcm + rendered * 2u,
-                       (int)(render.sample_count - rendered));
+        nba_spc_render_dsp(render.spc, render.pcm + rendered * 2u,
+                           (int)(render.sample_count - rendered));
     }
 
     int peak = 0;
@@ -292,8 +294,8 @@ bool nba_audio_play_setup_spc(NbaAudio *audio, const NbaAssetPack *assets) {
     uint32_t frame_count = render.frame_count;
     uint32_t event_count = render.event_count;
     if (!audio_play_generated(audio, &render)) return false;
-    printf("[AUDIO] Synthesized Game Setup through SPC700/S-DSP: "
-           "%u frames, %u cycle-timed APU writes, peak=%d.\n",
+    printf("[AUDIO] Synthesized Game Setup through ROM BRR/S-DSP: "
+           "%u frames, %u cycle-timed DSP writes, peak=%d.\n",
            frame_count, event_count, peak);
     return true;
 }

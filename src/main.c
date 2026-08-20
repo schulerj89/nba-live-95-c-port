@@ -118,7 +118,7 @@ int main(int argc, char *argv[]) {
             game.state_frame = 0;
             game.state_timer = 0.0f;
             nba_setup_screen_init(&game.setup_screen, &game.assets);
-            nba_audio_play_setup_spc(&game.audio, &game.assets);
+            nba_audio_play_setup_dsp(&game.audio, &game.assets);
         }
 
         if (audio_debug_test) {

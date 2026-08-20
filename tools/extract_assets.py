@@ -521,6 +521,26 @@ def create_asset_pack(rom_path, output_path):
     print(f"[ASSET EXTRACTOR] Packed Game Setup SPC state: {setup_frames} frames, "
           f"{len(setup_apu_events)} cycle-timed APU writes")
 
+    setup_dsp_events = []
+    previous_cycle = -1
+    for raw in read_setup_transition("dsp_cycle_trace.txt").decode("ascii").splitlines():
+        if not raw or raw.startswith("#"):
+            continue
+        cycle_text, register_text, value_text = raw.split()
+        event = (int(cycle_text) // 2, int(register_text, 16), int(value_text, 16))
+        if event[0] < previous_cycle or not 0 <= event[1] < 0x80 or not 0 <= event[2] <= 255:
+            raise RuntimeError(f"Invalid Game Setup DSP event: {event}")
+        previous_cycle = event[0]
+        setup_dsp_events.append(event)
+    if not setup_dsp_events or setup_dsp_events[-1][0] > max_setup_cycles:
+        raise RuntimeError("Game Setup DSP trace extends beyond its declared duration")
+    setup_dsp_trace = bytearray(struct.pack(
+        "<8sIII", b"NBTSDSP1", 1, setup_frames, len(setup_dsp_events)))
+    for cycle, register, value in setup_dsp_events:
+        setup_dsp_trace.extend(struct.pack("<IBB", cycle, register, value))
+    print(f"[ASSET EXTRACTOR] Packed Game Setup S-DSP program: "
+          f"{len(setup_dsp_events)} cycle-timed register writes")
+
     assets = [
         (1, 128, 11, 0, nintendo_license_bytes),               # ASSET_NINTENDO_LICENSE
         (2, 256, num_legal_rows, start_y_legal, nba_legal_bytes), # ASSET_NBA_LEGAL_NOTICE (flags = start_y)
@@ -554,6 +574,7 @@ def create_asset_pack(rom_path, output_path):
         (90, 0, 0, 0, setup_spc_state_bytes),
         (91, 0, 0, 0, bytes(setup_apu_trace)),
         (92, 0, 0, 0, bytes(setup_ppu_trace)),
+        (93, 0, 0, 0, bytes(setup_dsp_trace)),
     ])
 
     # Extract all other audio samples from ROM into asset pack for debugger

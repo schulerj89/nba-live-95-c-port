@@ -1,5 +1,4 @@
 #include "nba_spc.h"
-#include <math.h>
 #include <string.h>
 
 /* ------------------------------------------------------------------------
@@ -536,29 +535,51 @@ static const int env_rate[32] = {
     96, 80, 64, 48, 40, 32, 24, 20, 16, 12, 10, 8, 6, 5, 4, 3, 2, 1
 };
 
-/* 4-point interpolation weights, generated as a gaussian-windowed sinc and
- * normalised to 2048 per position. This approximates the DSP's built-in
- * gaussian table closely enough to reproduce its characteristic filtering. */
-static int16_t gauss_tab[256][4];
-static bool gauss_ready = false;
+/* Exact coefficient ROM in the S-DSP. These are hardware data, not a fitted
+ * filter: a generated sinc approximation changes both timbre and level. */
+static const int16_t gauss[512] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,
+    2,2,3,3,3,3,3,4,4,4,4,4,5,5,5,5,
+    6,6,6,6,7,7,7,8,8,8,9,9,9,10,10,10,
+    11,11,11,12,12,13,13,14,14,15,15,15,16,16,17,17,
+    18,19,19,20,20,21,21,22,23,23,24,24,25,26,27,27,
+    28,29,29,30,31,32,32,33,34,35,36,36,37,38,39,40,
+    41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,
+    58,59,60,61,62,64,65,66,67,69,70,71,73,74,76,77,
+    78,80,81,83,84,86,87,89,90,92,94,95,97,99,100,102,
+    104,106,107,109,111,113,115,117,118,120,122,124,126,128,130,132,
+    134,137,139,141,143,145,147,150,152,154,156,159,161,163,166,168,
+    171,173,175,178,180,183,186,188,191,193,196,199,201,204,207,210,
+    212,215,218,221,224,227,230,233,236,239,242,245,248,251,254,257,
+    260,263,267,270,273,276,280,283,286,290,293,297,300,304,307,311,
+    314,318,321,325,328,332,336,339,343,347,351,354,358,362,366,370,
+    374,378,381,385,389,393,397,401,405,410,414,418,422,426,430,434,
+    439,443,447,451,456,460,464,469,473,477,482,486,491,495,499,504,
+    508,513,517,522,527,531,536,540,545,550,554,559,563,568,573,577,
+    582,587,592,596,601,606,611,615,620,625,630,635,640,644,649,654,
+    659,664,669,674,678,683,688,693,698,703,708,713,718,723,728,732,
+    737,742,747,752,757,762,767,772,777,782,787,792,797,802,806,811,
+    816,821,826,831,836,841,846,851,855,860,865,870,875,880,884,889,
+    894,899,904,908,913,918,923,927,932,937,941,946,951,955,960,965,
+    969,974,978,983,988,992,997,1001,1005,1010,1014,1019,1023,1027,1032,1036,
+    1040,1045,1049,1053,1057,1061,1066,1070,1074,1078,1082,1086,1090,1094,1098,1102,
+    1106,1109,1113,1117,1121,1125,1128,1132,1136,1139,1143,1146,1150,1153,1157,1160,
+    1164,1167,1170,1174,1177,1180,1183,1186,1190,1193,1196,1199,1202,1205,1207,1210,
+    1213,1216,1219,1221,1224,1227,1229,1232,1234,1237,1239,1241,1244,1246,1248,1251,
+    1253,1255,1257,1259,1261,1263,1265,1267,1269,1270,1272,1274,1275,1277,1279,1280,
+    1282,1283,1284,1286,1287,1288,1290,1291,1292,1293,1294,1295,1296,1297,1297,1298,
+    1299,1300,1300,1301,1302,1302,1303,1303,1303,1304,1304,1304,1304,1304,1305,1305
+};
 
-static void gauss_init(void) {
-    if (gauss_ready) return;
-    for (int i = 0; i < 256; ++i) {
-        double p = (double)i / 256.0;
-        double w[4], sum = 0.0;
-        for (int k = 0; k < 4; ++k) {
-            double x = (double)(k - 1) - p;      /* taps at -1, 0, 1, 2 */
-            double sinc = (fabs(x) < 1e-9) ? 1.0 : sin(3.14159265358979 * x) / (3.14159265358979 * x);
-            double win = exp(-0.5 * (x / 1.7) * (x / 1.7));
-            w[k] = sinc * win;
-            sum += w[k];
-        }
-        for (int k = 0; k < 4; ++k) {
-            gauss_tab[i][k] = (int16_t)((w[k] / sum) * 2048.0 + 0.5);
-        }
-    }
-    gauss_ready = true;
+static const int env_offset[32] = {
+    1, 0, 1040, 536, 0, 1040, 536, 0, 1040, 536, 0, 1040, 536, 0, 1040, 536,
+    0, 1040, 536, 0, 1040, 536, 0, 1040, 536, 0, 1040, 536, 0, 1040, 0, 0
+};
+
+static bool env_counter_hit(const NbaSpc *s, int rate) {
+    if (rate <= 0 || rate >= 32 || env_rate[rate] <= 0) return false;
+    return ((s->dsp_counter + env_offset[rate]) % env_rate[rate]) == 0;
 }
 
 static int clamp16(int v) {
@@ -614,9 +635,12 @@ static void brr_decode_block(NbaSpc *s, int idx) {
         }
         sample = clamp16(sample);
         v->last2 = v->last1;
-        v->last1 = sample;
+        v->last1 = (int16_t)(sample * 2) >> 1;
 
-        v->ring[v->ring_write & 31] = (int16_t)sample;
+        /* BRR produces a 15-bit value. The S-DSP restores the low bit before
+         * interpolation; retaining the half-scale value made every ROM
+         * instrument substantially quieter than the hardware. */
+        v->ring[v->ring_write & 31] = (int16_t)(sample * 2);
         v->ring_write++;
     }
 
@@ -675,6 +699,15 @@ static void env_run(NbaSpc *s, int idx) {
 
     int rate = 0, step = 0;
 
+    if (v->phase == NBA_ENV_RELEASE) {
+        v->env -= 8;
+        if (v->env <= 0) {
+            v->env = 0;
+            v->active = false;
+        }
+        return;
+    }
+
     if (adsr1 & 0x80) {
         int ar = adsr1 & 0x0F;
         int dr = (adsr1 >> 4) & 0x07;
@@ -683,33 +716,28 @@ static void env_run(NbaSpc *s, int idx) {
 
         switch (v->phase) {
             case NBA_ENV_ATTACK:
-                rate = env_rate[ar * 2 + 1];
+                rate = ar * 2 + 1;
                 step = (ar == 15) ? 1024 : 32;
                 break;
             case NBA_ENV_DECAY:
-                rate = env_rate[dr * 2 + 16];
+                rate = dr * 2 + 16;
                 step = -(((v->env - 1) >> 8) + 1);
                 break;
             case NBA_ENV_SUSTAIN:
-                rate = env_rate[sr];
+                rate = sr;
                 step = -(((v->env - 1) >> 8) + 1);
                 break;
             case NBA_ENV_RELEASE:
-            default:
-                rate = 1;
-                step = -8;
-                break;
+            default: return;
         }
 
-        if (rate <= 0) return;
-        if (++v->env_counter < rate) return;
-        v->env_counter = 0;
+        if (!env_counter_hit(s, rate)) return;
         v->env += step;
 
         if (v->phase == NBA_ENV_ATTACK && v->env >= 0x7FF) {
             v->env = 0x7FF;
             v->phase = NBA_ENV_DECAY;
-        } else if (v->phase == NBA_ENV_DECAY && v->env <= ((sl + 1) << 8)) {
+        } else if (v->phase == NBA_ENV_DECAY && (v->env >> 8) <= sl) {
             v->phase = NBA_ENV_SUSTAIN;
         }
     } else {
@@ -718,10 +746,7 @@ static void env_run(NbaSpc *s, int idx) {
             return;
         }
         int mode = (gain >> 5) & 0x03;
-        rate = env_rate[gain & 0x1F];
-        if (rate <= 0) return;
-        if (++v->env_counter < rate) return;
-        v->env_counter = 0;
+        if (!env_counter_hit(s, gain & 0x1F)) return;
         switch (mode) {
             case 0: step = -32; break;
             case 1: step = -(((v->env - 1) >> 8) + 1); break;
@@ -782,12 +807,15 @@ static void dsp_sample(NbaSpc *s, int16_t *left, int16_t *right) {
         }
 
         int frac = (v->interp_pos >> 4) & 0xFF;
-        const int16_t *w = gauss_tab[frac];
-        int acc = 0;
-        for (int k = 0; k < 4; ++k) {
-            acc += v->ring[(v->ring_read + k) & 31] * w[k];
-        }
-        int sample = clamp16(acc >> 11);
+        int pos = v->ring_read;
+        /* The first three taps wrap at signed 16 bits; the last is added with
+         * saturation, matching the S-DSP datapath. */
+        int acc = (int16_t)(
+            ((gauss[255 - frac] * (int32_t)v->ring[(pos + 0) & 31]) >> 11) +
+            ((gauss[511 - frac] * (int32_t)v->ring[(pos + 1) & 31]) >> 11) +
+            ((gauss[256 + frac] * (int32_t)v->ring[(pos + 2) & 31]) >> 11));
+        int sample = clamp16(acc +
+            ((gauss[frac] * (int32_t)v->ring[(pos + 3) & 31]) >> 11)) & ~1;
 
         if (s->dsp[NBA_DSP_NON] & (1 << i)) {
             s->noise_lfsr = ((s->noise_lfsr >> 1) |
@@ -806,9 +834,9 @@ static void dsp_sample(NbaSpc *s, int16_t *left, int16_t *right) {
         outl += (sample * vl) >> 7;
         outr += (sample * vr) >> 7;
 
-        int pos = (int)v->interp_pos + pitch;
-        v->ring_read += pos >> 12;
-        v->interp_pos = (uint16_t)(pos & 0x0FFF);
+        int next_pos = (int)v->interp_pos + pitch;
+        v->ring_read += next_pos >> 12;
+        v->interp_pos = (uint16_t)(next_pos & 0x0FFF);
     }
 
     if (flg & 0x40) { outl = 0; outr = 0; }   /* FLG bit 6 = mute all */
@@ -818,6 +846,9 @@ static void dsp_sample(NbaSpc *s, int16_t *left, int16_t *right) {
 
     *left = (int16_t)clamp16(outl);
     *right = (int16_t)clamp16(outr);
+
+    s->dsp_counter = s->dsp_counter == 0 ? 0x77FF :
+                     (uint16_t)(s->dsp_counter - 1);
 }
 
 /* ------------------------------------------------------------------------
@@ -863,7 +894,6 @@ bool nba_spc_load(NbaSpc *spc,
         }
     }
 
-    gauss_init();
     spc->is_loaded = true;
     return true;
 }
@@ -871,6 +901,18 @@ bool nba_spc_load(NbaSpc *spc,
 void nba_spc_write_port(NbaSpc *spc, int port, uint8_t value) {
     if (!spc || port < 0 || port > 3) return;
     spc->ram[0x00F4 + port] = value;
+}
+
+void nba_spc_write_dsp(NbaSpc *spc, uint8_t reg, uint8_t value) {
+    if (!spc || !spc->is_loaded) return;
+    dsp_write(spc, reg, value);
+}
+
+void nba_spc_render_dsp(NbaSpc *spc, int16_t *out, int frames) {
+    if (!spc || !spc->is_loaded || !out || frames < 0) return;
+    for (int i = 0; i < frames; ++i) {
+        dsp_sample(spc, out + i * 2, out + i * 2 + 1);
+    }
 }
 
 void nba_spc_render(NbaSpc *spc, int16_t *out, int frames) {
@@ -940,7 +982,7 @@ bool nba_spc_self_test(void) {
     nba_spc_write_port(&timer, 2, 0x5A);
     if (timer.ram[0x00F6] != 0x5A) return false;
 
-    /* Filter-0 BRR vector: nibbles 2/-2 decode to alternating 1/-1. */
+    /* Filter-0 BRR vector restores the low bit before interpolation. */
     NbaSpc brr;
     memset(&brr, 0, sizeof(brr));
     brr.voice[0].brr_addr = 0x0300;
@@ -949,7 +991,7 @@ bool nba_spc_self_test(void) {
     brr_decode_block(&brr, 0);
     if (brr.voice[0].ring_write != 16 || !brr.voice[0].reached_end) return false;
     for (int i = 0; i < 16; ++i) {
-        int expected = (i & 1) ? -1 : 1;
+        int expected = (i & 1) ? -2 : 2;
         if (brr.voice[0].ring[i] != expected) return false;
     }
 

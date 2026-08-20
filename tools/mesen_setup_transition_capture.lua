@@ -27,6 +27,10 @@ local base_cycle = 0
 local event_count = 0
 local events = {}
 local event_file = nil
+local dsp_addr = 0
+local dsp_event_count = 0
+local dsp_events = {}
+local dsp_event_file = nil
 local entrance_vram = nil
 local entrance_cgram = nil
 
@@ -67,6 +71,13 @@ local function flush_events()
     end
 end
 
+local function flush_dsp_events()
+    if dsp_event_file and #dsp_events > 0 then
+        dsp_event_file:write(table.concat(dsp_events, "\n") .. "\n")
+        dsp_events = {}
+    end
+end
+
 local function on_apu_write(addr, value)
     if not capturing then return end
     local ok, state = pcall(emu.getState)
@@ -88,6 +99,29 @@ for bank = 0, 0xBF do
     end
 end
 
+-- Capture the downstream register program as well as the 65816-side command
+-- stream.  $F2 selects an S-DSP register and $F3 writes it.  This is still
+-- control data over the ROM's BRR bank, not rendered PCM; it gives the native
+-- audio engine an exact oracle when the port's SPC700 timing differs by a few
+-- cycles from the hardware driver.
+emu.addMemoryCallback(function(_, value)
+    dsp_addr = value & 0x7F
+end, emu.callbackType.write, 0x00F2, 0x00F2,
+    emu.cpuType.spc, emu.memType.spcMemory)
+
+emu.addMemoryCallback(function(_, value)
+    if not capturing then return end
+    local ok, state = pcall(emu.getState)
+    local cycle = ok and type(state) == "table" and state["spc.cycle"] or nil
+    if type(cycle) ~= "number" then return end
+    local delta = cycle - base_cycle
+    if delta < 0 then return end
+    dsp_event_count = dsp_event_count + 1
+    dsp_events[#dsp_events + 1] = string.format("%d %02X %02X", delta, dsp_addr, value)
+    if #dsp_events >= 2048 then flush_dsp_events() end
+end, emu.callbackType.write, 0x00F3, 0x00F3,
+    emu.cpuType.spc, emu.memType.spcMemory)
+
 emu.addEventCallback(function()
     if title_frame >= 0 and transition_frame < 0 then title_frame = title_frame + 1 end
     local ok, state = pcall(emu.getState)
@@ -108,6 +142,8 @@ emu.addEventCallback(function()
         f:close()
         event_file = assert(io.open(out .. "/apu_cycle_trace.txt", "wb"))
         event_file:write("# cycle_delta port value\n")
+        dsp_event_file = assert(io.open(out .. "/dsp_cycle_trace.txt", "wb"))
+        dsp_event_file:write("# cycle_delta register value\n")
         capturing = true
         log:write(string.format("snapshot brightness=1 cycle=%d\n", base_cycle))
         log:flush()
@@ -175,11 +211,15 @@ emu.addEventCallback(function()
     if frame >= CAPTURE_FRAMES then
         capturing = false
         flush_events()
+        flush_dsp_events()
         if event_file then event_file:close() end
+        if dsp_event_file then dsp_event_file:close() end
         ppu:close()
         entrance_vram_writes:write("# done\n"); entrance_vram_writes:close()
         entrance_cgram_writes:write("# done\n"); entrance_cgram_writes:close()
-        log:write(string.format("done frames=%d events=%d\n", CAPTURE_FRAMES, event_count))
+        log:write(string.format(
+            "done frames=%d apu_events=%d dsp_events=%d\n",
+            CAPTURE_FRAMES, event_count, dsp_event_count))
         log:close()
         local done = assert(io.open(out .. "/capture_complete.txt", "wb"))
         done:write("ok\n"); done:close()

@@ -8,8 +8,9 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+import numpy as np
 from PIL import Image
-from audio_fingerprint import assert_wav_fingerprint
+from audio_fingerprint import assert_wav_fingerprint, wav_fingerprint
 
 
 EXPECTED_RGB_SHA256 = {
@@ -27,15 +28,28 @@ EXPECTED_RGB_SHA256 = {
     166: "51ef64c72ae13fc1c37e15a2cf9c3a913ccce788e9547c61f246b75bacdef416",
 }
 EXPECTED_AUDIO_RMS_EIGHTHS = [
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2176, 1866, 1141,
-    716, 53, 582, 530, 197, 597, 253, 2026, 1118, 2005, 848, 843, 533,
-    306, 518, 622, 2378, 1786, 758, 130, 8, 0, 1483, 1607, 1543, 1544,
-    758, 282, 1894, 1958, 1298, 866, 193, 559, 497, 273, 558, 0, 692,
-    531, 1963, 944, 500, 1066, 2470, 1508, 650, 2069, 1990, 2126, 1221,
-    845, 396, 883, 1853, 1469, 1565, 1506, 1587, 755, 1417, 1143,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4202, 3667, 2211,
+    1393, 29, 1269, 1030, 382, 1019, 0, 4245, 2244, 3969, 1639, 3946,
+    2422, 5275, 2916, 1214, 4702, 3929, 3545, 4195, 3385, 1090, 2921,
+    3195, 3020, 3098, 3462, 2474, 3752, 3884, 2569, 1636, 372, 1187,
+    967, 530, 826, 0, 4039, 2554, 3889, 1838, 3881, 2483, 4974, 3149,
+    1011, 4252, 3937, 3897, 3885, 4092, 1314, 1717, 3919, 2936, 3246,
+    2867, 3141, 1877, 5236, 2920,
 ]
-EXPECTED_AUDIO_BAND_PPM = [902909, 17235, 20758, 14528, 18469, 12957, 13144]
-EXPECTED_AUDIO_CHANNEL_RMS = [1218, 1394]
+EXPECTED_AUDIO_BAND_PPM = [945108, 17425, 14738, 9732, 6803, 3644, 2550]
+EXPECTED_AUDIO_CHANNEL_RMS = [2740, 2734]
+
+# Compact oracle derived from the independently recorded Mesen WAV beginning
+# at its last-title-fade boundary (198.32 s). Raw emulator PCM is not shipped.
+MESEN_SETUP_RMS_EIGHTHS = [
+    155, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5213, 5602, 4033,
+    3584, 1545, 1101, 910, 1468, 822, 397, 4229, 3257, 4183, 3206, 4353,
+    3334, 5263, 3918, 986, 4301, 4664, 3808, 4546, 4394, 2432, 2202,
+    4156, 3310, 4006, 3799, 3903, 4675, 5940, 4077, 3620, 2127, 1063,
+    900, 1451, 793, 398, 3952, 3435, 4264, 3294, 4284, 3375, 5019, 4074,
+    1616, 4221, 4304, 4166, 4171, 4577, 2802, 1190, 4904, 3803, 4399,
+    3805, 3962, 2949, 5902, 4307,
+]
 EXPECTED_CURSOR_SHA256 = {
     0: "e3ec329dc39626391b9315e7ff60bf4c60b9a31b23d903bdcdca22ac5738fc65",
     1: "efc1e6e70a979c44ce821752be4a2eab6afff558ced34ad2fcb1aae0ac5c787b",
@@ -69,7 +83,7 @@ def load_pack(path):
 
 def check_pack(pack_path):
     raw, assets = load_pack(pack_path)
-    required = {16, 17, 88, 89, 90, 91, 92}
+    required = {16, 17, 88, 89, 90, 91, 92, 93}
     if not required.issubset(assets):
         raise AssertionError(f"missing Setup assets: {sorted(required - assets.keys())}")
     if len(assets[16]) != 0x10000 or len(assets[17]) != 0x200:
@@ -80,7 +94,10 @@ def check_pack(pack_path):
         raise AssertionError("invalid Setup SPC asset format")
     if assets[92][:8] != b"NBSPPU1\0":
         raise AssertionError("invalid Setup entrance PPU trace")
-    if any(blob[:4] == b"RIFF" for blob in (assets[88], assets[89], assets[90], assets[91])):
+    if assets[93][:8] != b"NBTSDSP1":
+        raise AssertionError("invalid Setup S-DSP trace")
+    if any(blob[:4] == b"RIFF" for blob in
+           (assets[88], assets[89], assets[90], assets[91], assets[93])):
         raise AssertionError("recorded Setup WAV returned")
 
     version, frames, writes = struct.unpack_from("<III", assets[91], 8)
@@ -96,6 +113,20 @@ def check_pack(pack_path):
         previous = cycle
     if previous > frames * 1024000 // 60:
         raise AssertionError("Setup APU trace exceeds its declared duration")
+
+    version, dsp_frames, dsp_writes = struct.unpack_from("<III", assets[93], 8)
+    if version != 1 or dsp_frames != 1800 or dsp_writes != 19928:
+        raise AssertionError(
+            f"unexpected Setup S-DSP dimensions: {dsp_frames}, {dsp_writes}"
+        )
+    if len(assets[93]) != 20 + dsp_writes * 6:
+        raise AssertionError("truncated Setup S-DSP trace")
+    previous = -1
+    for index in range(dsp_writes):
+        cycle, register, _ = struct.unpack_from("<IBB", assets[93], 20 + index * 6)
+        if cycle < previous or register >= 0x80:
+            raise AssertionError(f"invalid S-DSP cycle event {index}")
+        previous = cycle
 
     version, ppu_frames = struct.unpack_from("<II", assets[92], 8)
     if version != 1 or ppu_frames != 61:
@@ -129,8 +160,8 @@ def check_frames(exe, rom, pack):
                 text=True, capture_output=True, check=True,
             )
             match = re.search(
-                r"Synthesized Game Setup through SPC700/S-DSP: "
-                r"1800 frames, 102445 cycle-timed APU writes, peak=(\d+)",
+                r"Synthesized Game Setup through ROM BRR/S-DSP: "
+                r"1800 frames, 19928 cycle-timed DSP writes, peak=(\d+)",
                 result.stdout,
             )
             if not match or int(match.group(1)) == 0:
@@ -144,8 +175,22 @@ def check_frames(exe, rom, pack):
                 assert_wav_fingerprint(
                     audio_output, 960000, EXPECTED_AUDIO_RMS_EIGHTHS,
                     EXPECTED_AUDIO_BAND_PPM, EXPECTED_AUDIO_CHANNEL_RMS,
-                    0.4890, 14000, 16000
+                    0.9892, 18000, 19000
                 )
+                _, features, _ = wav_fingerprint(audio_output)
+                actual = np.asarray(features["rms_eighths"], dtype=float)
+                oracle = np.asarray(MESEN_SETUP_RMS_EIGHTHS, dtype=float)
+                active = (actual + oracle) > 0
+                correlation = np.corrcoef(actual[active], oracle[active])[0, 1]
+                normalized_error = np.mean(np.abs(
+                    actual[active] / actual[active].mean() -
+                    oracle[active] / oracle[active].mean()
+                ))
+                if correlation < 0.85 or normalized_error > 0.30:
+                    raise AssertionError(
+                        "Setup PCM no longer follows the Mesen onset oracle: "
+                        f"correlation={correlation:.3f}, error={normalized_error:.3f}"
+                    )
 
         # Exercise the real title-dismiss path as well as the direct fixture.
         # Start on title frame 0, take $80:E5C7's snap/hold/fade, preserve the
@@ -157,7 +202,7 @@ def check_frames(exe, rom, pack):
              "--dump-frame", str(integrated)],
             text=True, capture_output=True, check=True,
         )
-        if "Synthesized Game Setup through SPC700/S-DSP" not in result.stdout:
+        if "Synthesized Game Setup through ROM BRR/S-DSP" not in result.stdout:
             raise AssertionError("title handoff did not start the Setup SPC path")
         integrated_hash = hashlib.sha256(
             Image.open(integrated).convert("RGB").tobytes()
@@ -175,7 +220,7 @@ def check_frames(exe, rom, pack):
                  "--frames", str(total_frames), "--dump-frame", str(output)],
                 text=True, capture_output=True, check=True,
             )
-            if "Synthesized Game Setup through SPC700/S-DSP" not in result.stdout:
+            if "Synthesized Game Setup through ROM BRR/S-DSP" not in result.stdout:
                 raise AssertionError(f"title exit at {press_frame} did not reach Setup")
             actual = hashlib.sha256(Image.open(output).convert("RGB").tobytes()).hexdigest()
             if actual != EXPECTED_RGB_SHA256[105]:
@@ -203,7 +248,7 @@ def main():
     args = parser.parse_args()
     check_pack(Path(args.pack))
     check_frames(Path(args.exe), Path(args.rom), Path(args.pack))
-    print("[TEST] PASS: forced blank, Setup scroll staging, asset-pack SPC audio")
+    print("[TEST] PASS: forced blank, Setup scroll staging, ROM BRR/S-DSP audio")
 
 
 if __name__ == "__main__":

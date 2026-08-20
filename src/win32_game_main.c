@@ -184,7 +184,7 @@ int win32_run_game(const char *rom_path, const char *assets_path,
         g_game.state_frame = 0;
         g_game.state_timer = 0.0f;
         nba_setup_screen_init(&g_game.setup_screen, &g_game.assets);
-        nba_audio_play_setup_spc(&g_game.audio, &g_game.assets);
+        nba_audio_play_setup_dsp(&g_game.audio, &g_game.assets);
     }
 
     /* Pacing timer setup: 59.94 Hz SNES frame rate */

@@ -108,6 +108,7 @@ typedef struct {
     /* DSP */
     NbaSpcVoice voice[8];
     uint32_t noise_lfsr;
+    uint16_t dsp_counter;   /* shared 15-bit S-DSP envelope/noise counter */
     int      cycles_to_sample;
 
     bool     is_loaded;
@@ -131,8 +132,14 @@ bool nba_spc_load(NbaSpc *spc,
  */
 void nba_spc_write_port(NbaSpc *spc, int port, uint8_t value);
 
+/** Apply one cycle-timed write to the S-DSP register file. */
+void nba_spc_write_dsp(NbaSpc *spc, uint8_t reg, uint8_t value);
+
 /** Render `frames` stereo samples at 32000 Hz into `out` (2 shorts per frame). */
 void nba_spc_render(NbaSpc *spc, int16_t *out, int frames);
+
+/** Render only the S-DSP/BRR layer, driven by captured hardware writes. */
+void nba_spc_render_dsp(NbaSpc *spc, int16_t *out, int frames);
 
 /** Deterministic opcode, timer, port, BRR, and envelope regression vectors. */
 bool nba_spc_self_test(void);

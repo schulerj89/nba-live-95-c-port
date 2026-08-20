@@ -218,7 +218,7 @@ void nba_game_tick(NbaGame *game, float delta_time) {
                 nba_audio_stop(&game->audio);
                 nba_game_enter_state(game, NBA_STATE_GAME_SETUP);
                 nba_setup_screen_init(&game->setup_screen, &game->assets);
-                nba_audio_play_setup_spc(&game->audio, &game->assets);
+                nba_audio_play_setup_dsp(&game->audio, &game->assets);
             }
             break;
 

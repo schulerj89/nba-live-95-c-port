@@ -20,7 +20,7 @@ void nba_audio_init(NbaAudio *audio);
 void nba_audio_shutdown(NbaAudio *audio);
 void nba_audio_play_wav(NbaAudio *audio, const void *data, size_t size);
 bool nba_audio_play_title_spc(NbaAudio *audio, const NbaAssetPack *assets);
-bool nba_audio_play_setup_spc(NbaAudio *audio, const NbaAssetPack *assets);
+bool nba_audio_play_setup_dsp(NbaAudio *audio, const NbaAssetPack *assets);
 bool nba_audio_save_generated_wav(const NbaAudio *audio, const char *path);
 void nba_audio_stop(NbaAudio *audio);
 
