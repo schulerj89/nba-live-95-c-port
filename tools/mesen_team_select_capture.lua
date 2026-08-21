@@ -6,15 +6,22 @@ assert(out and out ~= "", "NBA95_CAPTURE_DIR is not set")
 
 local confirm = os.getenv("NBA95_TEAM_CONFIRM") or "start"
 assert(confirm == "start" or confirm == "a", "NBA95_TEAM_CONFIRM must be start or a")
-local probe_navigation = os.getenv("NBA95_TEAM_NAV") == "1"
+local single_button = os.getenv("NBA95_TEAM_PROBE_BUTTON")
+local valid_buttons = { up=true, down=true, left=true, right=true, a=true, b=true,
+    x=true, y=true, l=true, r=true, select=true, start=true }
+assert(not single_button or valid_buttons[single_button],
+    "NBA95_TEAM_PROBE_BUTTON is not a supported SNES button")
+local probe_navigation = os.getenv("NBA95_TEAM_NAV") == "1" or single_button ~= nil
 local log = assert(io.open(out .. "/capture_log.txt", "wb"))
 local writes = assert(io.open(out .. "/wram_writes.txt", "wb"))
 local ppu = assert(io.open(out .. "/ppu_states.txt", "wb"))
 local global_frame, title_frame, setup_frame = 0, -1, -1
 local PRESS_TITLE_AT, PRESS_SETUP_AT = 850, 400
-local LAST_FRAME = probe_navigation and 1020 or 760
+local LAST_FRAME = single_button and 720 or (probe_navigation and 1020 or 760)
 local seen_exec, last_wram, nav_exec = {}, {}, {}
-local nav_steps = {
+local nav_steps = single_button and {
+    { name = "probe_" .. single_button, frame = 650, button = single_button, settle = 690 },
+} or {
     { name = "left_team_next", frame = 650, button = "down", settle = 690 },
     { name = "activate_right", frame = 720, button = "right", settle = 760 },
     { name = "right_team_next", frame = 790, button = "down", settle = 830 },
