@@ -130,7 +130,9 @@ public class DumpGameSetup extends GhidraScript {
                 "Shared page transition/frame sequencer: scrolls BG3 away, moves BG1/BG2 in " +
                 "opposite directions by 8 pixels/frame under the 15-step INIDISP fade, then " +
                 "runs the 32-frame entrance and delayed BG3 vertical staging. Also advances " +
-                "the steady BG2 backdrop scroll.");
+                "the steady BG2 backdrop scroll. The outgoing page keeps its live BG2 phase; " +
+                "$80:A2BF resets BG2 only inside forced blank, and this routine continues the " +
+                "rebuilt one-pixel-per-three-frame phase after the new page settles.");
             createLabel(toAddr(0xA9E3), "game_setup_apu_command", true);
             listing.setComment(toAddr(0xA9E3), CodeUnit.PLATE_COMMENT,
                 "Game Setup CPU-side music command producer. Writes the $2140-$2143 protocol " +
@@ -188,6 +190,10 @@ public class DumpGameSetup extends GhidraScript {
                 "Rules rows >=2 select their ON/OFF string, call $81:9FD4, set transfer " +
                 "length $0800 at $196E, and call $81:A28E. This replaces the BG3 text " +
                 "canvas; it does not paint a short value over the old one.");
+            listing.setComment(toAddr(0xA28E), CodeUnit.PLATE_COMMENT,
+                "Queues the complete redrawn BG3 canvas for DMA. Independent Mesen visual " +
+                "frames show the Rules entrance scanout one 14-pixel step behind the captured " +
+                "vertical-scroll register sweep; Options and return edges have no such delay.");
             listing.setComment(toAddr(0x9756), CodeUnit.PLATE_COMMENT,
                 "Shared proportional menu-text renderer used by Game Setup, Rules, and " +
                 "Options. It consumes the selected ROM string and writes its complete 2bpp " +

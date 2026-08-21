@@ -35,3 +35,23 @@ Every HUD line is emitted as `[DEBUG STATE] ...`; periodic groups begin with
 `--timing-debug` to capture the Setup-detail page. `tools/test_core_safety.py`
 locks the Setup fields, sampling count, CLI validation, and exact bitmaps for
 both compact F10 pages.
+
+For a frame-by-frame Rules/Options transition audit, export a CSV:
+
+```powershell
+.\build\nba95_port.exe --headless --setup-only --setup-menu rules `
+  --rom <rom> --assets <pack> --frames 320 `
+  --setup-transition-trace build\rules-open.csv
+```
+
+The file includes the directed transition route, logical and packed-trace
+frames, forced blank, brightness, layer masks, every BG scroll/map/CHR base,
+and deterministic FNV-1a hashes of cumulative VRAM, CGRAM, and rendered pixels.
+This makes missing INIDISP blanking or a layer reveal offset visible without
+depending on a screen recording.
+
+For BG2 specifically, the visible outgoing rows are rebased to the live
+backdrop position. The packed absolute coordinate becomes authoritative during
+forced blank, when `$80:A2BF` resets the rebuilt page. The final rows and a
+subsequent `--debug-state` capture can be used to verify that `$80:A3B8` keeps
+the same one-pixel-per-three-frame phase after the transition releases.

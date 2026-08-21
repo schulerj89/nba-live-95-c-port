@@ -9,6 +9,49 @@
 extern int win32_run_game(const char *rom_path, const char *assets_path,
                           bool title_only, bool setup_only);
 
+static uint64_t trace_fnv1a64(const void *data, size_t size) {
+    const uint8_t *bytes = (const uint8_t *)data;
+    uint64_t hash = UINT64_C(14695981039346656037);
+    for (size_t i = 0; i < size; ++i) {
+        hash ^= bytes[i];
+        hash *= UINT64_C(1099511628211);
+    }
+    return hash;
+}
+
+static void write_setup_transition_trace_row(FILE *file, int stepped_frame,
+                                              NbaSetupTransitionRoute route,
+                                              const NbaGame *game) {
+    const NbaSetupScreen *s = &game->scene.setup;
+    uint64_t vram_hash = trace_fnv1a64(s->transition_vram,
+                                      sizeof(s->transition_vram));
+    uint64_t cgram_hash = trace_fnv1a64(s->transition_cgram,
+                                       sizeof(s->transition_cgram));
+    uint64_t rgb_hash = trace_fnv1a64(game->renderer.pixels,
+                                     (size_t)NBA_SNES_WIDTH * NBA_SNES_HEIGHT *
+                                         sizeof(game->renderer.pixels[0]));
+    fprintf(file,
+            "%d,%u,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%u,%u,%u,%u,%u,%u,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
+            "%016llx,%016llx,%016llx\n",
+            stepped_frame, game->state_frame, (int)route, s->transition_frame,
+            s->active_transition_decoded_frame, s->active_transition_frame_count,
+            (int)s->page, (int)s->transition_target,
+            s->transition_blank ? 1 : 0, s->brightness,
+            s->main_screen, s->sub_screen,
+            s->bg1_hscroll, s->bg1_vscroll, s->bg2_hscroll, s->bg2_vscroll,
+            s->bg3_hscroll, s->bg3_vscroll,
+            s->layer_tilemap[0], s->layer_tilemap[1], s->layer_tilemap[2],
+            s->layer_chr[0], s->layer_chr[1], s->layer_chr[2],
+            s->layer_double_width[0] ? 1 : 0,
+            s->layer_double_width[1] ? 1 : 0,
+            s->layer_double_width[2] ? 1 : 0,
+            s->layer_double_height[0] ? 1 : 0,
+            s->layer_double_height[1] ? 1 : 0,
+            s->layer_double_height[2] ? 1 : 0,
+            (unsigned long long)vram_hash, (unsigned long long)cgram_hash,
+            (unsigned long long)rgb_hash);
+}
+
 /**
  * Offset/Address/Size: N/A | Application Entry Point / CLI Dispatcher | size: N/A
  * Purpose: Parses CLI flags, executes headless frame verifications, or launches Win32 desktop application.
@@ -19,6 +62,7 @@ int main(int argc, char *argv[]) {
     const char *dump_frame_path = NULL;
     const char *dump_audio_path = NULL;
     const char *dump_menu_sfx_path = NULL;
+    const char *setup_transition_trace_path = NULL;
     int menu_sfx_srcn = 0x1B;
     bool is_headless = false;
     bool audio_debug_test = false;
@@ -104,6 +148,9 @@ int main(int argc, char *argv[]) {
             setup_menu_confirm = true;
         } else if (strcmp(argv[i], "--setup-menu-b") == 0) {
             setup_menu_b = true;
+        } else if (strcmp(argv[i], "--setup-transition-trace") == 0 &&
+                   i + 1 < argc) {
+            setup_transition_trace_path = argv[++i];
         } else if (strcmp(argv[i], "--timing-debug") == 0) {
             timing_debug = true;
         } else if (strcmp(argv[i], "--debug-hud-page") == 0 && i + 1 < argc) {
@@ -144,6 +191,8 @@ int main(int argc, char *argv[]) {
             printf("  --setup-menu-right N  Apply N right-value adjustments\n");
             printf("  --setup-menu-confirm  Press Start to commit submenu values\n");
             printf("  --setup-menu-b        Press ignored B after scripted edits\n");
+            printf("  --setup-transition-trace FILE\n");
+            printf("                        Export every Setup transition PPU/render state as CSV\n");
             printf("  --setup-main-row N    Select main Setup row 0..3\n");
             printf("  --setup-main-right N  Apply N right adjustments on the main row\n");
             printf("  --setup-main-left N   Apply N left adjustments on the main row\n");
@@ -209,6 +258,8 @@ int main(int argc, char *argv[]) {
         int setup_main_left_done = 0;
         bool setup_main_confirm_done = false;
         bool setup_main_done = setup_main_row < 0;
+        FILE *setup_trace_file = NULL;
+        int setup_trace_rows = 0;
         for (int i = 1; i < argc; i++) {
             if (strcmp(argv[i], "--enter-setup") == 0) enter_setup = true;
             if (strcmp(argv[i], "--title-press") == 0 && i + 1 < argc) title_press_frame = atoi(argv[++i]);
@@ -217,6 +268,27 @@ int main(int argc, char *argv[]) {
 
         if (timing_debug && debug_hud_page == 0) debug_hud_page = 1;
         game.debug_hud_page = (uint8_t)debug_hud_page;
+
+        if (setup_transition_trace_path) {
+#ifdef _MSC_VER
+            if (fopen_s(&setup_trace_file, setup_transition_trace_path, "wb") != 0)
+                setup_trace_file = NULL;
+#else
+            setup_trace_file = fopen(setup_transition_trace_path, "wb");
+#endif
+            if (!setup_trace_file) {
+                fprintf(stderr, "[HEADLESS] Failed to open Setup transition trace: %s\n",
+                        setup_transition_trace_path);
+                nba_game_shutdown(&game);
+                return 1;
+            }
+            fprintf(setup_trace_file,
+                    "step,state_frame,route,transition_frame,trace_frame,trace_frames,page,target,"
+                    "forced_blank,brightness,main,sub,bg1h,bg1v,bg2h,bg2v,bg3h,bg3v,"
+                    "bg1map,bg2map,bg3map,bg1chr,bg2chr,bg3chr,bg1wide,bg2wide,bg3wide,"
+                    "bg1tall,bg2tall,bg3tall,"
+                    "vram_fnv64,cgram_fnv64,rgb_fnv64\n");
+        }
 
         if (start_at_title) {
             if (!nba_game_enter_state(&game, NBA_STATE_TITLE_SEQUENCE)) {
@@ -315,11 +387,39 @@ int main(int argc, char *argv[]) {
                     setup_main_done = true;
                 }
             }
+            NbaSetupTransitionRoute route_before =
+                game.state == NBA_STATE_GAME_SETUP ?
+                    game.scene.setup.transition_route :
+                    NBA_SETUP_TRANSITION_ROUTE_NONE;
+            bool transition_before = route_before != NBA_SETUP_TRANSITION_ROUTE_NONE;
+            bool release_before = transition_before &&
+                game.scene.setup.transition_release_pending;
             nba_game_tick(&game, (float)(1.0 / tick_rate));
+            bool transition_after = game.state == NBA_STATE_GAME_SETUP &&
+                game.scene.setup.transition_route != NBA_SETUP_TRANSITION_ROUTE_NONE;
+            if (setup_trace_file &&
+                (transition_after || (transition_before && !release_before))) {
+                NbaSetupTransitionRoute route = transition_after ?
+                    game.scene.setup.transition_route : route_before;
+                nba_game_render(&game);
+                write_setup_transition_trace_row(setup_trace_file, frame + 1,
+                                                 route, &game);
+                setup_trace_rows++;
+            }
             if (debug_every > 0 && (frame + 1) % debug_every == 0) {
                 printf("[DEBUG SAMPLE] stepped=%d\n", frame + 1);
                 nba_game_debug_print(&game);
             }
+        }
+        if (setup_trace_file) {
+            if (fclose(setup_trace_file) != 0) {
+                fprintf(stderr, "[HEADLESS] Failed to finish Setup transition trace.\n");
+                nba_game_shutdown(&game);
+                return 1;
+            }
+            setup_trace_file = NULL;
+            printf("[HEADLESS] Wrote %d Setup transition rows to: %s\n",
+                   setup_trace_rows, setup_transition_trace_path);
         }
         if (asset_debug_id >= 0) {
             game.asset_debugger.is_active = true;

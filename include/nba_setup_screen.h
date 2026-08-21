@@ -206,6 +206,13 @@ typedef struct {
     NbaSetupPage transition_target;
     int transition_frame;
     bool transition_blank;
+    bool transition_release_pending;
+    int transition_bg2_start_vscroll;
+    int transition_bg2_trace_origin;
+    int transition_bg2_last_raw;
+    int bg2_scroll_hold_frames;
+    bool transition_bg2_origin_valid;
+    bool bg2_scroll_from_transition;
     const uint8_t *rules_vram;
     const uint8_t *rules_cgram;
     const uint8_t *options_vram;
@@ -237,6 +244,12 @@ typedef struct {
     size_t rules_return_trace_size;
     uint8_t transition_vram[0x10000];
     uint8_t transition_cgram[0x200];
+    const uint8_t *active_transition_base_vram;
+    const uint8_t *active_transition_base_cgram;
+    uint16_t transition_base_tilemap[3];
+    uint16_t transition_base_chr[3];
+    bool transition_base_double_width[3];
+    bool transition_base_double_height[3];
     const uint8_t *active_transition_trace;
     size_t active_transition_trace_size;
     size_t active_transition_trace_offset;

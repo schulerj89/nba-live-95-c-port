@@ -7,6 +7,7 @@ local scroll_mode = os.getenv("NBA95_CAPTURE_SCROLL") == "1"
 local variant_mode = os.getenv("NBA95_CAPTURE_VARIANTS") == "1"
 local value_mode = os.getenv("NBA95_CAPTURE_VALUES") == "1"
 local call_mode = os.getenv("NBA95_CAPTURE_CALLS") == "1"
+local every_frame_mode = os.getenv("NBA95_CAPTURE_EVERY_FRAME") == "1"
 assert(out and out ~= "", "NBA95_CAPTURE_DIR is not set")
 assert(menu == "rules" or menu == "options", "NBA95_CAPTURE_MENU must be rules or options")
 
@@ -365,7 +366,7 @@ emu.addEventCallback(function()
             tostring(st["ppu.layers[2].doubleWidth"]),
             tostring(st["ppu.layers[2].doubleHeight"]),
             tostring(st["ppu.oamBaseAddress"]), tostring(st["ppu.oamMode"])))
-        if frame % 4 == 1 then
+        if every_frame_mode or frame % 4 == 1 then
             shot(string.format(frame < 700 and "open_step_%03d.png" or "close_step_%03d.png", frame))
         end
     end

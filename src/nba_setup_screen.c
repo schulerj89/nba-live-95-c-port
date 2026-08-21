@@ -109,6 +109,11 @@ typedef struct {
     int target_switch;
     int entrance_start;
     int trace_frames;
+    int forced_blank_start;
+    int forced_blank_end;
+    int construction_guard_start;
+    int construction_guard_end;
+    int bg3_scanout_delay_frames;
     SetupTransitionReveal reveal;
 } SetupTransitionProfile;
 
@@ -118,16 +123,16 @@ typedef struct {
 static const SetupTransitionProfile setup_transition_profiles[] = {
     { NBA_SETUP_TRANSITION_MAIN_TO_RULES, NBA_SETUP_PAGE_MAIN,
       NBA_SETUP_PAGE_RULES, NBA_SETUP_TRANSITION_OPEN,
-      15, 21, 52, 76, 146, SETUP_REVEAL_RULES },
+      15, 21, 52, 76, 146, 51, 81, 0, 0, 1, SETUP_REVEAL_RULES },
     { NBA_SETUP_TRANSITION_MAIN_TO_OPTIONS, NBA_SETUP_PAGE_MAIN,
       NBA_SETUP_PAGE_OPTIONS, NBA_SETUP_TRANSITION_OPEN,
-      15, 21, 52, 72, 132, SETUP_REVEAL_OPTIONS },
+      15, 21, 52, 72, 132, 51, 77, 0, 0, 0, SETUP_REVEAL_OPTIONS },
     { NBA_SETUP_TRANSITION_RULES_TO_MAIN, NBA_SETUP_PAGE_RULES,
       NBA_SETUP_PAGE_MAIN, NBA_SETUP_TRANSITION_RETURN,
-      16, 22, 53, 74, 132, SETUP_REVEAL_MAIN },
+      16, 22, 53, 74, 132, 36, 63, 4, 6, 0, SETUP_REVEAL_MAIN },
     { NBA_SETUP_TRANSITION_OPTIONS_TO_MAIN, NBA_SETUP_PAGE_OPTIONS,
       NBA_SETUP_PAGE_MAIN, NBA_SETUP_TRANSITION_RETURN,
-      16, 22, 53, 74, 132, SETUP_REVEAL_MAIN }
+      16, 22, 53, 74, 132, 52, 79, 20, 23, 0, SETUP_REVEAL_MAIN }
 };
 
 static const SetupTransitionProfile *setup_transition_profile_for_route(
@@ -154,6 +159,23 @@ static const SetupTransitionProfile *setup_transition_profile_for_edge(
 static void setup_finish_page_transition(NbaSetupScreen *s) {
     s->transition = NBA_SETUP_TRANSITION_NONE;
     s->transition_route = NBA_SETUP_TRANSITION_ROUTE_NONE;
+    s->transition_release_pending = false;
+}
+
+/* $80:A3B8 owns one shared three-frame BG2 cadence across the settled page
+ * and its transition.  Keep the phase produced by the transition instead of
+ * deriving a new, unrelated position from the lifetime Setup frame counter. */
+static void setup_advance_steady_bg2(NbaSetupScreen *s) {
+    if (++s->bg2_scroll_hold_frames >= NBA_SETUP_SCROLL_PERIOD) {
+        s->bg2_vscroll = (s->bg2_vscroll + 1) & 0x3FF;
+        s->bg2_scroll_hold_frames = 0;
+    }
+}
+
+static void setup_release_page_transition(NbaSetupScreen *s) {
+    s->bg2_scroll_from_transition = true;
+    setup_advance_steady_bg2(s);
+    setup_finish_page_transition(s);
 }
 
 /* $80:A2BF/$80:A3B8 are the shared layer builder/frame sequencer reached by
@@ -173,13 +195,43 @@ static void setup_update_page_transition(NbaSetupScreen *s) {
     if (t >= trace_start && s->active_transition_trace) {
         if (t >= profile->target_switch && s->page != profile->target)
             s->page = profile->target;
-        s->transition_blank = false;
+        /* Mesen's screenBrightness property omits INIDISP bit 7.  The ROM
+         * asserts forced blank after the 30-frame exit slide while $80:A2BF
+         * rebuilds VRAM, then releases it at this edge's entrance frame. */
+        s->transition_blank = t >= profile->forced_blank_start &&
+                              t < profile->forced_blank_end;
         if (!setup_decode_transition_to(s, t - trace_start)) {
             s->has_gfx = false;
             return;
         }
+        /* The packed trace contains the absolute BG2 position from the Mesen
+         * recording.  On real hardware $80:A3B8 continues whatever position
+         * the live page had during the visible exit, then resets BG2 only
+         * inside $80:A2BF's forced-blank rebuild.  Rebase that visible prefix
+         * to this run's current position; use the ROM values unchanged once
+         * the rebuild is hidden. */
+        int raw_bg2_vscroll = s->bg2_vscroll;
+        if (!s->transition_bg2_origin_valid) {
+            s->transition_bg2_trace_origin = raw_bg2_vscroll;
+            s->transition_bg2_last_raw = raw_bg2_vscroll;
+            s->bg2_scroll_hold_frames = 0;
+            s->transition_bg2_origin_valid = true;
+        } else if (raw_bg2_vscroll == s->transition_bg2_last_raw) {
+            s->bg2_scroll_hold_frames++;
+        } else {
+            s->transition_bg2_last_raw = raw_bg2_vscroll;
+            s->bg2_scroll_hold_frames = 0;
+        }
+        if (t < profile->forced_blank_start) {
+            s->bg2_vscroll = (raw_bg2_vscroll +
+                              s->transition_bg2_start_vscroll -
+                              s->transition_bg2_trace_origin) & 0x3FF;
+        }
+        /* Keep the route alive through this render.  Clearing it here made
+         * the renderer pair the final trace registers with the settled-page
+         * VRAM path for one frame, dropping the header/text/OBJ layer. */
         if (setup_transition_trace_complete(s))
-            setup_finish_page_transition(s);
+            s->transition_release_pending = true;
         return;
     }
 
@@ -241,7 +293,7 @@ static void setup_update_page_transition(NbaSetupScreen *s) {
                 s->bg3_vscroll = 0;
                 s->sub_screen = enter >= 64 ? 4 : 0;
                 if (enter >= 64 && setup_transition_trace_complete(s))
-                    setup_finish_page_transition(s);
+                    s->transition_release_pending = true;
             }
         } else {
             if (enter == 41) {
@@ -261,7 +313,7 @@ static void setup_update_page_transition(NbaSetupScreen *s) {
                 s->bg3_vscroll = 0;
                 s->sub_screen = 4;
                 if (setup_transition_trace_complete(s))
-                    setup_finish_page_transition(s);
+                    s->transition_release_pending = true;
             }
         }
     } else {
@@ -282,7 +334,7 @@ static void setup_update_page_transition(NbaSetupScreen *s) {
             s->sub_screen = 4;
             s->bg3_vscroll = 0;
             if (setup_transition_trace_complete(s))
-                setup_finish_page_transition(s);
+                s->transition_release_pending = true;
         }
     }
 }
@@ -430,6 +482,16 @@ static bool setup_begin_page_transition(NbaSetupScreen *s,
     if (frames != (uint32_t)profile->trace_frames) return false;
     memcpy(s->transition_vram, vram, sizeof(s->transition_vram));
     memcpy(s->transition_cgram, cgram, sizeof(s->transition_cgram));
+    s->active_transition_base_vram = vram;
+    s->active_transition_base_cgram = cgram;
+    memcpy(s->transition_base_tilemap, s->layer_tilemap,
+           sizeof(s->transition_base_tilemap));
+    memcpy(s->transition_base_chr, s->layer_chr,
+           sizeof(s->transition_base_chr));
+    memcpy(s->transition_base_double_width, s->layer_double_width,
+           sizeof(s->transition_base_double_width));
+    memcpy(s->transition_base_double_height, s->layer_double_height,
+           sizeof(s->transition_base_double_height));
     s->active_transition_trace = trace;
     s->active_transition_trace_size = trace_size;
     s->active_transition_trace_offset = SETUP_PPU_HEADER_SIZE;
@@ -440,6 +502,11 @@ static bool setup_begin_page_transition(NbaSetupScreen *s,
     s->transition_target = profile->target;
     s->transition_frame = 0;
     s->transition_blank = false;
+    s->transition_release_pending = false;
+    s->transition_bg2_start_vscroll = s->bg2_vscroll;
+    s->transition_bg2_trace_origin = 0;
+    s->transition_bg2_last_raw = 0;
+    s->transition_bg2_origin_valid = false;
     return true;
 }
 
@@ -673,9 +740,16 @@ NbaSetupUpdateResult nba_setup_screen_update(NbaSetupScreen *s,
         s->brightness = 15;
     }
 
-    /* The live register trace starts BG2 at $3FF (-1) and advances to zero on
-     * entrance frame 3, then continues one pixel every third frame. */
-    s->bg2_vscroll = s->frame / NBA_SETUP_SCROLL_PERIOD - 1;
+    /* The initial live register trace starts BG2 at $3FF (-1) and advances to
+     * zero on entrance frame 3.  After a submenu transition, $80:A3B8 keeps
+     * the phase established by the rebuilt page instead of restarting it from
+     * the lifetime Setup frame counter. */
+    if (s->transition == NBA_SETUP_TRANSITION_NONE) {
+        if (s->bg2_scroll_from_transition)
+            setup_advance_steady_bg2(s);
+        else
+            s->bg2_vscroll = s->frame / NBA_SETUP_SCROLL_PERIOD - 1;
+    }
 
     /* $80:A3B8 stages the BG3 canvas separately after BG1/BG2 have settled.
      * The one-frame $17 designation at frame 40 and the $13 interval are real
@@ -702,6 +776,12 @@ NbaSetupUpdateResult nba_setup_screen_update(NbaSetupScreen *s,
         s->sub_screen = s->frame >= NBA_SETUP_BG3_SETTLE_FRAME
                             ? NBA_SETUP_SUB_SETTLED : 0;
     }
+
+    /* $80:A3B8's final trace state must reach scanout once before normal page
+     * state resumes.  Release it on the following update, after the base
+     * registers above have already been restored for the settled page. */
+    if (s->transition_release_pending)
+        setup_release_page_transition(s);
 
     if (!input) return setup_result(NBA_SETUP_SOUND_NONE, NBA_SETUP_ACTION_NONE);
 
@@ -1092,11 +1172,36 @@ void nba_setup_screen_render(const NbaSetupScreen *s, NbaRenderer *ren) {
 
     const uint8_t *vram = s->vram;
     const uint8_t *cgram = s->cgram;
+    const uint16_t *layer_tilemap = s->layer_tilemap;
+    const uint16_t *layer_chr = s->layer_chr;
+    const bool *layer_double_width = s->layer_double_width;
+    const bool *layer_double_height = s->layer_double_height;
     bool transition_canvas = s->transition != NBA_SETUP_TRANSITION_NONE &&
                              s->active_transition_trace != NULL;
+    const SetupTransitionProfile *transition_profile = transition_canvas ?
+        setup_transition_profile_for_route(s->transition_route) : NULL;
+    bool construction_guard = false;
     if (transition_canvas) {
-        vram = s->transition_vram;
-        cgram = s->transition_cgram;
+        /* Around the return map switch, endFrame memory already contains the
+         * common builder's writes although the outgoing scanout still uses
+         * the pre-switch page.  Guard only those edge-specific DMA frames;
+         * the rest of the scroll continues to use the cumulative trace. */
+        construction_guard = transition_profile &&
+            transition_profile->construction_guard_end >
+                transition_profile->construction_guard_start &&
+            s->transition_frame >=
+                transition_profile->construction_guard_start &&
+            s->transition_frame < transition_profile->construction_guard_end;
+        vram = construction_guard && s->active_transition_base_vram ?
+                   s->active_transition_base_vram : s->transition_vram;
+        cgram = construction_guard && s->active_transition_base_cgram ?
+                    s->active_transition_base_cgram : s->transition_cgram;
+        if (construction_guard) {
+            layer_tilemap = s->transition_base_tilemap;
+            layer_chr = s->transition_base_chr;
+            layer_double_width = s->transition_base_double_width;
+            layer_double_height = s->transition_base_double_height;
+        }
     } else if (s->page == NBA_SETUP_PAGE_RULES) {
         vram = s->rules_vram;
         cgram = s->rules_cgram;
@@ -1123,9 +1228,9 @@ void nba_setup_screen_render(const NbaSetupScreen *s, NbaRenderer *ren) {
             NbaSnesBgPixel pixel;
 
             if (s->main_screen & 0x02) {
-                if (nba_snes_sample_bg(vram, s->layer_tilemap[1], s->layer_chr[1],
-                                       4, s->layer_double_width[1],
-                                       s->layer_double_height[1], s->bg2_hscroll,
+                if (nba_snes_sample_bg(vram, layer_tilemap[1], layer_chr[1],
+                                       4, layer_double_width[1],
+                                       layer_double_height[1], s->bg2_hscroll,
                                        s->bg2_vscroll, x, y, &pixel)) {
                     bool staged_wrap = s->frame < 23 && pixel.palette == 5;
                     if (!staged_wrap) {
@@ -1137,9 +1242,9 @@ void nba_setup_screen_render(const NbaSetupScreen *s, NbaRenderer *ren) {
             }
 
             if (s->main_screen & 0x01) {
-                if (nba_snes_sample_bg(vram, s->layer_tilemap[0], s->layer_chr[0],
-                                       4, s->layer_double_width[0],
-                                       s->layer_double_height[0], s->bg1_hscroll,
+                if (nba_snes_sample_bg(vram, layer_tilemap[0], layer_chr[0],
+                                       4, layer_double_width[0],
+                                       layer_double_height[0], s->bg1_hscroll,
                                        s->bg1_vscroll, x, y, &pixel)) {
                     /* $80:A2BF's slide exposes only palette-5 BG1 artwork.
                      * Other map palettes are construction/staging cells and
@@ -1153,13 +1258,37 @@ void nba_setup_screen_render(const NbaSetupScreen *s, NbaRenderer *ren) {
                 }
             }
 
-            if ((s->main_screen | s->sub_screen) & 0x04) {
+            /* During $80:A3B8's submenu reveal, the captured layer state uses
+             * the $10 designation while the freshly built BG3 canvas scrolls
+             * on.  Treat it as part of the transition scanout; after the edge
+             * settles, the normal $04 main/sub designation is authoritative. */
+            bool bg3_designated = ((s->main_screen | s->sub_screen) & 0x04) != 0 ||
+                                  (transition_canvas &&
+                                   (s->main_screen & 0x10) != 0 &&
+                                   s->bg3_vscroll <= 252) ||
+                                  (transition_canvas && s->bg3_vscroll == 0 &&
+                                   s->brightness == 15 &&
+                                   s->bg1_hscroll == 512 &&
+                                   s->bg2_hscroll == 0);
+            if (construction_guard) bg3_designated = false;
+            if (bg3_designated) {
                 int bg3_scroll = s->bg3_vscroll;
+                /* Rules' $81:A28E path queues the rebuilt BG3 DMA one frame
+                 * before its vertically staged result reaches scanout.  The
+                 * Options and return captures have no corresponding delay. */
+                if (transition_canvas && (s->main_screen & 0x10) != 0 &&
+                    ((s->main_screen | s->sub_screen) & 0x04) == 0 &&
+                    bg3_scroll > 0 && transition_profile &&
+                    transition_profile->bg3_scanout_delay_frames > 0) {
+                    bg3_scroll += transition_profile->bg3_scanout_delay_frames *
+                                  NBA_SETUP_BG3_SCROLL_STEP;
+                    if (bg3_scroll > 252) bg3_scroll = 252;
+                }
                 if (s->page == NBA_SETUP_PAGE_RULES && s->menu_scroll > 0 && y >= 70)
                     bg3_scroll += s->menu_scroll * NBA_SETUP_ROW_PITCH;
-                if (nba_snes_sample_bg(vram, s->layer_tilemap[2], s->layer_chr[2],
-                                       2, s->layer_double_width[2],
-                                       s->layer_double_height[2], s->bg3_hscroll, bg3_scroll,
+                if (nba_snes_sample_bg(vram, layer_tilemap[2], layer_chr[2],
+                                       2, layer_double_width[2],
+                                       layer_double_height[2], s->bg3_hscroll, bg3_scroll,
                                        x, y, &pixel)) {
                     out = nba_snes_cgram_color(cgram,
                         pixel.palette * 4 + pixel.color_index, s->brightness,

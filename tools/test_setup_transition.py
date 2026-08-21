@@ -1,6 +1,7 @@
 """Regression checks for the ROM-driven title -> Game Setup handoff."""
 
 import argparse
+import csv
 import hashlib
 import re
 import struct
@@ -73,46 +74,73 @@ EXPECTED_CURSOR_SHA256 = {
     6: "e3ec329dc39626391b9315e7ff60bf4c60b9a31b23d903bdcdca22ac5738fc65",
 }
 EXPECTED_MENU_RGB_SHA256 = {
-    "rules": "957c65fc8c422f1b07c453467259a1e9300c421f95ebe3176b43fd4aa6a227c7",
-    "options": "4a1bc5f69c656dc1a3e5463768a5c2b99927393faa25616dfdbf2dcee1f57a91",
+    "rules": "c3ee44ebe59969d30a8576a57dc615b8ff80025bcc7487e7bc5750d8b4c55de4",
+    "options": "640cc70c0436b1e890ff9adf3594ca12cd06ca7887ee8fc4d7fed305db457901",
 }
 EXPECTED_MENU_ACTION_SHA256 = {
-    ("rules", 2, 1): "85f622ded992727f9fc02212afe5681e34d883eb2ad4c9569fb4ef92a751d736",
-    ("options", 0, 1): "1d7a804a03721d8ce5b3ac0b36c3f1a3319df0ea67f3faf9cc74441994432dd1",
-    ("rules", 7, 0): "d25ec1042443fc3e4114eb06a4acd6cbd2f6408cec9122b2fc8dc5dc74eb7188",
-    ("rules", 9, 0): "7cfdac4bc00793e00ca2d8bccd8237a25b3414550f965c42120716e2e5c5226d",
-    ("rules", 12, 0): "70f0c9594d49e0a140cb6f01b086e5737c9964b165fc0759a2f4123a52b5f6e8",
-    ("options", 2, 1): "b1207fe4229d653965999494be1b7cd9517c818663c3b329753bf06a4618997f",
-    ("options", 2, 2): "b0bdc06acf10615fcb21e35d030847a0f56b4d81828d735d6324fc0ab769dfa4",
-    ("options", 3, 1): "cba4eabbbc93403b729f5015529d7bdb0dbcd28547627a3984366bfdca253c11",
-    ("options", 4, 1): "c724c38700d706d4aa97fb9620c719cc7bd1d30b8fd9b2c191e7ebf7801d9f3b",
-    ("options", 5, 1): "1c7a97d504049478d7d771e06a8e0a68d7e1aa1b4802eed80add95894d61f7f5",
-    ("options", 6, 1): "b52f3fb7c4d52111f9788dce8fbfc539ea873a592b4789d98a460c05490eb471",
+    ("rules", 2, 1): "cd1e025cab1be48b4791add621728261e2779230e992e23c234fd9192f5a3a47",
+    ("options", 0, 1): "735468045b7dae213e3f7ea4344783614f0fe852f1a8f266bc71bdd3af813b3c",
+    ("rules", 7, 0): "46c602c777a811f13f8d65b76eca2be8677c248f458c804ece60944cff14380a",
+    ("rules", 9, 0): "b48da2d2f7e79b1bb9fe9dcfa123c3aa93831faef594ea28be7eb2e62e0980d2",
+    ("rules", 12, 0): "cd5826b44c26c88a161a507e8d2fc52c77f19b9d95d4c02761593a23cf6ba89a",
+    ("options", 2, 1): "71726d829879ee53c79141142c7689cc09f2a8139e7084c205f6faf6b8c3682f",
+    ("options", 2, 2): "3f8ae4c662bdbef750667549631c78adb122b5ef032bcd5abdca4e8de0786a10",
+    ("options", 3, 1): "58f7c8dd272b0164d4a9e2b80e88cf2619a62606e1d8c8f6ffbf4a70cfd67451",
+    ("options", 4, 1): "683b983878a8c2a1396050d0993990e0491e37022a1c92eb5a7799db182b4009",
+    ("options", 5, 1): "52c9dae9e8d9f09388842c2abbb971f4da915188e8fbff7344b99c6c9b4fdc76",
+    ("options", 6, 1): "227ca781089ab7f355971c45200a914b6b7b1ea751d585c0eb579cac55d1ff67",
 }
 EXPECTED_SUBMENU_TRANSITION_SHA256 = {
-    ("open", 198): "7cd8a4bc7b2f41ce41e2f2d35c0cbf683541ff01bc7decbdf09b3609a91131b3",
+    ("open", 198): "276d77f5713e1f39eb7fbaac3cafcb198b45d3404ea168ef78781c55c750aa96",
     ("open", 219): "2cbbeef1249170a43854962fa5b19fba628470c70beb9ce23e15a0f05cb891f2",
+    # $2100 forced blank is not part of Mesen's screenBrightness property.
+    # These checkpoints sit inside $80:A2BF's formerly exposed VRAM build.
+    ("open", 234): "2cbbeef1249170a43854962fa5b19fba628470c70beb9ce23e15a0f05cb891f2",
+    ("open", 242): "2cbbeef1249170a43854962fa5b19fba628470c70beb9ce23e15a0f05cb891f2",
     # Pixel-exact Mesen frames 549/581/589. These catch transient layer-map
     # mistakes that previously exposed partially built VRAM as garbage.
     ("open", 246): "2cbbeef1249170a43854962fa5b19fba628470c70beb9ce23e15a0f05cb891f2",
     ("open", 259): "b1761cd4c198f25cf53f839143cc9bf8f6850ad7ee8241255c71233705185784",
     ("open", 278): "5ee642673003ccfb95b38ebad0ad11f06834a4d9a42106e7c806354d24e65b4d",
     ("open", 286): "a09b7c8333bf2f6f4a93e5a79ad0a276b840d2cdf44b911520ba66d5bd351c1a",
-    ("open", 299): "a287880be2348dedd10250106766b32594cab590569530ce85678a985dfae92d",
+    ("open", 299): "d44b1b0d7f8661abc80ca824d7ee8844541778829adad255921e011979859a5c",
     ("open", 307): "1dc35df1e80987d5a2b507694a65ae84b1eb65a7167918c96e0e6aa7d35b38e4",
     ("open", 313): "dc47df3afd364178ea855980c1f9218f9e68530c2f4b3315678ab8e865b9f79b",
-    ("close", 329): "2f7a28ac9880cfe5961c36adb88512e55d559b97e10967c5c465e91b82359674",
-    ("close", 345): "13c20c3ca470f68139175846f78b81236d72e6b5edbb438b41870e086877c102",
-    ("close", 382): "04627f8b67b4665b18820943373902e332671b7cd097686547b1d051212d18f0",
-    ("close", 424): "eb1defc3ee84449589dcbc7a30273dccbe9eba4c21817712a42e08eb2f496928",
-    ("close", 450): "ace61bc3eb186f95f5a9dacb127ac7ff46cb566ac043d937de2d1264bd00a75b",
+    ("open", 314): "6d8a554e4012faca94fc2c6ad017ee9af72305f36ad1e74d39ff68eaaac30996",
+    # These early-return checkpoints straddle the map/CHR construction DMA.
+    # They must remain clean outgoing-page scanout, never raw tile memory.
+    ("close", 319): "da454c5454132784160660d01cdeedb5bd3c4283bc6fe298ef76fa74007ed465",
+    ("close", 320): "da454c5454132784160660d01cdeedb5bd3c4283bc6fe298ef76fa74007ed465",
+    ("close", 329): "7833d9c7f030f56c59ca484e4cf5b1efd5e6444de1fec99b1307272ec1a579ee",
+    ("close", 345): "5e5160b0e09c9e043cfd68f4242e440551b4df1d2a9916626d21bd00c886cc50",
+    # Rules' return edge asserts forced blank earlier than Options.
+    ("close", 350): "2cbbeef1249170a43854962fa5b19fba628470c70beb9ce23e15a0f05cb891f2",
+    ("close", 351): "2cbbeef1249170a43854962fa5b19fba628470c70beb9ce23e15a0f05cb891f2",
+    ("close", 352): "2cbbeef1249170a43854962fa5b19fba628470c70beb9ce23e15a0f05cb891f2",
+    ("close", 353): "2cbbeef1249170a43854962fa5b19fba628470c70beb9ce23e15a0f05cb891f2",
+    ("close", 382): "dc71c78af1811fbb00ab3dd22370734d42dd6e4709826e0ad0536407704c8dde",
+    ("close", 424): "d2141973346e0400e1c2a796070d597a9c82f3c05bbb7eb04ab536b23e6cac61",
+    ("close", 450): "412b1457f4ca5ef39f9b74fd366049ff42681439cddc024aa879df3166210561",
 }
 EXPECTED_OPTIONS_OPEN_TRANSITION_SHA256 = {
-    198: "35c10bdf63959457ca01ceebd7b5fbe555ef79600c0244af71097fc30b41fbd1",
+    198: "2fd23d396d3591a981ac43b1306e7ef06223fbfdda296075ebd779be6596357e",
     219: "2cbbeef1249170a43854962fa5b19fba628470c70beb9ce23e15a0f05cb891f2",
     259: "426fbd0ce36a23d2d6cff5b19dcf7259ebf0f190e84e48a44cf730b4d39f08c0",
     299: "ec8a9690ee755fa6da43cb97574bd02419f35c2d47c97c027bbe0834a37bcfbb",
-    300: "651b63bc47901714f6082cc242768160cf26ce6202ef9ab2bf1f1c67c92ac625",
+    300: "f6f565d36e6d4d2fbea06d33170b4b755a05bc57196a46420d1f7d0dfaac7a50",
+    301: "651b63bc47901714f6082cc242768160cf26ce6202ef9ab2bf1f1c67c92ac625",
+}
+EXPECTED_OPTIONS_RETURN_TRANSITION_SHA256 = {
+    315: "11899ec4ff77727a98732adacbb86431df2da72db56261c18b2ff2e78a6eabd8",
+    321: "c29ac2a0ecf74a04e17d3b75872ee76519c11053a474daea8898bac85f4e76d3",
+    322: "c29ac2a0ecf74a04e17d3b75872ee76519c11053a474daea8898bac85f4e76d3",
+    323: "cc267eeed6208dd3ef155933f0b6e313fed9c204b1a2e20c075a83c4f7d203cc",
+    324: "cc267eeed6208dd3ef155933f0b6e313fed9c204b1a2e20c075a83c4f7d203cc",
+    343: "7b33dbcb85e69e2ed0d0e5a888cad2357a0e6464125b5ec573532f32294ba9ad",
+    355: "2cbbeef1249170a43854962fa5b19fba628470c70beb9ce23e15a0f05cb891f2",
+    367: "2cbbeef1249170a43854962fa5b19fba628470c70beb9ce23e15a0f05cb891f2",
+    423: "a0c57d2c5df2936113318e3805007bfefd4fc628ae3ecf07512c47b12ab9b94e",
+    431: "49cea44b69919a8b089d2acff78197aeed75d1b738b73b4a2f94cb9ef197b837",
 }
 MESEN_MENU_PRIMITIVE_SHA256 = {
     "rules_bar": "6a08a0e635e0d0ae5c24cafbaf3507fd16ce61c0f3adc0c282a8b620b36f48c8",
@@ -146,17 +174,17 @@ EXPECTED_MENU_ASSET_SHA256 = {
     142: "e01ff3a82d09d77d018ed79f2b54fd7620f975b523c680690d15efeea8b6adfa",
     143: "1e5c485b7ed12fe444588a5beebd984fa6489598fcb43064187e1617ab0238ce",
     144: "6342436ee7e704b2ad719c98b84e0685e87c2131dbf53b6230f225e40b16d490",
-    145: "b19f19622060224f715b1e487167712c5b827aee27ef32faa5dde70ad3a98acc",
+    145: "b493da5be3bbc174399a86c565e1ed6567a738112e664a800468d89e1dc2ef1e",
     146: "1e5c485b7ed12fe444588a5beebd984fa6489598fcb43064187e1617ab0238ce",
     147: "8a95be0e8f109eec61af8385fc022072cffd57c13b13bf94b441a0d273ea8e65",
-    148: "d7b5b74ae2939df8c8301d59a3744aab40c6173ebeaa8bb2f79df97b4c0d39ab",
+    148: "606f8eabd3c89a9b4c4bdc016be8e00cdb8eba017052ae00c855857c3dc88942",
     149: "906335dc6637bc01d81cad135c00a8f16580dd83e2471850f70a5b82a641a392",
     150: "c8135644bda6768020d67743a823e56eab734193a967ccddd7b570ba63d715a2",
-    151: "536a335d74a5e19ac2dfa5cbf5c27b28628861750f2f6359a9dd7cbead4f9598",
+    151: "465d1b42010038e14430c09d96ad2a693a6427196d3db72594bb1f261a39fcb9",
     152: "eb893005c6d675b73d997f32fe2b479a9d1b8b71425f05e606519da09279ff68",
     153: "acc87f5139c463275742a378f966c64cc030b40f9712dc0e7329ddc57e622b31",
     154: "d3fa496f57f7bfaca0780582175b06e1c897efdb4583210f8dbb7c81d05cba65",
-    155: "2aff621b3abca5fa8edc7eb7624ae72fccfa7b71f4b52dc14221ea2d6c52807b",
+    155: "162c67d4447931a515a2ad394bb2e859a020fbc34fea4f6440a7fb34561ae4ee",
     156: "12d8c001afc6e355654d1965a1fbe7e7c405e028774449f70c3eece17919f43f",
     157: "a93724eda8d5190b1a1fd253812534aa942a68d0654c4608bf029342a111a01f",
 }
@@ -297,7 +325,7 @@ def check_pack(pack_path):
     if offset != len(assets[92]) or ppu_writes != 3094:
         raise AssertionError("invalid Setup entrance PPU write stream")
     for asset_id, expected_frames, expected_writes in (
-        (145, 146, 25913), (148, 132, 23786),
+        (145, 146, 25520), (148, 132, 23229),
         (151, 132, 23070), (155, 132, 25001)
     ):
         trace = assets[asset_id]
@@ -675,8 +703,10 @@ def check_frames(exe, rom, pack):
             actual = hashlib.sha256(Image.open(output).convert("RGB").tobytes()).hexdigest()
             if actual != expected_hash:
                 raise AssertionError(f"submenu {direction} transition frame {frame} changed")
-            if direction == "open" and frame == 313 and "transition=0/146" not in result.stdout:
-                raise AssertionError("Set Rules did not honor its 146-frame ROM build")
+            if direction == "open" and frame == 313 and "transition=1/146" not in result.stdout:
+                raise AssertionError("Set Rules final trace state was released before scanout")
+            if direction == "open" and frame == 314 and "transition=0/146" not in result.stdout:
+                raise AssertionError("Set Rules did not release after its 146-frame ROM build")
             if direction == "close" and frame == 450 and "transition=0/132" not in result.stdout:
                 raise AssertionError("submenu return did not honor its 132-frame ROM build")
 
@@ -693,8 +723,112 @@ def check_frames(exe, rom, pack):
             actual = hashlib.sha256(Image.open(output).convert("RGB").tobytes()).hexdigest()
             if actual != expected_hash:
                 raise AssertionError(f"Set Options open transition frame {frame} changed")
-            if frame == 300 and "transition=0/132" not in result.stdout:
-                raise AssertionError("Set Options did not honor its 132-frame ROM build")
+            if frame == 300 and "transition=1/132" not in result.stdout:
+                raise AssertionError("Set Options final trace state was released before scanout")
+            if frame == 301 and "transition=0/132" not in result.stdout:
+                raise AssertionError("Set Options did not release after its 132-frame ROM build")
+
+        # Options has its own return capture (asset 151), so prove its directed
+        # edge independently of the Rules -> Main trace.
+        for frame, expected_hash in EXPECTED_OPTIONS_RETURN_TRANSITION_SHA256.items():
+            output = Path(directory) / f"options_return_{frame}.bmp"
+            subprocess.run(
+                [str(exe), "--headless", "--setup-only", "--setup-menu", "options",
+                 "--setup-menu-confirm", "--rom", str(rom), "--assets", str(pack),
+                 "--frames", str(frame), "--dump-frame", str(output)],
+                text=True, capture_output=True, check=True,
+            )
+            actual = hashlib.sha256(Image.open(output).convert("RGB").tobytes()).hexdigest()
+            if actual != expected_hash:
+                raise AssertionError(f"Set Options return transition frame {frame} changed")
+
+        # The CSV is the human-readable counterpart of packed PPU trace 145.
+        # It must expose every decoded state with no skipped or duplicated frame.
+        trace_csv = Path(directory) / "rules_open_trace.csv"
+        traced = subprocess.run(
+            [str(exe), "--headless", "--setup-only", "--setup-menu", "rules",
+             "--rom", str(rom), "--assets", str(pack), "--frames", "320",
+             "--setup-transition-trace", str(trace_csv)],
+            text=True, capture_output=True, check=True,
+        )
+        if "Wrote 147 Setup transition rows" not in traced.stdout:
+            raise AssertionError("Setup transition CSV row count was not reported")
+        with trace_csv.open(newline="", encoding="ascii") as trace_file:
+            rows = list(csv.DictReader(trace_file))
+        if len(rows) != 147 or [int(row["transition_frame"]) for row in rows] != \
+                list(range(147)):
+            raise AssertionError("Setup transition CSV skipped or duplicated a frame")
+        if int(rows[0]["trace_frame"]) != -1 or \
+                [int(row["trace_frame"]) for row in rows[1:]] != list(range(146)):
+            raise AssertionError("Setup transition CSV is not aligned to packed trace frames")
+        if any(int(row["route"]) != 1 for row in rows):
+            raise AssertionError("Rules transition CSV changed directed route")
+        blank_rows = [int(row["transition_frame"]) for row in rows
+                      if int(row["forced_blank"])]
+        if blank_rows != list(range(51, 81)) or \
+                len({row["rgb_fnv64"] for row in rows if int(row["forced_blank"])}) != 1:
+            raise AssertionError("Rules transition did not preserve $2100 forced blank")
+
+        _, packed_assets = load_pack(pack)
+        packed_trace = packed_assets[145]
+        packed_states = []
+        offset = 16
+        for _ in range(146):
+            brightness, main, sub, _ = struct.unpack_from("<BBBB", packed_trace, offset)
+            state = [brightness, main, sub]
+            for layer in range(3):
+                state.extend(struct.unpack_from(
+                    "<HHHHBB", packed_trace, offset + 4 + layer * 10
+                ))
+            vram_count, cgram_count = struct.unpack_from("<HH", packed_trace, offset + 34)
+            offset += 38 + (vram_count + cgram_count) * 3
+            packed_states.append(state)
+        csv_fields = (
+            "brightness", "main", "sub",
+            "bg1h", "bg1v", "bg1map", "bg1chr", "bg1wide", "bg1tall",
+            "bg2h", "bg2v", "bg2map", "bg2chr", "bg2wide", "bg2tall",
+            "bg3h", "bg3v", "bg3map", "bg3chr", "bg3wide", "bg3tall",
+        )
+        visible_bg2_origin = int(rows[0]["bg2v"])
+        packed_bg2_origin = packed_states[0][10]
+        for trace_frame, (row, packed_state) in enumerate(zip(rows[1:], packed_states)):
+            actual_state = tuple(int(row[field]) for field in csv_fields)
+            expected_state = list(packed_state)
+            # $80:A3B8 carries the live page's BG2 phase through the visible
+            # exit.  Absolute capture coordinates become authoritative only
+            # once $80:A2BF has entered the forced-blank rebuild (CSV t=51).
+            if trace_frame + 1 < 51:
+                expected_state[10] = (
+                    expected_state[10] + visible_bg2_origin - packed_bg2_origin
+                ) & 0x3FF
+            expected_state = tuple(expected_state)
+            if actual_state != expected_state:
+                raise AssertionError(
+                    f"Setup transition CSV diverged from packed PPU frame {trace_frame}"
+                )
+        if int(rows[1]["bg2v"]) != visible_bg2_origin:
+            raise AssertionError("Rules transition reset BG2 before forced blank")
+        if [int(row["bg2v"]) for row in rows[-3:]] != [21, 22, 22]:
+            raise AssertionError("Rules transition lost the rebuilt BG2 settle cadence")
+
+        # Prove the handoff from the last packed state back to the steady
+        # updater. The ROM holds/increments according to the phase established
+        # by $80:A3B8; it never jumps back to the lifetime Setup frame value.
+        for menu, checkpoints in {
+            "rules": {313: 22, 314: 22, 315: 23},
+            "options": {300: 19, 301: 19, 302: 19, 303: 20},
+        }.items():
+            for frame, expected_bg2v in checkpoints.items():
+                state = subprocess.run(
+                    [str(exe), "--headless", "--setup-only", "--setup-menu", menu,
+                     "--rom", str(rom), "--assets", str(pack), "--frames", str(frame),
+                     "--debug-state"],
+                    text=True, capture_output=True, check=True,
+                ).stdout
+                if f"Y2:{expected_bg2v:03d}" not in state:
+                    raise AssertionError(
+                        f"Set {menu.title()} BG2 cadence changed at frame {frame}"
+                    )
 
         for (menu, row, rights), expected_hash in EXPECTED_MENU_ACTION_SHA256.items():
             output = Path(directory) / f"setup_{menu}_{row}_{rights}.bmp"

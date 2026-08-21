@@ -565,7 +565,14 @@ def create_asset_pack(rom_path, output_path):
                 frame = int(frame_text)
                 if frame < first_frame:
                     raise RuntimeError(f"Invalid submenu PPU trace frame: {raw.strip()}")
-                events[event_index].setdefault(frame - first_frame, []).append(
+                # endFrame screenshots contain the scanout just presented,
+                # while VRAM/CGRAM reads observe memory prepared for the next
+                # scanout.  Delay deltas one frame so construction DMA cannot
+                # leak raw tiles through the still-visible outgoing page.
+                packed_frame = frame + 1 - first_frame
+                if packed_frame < 0 or packed_frame >= last_frame - first_frame + 1:
+                    continue
+                events[event_index].setdefault(packed_frame, []).append(
                     (int(address_text, 16), int(value_text, 16)))
         state_path = os.path.join(directory, f"{prefix}_transition_ppu_states.txt")
         for raw in open(state_path, "r", encoding="ascii"):
@@ -578,15 +585,22 @@ def create_asset_pack(rom_path, output_path):
         if len(states) != frame_count:
             raise RuntimeError(f"Incomplete Set {menu_name.title()} {prefix} PPU states")
         trace = bytearray(struct.pack("<8sII", b"NBSPPU2\0", 2, frame_count))
+        # The common return builder changes BG map/CHR/size registers one
+        # endFrame callback before that configuration reaches scanout.  Its
+        # VRAM clear/upload completes across the same boundary.  Preserve
+        # current scroll/brightness but latch the layer configuration, matching
+        # the clean Mesen screenshots at the $80:A2BF map switch.
+        layer_config_delay = 1 if prefix == "return" else 0
         for frame in range(frame_count):
             state = states[frame]
+            layer_state = states[max(0, frame - layer_config_delay)]
             trace.extend(struct.pack("<BBBB", state[0], state[1], state[2], 0))
             for layer in range(3):
                 base = 3 + layer * 6
                 trace.extend(struct.pack(
                     "<HHHHBB", state[base], state[base + 1],
-                    state[base + 2] * 2, state[base + 3] * 2,
-                    state[base + 4], state[base + 5]))
+                    layer_state[base + 2] * 2, layer_state[base + 3] * 2,
+                    layer_state[base + 4], layer_state[base + 5]))
             vw, cw = events[0].get(frame, []), events[1].get(frame, [])
             trace.extend(struct.pack("<HH", len(vw), len(cw)))
             for address, value in vw:

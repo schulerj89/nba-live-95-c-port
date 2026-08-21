@@ -217,6 +217,20 @@ staging. The builders are page-specific: Set Rules finishes after 146
 transition frames, Set Options after 132, and Start returns to Game Setup
 after 132. Packed PPU traces preserve the VRAM writes that continue while the
 new BG3 canvas becomes visible instead of swapping directly to a settled page.
+The trace's opening BG2 vertical coordinates are capture-time absolute values,
+not a command to reset the live backdrop. `$80:A3B8` carries the current BG2
+phase through the visible exit; `$80:A2BF` resets it only after forced blank is
+active, and the rebuilt phase continues one pixel every three frames after the
+new page settles. The port therefore rebases only the visible trace prefix and
+hands the final trace phase to the steady updater instead of recomputing it from
+the lifetime Setup frame counter.
+Mesen's `screenBrightness` field contains only the low four INIDISP bits, so
+the port separately restores bit 7 using edge-specific measured windows:
+Rules open 51–80, Options open 51–76, Rules return 36–62, and Options return
+52–78 (transition-frame numbering). The Rules `$81:A28E` visual scanout
+trails its recorded BG3 vertical-register sweep by one 14-pixel step; Options
+and both return edges do not. These differences now live in the directed
+transition profiles instead of a global transition shortcut.
 
 The shared sound dispatch is `$80:9DF3`: command `$49` selects SRCN `$1A` for
 a value adjustment, `$4A` selects SRCN `$1B` for cursor movement, and `$4B`
@@ -233,8 +247,11 @@ Asset-pack version 10 retains the version 9 page-specific Rules/Options open and
 with PPU write traces. Each transition frame now
 stores the ROM's brightness, main/sub layer designation, scroll positions,
 tilemap/CHR bases, and map dimensions. The builder temporarily repoints
-BG1/BG2/BG3 while VRAM is incomplete; rendering those bytes with the settled
-addresses was the source of the transient garbage. The pack also carries exact,
+BG1/BG2/BG3 while VRAM is incomplete. Mesen's end-frame callback observes
+VRAM/CGRAM prepared for the following scanout, so the packer delays those
+deltas one frame. The return profiles also retain the outgoing page snapshot
+across their short map/CHR DMA guard. Rendering those construction bytes with
+the new addresses was the source of the transient garbage. The pack also carries exact,
 independent Music Mode, Crowd Sound, Slow Motion Dunks, Shot Control, and CPU
 Assistance BG3 states. `$82:8F9C -> $81:9FD4 -> $81:A1EE` uploads the redrawn
 `$0800`-byte BG3 canvas as a unit. The port now composes the ROM's row-local
