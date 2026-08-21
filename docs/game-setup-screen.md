@@ -255,9 +255,11 @@ exercises clamp, wrap, ignored-B, live SFX gain, and
 working-versus-committed behavior. It also fingerprints the exact WAV output,
 pitch, envelope, and shape for all three menu SRCNs.
 
-`$81:D59B-$81:D5AB` enables the Rules slider objects only when logical row
-`$1693` is below 2. Accordingly the two foul meters are not drawn after the
-13-row viewport scrolls away from rows 0/1.
+`$81:D59B-$81:D5AB` enables the Rules slider objects while each logical foul
+row (`$1693` below 2) is redrawn. `$81:D5AE-$81:D5C3` independently derives
+the object's Y position from its visible viewport slot through `$1665`.
+Consequently the first scroll removes Defensive Fouls but shifts the still
+visible Offensive Fouls meter into slot 0; the second scroll removes both.
 
 Version 9 also introduced ten main-page BG3 value states captured after the ROM's
 own writer produced Season, Playoffs, Load Series, Custom, Arcade, Starter,

@@ -79,6 +79,7 @@ EXPECTED_MENU_RGB_SHA256 = {
 EXPECTED_MENU_ACTION_SHA256 = {
     ("rules", 2, 1): "85f622ded992727f9fc02212afe5681e34d883eb2ad4c9569fb4ef92a751d736",
     ("options", 0, 1): "1d7a804a03721d8ce5b3ac0b36c3f1a3319df0ea67f3faf9cc74441994432dd1",
+    ("rules", 7, 0): "d25ec1042443fc3e4114eb06a4acd6cbd2f6408cec9122b2fc8dc5dc74eb7188",
     ("rules", 9, 0): "7cfdac4bc00793e00ca2d8bccd8237a25b3414550f965c42120716e2e5c5226d",
     ("rules", 12, 0): "70f0c9594d49e0a140cb6f01b086e5737c9964b165fc0759a2f4123a52b5f6e8",
     ("options", 2, 1): "b1207fe4229d653965999494be1b7cd9517c818663c3b329753bf06a4618997f",
@@ -716,14 +717,29 @@ def check_frames(exe, rom, pack):
                     f"Set {menu.title()} row {row} action frame changed"
                 )
             image = Image.open(output).convert("RGB")
-            if menu == "rules" and row >= 7:
+            if menu == "rules" and row == 7:
+                offensive_meter = hashlib.sha256(
+                    image.crop((144, 82, 192, 90)).tobytes()
+                ).hexdigest()
+                if offensive_meter != MESEN_MENU_PRIMITIVE_SHA256["rules_bar"]:
+                    raise AssertionError(
+                        "first Rules scroll did not move Offensive Fouls meter to slot 0"
+                    )
+                stale_second_meter = any(
+                    red > 180 and blue < 100 and
+                    (green < 80 or green > 180)
+                    for red, green, blue in image.crop((144, 100, 192, 108)).getdata()
+                )
+                if stale_second_meter:
+                    raise AssertionError("Defensive Fouls meter remained after first scroll")
+            if menu == "rules" and row >= 8:
                 stale_meter = any(
                     red > 180 and blue < 100 and
                     (green < 80 or green > 180)
                     for red, green, blue in image.crop((144, 82, 192, 108)).getdata()
                 )
                 if stale_meter:
-                    raise AssertionError("scrolled Rules viewport retained foul meters")
+                    raise AssertionError("Rules retained foul meters after both rows left")
             if menu == "options" and row in (5, 6) and rights:
                 top = 68 + row * 18
                 tail_x = 184 if row == 5 else 190

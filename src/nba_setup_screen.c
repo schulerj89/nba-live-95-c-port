@@ -989,28 +989,35 @@ static void setup_draw_rom_menu_objects(const NbaSetupScreen *s,
                                         NbaRenderer *ren) {
     if (!s->rules_oam || !s->rules_vram || !s->rules_cgram) return;
     int dx = s->page == NBA_SETUP_PAGE_OPTIONS ? 16 : 0;
-    int dy = s->page == NBA_SETUP_PAGE_OPTIONS ? -8 : 0;
-    bool bars_visible = s->page == NBA_SETUP_PAGE_OPTIONS || s->menu_scroll == 0;
-    if (bars_visible)
-        for (int index = 23; index >= 0; --index) {
-            int bar = index >= 12 ? 1 : 0;
-            setup_draw_oam_sprite(ren, s->rules_vram, s->rules_cgram,
-                                  s->rules_oam, index, dx, dy, false,
-                                  (s->page == NBA_SETUP_PAGE_RULES ? 144 : 160),
-                                  (s->page == NBA_SETUP_PAGE_RULES ? 82 : 74) + bar * 18,
-                                  48, 8);
-        }
-    const uint16_t *values = s->page == NBA_SETUP_PAGE_RULES ?
-                             s->working_rules : s->working_options;
+    int scroll_rows = s->page == NBA_SETUP_PAGE_RULES ? s->menu_scroll : 0;
+    int dy = s->page == NBA_SETUP_PAGE_OPTIONS ? -8 :
+             -scroll_rows * NBA_SETUP_ROW_PITCH;
     int bar_x = s->page == NBA_SETUP_PAGE_RULES ? 144 : 160;
     int bar_y = s->page == NBA_SETUP_PAGE_RULES ? 82 : 74;
-    if (bars_visible)
-        for (int bar = 0; bar < 2; ++bar) {
-            for (int py = 1; py < 7; ++py)
-                for (int px = values[bar] + 2; px < 47; ++px)
-                    ren->pixels[(bar_y + bar * 18 + py) * NBA_SNES_WIDTH + bar_x + px] =
-                        0xFF000000u;
-        }
+
+    /* $81:D59B enables the slider objects while redrawing logical rows 0/1;
+     * $81:D5AE-$D5C3 derives their Y position from the visible viewport slot.
+     * Thus at scroll 1 only Offensive Fouls remains, shifted into slot 0. */
+    for (int index = 23; index >= 0; --index) {
+        int bar = index >= 12 ? 1 : 0;
+        int visible_slot = bar - scroll_rows;
+        if (visible_slot < 0 || visible_slot >= 7) continue;
+        setup_draw_oam_sprite(ren, s->rules_vram, s->rules_cgram,
+                              s->rules_oam, index, dx, dy, false,
+                              bar_x, bar_y + visible_slot * NBA_SETUP_ROW_PITCH,
+                              48, 8);
+    }
+    const uint16_t *values = s->page == NBA_SETUP_PAGE_RULES ?
+                             s->working_rules : s->working_options;
+    for (int bar = 0; bar < 2; ++bar) {
+        int visible_slot = bar - scroll_rows;
+        if (visible_slot < 0 || visible_slot >= 7) continue;
+        int visible_y = bar_y + visible_slot * NBA_SETUP_ROW_PITCH;
+        for (int py = 1; py < 7; ++py)
+            for (int px = values[bar] + 2; px < 47; ++px)
+                ren->pixels[(visible_y + py) * NBA_SNES_WIDTH + bar_x + px] =
+                    0xFF000000u;
+    }
     if (s->page == NBA_SETUP_PAGE_RULES) {
         if (s->menu_scroll > 0)
             setup_draw_oam_sprite(ren, s->rules_vram, s->rules_cgram,

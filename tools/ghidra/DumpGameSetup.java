@@ -181,8 +181,9 @@ public class DumpGameSetup extends GhidraScript {
                 "exit/build/entrance transition instead of swapping pages in one frame.");
             listing.setComment(toAddr(0xD59B), CodeUnit.PLATE_COMMENT,
                 "Rules redraw/viewport dispatcher. $81:D59B-$D5AB compares the logical row " +
-                "$1693 with 2 and clears slider-object enable $1639 for every discrete row. " +
-                "Only rows 0/1 may retain the two foul-meter objects while visible.");
+                "$1693 with 2 and enables slider objects only while redrawing foul rows 0/1. " +
+                "$81:D5AE-$D5C3 separately indexes the visible slot through $1665, so the " +
+                "Offensive Fouls meter moves into slot 0 when the viewport scrolls once.");
             listing.setComment(toAddr(0xD60E), CodeUnit.PLATE_COMMENT,
                 "Rules rows >=2 select their ON/OFF string, call $81:9FD4, set transfer " +
                 "length $0800 at $196E, and call $81:A28E. This replaces the BG3 text " +
