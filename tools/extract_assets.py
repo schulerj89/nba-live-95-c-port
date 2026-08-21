@@ -44,6 +44,40 @@ def bgr555_to_argb(w):
     return 0xFF000000 | ((r | (r >> 5)) << 16) | ((g | (g >> 5)) << 8) | (b | (b >> 5))
 
 
+def decode_team_logo(vram, cgram, oam):
+    """Decode Team Select's six ROM OBJ logo pieces into transparent ARGB."""
+    width, height = 48, 56
+    origin_x, origin_y = 182, 62
+    pixels = [0] * (width * height)
+    # Lower OAM indexes win ties, matching the SNES object priority ordering.
+    for index in range(5, -1, -1):
+        high = (oam[512 + index // 4] >> ((index & 3) * 2)) & 3
+        x = oam[index * 4] | ((high & 1) << 8)
+        if x >= 256:
+            x -= 512
+        y = oam[index * 4 + 1]
+        tile = oam[index * 4 + 2]
+        attr = oam[index * 4 + 3]
+        size = 16 if high & 2 else 8
+        palette = (attr >> 1) & 7
+        tile += 256 if attr & 1 else 0
+        for py in range(size):
+            sy = size - 1 - py if attr & 0x80 else py
+            for px in range(size):
+                sx = size - 1 - px if attr & 0x40 else px
+                subtile = tile + (sx >> 3) + (sy >> 3) * 16
+                offset = 0xC000 + subtile * 32
+                if offset + 32 > len(vram):
+                    continue
+                color = int(decode_4bpp_tile(vram[offset:offset + 32])[sy & 7, sx & 7])
+                dx, dy = x + px - origin_x, y + py - origin_y
+                if color and 0 <= dx < width and 0 <= dy < height:
+                    palette_offset = (128 + palette * 16 + color) * 2
+                    word = cgram[palette_offset] | (cgram[palette_offset + 1] << 8)
+                    pixels[dy * width + dx] = bgr555_to_argb(word)
+    return b"".join(struct.pack("<I", pixel) for pixel in pixels)
+
+
 def create_asset_pack(rom_path, output_path):
     print(f"[ASSET EXTRACTOR] Extracting assets from ROM: {rom_path}")
     print(f"[ASSET EXTRACTOR] Output asset pack: {output_path}")
@@ -775,6 +809,32 @@ def create_asset_pack(rom_path, output_path):
     print(f"[ASSET EXTRACTOR] Packed F11 Setup BRR catalog: "
           f"{len(setup_sample_assets)} sources from S-DSP DIR ${setup_dir:04X}")
 
+    team_capture_dir = os.environ.get("NBA95_TEAM_CAPTURE_DIR") or os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "..", ".analysis",
+        "team_select_logos_slow")
+    team_logo_assets = []
+    for team in range(27):
+        prefix = os.path.join(team_capture_dir, f"team_{team:02d}")
+        paths = [prefix + "_vram.bin", prefix + "_cgram.bin", prefix + "_oam.bin"]
+        expected = [0x10000, 0x200, 0x220]
+        payloads = []
+        for path, size in zip(paths, expected):
+            if not os.path.exists(path):
+                raise RuntimeError(f"Missing Team Select logo capture: {path}. Run "
+                                   "mesen_team_select_capture.lua with NBA95_TEAM_LOGOS=1.")
+            data = open(path, "rb").read()
+            if len(data) != size:
+                raise RuntimeError(f"Invalid Team Select capture {path}: "
+                                   f"expected {size} bytes, got {len(data)}")
+            payloads.append(data)
+        logo = decode_team_logo(*payloads)
+        if not any(logo[index + 3] for index in range(0, len(logo), 4)):
+            raise RuntimeError(f"Team {team} logo decoded as fully transparent")
+        team_logo_assets.append((160 + team, 48, 56, team, logo))
+    if len({hashlib.sha256(asset[4]).digest() for asset in team_logo_assets}) != 27:
+        raise RuntimeError("Team Select logo captures are not unique for all 27 teams")
+    print("[ASSET EXTRACTOR] Packed 27 Team Select logos from raw SNES VRAM/CGRAM/OAM")
+
     assets = [
         (1, 128, 11, 0, nintendo_license_bytes),               # ASSET_NINTENDO_LICENSE
         (2, 256, num_legal_rows, start_y_legal, nba_legal_bytes), # ASSET_NBA_LEGAL_NOTICE (flags = start_y)
@@ -815,6 +875,7 @@ def create_asset_pack(rom_path, output_path):
         (93, 0, 0, 0, bytes(setup_dsp_trace)),
     ])
     assets.extend(setup_sample_assets)
+    assets.extend(team_logo_assets)
     assets.extend([
         (124, 0, 0, 0, rules_vram_bytes),
         (125, 0, 0, 0, rules_cgram_bytes),
@@ -873,7 +934,7 @@ def create_asset_pack(rom_path, output_path):
                     extra_audio_id += 1
 
     header_magic = b"NBA95PAK"
-    version = 10
+    version = 11
     asset_count = len(assets)
     entry_size = 24 # 6 * 4 bytes
 

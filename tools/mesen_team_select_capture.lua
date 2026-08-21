@@ -7,11 +7,13 @@ assert(out and out ~= "", "NBA95_CAPTURE_DIR is not set")
 local confirm = os.getenv("NBA95_TEAM_CONFIRM") or "start"
 assert(confirm == "start" or confirm == "a", "NBA95_TEAM_CONFIRM must be start or a")
 local single_button = os.getenv("NBA95_TEAM_PROBE_BUTTON")
+local logo_capture = os.getenv("NBA95_TEAM_LOGOS") == "1"
 local valid_buttons = { up=true, down=true, left=true, right=true, a=true, b=true,
     x=true, y=true, l=true, r=true, select=true, start=true }
 assert(not single_button or valid_buttons[single_button],
     "NBA95_TEAM_PROBE_BUTTON is not a supported SNES button")
-local probe_navigation = os.getenv("NBA95_TEAM_NAV") == "1" or single_button ~= nil
+local probe_navigation = os.getenv("NBA95_TEAM_NAV") == "1" or
+    single_button ~= nil or logo_capture
 local log = assert(io.open(out .. "/capture_log.txt", "wb"))
 local writes = assert(io.open(out .. "/wram_writes.txt", "wb"))
 local ppu = assert(io.open(out .. "/ppu_states.txt", "wb"))
@@ -28,6 +30,25 @@ local nav_steps = single_button and {
     { name = "activate_left", frame = 860, button = "left", settle = 900 },
     { name = "left_team_previous", frame = 930, button = "up", settle = 970 },
 }
+if logo_capture then
+    nav_steps = {}
+    local logo_step = tonumber(os.getenv("NBA95_TEAM_LOGO_STEP")) or 50
+    for row = 1, 4 do
+        nav_steps[#nav_steps + 1] = {
+            name = "overall_row_" .. row, frame = 620 + (row - 1) * 25,
+            button = "down", settle = 0
+        }
+    end
+    for rank = 1, 32 do
+        local at = 740 + (rank - 1) * logo_step
+        nav_steps[#nav_steps + 1] = {
+            name = "overall_next_" .. rank, frame = at,
+            button = "right", settle = at + 38
+        }
+    end
+    LAST_FRAME = nav_steps[#nav_steps].settle + 12
+end
+local captured_teams = {}
 
 local function pulse(frame, at)
     return frame >= at and frame < at + 3
@@ -117,7 +138,9 @@ emu.addEventCallback(function()
             tostring(st["ppu.layers[1].hscroll"]), tostring(st["ppu.layers[1].vscroll"]),
             tostring(st["ppu.layers[2].hscroll"]), tostring(st["ppu.layers[2].vscroll"]),
             tostring(st["ppu.mode"])))
-        if frame % 5 == 0 then shot(string.format("frame_%04d.png", frame)) end
+        if frame % 5 == 0 and (not logo_capture or frame <= 620) then
+            shot(string.format("frame_%04d.png", frame))
+        end
     end
 
     if frame == 650 then
@@ -130,9 +153,33 @@ emu.addEventCallback(function()
 
     if probe_navigation then
         for _, step in ipairs(nav_steps) do
-            if frame == step.settle then
+            if frame == step.settle and not logo_capture then
                 shot(step.name .. ".png")
                 dump_mem(step.name .. "_wram.bin", emu.memType.snesWorkRam, 0x20000)
+            end
+        end
+    end
+
+    if logo_capture and (frame == 700) then
+        local team = emu.read(0x16fd, emu.memType.snesWorkRam, false) or 0xff
+        if team <= 26 and not captured_teams[team] then
+            captured_teams[team] = true
+            dump_mem(string.format("team_%02d_vram.bin", team), emu.memType.snesVideoRam, 0x10000)
+            dump_mem(string.format("team_%02d_cgram.bin", team), emu.memType.snesCgRam, 0x200)
+            dump_mem(string.format("team_%02d_oam.bin", team), emu.memType.snesSpriteRam, 0x220)
+            shot(string.format("team_%02d.png", team))
+        end
+    elseif logo_capture then
+        for _, step in ipairs(nav_steps) do
+            if step.settle > 0 and frame == step.settle then
+                local team = emu.read(0x16fd, emu.memType.snesWorkRam, false) or 0xff
+                if team <= 26 and not captured_teams[team] then
+                    captured_teams[team] = true
+                    dump_mem(string.format("team_%02d_vram.bin", team), emu.memType.snesVideoRam, 0x10000)
+                    dump_mem(string.format("team_%02d_cgram.bin", team), emu.memType.snesCgRam, 0x200)
+                    dump_mem(string.format("team_%02d_oam.bin", team), emu.memType.snesSpriteRam, 0x220)
+                    shot(string.format("team_%02d.png", team))
+                end
             end
         end
     end

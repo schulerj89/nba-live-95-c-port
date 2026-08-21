@@ -5,7 +5,7 @@
 
 #define NBA_ASSET_MAGIC "NBA95PAK"
 
-#define NBA_ASSET_PACK_VERSION 10u
+#define NBA_ASSET_PACK_VERSION 11u
 #define NBA_ASSET_HEADER_SIZE 16u
 #define NBA_ASSET_ENTRY_SIZE 24u
 
@@ -24,6 +24,10 @@ static bool asset_load_error(NbaAssetPack *pack, const char *message) {
 static bool asset_metadata_valid(uint32_t id, uint32_t size, uint32_t width,
                                  uint32_t height, uint32_t flags) {
     uint64_t required;
+    if (id >= NBA_ASSET_TEAM_LOGO_BASE && id <= NBA_ASSET_TEAM_LOGO_LAST) {
+        return width == 48u && height == 56u && flags == id - NBA_ASSET_TEAM_LOGO_BASE &&
+               size == width * height * sizeof(uint32_t);
+    }
     if (id == NBA_ASSET_EA_A_FIXED_SEQUENCE) {
         uint32_t x = flags >> 16;
         uint32_t y = flags & 0xFFFFu;

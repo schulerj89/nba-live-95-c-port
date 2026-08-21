@@ -87,7 +87,9 @@ typedef enum {
     NBA_ASSET_RULES_RETURN_PPU_TRACE        = 155,
     NBA_ASSET_OPTIONS_SLOW_ON_VRAM          = 156,
     NBA_ASSET_OPTIONS_ASSISTANCE_ON_VRAM    = 157,
-    NBA_ASSET_MAX                   = 160
+    NBA_ASSET_TEAM_LOGO_BASE                = 160,
+    NBA_ASSET_TEAM_LOGO_LAST                = 186,
+    NBA_ASSET_MAX                   = 192
 } NbaAssetId;
 
 typedef struct {
