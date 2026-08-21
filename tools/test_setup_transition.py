@@ -418,6 +418,41 @@ def check_frames(exe, rom, pack):
                 "DSP menu SFX SRCN $1A" in missing_main.stdout:
             raise AssertionError("missing main value asset used fallback graphics/state")
 
+        # The main-page copier must clear the full old value cell but sample
+        # only the new word's measured glyph+shadow span. Inject an obvious
+        # stale tile near the right edge of Season's captured cell: the old
+        # 110-pixel overlay exposed it, while $81:9756-style span copying must
+        # leave the clean rendered frame unchanged.
+        stale_tail_raw = bytearray(pack.read_bytes())
+        _, stale_tail_count = struct.unpack_from("<II", stale_tail_raw, 8)
+        for index in range(stale_tail_count):
+            entry_offset = 16 + index * 24
+            asset_id, asset_offset = struct.unpack_from("<II", stale_tail_raw,
+                                                         entry_offset)
+            if asset_id == 133:
+                tile_row = (70 + 1) // 8
+                source_entry = (tile_row * 32 + 144 // 8) * 2
+                stale_entry = (tile_row * 32 + 216 // 8) * 2
+                stale_tail_raw[asset_offset + stale_entry:
+                               asset_offset + stale_entry + 2] = \
+                    stale_tail_raw[asset_offset + source_entry:
+                                   asset_offset + source_entry + 2]
+                break
+        else:
+            raise AssertionError("canonical pack is missing Season variant asset 133")
+        stale_tail_pack = Path(directory) / "season_stale_shadow_tail.pak"
+        stale_tail_pack.write_bytes(stale_tail_raw)
+        stale_tail_frame = Path(directory) / "season_stale_shadow_tail.bmp"
+        subprocess.run(
+            [str(exe), "--headless", "--setup-only", "--setup-main-row", "0",
+             "--setup-main-right", "1", "--frames", "200", "--rom", str(rom),
+             "--assets", str(stale_tail_pack), "--dump-frame", str(stale_tail_frame)],
+            text=True, capture_output=True, check=True,
+        )
+        if hashlib.sha256(Image.open(stale_tail_frame).convert("RGB").tobytes()).hexdigest() != \
+                EXPECTED_MAIN_VALUE_RGB_SHA256[(0, 1)]:
+            raise AssertionError("main Setup copied stale pixels beyond Season's shadow span")
+
         asset_debug = Path(directory) / "asset_debug_options_vram.bmp"
         subprocess.run(
             [str(exe), "--headless", "--asset-debug", "126", "--frames", "1",

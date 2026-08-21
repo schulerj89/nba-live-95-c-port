@@ -282,4 +282,8 @@ Version 9 also introduced ten main-page BG3 value states captured after the ROM'
 own writer produced Season, Playoffs, Load Series, Custom, Arcade, Starter,
 All-Star, and the 5/8/12-minute quarter choices. Rendering copies only those
 game-authored glyph pixels, allowing independent combinations without a host
-font or screenshot composite.
+font or screenshot composite. Main values and submenu values share one
+clear-cell/copy-span renderer: the entire previous value cell is restored from
+BG2, then only the replacement word's measured foreground-and-shadow span is
+sampled. This mirrors the bounded proportional writer and prevents a captured
+Exhibition or Simulation tail from being copied back after the clear.

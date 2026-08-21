@@ -922,9 +922,49 @@ static void setup_restore_bg2_rect(const NbaSetupScreen *s, NbaRenderer *ren,
     }
 }
 
+/* Shared implementation of $81:9756/$81:9FD4's proportional 2bpp value
+ * copy. Callers clear the complete destination cell first, then copy only the
+ * measured span owned by the replacement word. Copying an entire captured
+ * cell can reintroduce pixels belonging to the word that preceded it. */
+static bool setup_copy_rom_text_span(const uint8_t *source_vram,
+                                     const uint8_t *source_cgram,
+                                     NbaRenderer *ren, int sx, int sy,
+                                     int width, int dx, int dy,
+                                     int brightness, bool highlighted) {
+    if (!source_vram || !source_cgram || !ren || width <= 0) return false;
+    bool copied = false;
+    for (int py = 0; py < 16; ++py) {
+        for (int px = 0; px < width; ++px) {
+            NbaSnesBgPixel pixel;
+            if (!nba_snes_sample_bg(source_vram, NBA_SETUP_BG3_TILEMAP,
+                                    NBA_SETUP_BG3_CHR, 2, false, true, 0, 0,
+                                    sx + px, sy + py, &pixel)) continue;
+            int x = dx + px;
+            int y = dy + py;
+            if (x < 0 || x >= NBA_SNES_WIDTH || y < 0 || y >= NBA_SNES_HEIGHT)
+                continue;
+            ren->pixels[y * NBA_SNES_WIDTH + x] = nba_snes_cgram_color(
+                source_cgram, pixel.palette * 4 + pixel.color_index,
+                brightness,
+                highlighted ? NBA_SETUP_MATH_SUB_R : 0,
+                highlighted ? NBA_SETUP_MATH_SUB_G : 0,
+                highlighted ? NBA_SETUP_MATH_SUB_B : 0);
+            copied = true;
+        }
+    }
+    return copied;
+}
+
 /* $80:A77C selects the active main-page value and the generic BG3 writer
- * stores it at $7E:16FB + row*2. Copy the resulting game-authored glyph
- * pixels from the corresponding captured VRAM state. */
+ * stores it at $7E:16FB + row*2. These spans include each word's final shadow
+ * column, measured from the independent Mesen VRAM states. */
+static const uint8_t setup_main_value_span[NBA_SETUP_MAIN_VALUE_COUNT][4] = {
+    { 0, 48, 60, 75 }, /* Exhibition, Season, Playoffs, Load Series */
+    { 47, 0, 49, 0 },  /* Arcade, Simulation, Custom */
+    { 0, 52, 59, 0 },  /* Rookie, Starter, All-Star */
+    { 0, 65, 65, 70 }  /* 3, 5, 8, 12 Minutes */
+};
+
 static void setup_render_main_values(const NbaSetupScreen *s, NbaRenderer *ren,
                                      int bg3_scroll) {
     if (!s || s->page != NBA_SETUP_PAGE_MAIN) return;
@@ -932,27 +972,15 @@ static void setup_render_main_values(const NbaSetupScreen *s, NbaRenderer *ren,
         uint16_t value = s->config->main_values[row];
         if (value == nba_default_main_values[row] || value > setup_main_max[row]) continue;
         const uint8_t *source_vram = s->main_value_vram[row][value];
-        if (!source_vram) continue;
+        int copy_width = setup_main_value_span[row][value];
+        if (!source_vram || copy_width == 0) continue;
         int source_top = nba_setup_screen_row_band_top((NbaSetupRow)row);
         int top = source_top - bg3_scroll;
         setup_restore_bg2_rect(s, ren, s->vram, s->cgram, 138, top, 110, 16);
-        for (int py = 0; py < 16; ++py) {
-            for (int px = 0; px < 110; ++px) {
-                NbaSnesBgPixel pixel;
-                int x = 138 + px, y = top + py;
-                if (!nba_snes_sample_bg(source_vram, NBA_SETUP_BG3_TILEMAP,
-                                        NBA_SETUP_BG3_CHR, 2, false, true,
-                                        0, 0, x, source_top + py, &pixel)) continue;
-                if (y < 0 || y >= NBA_SNES_HEIGHT) continue;
-                bool highlighted = row == (int)s->row;
-                ren->pixels[y * NBA_SNES_WIDTH + x] = nba_snes_cgram_color(
-                    s->cgram, pixel.palette * 4 + pixel.color_index,
-                    s->brightness,
-                    highlighted ? NBA_SETUP_MATH_SUB_R : 0,
-                    highlighted ? NBA_SETUP_MATH_SUB_G : 0,
-                    highlighted ? NBA_SETUP_MATH_SUB_B : 0);
-            }
-        }
+        (void)setup_copy_rom_text_span(source_vram, s->cgram, ren,
+                                       138, source_top, copy_width,
+                                       138, top, s->brightness,
+                                       row == (int)s->row);
     }
 }
 
@@ -996,27 +1024,9 @@ static bool setup_copy_rom_value(const NbaSetupScreen *s, NbaRenderer *ren,
     else return false;
     if (!source_vram) return false;
 
-    bool copied = false;
-    for (int py = 0; py < 16; ++py) {
-        for (int px = 0; px < copy_width; ++px) {
-            NbaSnesBgPixel pixel;
-            if (!nba_snes_sample_bg(source_vram, NBA_SETUP_BG3_TILEMAP,
-                                    NBA_SETUP_BG3_CHR, 2, false, true, 0, 0,
-                                    156 + px, sy + py, &pixel)) continue;
-            int x = dx + px;
-            int y = dy + py;
-            if (x < 0 || x >= NBA_SNES_WIDTH || y < 0 || y >= NBA_SNES_HEIGHT)
-                continue;
-            ren->pixels[y * NBA_SNES_WIDTH + x] = nba_snes_cgram_color(
-                s->options_cgram, pixel.palette * 4 + pixel.color_index,
-                s->brightness,
-                highlighted ? NBA_SETUP_MATH_SUB_R : 0,
-                highlighted ? NBA_SETUP_MATH_SUB_G : 0,
-                highlighted ? NBA_SETUP_MATH_SUB_B : 0);
-            copied = true;
-        }
-    }
-    return copied;
+    return setup_copy_rom_text_span(source_vram, s->options_cgram, ren,
+                                    156, sy, copy_width, dx, dy,
+                                    s->brightness, highlighted);
 }
 
 static int setup_obj_tile_pixel(const uint8_t *tile, int x, int y) {
