@@ -213,8 +213,10 @@ The complete Mesen `$2100/$212C/$212D/$210D-$2112` trace shows BG3 scrolling
 out by 14 pixels/frame, followed by opposing BG1/BG2 slides at 8 pixels/frame
 while brightness falls 15→1. The ROM holds forced blank while `$80:A2BF`
 builds the target, then `$80:A3B8` runs the 32-frame entrance and delayed BG3
-staging. A submenu settles 140 frames after A; Start returns and settles after
-116 transition frames.
+staging. The builders are page-specific: Set Rules finishes after 146
+transition frames, Set Options after 132, and Start returns to Game Setup
+after 132. Packed PPU traces preserve the VRAM writes that continue while the
+new BG3 canvas becomes visible instead of swapping directly to a settled page.
 
 The shared sound dispatch is `$80:9DF3`: command `$49` selects SRCN `$1A` for
 a value adjustment, `$4A` selects SRCN `$1B` for cursor movement, and `$4B`
@@ -227,8 +229,12 @@ apply slider changes immediately; the port applies Music Volume to the
 still-running Setup music stream and applies SFX Volume to the independently
 synthesized menu voice.
 
-Asset-pack version 7 adds Rules/Options VRAM/CGRAM/OAM plus exact OFF, MONO,
-and CPU BG3 states. Bars/arrows are decoded from captured OAM and OBJ tiles;
+Asset-pack version 8 adds page-specific Rules/Options open snapshots and PPU
+write traces plus the shared return snapshot/trace. It also carries the exact
+OFF, MONO, and CPU BG3 states. `$82:8F9C -> $81:9FD4 -> $81:A1EE` uploads the
+redrawn `$0800`-byte BG3 canvas as a unit, so the port selects the complete
+OFF/MONO/STEREO canvas and a shorter value cannot retain the previous word's
+shadow. Bars/arrows are decoded from captured OAM and OBJ tiles;
 the full Rules bar objects provide the game's shared dynamic bar tiles, while
 the Options OAM capture remains a packed, debugger-visible default-position
 oracle. These values have no host-font or hardcoded-pixel fallback, and a
@@ -239,7 +245,7 @@ OFF/MONO/CPU states, and exercises clamp, wrap, ignored-B, live SFX gain, and
 working-versus-committed behavior. It also fingerprints the exact WAV output,
 pitch, envelope, and shape for all three menu SRCNs.
 
-Version 7 also carries ten main-page BG3 value states captured after the ROM's
+Version 8 also carries ten main-page BG3 value states captured after the ROM's
 own writer produced Season, Playoffs, Load Series, Custom, Arcade, Starter,
 All-Star, and the 5/8/12-minute quarter choices. Rendering copies only those
 game-authored glyph pixels, allowing independent combinations without a host

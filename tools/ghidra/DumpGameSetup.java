@@ -52,6 +52,9 @@ public class DumpGameSetup extends GhidraScript {
         if (bank == 0x80) {
             ranges.add(new Range(0x9DEA, 0x9E61)); // shared input dispatch
         } else if (bank == 0x81) {
+            ranges.add(new Range(0x9FD4, 0xA1ED)); // proportional BG3 text wrapper
+            ranges.add(new Range(0xA1EE, 0xA2D2)); // BG3 upload/clear helper
+            ranges.add(new Range(0xA2D3, 0xA35F)); // slider/OAM helper
             ranges.add(new Range(0xD318, 0xD3B0)); // Rules frame dispatcher
             ranges.add(new Range(0xD3B1, 0xD445)); // Rules cursor movement
             ranges.add(new Range(0xD446, 0xD479)); // Rules decrement
@@ -68,6 +71,7 @@ public class DumpGameSetup extends GhidraScript {
             ranges.add(new Range(0x8E73, 0x8F9B)); // Options increment
             ranges.add(new Range(0x8F9C, 0x9027)); // Options redraw
             ranges.add(new Range(0x9028, 0x9075)); // Options text/bar helper
+            ranges.add(new Range(0x902F, 0x90A5)); // Options slider-object setup
         } else if (bank == 0x87) {
             ranges.add(new Range(0x8C2D, 0x8C80)); // live volume apply helper
         }
@@ -163,6 +167,9 @@ public class DumpGameSetup extends GhidraScript {
             createLabel(toAddr(0xD516), "set_rules_confirm_copy", true);
             createLabel(toAddr(0xD59B), "set_rules_redraw", true);
             createLabel(toAddr(0xD675), "set_rules_draw_value", true);
+            createLabel(toAddr(0x9FD4), "setup_draw_proportional_text_wrapper", true);
+            createLabel(toAddr(0xA1EE), "setup_upload_redrawn_bg3", true);
+            createLabel(toAddr(0xA2D3), "setup_draw_slider_objects", true);
             listing.setComment(toAddr(0xD47A), CodeUnit.PLATE_COMMENT,
                 "Common Rules value path stores the selected 16-bit value at the working array $7E:16FB + row*2. $81:D491 marks $7E:17AD = 2; Start at $81:D516 copies all 26 bytes to committed Rules $7E:17D1.");
             listing.setComment(toAddr(0xD491), CodeUnit.PLATE_COMMENT,
@@ -178,11 +185,20 @@ public class DumpGameSetup extends GhidraScript {
             createLabel(toAddr(0x8E73), "set_options_increment", true);
             createLabel(toAddr(0x8F9C), "set_options_redraw", true);
             createLabel(toAddr(0x9028), "set_options_draw_value", true);
+            createLabel(toAddr(0x902F), "set_options_prepare_slider_objects", true);
             listing.setComment(toAddr(0x8DC6), CodeUnit.PLATE_COMMENT,
                 "Common Options value path stores the selected 16-bit value at working array $7E:16FB + row*2. Start through $82:8CD9/$82:8D0A copies all 14 bytes to committed Options $7E:17B5.");
             listing.setComment(toAddr(0x8CD1), CodeUnit.PLATE_COMMENT,
                 "Options frame dispatcher. Open/Start state changes return through the shared " +
                 "$80:A3B8 page exit/build/entrance sequence; this is not an immediate page swap.");
+            listing.setComment(toAddr(0x8F9C), CodeUnit.PLATE_COMMENT,
+                "Options redraw dispatcher. Rows 0/1 branch to $82:902F for slider objects. " +
+                "Rows >=2 select a string, call the proportional-text wrapper $81:9FD4, then " +
+                "call $81:A1EE with length $0800 to upload the redrawn BG3 canvas as a unit.");
+            listing.setComment(toAddr(0x902F), CodeUnit.PLATE_COMMENT,
+                "Options rows 0/1 only: seeds the slider object's rectangle and invokes " +
+                "$87:8A62. Discrete text rows do not use this helper; they flow through " +
+                "$81:9FD4 and the $0800-byte BG3 upload at $81:A1EE.");
         } else if (bank == 0x87) {
             createLabel(toAddr(0x8C2D), "set_options_apply_live_volume", true);
             listing.setComment(toAddr(0x8C2D), CodeUnit.PLATE_COMMENT,

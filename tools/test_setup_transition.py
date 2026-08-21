@@ -39,8 +39,8 @@ EXPECTED_AUDIO_RMS_EIGHTHS = [
 ]
 EXPECTED_AUDIO_BAND_PPM = [889127, 48767, 32034, 14587, 14255, 1068, 162]
 EXPECTED_AUDIO_CHANNEL_RMS = [3363, 3363]
-EXPECTED_ASSET_DEBUGGER_SHA256 = "e5a981af3fc5e60c5553c4fa0eb9abbeb276f5e7bf1eedbf6878f26194425d9e"
-EXPECTED_OAM_DEBUGGER_SHA256 = "154e59fbf555636e7702fced12ba3cf7b61370a07331a1b80da8a95e2951c0fe"
+EXPECTED_ASSET_DEBUGGER_SHA256 = "676984468dae3439172804742eb261651ecdb26b9abd3f5b1a7eb5a7dce0966d"
+EXPECTED_OAM_DEBUGGER_SHA256 = "51a7352c36baf6ba8016f9388b3bcf7ccf38673d58356a391d172cab86428cff"
 EXPECTED_RENDERED_MENU_SFX_SHA256 = {
     0x1A: "447a1ea48a94e2036ff0bdf1f4c5248d6284daec0b723b9a966f841976e703c4",
     0x1B: "96de89e954e4e8f75e555625abba5bf4380b8868b3263776a4cc27a6285de664",
@@ -73,32 +73,42 @@ EXPECTED_CURSOR_SHA256 = {
     6: "e3ec329dc39626391b9315e7ff60bf4c60b9a31b23d903bdcdca22ac5738fc65",
 }
 EXPECTED_MENU_RGB_SHA256 = {
-    "rules": "903f764776b281bd835d32365882881bdb1f4829bea0ddd1627cfc10aed688db",
+    "rules": "957c65fc8c422f1b07c453467259a1e9300c421f95ebe3176b43fd4aa6a227c7",
     "options": "4a1bc5f69c656dc1a3e5463768a5c2b99927393faa25616dfdbf2dcee1f57a91",
 }
 EXPECTED_MENU_ACTION_SHA256 = {
-    ("rules", 2, 1): "eba0f1d47937e6b43c11bdf964524323f35f6ae248d919dd3dc21a7fda825cfa",
+    ("rules", 2, 1): "85f622ded992727f9fc02212afe5681e34d883eb2ad4c9569fb4ef92a751d736",
     ("options", 0, 1): "1d7a804a03721d8ce5b3ac0b36c3f1a3319df0ea67f3faf9cc74441994432dd1",
-    ("rules", 9, 0): "d002d712beb8840e717285522387fe6572866c986727d7f9956e26343681e29c",
-    ("rules", 12, 0): "0521f812b5e52d26ad4bcd5db71539cc3c7ea9698aad9a9bb335335ddd237945",
-    ("options", 2, 1): "df7af52eb402106cf05711dae5bcfb34e413594ffbf276f0710daa5f29493627",
-    ("options", 2, 2): "6b22913aea79680578fe373403376feb66b654757c7e004bc011e0aa89f21bdb",
+    ("rules", 9, 0): "211b2d1efcc01c94b9c54627fed472988ab2ec7da26aafa98df3fbf1569f4055",
+    ("rules", 12, 0): "43f132b8b2d586a45e1b0dafcf1a74dfa4902317e868995a6c4aa2bb2208b390",
+    ("options", 2, 1): "b1207fe4229d653965999494be1b7cd9517c818663c3b329753bf06a4618997f",
+    ("options", 2, 2): "b0bdc06acf10615fcb21e35d030847a0f56b4d81828d735d6324fc0ab769dfa4",
     ("options", 5, 1): "4f99b6655e84b48094caad2f01626e6df84783f1f422169b4c76b3421140deec",
 }
 EXPECTED_SUBMENU_TRANSITION_SHA256 = {
     ("open", 198): "4e111bf6b8ceb0897f12599694924d6cb716c96564f029a3debd07d92c905cd9",
     ("open", 219): "2cbbeef1249170a43854962fa5b19fba628470c70beb9ce23e15a0f05cb891f2",
-    ("open", 259): "54e592f2c7ef2881a37e523aab32bc6bc50c2d6bce7d3ccbd3d9a739ff2dcf25",
-    ("open", 307): "021df816667350b1bc97c33f6229065fab2260c20a79b8c83e0e302d5d46988c",
-    ("close", 329): "2cbd30f0e97d13c73ddb235402b774f41e5a4d56eeb722d9ce92adcd00442fd0",
-    ("close", 345): "2cbbeef1249170a43854962fa5b19fba628470c70beb9ce23e15a0f05cb891f2",
-    ("close", 382): "672bdcde253f7b6736aa2285991058ae4620cbea2c518113a14f74307a97e92e",
-    ("close", 424): "b8fd74eed4359b816bd889221572c51855c38a76569dcb7f3a1892704c1576d7",
+    ("open", 259): "a1ea8bd143d57b7893e58d0783bf9301930c81a02937c80316b7b1784be33ae1",
+    ("open", 299): "a287880be2348dedd10250106766b32594cab590569530ce85678a985dfae92d",
+    ("open", 307): "1dc35df1e80987d5a2b507694a65ae84b1eb65a7167918c96e0e6aa7d35b38e4",
+    ("open", 313): "dc47df3afd364178ea855980c1f9218f9e68530c2f4b3315678ab8e865b9f79b",
+    ("close", 329): "d0658790514d3845d6a7b7d7edefd1547885f7a08b50ba1ac869f91ae8ea4c97",
+    ("close", 345): "4e0009069c79ec0ab1a05ba0b88c5417b382a2a2028ff89d7f278195e489fc24",
+    ("close", 382): "2cbbeef1249170a43854962fa5b19fba628470c70beb9ce23e15a0f05cb891f2",
+    ("close", 424): "a12c633f18c9c5cb8379d26d470b7f6d8890189ec19ea1ae7a3bcdae18d39584",
+    ("close", 450): "ace61bc3eb186f95f5a9dacb127ac7ff46cb566ac043d937de2d1264bd00a75b",
+}
+EXPECTED_OPTIONS_OPEN_TRANSITION_SHA256 = {
+    198: "92092d95a1417ab013f01ad409f480691c3810548f8352c0efc9ac7aecf761e7",
+    219: "1c5938fdb4afaf259d2042f1bb15bfad966e68519536f6970dbe461129c02e33",
+    259: "f15e1bf1d02a3bcd82ad0d82afb0aec027ed9f8a5f16f316ee813a5cf0b6691c",
+    299: "ec8a9690ee755fa6da43cb97574bd02419f35c2d47c97c027bbe0834a37bcfbb",
+    300: "651b63bc47901714f6082cc242768160cf26ce6202ef9ab2bf1f1c67c92ac625",
 }
 MESEN_MENU_PRIMITIVE_SHA256 = {
     "rules_bar": "6a08a0e635e0d0ae5c24cafbaf3507fd16ce61c0f3adc0c282a8b620b36f48c8",
     "options_bar": "bda182a61baf1f225317538bd3e4d4ddae969498ae47fd40794504342a8708cb",
-    "down_arrow": "92409e5622a90c322305da2be37e4e34cd4fd895ad008131dbf24e49de94631b",
+    "down_arrow": "e317f78198cf0dcd1d56b6e97da7117a9ea9722d1df421029b875e78d926b16f",
 }
 EXPECTED_MENU_SFX_SHA256 = {
     120: "da27ef1aacd1e96b71b40e6b0baacd0a8fa4f02ddae8754d3fc620602670eaae",
@@ -107,11 +117,11 @@ EXPECTED_MENU_SFX_SHA256 = {
 }
 EXPECTED_MENU_ASSET_SHA256 = {
     124: "acc87f5139c463275742a378f966c64cc030b40f9712dc0e7329ddc57e622b31",
-    125: "1bca42e96ef6f911db8e2e17d804606973b071b96024c5b67b5860c5db983601",
+    125: "b495ba426eb8d96de9253aa567391c8fe45aa60e39103295620967f5da519a2e",
     126: "0d25909881fe03449acf046c2d3a8cfaa64172f596864c3523c08806b581f89d",
-    127: "861ed1f614e372b99912fb3f00643019cb2180c3ebe13a048cfbc027df6a9608",
-    128: "24ca31b8d80d079fda20bf619c2db522b63781f175bd93ebaaf48ab9950a76a8",
-    129: "60b00e46f09e428a9fac44d41dff939c9cfab508f7e4bfa518c5991b086607e4",
+    127: "2ba2db37ad9656a7465b75a981b9bc5a1d54637fa3022636abc7ef6a971e1936",
+    128: "f6c9c6402fa29a40bfd2d406126d022d0b03034272935301716014c751998204",
+    129: "0f273aa9c49aa5a7262b98a215c31a1bdffe9cf77b6a760877b184dd0ec8e216",
     130: "42cd32dc8df82febef1936d3f1c2600e070e32797cee09690b0ea802ff529bf1",
     131: "e98b9ea84551ff95e47d3eb479d7705ba47232d994b40889eedb9762dc0cba06",
     132: "6b184355c9acc37a6c367f0ef4a52aaa6df5feb3cec26757a885cf3d2fb14849",
@@ -125,6 +135,15 @@ EXPECTED_MENU_ASSET_SHA256 = {
     140: "abb16640b4954cc1d968305a345c3703a0447eb47fcbc5c98cc3af7d53e45887",
     141: "ed829c237970e861f130a6b7966ee0ef911623cd39d56c142238ec95432d2102",
     142: "e01ff3a82d09d77d018ed79f2b54fd7620f975b523c680690d15efeea8b6adfa",
+    143: "2ec5e18c4ad2d4ad79a4c81eb68647239c94ee237d2a41b02df87d789b13328a",
+    144: "b495ba426eb8d96de9253aa567391c8fe45aa60e39103295620967f5da519a2e",
+    145: "70a6efc8ce7b4b1ad89fb0719f8ea32db32a7b8f25b05a640f2b3212c85eb6f5",
+    146: "b1c30076febd001f8f90e896e6c3e9bce19fcf0fa1cd43d80fc65f44920b248f",
+    147: "2ba2db37ad9656a7465b75a981b9bc5a1d54637fa3022636abc7ef6a971e1936",
+    148: "41a0ea4a2fe9150f4d9e8879f11110c12400ada4b7b69a9aba340e4c1613dce7",
+    149: "7c674bef7f0cc36f3cd6dfcc6f106cbf3f524cef5973921e00b7a17a7c36fc91",
+    150: "2ba2db37ad9656a7465b75a981b9bc5a1d54637fa3022636abc7ef6a971e1936",
+    151: "d2a22996856310de8daf5d0435ad50539dc692bd1d44d114c0ab937c969ed03b",
 }
 EXPECTED_MAIN_VALUE_RGB_SHA256 = {
     (0, 1): "e4204d3c33d0bae2680ad2a2ac2f5cc14ceec6e4bc4e8bee2f35cad05a0efdc9",
@@ -159,7 +178,7 @@ def load_pack(path):
     if len(data) < 16 or data[:8] != b"NBA95PAK":
         raise AssertionError("invalid asset pack")
     version, count = struct.unpack_from("<II", data, 8)
-    if version != 7 or 16 + count * 24 > len(data):
+    if version != 8 or 16 + count * 24 > len(data):
         raise AssertionError("invalid asset directory")
     assets = {}
     for index in range(count):
@@ -177,7 +196,7 @@ def load_pack(path):
 def check_pack(pack_path):
     raw, assets = load_pack(pack_path)
     required = {16, 17, 88, 89, 90, 91, 92, 93, 120, 121, 122,
-                *range(124, 143)}
+                *range(124, 152)}
     if not required.issubset(assets):
         raise AssertionError(f"missing Setup assets: {sorted(required - assets.keys())}")
     if len(assets[16]) != 0x10000 or len(assets[17]) != 0x200:
@@ -244,6 +263,25 @@ def check_pack(pack_path):
         ppu_writes += vram_count + cgram_count
     if offset != len(assets[92]) or ppu_writes != 3094:
         raise AssertionError("invalid Setup entrance PPU write stream")
+    for asset_id, expected_frames, expected_writes in (
+        (145, 75, 8148), (148, 61, 4523), (151, 41, 3094)
+    ):
+        trace = assets[asset_id]
+        if trace[:8] != b"NBSPPU1\0":
+            raise AssertionError(f"invalid submenu PPU trace {asset_id}")
+        version, frames = struct.unpack_from("<II", trace, 8)
+        if version != 1 or frames != expected_frames:
+            raise AssertionError(f"unexpected submenu PPU dimensions {asset_id}")
+        offset = 16
+        writes = 0
+        for _ in range(frames):
+            if offset + 4 > len(trace):
+                raise AssertionError(f"truncated submenu PPU trace {asset_id}")
+            vram_count, cgram_count = struct.unpack_from("<HH", trace, offset)
+            offset += 4 + (vram_count + cgram_count) * 3
+            writes += vram_count + cgram_count
+        if offset != len(trace) or writes != expected_writes:
+            raise AssertionError(f"invalid submenu PPU write stream {asset_id}")
     if b"post_ea_game_setup.wav" in raw:
         raise AssertionError("recorded Setup WAV name returned")
 
@@ -276,7 +314,7 @@ def check_frames(exe, rom, pack):
         for index in range(incomplete_count):
             entry_offset = 16 + index * 24
             if struct.unpack_from("<I", incomplete_raw, entry_offset)[0] == 130:
-                struct.pack_into("<I", incomplete_raw, entry_offset, 150)
+                struct.pack_into("<I", incomplete_raw, entry_offset, 152)
                 break
         else:
             raise AssertionError("canonical pack is missing OFF variant asset 130")
@@ -295,7 +333,7 @@ def check_frames(exe, rom, pack):
         for index in range(main_count):
             entry_offset = 16 + index * 24
             if struct.unpack_from("<I", missing_main_raw, entry_offset)[0] == 133:
-                struct.pack_into("<I", missing_main_raw, entry_offset, 149)
+                struct.pack_into("<I", missing_main_raw, entry_offset, 153)
                 break
         missing_main_pack = Path(directory) / "missing_season_variant.pak"
         missing_main_pack.write_bytes(missing_main_raw)
@@ -590,10 +628,30 @@ def check_frames(exe, rom, pack):
                 command.append("--setup-menu-confirm")
             command.extend(["--rom", str(rom), "--assets", str(pack),
                             "--frames", str(frame), "--dump-frame", str(output)])
-            subprocess.run(command, text=True, capture_output=True, check=True)
+            result = subprocess.run(command, text=True, capture_output=True, check=True)
             actual = hashlib.sha256(Image.open(output).convert("RGB").tobytes()).hexdigest()
             if actual != expected_hash:
                 raise AssertionError(f"submenu {direction} transition frame {frame} changed")
+            if direction == "open" and frame == 313 and "transition=0/146" not in result.stdout:
+                raise AssertionError("Set Rules did not honor its 146-frame ROM build")
+            if direction == "close" and frame == 450 and "transition=0/132" not in result.stdout:
+                raise AssertionError("submenu return did not honor its 132-frame ROM build")
+
+        # Options has a shorter ROM-authored BG3 construction than Rules.
+        # Keep it independent so a future shared-timing shortcut cannot pass.
+        for frame, expected_hash in EXPECTED_OPTIONS_OPEN_TRANSITION_SHA256.items():
+            output = Path(directory) / f"options_open_{frame}.bmp"
+            result = subprocess.run(
+                [str(exe), "--headless", "--setup-only", "--setup-menu", "options",
+                 "--rom", str(rom), "--assets", str(pack), "--frames", str(frame),
+                 "--dump-frame", str(output)],
+                text=True, capture_output=True, check=True,
+            )
+            actual = hashlib.sha256(Image.open(output).convert("RGB").tobytes()).hexdigest()
+            if actual != expected_hash:
+                raise AssertionError(f"Set Options open transition frame {frame} changed")
+            if frame == 300 and "transition=0/132" not in result.stdout:
+                raise AssertionError("Set Options did not honor its 132-frame ROM build")
 
         for (menu, row, rights), expected_hash in EXPECTED_MENU_ACTION_SHA256.items():
             output = Path(directory) / f"setup_{menu}_{row}_{rights}.bmp"

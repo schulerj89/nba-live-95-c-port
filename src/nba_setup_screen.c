@@ -24,7 +24,11 @@ static bool setup_menu_assets_ready(const NbaSetupScreen *s) {
     return s && s->rules_vram && s->rules_cgram && s->rules_oam &&
            s->options_vram && s->options_cgram && s->options_oam &&
            s->options_off_vram && s->options_mono_vram &&
-           s->options_cpu_vram;
+           s->options_cpu_vram && s->rules_open_vram &&
+           s->rules_open_cgram && s->rules_open_trace &&
+           s->options_open_vram && s->options_open_cgram &&
+           s->options_open_trace && s->return_vram &&
+           s->return_cgram && s->return_trace;
 }
 
 static uint16_t setup_u16(const uint8_t *p) {
@@ -36,6 +40,12 @@ static uint32_t setup_u32(const uint8_t *p) {
            ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
 }
 
+static bool setup_decode_ppu_to(uint8_t *vram, uint8_t *cgram,
+                                const uint8_t *trace, size_t trace_size,
+                                size_t *trace_offset, int *decoded_frame,
+                                int target);
+static bool setup_transition_trace_complete(const NbaSetupScreen *s);
+
 /* $80:A2BF/$80:A3B8 are the shared layer builder/frame sequencer reached by
  * both $81:D318 (Rules) and $82:8CD1 (Options).  The values below are the
  * complete $2100/$212C/$212D/$210D-$2112 trace around A/Start, captured by
@@ -43,20 +53,36 @@ static uint32_t setup_u32(const uint8_t *p) {
 static void setup_update_page_transition(NbaSetupScreen *s) {
     int t = ++s->transition_frame;
     bool opening = s->transition == NBA_SETUP_TRANSITION_OPEN;
-    int slide_start = opening ? 21 : 6;
-    int entrance_start = opening ? 76 : 58;
+    bool rules_opening = opening &&
+                         s->transition_target == NBA_SETUP_PAGE_RULES;
+    int bg3_last_scroll = opening ? 15 : 16;
+    int slide_start = opening ? 21 : 22;
+    int entrance_start = opening ? (rules_opening ? 76 : 72) : 74;
+    int trace_start = opening ? 72 : 74;
+
+    if (t >= trace_start && s->active_transition_trace) {
+        if (!setup_decode_ppu_to(s->transition_vram, s->transition_cgram,
+                                 s->active_transition_trace,
+                                 s->active_transition_trace_size,
+                                 &s->active_transition_trace_offset,
+                                 &s->active_transition_decoded_frame,
+                                 t - trace_start)) {
+            s->has_gfx = false;
+            return;
+        }
+    }
 
     s->transition_blank = false;
-    if (opening && t <= 20) {
+    if (t < slide_start) {
         s->brightness = 15;
         s->sub_screen = 4;
         if (t == 1) s->main_screen = 7;
-        else if (t <= 15) {
+        else if (t <= bg3_last_scroll) {
             s->main_screen = 19;
             s->bg3_vscroll = t >= 3 ? (t - 2) * 14 : 0;
         } else {
             s->main_screen = 3;
-            s->bg3_vscroll = 182;
+            s->bg3_vscroll = opening ? 182 : 196;
         }
         return;
     }
@@ -92,16 +118,39 @@ static void setup_update_page_transition(NbaSetupScreen *s) {
     s->bg3_vscroll = 280;
 
     if (opening) {
-        if (enter == 43) {
-            s->main_screen = 23;
-            s->bg3_vscroll = 252;
-        } else if (enter >= 44 && enter <= 61) {
-            s->main_screen = 19;
-            s->bg3_vscroll = 252 - (enter - 44) * 14;
-        } else if (enter >= 62) {
-            s->bg3_vscroll = 0;
-            s->sub_screen = enter >= 64 ? 4 : 0;
-            if (enter >= 64) s->transition = NBA_SETUP_TRANSITION_NONE;
+        if (rules_opening) {
+            if (enter == 43) {
+                s->main_screen = 23;
+                s->bg3_vscroll = 252;
+            } else if (enter >= 44 && enter <= 61) {
+                s->main_screen = 19;
+                s->bg3_vscroll = 252 - (enter - 44) * 14;
+            } else if (enter >= 62) {
+                s->bg3_vscroll = 0;
+                s->sub_screen = enter >= 64 ? 4 : 0;
+                if (enter >= 64 && setup_transition_trace_complete(s))
+                    s->transition = NBA_SETUP_TRANSITION_NONE;
+            }
+        } else {
+            if (enter == 41) {
+                s->bg3_vscroll = 252;
+            } else if (enter == 42) {
+                s->main_screen = 23;
+                s->bg3_vscroll = 252;
+            } else if (enter >= 43 && enter <= 58) {
+                s->main_screen = 19;
+                s->bg3_vscroll = 238 - (enter - 43) * 14;
+            } else if (enter == 59) {
+                s->main_screen = 23;
+                s->sub_screen = 4;
+                s->bg3_vscroll = 14;
+            } else if (enter >= 60) {
+                s->main_screen = 23;
+                s->bg3_vscroll = 0;
+                s->sub_screen = 4;
+                if (setup_transition_trace_complete(s))
+                    s->transition = NBA_SETUP_TRANSITION_NONE;
+            }
         }
     } else {
         if (enter == 39) {
@@ -120,40 +169,94 @@ static void setup_update_page_transition(NbaSetupScreen *s) {
             s->main_screen = 23;
             s->sub_screen = 4;
             s->bg3_vscroll = 0;
-            s->transition = NBA_SETUP_TRANSITION_NONE;
+            if (setup_transition_trace_complete(s))
+                s->transition = NBA_SETUP_TRANSITION_NONE;
         }
     }
 }
 
-static bool nba_setup_screen_decode_ppu_to(NbaSetupScreen *s, int target) {
-    if (!s->ppu_trace || s->ppu_trace_size < SETUP_PPU_HEADER_SIZE ||
-        memcmp(s->ppu_trace, SETUP_PPU_MAGIC, 8) != 0 ||
-        setup_u32(s->ppu_trace + 8) != 1) return false;
-    uint32_t frame_count = setup_u32(s->ppu_trace + 12);
+static bool setup_decode_ppu_to(uint8_t *vram, uint8_t *cgram,
+                                const uint8_t *trace, size_t trace_size,
+                                size_t *trace_offset, int *decoded_frame,
+                                int target) {
+    if (!vram || !cgram || !trace || !trace_offset || !decoded_frame ||
+        trace_size < SETUP_PPU_HEADER_SIZE ||
+        memcmp(trace, SETUP_PPU_MAGIC, 8) != 0 ||
+        setup_u32(trace + 8) != 1) return false;
+    uint32_t frame_count = setup_u32(trace + 12);
     if (frame_count == 0 || frame_count > 300) return false;
     if (target >= (int)frame_count) target = (int)frame_count - 1;
 
-    while (s->ppu_decoded_frame < target) {
-        size_t off = s->ppu_trace_offset;
-        if (off + 4 > s->ppu_trace_size) return false;
-        uint16_t vram_count = setup_u16(s->ppu_trace + off);
-        uint16_t cgram_count = setup_u16(s->ppu_trace + off + 2);
+    while (*decoded_frame < target) {
+        size_t off = *trace_offset;
+        if (off + 4 > trace_size) return false;
+        uint16_t vram_count = setup_u16(trace + off);
+        uint16_t cgram_count = setup_u16(trace + off + 2);
         off += 4;
-        if (off + ((size_t)vram_count + cgram_count) * 3u > s->ppu_trace_size)
+        if (off + ((size_t)vram_count + cgram_count) * 3u > trace_size)
             return false;
         for (uint16_t i = 0; i < vram_count; ++i) {
-            uint16_t address = setup_u16(s->ppu_trace + off);
-            s->vram[address] = s->ppu_trace[off + 2];
+            uint16_t address = setup_u16(trace + off);
+            vram[address] = trace[off + 2];
             off += 3;
         }
         for (uint16_t i = 0; i < cgram_count; ++i) {
-            uint16_t address = setup_u16(s->ppu_trace + off);
-            if (address < sizeof(s->cgram)) s->cgram[address] = s->ppu_trace[off + 2];
+            uint16_t address = setup_u16(trace + off);
+            if (address < 0x200u) cgram[address] = trace[off + 2];
             off += 3;
         }
-        s->ppu_trace_offset = off;
-        s->ppu_decoded_frame++;
+        *trace_offset = off;
+        (*decoded_frame)++;
     }
+    return true;
+}
+
+static bool nba_setup_screen_decode_ppu_to(NbaSetupScreen *s, int target) {
+    return setup_decode_ppu_to(s->vram, s->cgram,
+                               s->ppu_trace, s->ppu_trace_size,
+                               &s->ppu_trace_offset, &s->ppu_decoded_frame,
+                               target);
+}
+
+static bool setup_transition_trace_complete(const NbaSetupScreen *s) {
+    return !s->active_transition_trace ||
+           s->active_transition_decoded_frame + 1 >=
+               s->active_transition_frame_count;
+}
+
+static bool setup_begin_transition_canvas(NbaSetupScreen *s,
+                                          NbaSetupTransition transition,
+                                          NbaSetupPage target) {
+    const uint8_t *vram = NULL, *cgram = NULL, *trace = NULL;
+    size_t trace_size = 0;
+    if (transition == NBA_SETUP_TRANSITION_RETURN) {
+        vram = s->return_vram;
+        cgram = s->return_cgram;
+        trace = s->return_trace;
+        trace_size = s->return_trace_size;
+    } else if (target == NBA_SETUP_PAGE_RULES) {
+        vram = s->rules_open_vram;
+        cgram = s->rules_open_cgram;
+        trace = s->rules_open_trace;
+        trace_size = s->rules_open_trace_size;
+    } else if (target == NBA_SETUP_PAGE_OPTIONS) {
+        vram = s->options_open_vram;
+        cgram = s->options_open_cgram;
+        trace = s->options_open_trace;
+        trace_size = s->options_open_trace_size;
+    }
+    if (!vram || !cgram || !trace || trace_size < SETUP_PPU_HEADER_SIZE ||
+        memcmp(trace, SETUP_PPU_MAGIC, 8) != 0 || setup_u32(trace + 8) != 1)
+        return false;
+    uint32_t frames = setup_u32(trace + 12);
+    if (frames == 0 || frames > 300) return false;
+    memcpy(s->transition_vram, vram, sizeof(s->transition_vram));
+    memcpy(s->transition_cgram, cgram, sizeof(s->transition_cgram));
+    s->active_transition_trace = trace;
+    s->active_transition_trace_size = trace_size;
+    s->active_transition_trace_offset = SETUP_PPU_HEADER_SIZE;
+    s->active_transition_decoded_frame = -1;
+    s->active_transition_frame_count = (int)frames;
     return true;
 }
 
@@ -244,6 +347,15 @@ void nba_setup_screen_init(NbaSetupScreen *s, const NbaAssetPack *assets,
     const NbaAssetItem *options_off = nba_assets_get(assets, NBA_ASSET_OPTIONS_OFF_VRAM);
     const NbaAssetItem *options_mono = nba_assets_get(assets, NBA_ASSET_OPTIONS_MONO_VRAM);
     const NbaAssetItem *options_cpu = nba_assets_get(assets, NBA_ASSET_OPTIONS_CPU_VRAM);
+    const NbaAssetItem *rules_open_vram = nba_assets_get(assets, NBA_ASSET_RULES_OPEN_VRAM);
+    const NbaAssetItem *rules_open_cgram = nba_assets_get(assets, NBA_ASSET_RULES_OPEN_CGRAM);
+    const NbaAssetItem *rules_open_trace = nba_assets_get(assets, NBA_ASSET_RULES_OPEN_PPU_TRACE);
+    const NbaAssetItem *options_open_vram = nba_assets_get(assets, NBA_ASSET_OPTIONS_OPEN_VRAM);
+    const NbaAssetItem *options_open_cgram = nba_assets_get(assets, NBA_ASSET_OPTIONS_OPEN_CGRAM);
+    const NbaAssetItem *options_open_trace = nba_assets_get(assets, NBA_ASSET_OPTIONS_OPEN_PPU_TRACE);
+    const NbaAssetItem *return_vram = nba_assets_get(assets, NBA_ASSET_SETUP_RETURN_VRAM);
+    const NbaAssetItem *return_cgram = nba_assets_get(assets, NBA_ASSET_SETUP_RETURN_CGRAM);
+    const NbaAssetItem *return_trace = nba_assets_get(assets, NBA_ASSET_SETUP_RETURN_PPU_TRACE);
     static const NbaAssetId main_variant_ids[10] = {
         NBA_ASSET_SETUP_MODE_SEASON_VRAM,
         NBA_ASSET_SETUP_MODE_PLAYOFFS_VRAM,
@@ -265,6 +377,30 @@ void nba_setup_screen_init(NbaSetupScreen *s, const NbaAssetPack *assets,
     if (options_off && options_off->size == 0x10000u) s->options_off_vram = options_off->data;
     if (options_mono && options_mono->size == 0x10000u) s->options_mono_vram = options_mono->data;
     if (options_cpu && options_cpu->size == 0x10000u) s->options_cpu_vram = options_cpu->data;
+    if (rules_open_vram && rules_open_vram->size == 0x10000u)
+        s->rules_open_vram = rules_open_vram->data;
+    if (rules_open_cgram && rules_open_cgram->size == 0x200u)
+        s->rules_open_cgram = rules_open_cgram->data;
+    if (rules_open_trace && rules_open_trace->size >= SETUP_PPU_HEADER_SIZE) {
+        s->rules_open_trace = rules_open_trace->data;
+        s->rules_open_trace_size = rules_open_trace->size;
+    }
+    if (options_open_vram && options_open_vram->size == 0x10000u)
+        s->options_open_vram = options_open_vram->data;
+    if (options_open_cgram && options_open_cgram->size == 0x200u)
+        s->options_open_cgram = options_open_cgram->data;
+    if (options_open_trace && options_open_trace->size >= SETUP_PPU_HEADER_SIZE) {
+        s->options_open_trace = options_open_trace->data;
+        s->options_open_trace_size = options_open_trace->size;
+    }
+    if (return_vram && return_vram->size == 0x10000u)
+        s->return_vram = return_vram->data;
+    if (return_cgram && return_cgram->size == 0x200u)
+        s->return_cgram = return_cgram->data;
+    if (return_trace && return_trace->size >= SETUP_PPU_HEADER_SIZE) {
+        s->return_trace = return_trace->data;
+        s->return_trace_size = return_trace->size;
+    }
     if (s->has_gfx) {
         s->main_value_vram[0][0] = s->vram; /* Exhibition */
         s->main_value_vram[1][1] = s->vram; /* Simulation */
@@ -402,6 +538,9 @@ NbaSetupUpdateResult nba_setup_screen_update(NbaSetupScreen *s,
             }
             s->menu_row = 0;
             s->menu_scroll = 0;
+            if (!setup_begin_transition_canvas(s, NBA_SETUP_TRANSITION_RETURN,
+                                               NBA_SETUP_PAGE_MAIN))
+                return setup_result(NBA_SETUP_SOUND_NONE, NBA_SETUP_ACTION_NONE);
             s->transition = NBA_SETUP_TRANSITION_RETURN;
             s->transition_target = NBA_SETUP_PAGE_MAIN;
             s->transition_frame = 0;
@@ -442,6 +581,9 @@ NbaSetupUpdateResult nba_setup_screen_update(NbaSetupScreen *s,
         if (s->row == NBA_SETUP_ROW_RULES && setup_menu_assets_ready(s)) {
             memcpy(s->working_rules, s->config->rules, sizeof(s->working_rules));
             s->menu_row = s->menu_scroll = 0;
+            if (!setup_begin_transition_canvas(s, NBA_SETUP_TRANSITION_OPEN,
+                                               NBA_SETUP_PAGE_RULES))
+                return setup_result(NBA_SETUP_SOUND_NONE, NBA_SETUP_ACTION_NONE);
             s->transition = NBA_SETUP_TRANSITION_OPEN;
             s->transition_target = NBA_SETUP_PAGE_RULES;
             s->transition_frame = 0;
@@ -451,6 +593,9 @@ NbaSetupUpdateResult nba_setup_screen_update(NbaSetupScreen *s,
         if (s->row == NBA_SETUP_ROW_OPTIONS && setup_menu_assets_ready(s)) {
             memcpy(s->working_options, s->config->options, sizeof(s->working_options));
             s->menu_row = s->menu_scroll = 0;
+            if (!setup_begin_transition_canvas(s, NBA_SETUP_TRANSITION_OPEN,
+                                               NBA_SETUP_PAGE_OPTIONS))
+                return setup_result(NBA_SETUP_SOUND_NONE, NBA_SETUP_ACTION_NONE);
             s->transition = NBA_SETUP_TRANSITION_OPEN;
             s->transition_target = NBA_SETUP_PAGE_OPTIONS;
             s->transition_frame = 0;
@@ -469,8 +614,10 @@ NbaSetupUpdateResult nba_setup_screen_update(NbaSetupScreen *s,
 static void setup_restore_bg2_rect(const NbaSetupScreen *s, NbaRenderer *ren,
                                    const uint8_t *vram, const uint8_t *cgram,
                                    int x, int y, int w, int h) {
-    for (int py = y; py < y + h && py < NBA_SNES_HEIGHT; ++py) {
-        for (int px = x; px < x + w && px < NBA_SNES_WIDTH; ++px) {
+    int first_y = y < 0 ? 0 : y;
+    int first_x = x < 0 ? 0 : x;
+    for (int py = first_y; py < y + h && py < NBA_SNES_HEIGHT; ++py) {
+        for (int px = first_x; px < x + w && px < NBA_SNES_WIDTH; ++px) {
             uint32_t out = nba_snes_cgram_color(cgram, 0, 15, 0, 0, 0);
             NbaSnesBgPixel pixel;
             if (nba_snes_sample_bg(vram, NBA_SETUP_BG2_TILEMAP, NBA_SETUP_BG2_CHR,
@@ -487,14 +634,16 @@ static void setup_restore_bg2_rect(const NbaSetupScreen *s, NbaRenderer *ren,
 /* $80:A77C selects the active main-page value and the generic BG3 writer
  * stores it at $7E:16FB + row*2. Copy the resulting game-authored glyph
  * pixels from the corresponding captured VRAM state. */
-static void setup_render_main_values(const NbaSetupScreen *s, NbaRenderer *ren) {
+static void setup_render_main_values(const NbaSetupScreen *s, NbaRenderer *ren,
+                                     int bg3_scroll) {
     if (!s || s->page != NBA_SETUP_PAGE_MAIN) return;
     for (int row = 0; row < NBA_SETUP_MAIN_VALUE_COUNT; ++row) {
         uint16_t value = s->config->main_values[row];
         if (value == nba_default_main_values[row] || value > setup_main_max[row]) continue;
         const uint8_t *source_vram = s->main_value_vram[row][value];
         if (!source_vram) continue;
-        int top = nba_setup_screen_row_band_top((NbaSetupRow)row);
+        int source_top = nba_setup_screen_row_band_top((NbaSetupRow)row);
+        int top = source_top - bg3_scroll;
         setup_restore_bg2_rect(s, ren, s->vram, s->cgram, 138, top, 110, 16);
         for (int py = 0; py < 16; ++py) {
             for (int px = 0; px < 110; ++px) {
@@ -502,7 +651,8 @@ static void setup_render_main_values(const NbaSetupScreen *s, NbaRenderer *ren) 
                 int x = 138 + px, y = top + py;
                 if (!nba_snes_sample_bg(source_vram, NBA_SETUP_BG3_TILEMAP,
                                         NBA_SETUP_BG3_CHR, 2, false, true,
-                                        0, 0, x, y, &pixel)) continue;
+                                        0, 0, x, source_top + py, &pixel)) continue;
+                if (y < 0 || y >= NBA_SNES_HEIGHT) continue;
                 bool highlighted = row == (int)s->row;
                 ren->pixels[y * NBA_SNES_WIDTH + x] = nba_snes_cgram_color(
                     s->cgram, pixel.palette * 4 + pixel.color_index,
@@ -654,7 +804,8 @@ static void setup_draw_rom_menu_objects(const NbaSetupScreen *s,
 }
 
 static void setup_render_menu_values(const NbaSetupScreen *s, NbaRenderer *ren,
-                                     const uint8_t *vram, const uint8_t *cgram) {
+                                     const uint8_t *vram, const uint8_t *cgram,
+                                     int bg3_scroll, bool draw_objects) {
     if (s->page == NBA_SETUP_PAGE_MAIN) return;
     const uint16_t *values = s->page == NBA_SETUP_PAGE_RULES ?
                              s->working_rules : s->working_options;
@@ -669,7 +820,12 @@ static void setup_render_menu_values(const NbaSetupScreen *s, NbaRenderer *ren,
     for (int visible = 0; visible < 7; ++visible) {
         int row = s->menu_scroll + visible;
         if (row >= count) break;
-        int top = (s->page == NBA_SETUP_PAGE_RULES ? 76 : 68) + visible * 18;
+        int source_top = (s->page == NBA_SETUP_PAGE_RULES ? 76 : 68) + visible * 18;
+        int top = source_top - bg3_scroll;
+        /* Music Mode owns a complete ROM-captured BG3 canvas for each value.
+         * $82:8F9C->$81:9FD4 redraws and uploads that canvas as a unit, so do
+         * not composite a short word over the old STEREO cell. */
+        if (s->page == NBA_SETUP_PAGE_OPTIONS && row == 2) continue;
         if (row < 2 || values[row] != defaults[row]) {
             setup_restore_bg2_rect(s, ren, vram, cgram, 140, top, 82, 16);
             if (row < 2) {
@@ -682,7 +838,7 @@ static void setup_render_menu_values(const NbaSetupScreen *s, NbaRenderer *ren,
             }
         }
     }
-    setup_draw_rom_menu_objects(s, ren);
+    if (draw_objects) setup_draw_rom_menu_objects(s, ren);
 }
 
 /**
@@ -701,11 +857,19 @@ void nba_setup_screen_render(const NbaSetupScreen *s, NbaRenderer *ren) {
 
     const uint8_t *vram = s->vram;
     const uint8_t *cgram = s->cgram;
-    if (s->page == NBA_SETUP_PAGE_RULES) {
+    bool transition_canvas = s->transition != NBA_SETUP_TRANSITION_NONE &&
+                             s->page == s->transition_target &&
+                             s->active_transition_trace != NULL;
+    if (transition_canvas) {
+        vram = s->transition_vram;
+        cgram = s->transition_cgram;
+    } else if (s->page == NBA_SETUP_PAGE_RULES) {
         vram = s->rules_vram;
         cgram = s->rules_cgram;
     } else if (s->page == NBA_SETUP_PAGE_OPTIONS) {
-        vram = s->options_vram;
+        uint16_t mode = s->working_options[2];
+        vram = mode == 0u ? s->options_off_vram :
+               (mode == 1u ? s->options_mono_vram : s->options_vram);
         cgram = s->options_cgram;
     }
     uint32_t backdrop = nba_snes_cgram_color(cgram, 0, s->brightness, 0, 0, 0);
@@ -773,8 +937,12 @@ void nba_setup_screen_render(const NbaSetupScreen *s, NbaRenderer *ren) {
             ren->pixels[y * NBA_SNES_WIDTH + x] = out;
         }
     }
-    if (s->transition == NBA_SETUP_TRANSITION_NONE) {
-        setup_render_main_values(s, ren);
-        setup_render_menu_values(s, ren, vram, cgram);
+    if (!transition_canvas && ((s->main_screen | s->sub_screen) & 0x04)) {
+        int overlay_scroll = s->bg3_vscroll;
+        if (s->page == NBA_SETUP_PAGE_RULES && s->menu_scroll > 0)
+            overlay_scroll += s->menu_scroll * NBA_SETUP_ROW_PITCH;
+        setup_render_main_values(s, ren, overlay_scroll);
+        setup_render_menu_values(s, ren, vram, cgram, overlay_scroll,
+                                 (s->main_screen & 0x10) != 0);
     }
 }

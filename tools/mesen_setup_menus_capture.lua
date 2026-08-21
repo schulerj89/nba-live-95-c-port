@@ -16,12 +16,17 @@ local wram_log = assert(io.open(out .. "/wram_writes.txt", "wb"))
 local dsp_log = assert(io.open(out .. "/dsp_writes.txt", "wb"))
 local ppu_log = assert(io.open(out .. "/menu_transition_ppu.txt", "wb"))
 local call_log = assert(io.open(out .. "/menu_transition_calls.txt", "wb"))
+local open_vram_writes = assert(io.open(out .. "/open_transition_vram_writes.txt", "wb"))
+local open_cgram_writes = assert(io.open(out .. "/open_transition_cgram_writes.txt", "wb"))
+local return_vram_writes = assert(io.open(out .. "/return_transition_vram_writes.txt", "wb"))
+local return_cgram_writes = assert(io.open(out .. "/return_transition_cgram_writes.txt", "wb"))
 local global_frame = 0
 local title_frame = -1
 local setup_frame = -1
 local PRESS_TITLE_AT = 850
-local LAST_SETUP_FRAME = 950
+local LAST_SETUP_FRAME = 1050
 local target_row = menu == "rules" and 4 or 5
+local open_vram, open_cgram, return_vram, return_cgram
 
 local function dump_mem(name, mem_type, size)
     local chunks = {}
@@ -33,6 +38,36 @@ local function dump_mem(name, mem_type, size)
 end
 
 local function dump_wram(name) dump_mem(name, emu.memType.snesWorkRam, 0x20000) end
+
+local function snapshot_ppu(prefix)
+    dump_mem(prefix .. "_vram.bin", emu.memType.snesVideoRam, 0x10000)
+    dump_mem(prefix .. "_cgram.bin", emu.memType.snesCgRam, 0x200)
+    local vram, cgram = {}, {}
+    for address = 0, 0xFFFF do
+        vram[address] = emu.read(address, emu.memType.snesVideoRam, false) or 0
+    end
+    for address = 0, 0x1FF do
+        cgram[address] = emu.read(address, emu.memType.snesCgRam, false) or 0
+    end
+    return vram, cgram
+end
+
+local function trace_ppu(frame, vram, cgram, vram_file, cgram_file)
+    for address = 0, 0xFFFF do
+        local value = emu.read(address, emu.memType.snesVideoRam, false) or 0
+        if value ~= vram[address] then
+            vram_file:write(string.format("%d %04X %02X\n", frame, address, value))
+            vram[address] = value
+        end
+    end
+    for address = 0, 0x1FF do
+        local value = emu.read(address, emu.memType.snesCgRam, false) or 0
+        if value ~= cgram[address] then
+            cgram_file:write(string.format("%d %04X %02X\n", frame, address, value))
+            cgram[address] = value
+        end
+    end
+end
 
 local function shot(name)
     local f = assert(io.open(out .. "/" .. name, "wb"))
@@ -210,6 +245,18 @@ emu.addEventCallback(function()
     if frame == 560 then
         dump_wram("wram_open.bin"); shot("menu_open.png")
     end
+    if frame == 541 then
+        open_vram, open_cgram = snapshot_ppu("open_transition")
+    elseif frame >= 542 and frame <= 649 and open_vram then
+        trace_ppu(frame, open_vram, open_cgram,
+                  open_vram_writes, open_cgram_writes)
+    end
+    if frame == 903 then
+        return_vram, return_cgram = snapshot_ppu("return_transition")
+    elseif frame >= 904 and frame <= 1000 and return_vram then
+        trace_ppu(frame, return_vram, return_cgram,
+                  return_vram_writes, return_cgram_writes)
+    end
     if frame == 649 then
         dump_wram("wram_before_change.bin"); shot("before_change.png")
         -- The transition does not finish constructing BG3 until after the
@@ -238,15 +285,19 @@ emu.addEventCallback(function()
     if scroll_mode and frame == 780 then shot("rules_scroll_bottom.png") end
     if frame == 860 then dump_wram("wram_after_back.bin"); shot("after_back.png") end
 
-    if (frame >= 465 and frame <= 630) or (frame >= 825 and frame <= 949) then
+    if (frame >= 465 and frame <= 649) or (frame >= 825 and frame <= 1000) then
         local st = emu.getState()
         ppu_log:write(string.format(
-            "%d bright=%s main=%s sub=%s bg1h=%s bg1v=%s bg2h=%s bg2v=%s bg3h=%s bg3v=%s oamBase=%s oamMode=%s\n",
+            "%d bright=%s main=%s sub=%s bg1h=%s bg1v=%s bg2h=%s bg2v=%s bg3h=%s bg3v=%s bg3map=%s bg3chr=%s bg3wide=%s bg3tall=%s oamBase=%s oamMode=%s\n",
             frame, tostring(st["ppu.screenBrightness"]),
             tostring(st["ppu.mainScreenLayers"]), tostring(st["ppu.subScreenLayers"]),
             tostring(st["ppu.layers[0].hscroll"]), tostring(st["ppu.layers[0].vscroll"]),
             tostring(st["ppu.layers[1].hscroll"]), tostring(st["ppu.layers[1].vscroll"]),
             tostring(st["ppu.layers[2].hscroll"]), tostring(st["ppu.layers[2].vscroll"]),
+            tostring(st["ppu.layers[2].tilemapAddress"]),
+            tostring(st["ppu.layers[2].chrAddress"]),
+            tostring(st["ppu.layers[2].doubleWidth"]),
+            tostring(st["ppu.layers[2].doubleHeight"]),
             tostring(st["ppu.oamBaseAddress"]), tostring(st["ppu.oamMode"])))
         if frame % 4 == 1 then
             shot(string.format(frame < 700 and "open_step_%03d.png" or "close_step_%03d.png", frame))
@@ -257,6 +308,8 @@ emu.addEventCallback(function()
         write_exec_ranges()
         log:write("capture done\n"); log:close(); exec_log:close(); apu_log:close();
         wram_log:close(); dsp_log:close(); ppu_log:close(); call_log:close()
+        open_vram_writes:close(); open_cgram_writes:close()
+        return_vram_writes:close(); return_cgram_writes:close()
         local done = assert(io.open(out .. "/capture_complete.txt", "wb"))
         done:write("ok\n"); done:close(); emu.stop(0)
     end

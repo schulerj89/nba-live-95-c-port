@@ -36,12 +36,17 @@ $Captures = @(
     @{ Name = 'setup_transition'; Script = 'mesen_setup_transition_capture.lua' },
     @{ Name = 'setup_rules'; Script = 'mesen_setup_menus_capture.lua';
        Env = @{ NBA95_CAPTURE_MENU = 'rules'; NBA95_CAPTURE_SCROLL = '1' };
-       Required = @('menu_vram.bin', 'menu_cgram.bin', 'menu_oam.bin') },
+       Required = @('menu_vram.bin', 'menu_cgram.bin', 'menu_oam.bin',
+                    'open_transition_vram.bin', 'open_transition_cgram.bin',
+                    'open_transition_vram_writes.txt') },
     @{ Name = 'setup_options'; Script = 'mesen_setup_menus_capture.lua';
        Env = @{ NBA95_CAPTURE_MENU = 'options'; NBA95_CAPTURE_VARIANTS = '1' };
        Required = @('menu_vram.bin', 'menu_cgram.bin', 'menu_oam.bin',
                     'options_off_vram.bin', 'options_mono_vram.bin',
-                    'options_cpu_vram.bin') },
+                    'options_cpu_vram.bin', 'open_transition_vram.bin',
+                    'open_transition_cgram.bin', 'open_transition_vram_writes.txt',
+                    'return_transition_vram.bin', 'return_transition_cgram.bin',
+                    'return_transition_vram_writes.txt') },
     @{ Name = 'setup_main'; Script = 'mesen_setup_main_capture.lua';
        Required = @('row0_step1_vram.bin', 'row0_step2_vram.bin',
                     'row0_step3_vram.bin', 'row1_step1_vram.bin',

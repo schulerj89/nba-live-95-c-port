@@ -5,7 +5,7 @@
 
 #define NBA_ASSET_MAGIC "NBA95PAK"
 
-#define NBA_ASSET_PACK_VERSION 7u
+#define NBA_ASSET_PACK_VERSION 8u
 #define NBA_ASSET_HEADER_SIZE 16u
 #define NBA_ASSET_ENTRY_SIZE 24u
 
@@ -57,11 +57,17 @@ static bool asset_metadata_valid(uint32_t id, uint32_t size, uint32_t width,
         case NBA_ASSET_SETUP_QUARTER_5_VRAM:
         case NBA_ASSET_SETUP_QUARTER_8_VRAM:
         case NBA_ASSET_SETUP_QUARTER_12_VRAM:
+        case NBA_ASSET_RULES_OPEN_VRAM:
+        case NBA_ASSET_OPTIONS_OPEN_VRAM:
+        case NBA_ASSET_SETUP_RETURN_VRAM:
             return size == 0x10000u && width == 0u && height == 0u && flags == 0u;
 
         case NBA_ASSET_SETUP_CGRAM:
         case NBA_ASSET_SET_RULES_CGRAM:
         case NBA_ASSET_SET_OPTIONS_CGRAM:
+        case NBA_ASSET_RULES_OPEN_CGRAM:
+        case NBA_ASSET_OPTIONS_OPEN_CGRAM:
+        case NBA_ASSET_SETUP_RETURN_CGRAM:
             return size == 0x200u && width == 0u && height == 0u && flags == 0u;
 
         case NBA_ASSET_SET_RULES_OAM:

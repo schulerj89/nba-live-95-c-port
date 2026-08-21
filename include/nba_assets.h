@@ -72,6 +72,15 @@ typedef enum {
     NBA_ASSET_SETUP_QUARTER_5_VRAM        = 140,
     NBA_ASSET_SETUP_QUARTER_8_VRAM        = 141,
     NBA_ASSET_SETUP_QUARTER_12_VRAM       = 142,
+    NBA_ASSET_RULES_OPEN_VRAM              = 143,
+    NBA_ASSET_RULES_OPEN_CGRAM             = 144,
+    NBA_ASSET_RULES_OPEN_PPU_TRACE         = 145,
+    NBA_ASSET_OPTIONS_OPEN_VRAM            = 146,
+    NBA_ASSET_OPTIONS_OPEN_CGRAM           = 147,
+    NBA_ASSET_OPTIONS_OPEN_PPU_TRACE       = 148,
+    NBA_ASSET_SETUP_RETURN_VRAM             = 149,
+    NBA_ASSET_SETUP_RETURN_CGRAM            = 150,
+    NBA_ASSET_SETUP_RETURN_PPU_TRACE        = 151,
     NBA_ASSET_MAX                   = 160
 } NbaAssetId;
 

@@ -198,6 +198,25 @@ typedef struct {
     const uint8_t *options_off_vram;
     const uint8_t *options_mono_vram;
     const uint8_t *options_cpu_vram;
+    const uint8_t *rules_open_vram;
+    const uint8_t *rules_open_cgram;
+    const uint8_t *rules_open_trace;
+    size_t rules_open_trace_size;
+    const uint8_t *options_open_vram;
+    const uint8_t *options_open_cgram;
+    const uint8_t *options_open_trace;
+    size_t options_open_trace_size;
+    const uint8_t *return_vram;
+    const uint8_t *return_cgram;
+    const uint8_t *return_trace;
+    size_t return_trace_size;
+    uint8_t transition_vram[0x10000];
+    uint8_t transition_cgram[0x200];
+    const uint8_t *active_transition_trace;
+    size_t active_transition_trace_size;
+    size_t active_transition_trace_offset;
+    int active_transition_decoded_frame;
+    int active_transition_frame_count;
     const uint8_t *main_value_vram[NBA_SETUP_MAIN_VALUE_COUNT][4];
     NbaGameConfig *config; /* persistent session-owned configuration */
     uint16_t working_rules[NBA_SETUP_RULE_COUNT];

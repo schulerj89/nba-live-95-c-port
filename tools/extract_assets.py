@@ -528,6 +528,42 @@ def create_asset_pack(rom_path, output_path):
     options_mono_vram_bytes = read_setup_menu_capture("options", "options_mono_vram.bin", 0x10000)
     options_cpu_vram_bytes = read_setup_menu_capture("options", "options_cpu_vram.bin", 0x10000)
 
+    def build_menu_ppu_trace(menu_name, prefix, first_frame):
+        base_vram = read_setup_menu_capture(menu_name, f"{prefix}_transition_vram.bin", 0x10000)
+        base_cgram = read_setup_menu_capture(menu_name, f"{prefix}_transition_cgram.bin", 0x200)
+        directory = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..",
+                                 ".analysis", f"setup_{menu_name}")
+        events = ({}, {})
+        last_frame = first_frame
+        for event_index, memory_name in enumerate(("vram", "cgram")):
+            path = os.path.join(directory, f"{prefix}_transition_{memory_name}_writes.txt")
+            for raw in open(path, "r", encoding="ascii"):
+                if not raw.strip() or raw.startswith("#"):
+                    continue
+                frame_text, address_text, value_text = raw.split()
+                frame = int(frame_text)
+                if frame < first_frame:
+                    raise RuntimeError(f"Invalid submenu PPU trace frame: {raw.strip()}")
+                events[event_index].setdefault(frame - first_frame, []).append(
+                    (int(address_text, 16), int(value_text, 16)))
+                last_frame = max(last_frame, frame)
+        frame_count = last_frame - first_frame + 1
+        trace = bytearray(struct.pack("<8sII", b"NBSPPU1\0", 1, frame_count))
+        for frame in range(frame_count):
+            vw, cw = events[0].get(frame, []), events[1].get(frame, [])
+            trace.extend(struct.pack("<HH", len(vw), len(cw)))
+            for address, value in vw:
+                trace.extend(struct.pack("<HB", address, value))
+            for address, value in cw:
+                trace.extend(struct.pack("<HB", address, value))
+        print(f"[ASSET EXTRACTOR] Packed Set {menu_name.title()} {prefix} transition: "
+              f"{frame_count} frames, {sum(map(len, events[0].values()))} VRAM writes")
+        return base_vram, base_cgram, bytes(trace)
+
+    rules_open_transition = build_menu_ppu_trace("rules", "open", 542)
+    options_open_transition = build_menu_ppu_trace("options", "open", 542)
+    setup_return_transition = build_menu_ppu_trace("options", "return", 904)
+
     setup_main_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..",
                                   ".analysis", "setup_main")
     def read_setup_main_capture(filename):
@@ -740,6 +776,17 @@ def create_asset_pack(rom_path, output_path):
     ])
     assets.extend((133 + index, 0, 0, 0, data)
                   for index, data in enumerate(setup_main_variant_bytes))
+    assets.extend([
+        (143, 0, 0, 0, rules_open_transition[0]),
+        (144, 0, 0, 0, rules_open_transition[1]),
+        (145, 0, 0, 0, rules_open_transition[2]),
+        (146, 0, 0, 0, options_open_transition[0]),
+        (147, 0, 0, 0, options_open_transition[1]),
+        (148, 0, 0, 0, options_open_transition[2]),
+        (149, 0, 0, 0, setup_return_transition[0]),
+        (150, 0, 0, 0, setup_return_transition[1]),
+        (151, 0, 0, 0, setup_return_transition[2]),
+    ])
 
     # Extract all other audio samples from ROM into asset pack for debugger
     rom_sample_offsets = [
@@ -768,7 +815,7 @@ def create_asset_pack(rom_path, output_path):
                     extra_audio_id += 1
 
     header_magic = b"NBA95PAK"
-    version = 7
+    version = 8
     asset_count = len(assets)
     entry_size = 24 # 6 * 4 bytes
 
