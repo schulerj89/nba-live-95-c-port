@@ -229,18 +229,20 @@ apply slider changes immediately; the port applies Music Volume to the
 still-running Setup music stream and applies SFX Volume to the independently
 synthesized menu voice.
 
-Asset-pack version 9 adds page-specific Rules/Options open and return snapshots
+Asset-pack version 10 retains the version 9 page-specific Rules/Options open and return snapshots
 with PPU write traces. Each transition frame now
 stores the ROM's brightness, main/sub layer designation, scroll positions,
 tilemap/CHR bases, and map dimensions. The builder temporarily repoints
 BG1/BG2/BG3 while VRAM is incomplete; rendering those bytes with the settled
-addresses was the source of the transient garbage. The pack also carries the exact
-OFF, MONO, and CPU BG3 states. `$82:8F9C -> $81:9FD4 -> $81:A1EE` uploads the
-redrawn `$0800`-byte BG3 canvas as a unit, so the port selects the complete
-OFF/MONO/STEREO canvas and a shorter value cannot retain the previous word's
-shadow. Rules follows the parallel `$81:D59B -> $81:9FD4 -> $81:A28E`
-path. The port clears the complete value cell before copying any ROM-authored
-ON/OFF/PLAYER/CPU glyph, including Shot Control and Slow Motion Dunks.
+addresses was the source of the transient garbage. The pack also carries exact,
+independent Music Mode, Crowd Sound, Slow Motion Dunks, Shot Control, and CPU
+Assistance BG3 states. `$82:8F9C -> $81:9FD4 -> $81:A1EE` uploads the redrawn
+`$0800`-byte BG3 canvas as a unit. The port now composes the ROM's row-local
+2bpp VRAM deltas into one mutable canvas, so every value keeps its complete
+foreground and shadow pixels and no value is sampled from another row. Rules
+follows the parallel `$81:D59B -> $81:9FD4 -> $81:A28E` path and uses the same
+ROM-authored OFF glyph source rather than the retired, incorrectly labelled
+row-6 capture.
 Bars/arrows are decoded from captured OAM and OBJ tiles;
 the full Rules bar objects provide the game's shared dynamic bar tiles, while
 the Options OAM capture remains a packed, debugger-visible default-position
@@ -248,7 +250,8 @@ oracle. These values have no host-font or hardcoded-pixel fallback, and a
 submenu will not open from an incomplete pack.
 `tools/test_setup_transition.py` hashes the assets and rendered pages, compares
 bars/arrows to Mesen pixel oracles, locks the open/return transition stages and
-OFF/MONO/CPU states, and exercises clamp, wrap, ignored-B, live SFX gain, and
+all six Options value states, proves their BG3 deltas do not overlap, and
+exercises clamp, wrap, ignored-B, live SFX gain, and
 working-versus-committed behavior. It also fingerprints the exact WAV output,
 pitch, envelope, and shape for all three menu SRCNs.
 
@@ -256,7 +259,7 @@ pitch, envelope, and shape for all three menu SRCNs.
 `$1693` is below 2. Accordingly the two foul meters are not drawn after the
 13-row viewport scrolls away from rows 0/1.
 
-Version 9 also carries ten main-page BG3 value states captured after the ROM's
+Version 9 also introduced ten main-page BG3 value states captured after the ROM's
 own writer produced Season, Playoffs, Load Series, Custom, Arcade, Starter,
 All-Star, and the 5/8/12-minute quarter choices. Rendering copies only those
 game-authored glyph pixels, allowing independent combinations without a host

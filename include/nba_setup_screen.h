@@ -143,6 +143,16 @@ typedef enum {
     NBA_SETUP_TRANSITION_RETURN
 } NbaSetupTransition;
 
+/* Directed edges are distinct because the ROM gives each one its own PPU
+ * trace and cadence, even when the same $80:A3B8 sequencer drives them. */
+typedef enum {
+    NBA_SETUP_TRANSITION_ROUTE_NONE = 0,
+    NBA_SETUP_TRANSITION_MAIN_TO_RULES,
+    NBA_SETUP_TRANSITION_MAIN_TO_OPTIONS,
+    NBA_SETUP_TRANSITION_RULES_TO_MAIN,
+    NBA_SETUP_TRANSITION_OPTIONS_TO_MAIN
+} NbaSetupTransitionRoute;
+
 typedef enum {
     NBA_SETUP_SOUND_NONE = 0,
     NBA_SETUP_SOUND_ADJUST,   /* $80:9DF3 command $49, SRCN $1A */
@@ -192,6 +202,7 @@ typedef struct {
     int menu_row;
     int menu_scroll;
     NbaSetupTransition transition;
+    NbaSetupTransitionRoute transition_route;
     NbaSetupPage transition_target;
     int transition_frame;
     bool transition_blank;
@@ -204,7 +215,10 @@ typedef struct {
     const uint8_t *options_off_vram;
     const uint8_t *options_mono_vram;
     const uint8_t *options_cpu_vram;
-    const uint8_t *options_slow_off_vram;
+    const uint8_t *options_crowd_off_vram;
+    const uint8_t *options_slow_on_vram;
+    const uint8_t *options_assistance_on_vram;
+    uint8_t options_text_vram[0x10000];
     const uint8_t *rules_open_vram;
     const uint8_t *rules_open_cgram;
     const uint8_t *rules_open_trace;

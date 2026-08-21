@@ -52,6 +52,7 @@ public class DumpGameSetup extends GhidraScript {
         if (bank == 0x80) {
             ranges.add(new Range(0x9DEA, 0x9E61)); // shared input dispatch
         } else if (bank == 0x81) {
+            ranges.add(new Range(0x9756, 0x9FD3)); // shared proportional BG3 glyph renderer
             ranges.add(new Range(0x9FD4, 0xA1ED)); // proportional BG3 text wrapper
             ranges.add(new Range(0xA1EE, 0xA2D2)); // BG3 upload/clear helper
             ranges.add(new Range(0xA2D3, 0xA35F)); // slider/OAM helper
@@ -168,6 +169,7 @@ public class DumpGameSetup extends GhidraScript {
             createLabel(toAddr(0xD59B), "set_rules_redraw", true);
             createLabel(toAddr(0xD60E), "set_rules_redraw_discrete_value", true);
             createLabel(toAddr(0xD675), "set_rules_draw_value", true);
+            createLabel(toAddr(0x9756), "setup_draw_proportional_text", true);
             createLabel(toAddr(0x9FD4), "setup_draw_proportional_text_wrapper", true);
             createLabel(toAddr(0xA1EE), "setup_upload_redrawn_bg3", true);
             createLabel(toAddr(0xA28E), "setup_queue_redrawn_bg3", true);
@@ -185,6 +187,10 @@ public class DumpGameSetup extends GhidraScript {
                 "Rules rows >=2 select their ON/OFF string, call $81:9FD4, set transfer " +
                 "length $0800 at $196E, and call $81:A28E. This replaces the BG3 text " +
                 "canvas; it does not paint a short value over the old one.");
+            listing.setComment(toAddr(0x9756), CodeUnit.PLATE_COMMENT,
+                "Shared proportional menu-text renderer used by Game Setup, Rules, and " +
+                "Options. It consumes the selected ROM string and writes its complete 2bpp " +
+                "glyph output into the mutable BG3 canvas before the caller uploads it.");
         } else if (bank == 0x82) {
             createLabel(toAddr(0x8CD1), "set_options_frame", true);
             createLabel(toAddr(0x8CD9), "set_options_confirm_copy", true);

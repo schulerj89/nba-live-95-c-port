@@ -4,7 +4,8 @@ param(
     [string]$MesenPath = '',
     [string]$AnalysisPath = '',
     [ValidateSet('all', 'intro_capture', 'title_capture', 'setup_capture',
-                 'setup_transition', 'setup_rules', 'setup_options', 'setup_main')]
+                 'setup_transition', 'setup_rules', 'setup_options',
+                 'setup_option_values', 'setup_main')]
     [string]$CaptureName = 'all'
 )
 
@@ -44,16 +45,21 @@ $Captures = @(
                     'return_transition_vram_writes.txt',
                     'return_transition_ppu_states.txt') },
     @{ Name = 'setup_options'; Script = 'mesen_setup_menus_capture.lua';
-       Env = @{ NBA95_CAPTURE_MENU = 'options'; NBA95_CAPTURE_VARIANTS = '1' };
+       Env = @{ NBA95_CAPTURE_MENU = 'options' };
        Required = @('menu_vram.bin', 'menu_cgram.bin', 'menu_oam.bin',
-                    'options_off_vram.bin', 'options_mono_vram.bin',
-                    'options_cpu_vram.bin', 'options_slow_off_vram.bin',
                     'open_transition_vram.bin',
                     'open_transition_cgram.bin', 'open_transition_vram_writes.txt',
                     'open_transition_ppu_states.txt',
                     'return_transition_vram.bin', 'return_transition_cgram.bin',
                     'return_transition_vram_writes.txt',
                     'return_transition_ppu_states.txt') },
+    @{ Name = 'setup_option_values'; Script = 'mesen_setup_menus_capture.lua';
+       Env = @{ NBA95_CAPTURE_MENU = 'options'; NBA95_CAPTURE_VALUES = '1' };
+       Required = @('menu_vram.bin', 'menu_cgram.bin',
+                    'options_mode_off_vram.bin', 'options_mode_mono_vram.bin',
+                    'options_crowd_off_vram.bin', 'options_slow_on_vram.bin',
+                    'options_shot_cpu_vram.bin',
+                    'options_assistance_on_vram.bin') },
     @{ Name = 'setup_main'; Script = 'mesen_setup_main_capture.lua';
        Required = @('row0_step1_vram.bin', 'row0_step2_vram.bin',
                     'row0_step3_vram.bin', 'row1_step1_vram.bin',
@@ -71,7 +77,8 @@ foreach ($Capture in $Captures) {
     New-Item -ItemType Directory -Force -Path $Output | Out-Null
     $env:NBA95_CAPTURE_DIR = $Output -replace '\\', '/'
     foreach ($Name in @('NBA95_CAPTURE_MENU', 'NBA95_CAPTURE_SCROLL',
-                         'NBA95_CAPTURE_VARIANTS', 'NBA95_CAPTURE_CALLS')) {
+                         'NBA95_CAPTURE_VARIANTS', 'NBA95_CAPTURE_VALUES',
+                         'NBA95_CAPTURE_CALLS')) {
         [Environment]::SetEnvironmentVariable($Name, $null, 'Process')
     }
     if ($Capture.Env) {
@@ -122,6 +129,6 @@ foreach ($Capture in $Captures) {
 }
 } finally {
     Remove-Item Env:NBA95_CAPTURE_DIR -ErrorAction SilentlyContinue
-    Remove-Item Env:NBA95_CAPTURE_MENU,Env:NBA95_CAPTURE_SCROLL,Env:NBA95_CAPTURE_VARIANTS,Env:NBA95_CAPTURE_CALLS -ErrorAction SilentlyContinue
+    Remove-Item Env:NBA95_CAPTURE_MENU,Env:NBA95_CAPTURE_SCROLL,Env:NBA95_CAPTURE_VARIANTS,Env:NBA95_CAPTURE_VALUES,Env:NBA95_CAPTURE_CALLS -ErrorAction SilentlyContinue
 }
 Write-Host 'All asset captures completed.' -ForegroundColor Green

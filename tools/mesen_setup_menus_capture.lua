@@ -5,6 +5,7 @@ local out = os.getenv("NBA95_CAPTURE_DIR")
 local menu = os.getenv("NBA95_CAPTURE_MENU") or "rules"
 local scroll_mode = os.getenv("NBA95_CAPTURE_SCROLL") == "1"
 local variant_mode = os.getenv("NBA95_CAPTURE_VARIANTS") == "1"
+local value_mode = os.getenv("NBA95_CAPTURE_VALUES") == "1"
 local call_mode = os.getenv("NBA95_CAPTURE_CALLS") == "1"
 assert(out and out ~= "", "NBA95_CAPTURE_DIR is not set")
 assert(menu == "rules" or menu == "options", "NBA95_CAPTURE_MENU must be rules or options")
@@ -26,7 +27,7 @@ local global_frame = 0
 local title_frame = -1
 local setup_frame = -1
 local PRESS_TITLE_AT = 850
-local LAST_SETUP_FRAME = 1050
+local LAST_SETUP_FRAME = value_mode and 960 or 1050
 local target_row = menu == "rules" and 4 or 5
 local open_vram, open_cgram, return_vram, return_cgram
 
@@ -223,7 +224,24 @@ emu.addEventCallback(function()
         end
         if pulse(setup_frame, 470) then input.a = true end
         -- Exercise both value navigation and row navigation inside the menu.
-        if variant_mode then
+        if value_mode then
+            -- Capture every Set Options discrete value independently from the
+            -- settled default canvas.  Each changed row is restored before the
+            -- next row is captured, making each VRAM delta safe to compose.
+            if pulse(setup_frame, 650) or pulse(setup_frame, 662) then input.down = true end
+            if pulse(setup_frame, 674) or pulse(setup_frame, 700) or
+               pulse(setup_frame, 724) then input.right = true end
+            if pulse(setup_frame, 742) then input.down = true end
+            if pulse(setup_frame, 754) or pulse(setup_frame, 780) then input.right = true end
+            if pulse(setup_frame, 798) then input.down = true end
+            if pulse(setup_frame, 810) then input.right = true end
+            if pulse(setup_frame, 836) then input.left = true end
+            if pulse(setup_frame, 854) then input.down = true end
+            if pulse(setup_frame, 866) then input.right = true end
+            if pulse(setup_frame, 892) then input.left = true end
+            if pulse(setup_frame, 910) then input.down = true end
+            if pulse(setup_frame, 922) then input.right = true end
+        elseif variant_mode then
             if pulse(setup_frame, 650) or pulse(setup_frame, 662) then input.down = true end
             if pulse(setup_frame, 674) then input.right = true end
             if menu == "options" then
@@ -273,9 +291,9 @@ emu.addEventCallback(function()
                   open_vram_writes, open_cgram_writes)
         trace_ppu_state(frame, open_ppu_states)
     end
-    if frame == 830 then
+    if not value_mode and frame == 830 then
         return_vram, return_cgram = snapshot_ppu("return_transition")
-    elseif frame >= 831 and frame <= 1000 and return_vram then
+    elseif not value_mode and frame >= 831 and frame <= 1000 and return_vram then
         trace_ppu(frame, return_vram, return_cgram,
                   return_vram_writes, return_cgram_writes)
         trace_ppu_state(frame, return_ppu_states)
@@ -304,15 +322,36 @@ emu.addEventCallback(function()
         dump_mem("options_cpu_vram.bin", emu.memType.snesVideoRam, 0x10000)
         shot("options_cpu.png")
     end
-    if variant_mode and menu == "options" and frame == 825 then
-        dump_mem("options_slow_off_vram.bin", emu.memType.snesVideoRam, 0x10000)
-        shot("options_slow_off.png")
+    if value_mode and menu == "options" and frame == 690 then
+        dump_mem("options_mode_off_vram.bin", emu.memType.snesVideoRam, 0x10000)
+        shot("options_mode_off.png")
+    end
+    if value_mode and menu == "options" and frame == 715 then
+        dump_mem("options_mode_mono_vram.bin", emu.memType.snesVideoRam, 0x10000)
+        shot("options_mode_mono.png")
+    end
+    if value_mode and menu == "options" and frame == 770 then
+        dump_mem("options_crowd_off_vram.bin", emu.memType.snesVideoRam, 0x10000)
+        shot("options_crowd_off.png")
+    end
+    if value_mode and menu == "options" and frame == 826 then
+        dump_mem("options_slow_on_vram.bin", emu.memType.snesVideoRam, 0x10000)
+        shot("options_slow_on.png")
+    end
+    if value_mode and menu == "options" and frame == 882 then
+        dump_mem("options_shot_cpu_vram.bin", emu.memType.snesVideoRam, 0x10000)
+        shot("options_shot_cpu.png")
+    end
+    if value_mode and menu == "options" and frame == 938 then
+        dump_mem("options_assistance_on_vram.bin", emu.memType.snesVideoRam, 0x10000)
+        shot("options_assistance_on.png")
     end
     if scroll_mode and frame == 690 then shot("rules_scroll_mid.png") end
     if scroll_mode and frame == 780 then shot("rules_scroll_bottom.png") end
     if frame == 860 then dump_wram("wram_after_back.bin"); shot("after_back.png") end
 
-    if (frame >= 465 and frame <= 649) or (frame >= 825 and frame <= 1000) then
+    if not value_mode and ((frame >= 465 and frame <= 649) or
+                           (frame >= 825 and frame <= 1000)) then
         local st = emu.getState()
         ppu_log:write(string.format(
             "%d bright=%s main=%s sub=%s bg1h=%s bg1v=%s bg2h=%s bg2v=%s bg3h=%s bg3v=%s bg3map=%s bg3chr=%s bg3wide=%s bg3tall=%s oamBase=%s oamMode=%s\n",

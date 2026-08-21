@@ -39,8 +39,8 @@ EXPECTED_AUDIO_RMS_EIGHTHS = [
 ]
 EXPECTED_AUDIO_BAND_PPM = [889127, 48767, 32034, 14587, 14255, 1068, 162]
 EXPECTED_AUDIO_CHANNEL_RMS = [3363, 3363]
-EXPECTED_ASSET_DEBUGGER_SHA256 = "7fc8a2e250fa2032179789d4d1e4476a926fa4bba7014c4000edb4adb177d304"
-EXPECTED_OAM_DEBUGGER_SHA256 = "b821c5d8f276d5f4a988cb31cc51f9a6083910bdfb2622411dd0506ea0828243"
+EXPECTED_ASSET_DEBUGGER_SHA256 = "c6fafc4f2e2f287d2a3d0bd4b63f66ca59edfc2cc0cf93ca5b83f40872148fc2"
+EXPECTED_OAM_DEBUGGER_SHA256 = "70adbd72c0799c3fd3f3a8745744a16bb81a617dfe84a08af2a7086fce001fe8"
 EXPECTED_RENDERED_MENU_SFX_SHA256 = {
     0x1A: "447a1ea48a94e2036ff0bdf1f4c5248d6284daec0b723b9a966f841976e703c4",
     0x1B: "96de89e954e4e8f75e555625abba5bf4380b8868b3263776a4cc27a6285de664",
@@ -77,14 +77,16 @@ EXPECTED_MENU_RGB_SHA256 = {
     "options": "4a1bc5f69c656dc1a3e5463768a5c2b99927393faa25616dfdbf2dcee1f57a91",
 }
 EXPECTED_MENU_ACTION_SHA256 = {
-    ("rules", 2, 1): "d6de470c5b368f85067331845eb4635cd8feb4992a426f8179d7c0bdc4a17fe3",
+    ("rules", 2, 1): "85f622ded992727f9fc02212afe5681e34d883eb2ad4c9569fb4ef92a751d736",
     ("options", 0, 1): "1d7a804a03721d8ce5b3ac0b36c3f1a3319df0ea67f3faf9cc74441994432dd1",
     ("rules", 9, 0): "7cfdac4bc00793e00ca2d8bccd8237a25b3414550f965c42120716e2e5c5226d",
     ("rules", 12, 0): "70f0c9594d49e0a140cb6f01b086e5737c9964b165fc0759a2f4123a52b5f6e8",
     ("options", 2, 1): "b1207fe4229d653965999494be1b7cd9517c818663c3b329753bf06a4618997f",
     ("options", 2, 2): "b0bdc06acf10615fcb21e35d030847a0f56b4d81828d735d6324fc0ab769dfa4",
-    ("options", 5, 1): "4f99b6655e84b48094caad2f01626e6df84783f1f422169b4c76b3421140deec",
-    ("options", 6, 1): "b771385a3369d24ff6cef38edd65512c0c75725fc28ebf862107190ef6e19735",
+    ("options", 3, 1): "cba4eabbbc93403b729f5015529d7bdb0dbcd28547627a3984366bfdca253c11",
+    ("options", 4, 1): "c724c38700d706d4aa97fb9620c719cc7bd1d30b8fd9b2c191e7ebf7801d9f3b",
+    ("options", 5, 1): "1c7a97d504049478d7d771e06a8e0a68d7e1aa1b4802eed80add95894d61f7f5",
+    ("options", 6, 1): "b52f3fb7c4d52111f9788dce8fbfc539ea873a592b4789d98a460c05490eb471",
 }
 EXPECTED_SUBMENU_TRANSITION_SHA256 = {
     ("open", 198): "7cd8a4bc7b2f41ce41e2f2d35c0cbf683541ff01bc7decbdf09b3609a91131b3",
@@ -130,7 +132,7 @@ EXPECTED_MENU_ASSET_SHA256 = {
     129: "90bc3aacc02d39f34ecd99204e85ad31f1ffdcfa4f46a7316b0932274d16c228",
     130: "42cd32dc8df82febef1936d3f1c2600e070e32797cee09690b0ea802ff529bf1",
     131: "e98b9ea84551ff95e47d3eb479d7705ba47232d994b40889eedb9762dc0cba06",
-    132: "6b184355c9acc37a6c367f0ef4a52aaa6df5feb3cec26757a885cf3d2fb14849",
+    132: "afdccdbbc0bfdf06228541d01bb8e5f9e44767eeb7a472c19f6af040b6159d02",
     133: "e4a55372bda54cce7014e114beb38fe30662f6e15437aaedad9e49d27fe54fbd",
     134: "d1446eb4b7c6f6d275a980f3b39e98129817fc84071f8151ae90b82ff79d8c60",
     135: "69dd72dc97b50cae9817effd52c29f5a9ff1bba5276221a4f5cdba1d7dbf960d",
@@ -150,10 +152,12 @@ EXPECTED_MENU_ASSET_SHA256 = {
     149: "906335dc6637bc01d81cad135c00a8f16580dd83e2471850f70a5b82a641a392",
     150: "c8135644bda6768020d67743a823e56eab734193a967ccddd7b570ba63d715a2",
     151: "536a335d74a5e19ac2dfa5cbf5c27b28628861750f2f6359a9dd7cbead4f9598",
-    152: "906335dc6637bc01d81cad135c00a8f16580dd83e2471850f70a5b82a641a392",
+    152: "eb893005c6d675b73d997f32fe2b479a9d1b8b71425f05e606519da09279ff68",
     153: "acc87f5139c463275742a378f966c64cc030b40f9712dc0e7329ddc57e622b31",
     154: "d3fa496f57f7bfaca0780582175b06e1c897efdb4583210f8dbb7c81d05cba65",
     155: "2aff621b3abca5fa8edc7eb7624ae72fccfa7b71f4b52dc14221ea2d6c52807b",
+    156: "12d8c001afc6e355654d1965a1fbe7e7c405e028774449f70c3eece17919f43f",
+    157: "a93724eda8d5190b1a1fd253812534aa942a68d0654c4608bf029342a111a01f",
 }
 EXPECTED_MAIN_VALUE_RGB_SHA256 = {
     (0, 1): "e4204d3c33d0bae2680ad2a2ac2f5cc14ceec6e4bc4e8bee2f35cad05a0efdc9",
@@ -188,7 +192,7 @@ def load_pack(path):
     if len(data) < 16 or data[:8] != b"NBA95PAK":
         raise AssertionError("invalid asset pack")
     version, count = struct.unpack_from("<II", data, 8)
-    if version != 9 or 16 + count * 24 > len(data):
+    if version != 10 or 16 + count * 24 > len(data):
         raise AssertionError("invalid asset directory")
     assets = {}
     for index in range(count):
@@ -206,7 +210,7 @@ def load_pack(path):
 def check_pack(pack_path):
     raw, assets = load_pack(pack_path)
     required = {16, 17, 88, 89, 90, 91, 92, 93, 120, 121, 122,
-                *range(124, 156)}
+                *range(124, 156), 156, 157}
     if not required.issubset(assets):
         raise AssertionError(f"missing Setup assets: {sorted(required - assets.keys())}")
     if len(assets[16]) != 0x10000 or len(assets[17]) != 0x200:
@@ -215,6 +219,24 @@ def check_pack(pack_path):
         actual_hash = hashlib.sha256(assets[asset_id]).hexdigest()
         if actual_hash != expected_hash:
             raise AssertionError(f"Set Rules/Options asset {asset_id} changed")
+    # Ghidra $81:9756/$81:9FD4 redraws one row in the mutable BG3 canvas.
+    # Mesen must therefore show independent byte sets for Crowd OFF,
+    # Slow-Motion ON, Shot CPU, and CPU-Assistance ON.  This guards the exact
+    # cross-row contamination that previously left another value's shadow.
+    base = assets[126]
+    row_deltas = {
+        asset_id: {index for index, (a, b) in enumerate(zip(base, assets[asset_id]))
+                   if a != b}
+        for asset_id in (152, 156, 132, 157)
+    }
+    if any(not delta for delta in row_deltas.values()):
+        raise AssertionError("an Options glyph variant has no ROM BG3 delta")
+    ids = list(row_deltas)
+    for left_index, left_id in enumerate(ids):
+        for right_id in ids[left_index + 1:]:
+            if row_deltas[left_id] & row_deltas[right_id]:
+                raise AssertionError(
+                    f"Options row assets {left_id}/{right_id} overlap in BG3")
     for asset_id in (120, 121, 122):
         if assets[asset_id][:4] != b"RIFF":
             raise AssertionError(f"menu SFX asset {asset_id} is not an F11 WAV")
@@ -334,7 +356,7 @@ def check_frames(exe, rom, pack):
         for index in range(incomplete_count):
             entry_offset = 16 + index * 24
             if struct.unpack_from("<I", incomplete_raw, entry_offset)[0] == 130:
-                struct.pack_into("<I", incomplete_raw, entry_offset, 156)
+                struct.pack_into("<I", incomplete_raw, entry_offset, 159)
                 break
         else:
             raise AssertionError("canonical pack is missing OFF variant asset 130")
@@ -353,7 +375,7 @@ def check_frames(exe, rom, pack):
         for index in range(main_count):
             entry_offset = 16 + index * 24
             if struct.unpack_from("<I", missing_main_raw, entry_offset)[0] == 133:
-                struct.pack_into("<I", missing_main_raw, entry_offset, 157)
+                struct.pack_into("<I", missing_main_raw, entry_offset, 158)
                 break
         missing_main_pack = Path(directory) / "missing_season_variant.pak"
         missing_main_pack.write_bytes(missing_main_raw)

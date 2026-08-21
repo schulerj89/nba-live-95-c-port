@@ -61,7 +61,7 @@ def require_failure(result, description):
 
 
 def check_asset_loader(exe, directory):
-    valid = b"NBA95PAK" + struct.pack("<II", 9, 1)
+    valid = b"NBA95PAK" + struct.pack("<II", 10, 1)
     valid += pack_entry(18, 40, 1) + b"\0"
     valid_path = directory / "valid.pak"
     valid_path.write_bytes(valid)
@@ -70,26 +70,26 @@ def check_asset_loader(exe, directory):
         "valid minimal asset pack",
     )
 
-    duplicate = b"NBA95PAK" + struct.pack("<II", 9, 2)
+    duplicate = b"NBA95PAK" + struct.pack("<II", 10, 2)
     duplicate += pack_entry(1, 64, 1) + pack_entry(1, 65, 1) + b"\0\0"
     invalid_packs = {
-        "bad_magic.pak": b"NOTAPACK" + struct.pack("<II", 9, 1) + pack_entry(1, 40, 1) + b"\0",
+        "bad_magic.pak": b"NOTAPACK" + struct.pack("<II", 10, 1) + pack_entry(1, 40, 1) + b"\0",
         "bad_version.pak": b"NBA95PAK" + struct.pack("<II", 4, 1) + pack_entry(1, 40, 1) + b"\0",
-        "too_many.pak": b"NBA95PAK" + struct.pack("<II", 9, 160),
-        "truncated_directory.pak": b"NBA95PAK" + struct.pack("<II", 9, 2) + pack_entry(1, 64, 1),
+        "too_many.pak": b"NBA95PAK" + struct.pack("<II", 10, 160),
+        "truncated_directory.pak": b"NBA95PAK" + struct.pack("<II", 10, 2) + pack_entry(1, 64, 1),
         "duplicate_id.pak": duplicate,
-        "directory_overlap.pak": b"NBA95PAK" + struct.pack("<II", 9, 1) + pack_entry(1, 16, 1) + b"\0",
-        "wrapped_range.pak": b"NBA95PAK" + struct.pack("<II", 9, 1) + pack_entry(1, 0xFFFFFFF0, 64) + b"\0",
-        "bad_id.pak": b"NBA95PAK" + struct.pack("<II", 9, 1) + pack_entry(160, 40, 1) + b"\0",
-        "short_license.pak": b"NBA95PAK" + struct.pack("<II", 9, 1) +
+        "directory_overlap.pak": b"NBA95PAK" + struct.pack("<II", 10, 1) + pack_entry(1, 16, 1) + b"\0",
+        "wrapped_range.pak": b"NBA95PAK" + struct.pack("<II", 10, 1) + pack_entry(1, 0xFFFFFFF0, 64) + b"\0",
+        "bad_id.pak": b"NBA95PAK" + struct.pack("<II", 10, 1) + pack_entry(160, 40, 1) + b"\0",
+        "short_license.pak": b"NBA95PAK" + struct.pack("<II", 10, 1) +
             pack_entry(1, 40, 1, 128, 11) + b"\0",
-        "short_legal.pak": b"NBA95PAK" + struct.pack("<II", 9, 1) +
+        "short_legal.pak": b"NBA95PAK" + struct.pack("<II", 10, 1) +
             pack_entry(2, 40, 1, 256, 151, 35) + b"\0",
-        "short_ea_pixels.pak": b"NBA95PAK" + struct.pack("<II", 9, 1) +
+        "short_ea_pixels.pak": b"NBA95PAK" + struct.pack("<II", 10, 1) +
             pack_entry(3, 40, 1, 1, 1) + b"\0",
-        "oversized_ea_dimensions.pak": b"NBA95PAK" + struct.pack("<II", 9, 1) +
+        "oversized_ea_dimensions.pak": b"NBA95PAK" + struct.pack("<II", 10, 1) +
             pack_entry(3, 40, 1, 0xFFFFFFFF, 0xFFFFFFFF) + b"\0",
-        "offscreen_ea_flags.pak": b"NBA95PAK" + struct.pack("<II", 9, 1) +
+        "offscreen_ea_flags.pak": b"NBA95PAK" + struct.pack("<II", 10, 1) +
             pack_entry(3, 40, 4, 1, 1, (256 << 16)) + b"\0\0\0\0",
     }
     for name, payload in invalid_packs.items():

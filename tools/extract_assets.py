@@ -518,17 +518,36 @@ def create_asset_pack(rom_path, output_path):
                                f"got {len(data)}")
         return data
 
+    def read_capture_directory(directory_name, filename, expected_size):
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..",
+                            ".analysis", directory_name, filename)
+        if not os.path.exists(path):
+            raise RuntimeError(f"Missing capture: {path}. Run "
+                               "tools/capture_assets.ps1 first.")
+        data = open(path, "rb").read()
+        if len(data) != expected_size:
+            raise RuntimeError(f"Invalid {path}: expected {expected_size} bytes, "
+                               f"got {len(data)}")
+        return data
+
     rules_vram_bytes = read_setup_menu_capture("rules", "menu_vram.bin", 0x10000)
     rules_cgram_bytes = read_setup_menu_capture("rules", "menu_cgram.bin", 0x200)
     options_vram_bytes = read_setup_menu_capture("options", "menu_vram.bin", 0x10000)
     options_cgram_bytes = read_setup_menu_capture("options", "menu_cgram.bin", 0x200)
     rules_oam_bytes = read_setup_menu_capture("rules", "menu_oam.bin", 0x220)
     options_oam_bytes = read_setup_menu_capture("options", "menu_oam.bin", 0x220)
-    options_off_vram_bytes = read_setup_menu_capture("options", "options_off_vram.bin", 0x10000)
-    options_mono_vram_bytes = read_setup_menu_capture("options", "options_mono_vram.bin", 0x10000)
-    options_cpu_vram_bytes = read_setup_menu_capture("options", "options_cpu_vram.bin", 0x10000)
-    options_slow_off_vram_bytes = read_setup_menu_capture(
-        "options", "options_slow_off_vram.bin", 0x10000)
+    options_off_vram_bytes = read_capture_directory(
+        "setup_option_values", "options_mode_off_vram.bin", 0x10000)
+    options_mono_vram_bytes = read_capture_directory(
+        "setup_option_values", "options_mode_mono_vram.bin", 0x10000)
+    options_cpu_vram_bytes = read_capture_directory(
+        "setup_option_values", "options_shot_cpu_vram.bin", 0x10000)
+    options_crowd_off_vram_bytes = read_capture_directory(
+        "setup_option_values", "options_crowd_off_vram.bin", 0x10000)
+    options_slow_on_vram_bytes = read_capture_directory(
+        "setup_option_values", "options_slow_on_vram.bin", 0x10000)
+    options_assistance_on_vram_bytes = read_capture_directory(
+        "setup_option_values", "options_assistance_on_vram.bin", 0x10000)
 
     def build_menu_ppu_trace(menu_name, prefix, first_frame, last_frame):
         base_vram = read_setup_menu_capture(menu_name, f"{prefix}_transition_vram.bin", 0x10000)
@@ -805,10 +824,12 @@ def create_asset_pack(rom_path, output_path):
         (149, 0, 0, 0, setup_return_transition[0]),
         (150, 0, 0, 0, setup_return_transition[1]),
         (151, 0, 0, 0, setup_return_transition[2]),
-        (152, 0, 0, 0, options_slow_off_vram_bytes),
+        (152, 0, 0, 0, options_crowd_off_vram_bytes),
         (153, 0, 0, 0, rules_return_transition[0]),
         (154, 0, 0, 0, rules_return_transition[1]),
         (155, 0, 0, 0, rules_return_transition[2]),
+        (156, 0, 0, 0, options_slow_on_vram_bytes),
+        (157, 0, 0, 0, options_assistance_on_vram_bytes),
     ])
 
     # Extract all other audio samples from ROM into asset pack for debugger
@@ -838,7 +859,7 @@ def create_asset_pack(rom_path, output_path):
                     extra_audio_id += 1
 
     header_magic = b"NBA95PAK"
-    version = 9
+    version = 10
     asset_count = len(assets)
     entry_size = 24 # 6 * 4 bytes
 
