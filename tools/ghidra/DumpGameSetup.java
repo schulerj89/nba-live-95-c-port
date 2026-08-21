@@ -166,15 +166,25 @@ public class DumpGameSetup extends GhidraScript {
             createLabel(toAddr(0xD4C0), "set_rules_increment", true);
             createLabel(toAddr(0xD516), "set_rules_confirm_copy", true);
             createLabel(toAddr(0xD59B), "set_rules_redraw", true);
+            createLabel(toAddr(0xD60E), "set_rules_redraw_discrete_value", true);
             createLabel(toAddr(0xD675), "set_rules_draw_value", true);
             createLabel(toAddr(0x9FD4), "setup_draw_proportional_text_wrapper", true);
             createLabel(toAddr(0xA1EE), "setup_upload_redrawn_bg3", true);
+            createLabel(toAddr(0xA28E), "setup_queue_redrawn_bg3", true);
             createLabel(toAddr(0xA2D3), "setup_draw_slider_objects", true);
             listing.setComment(toAddr(0xD47A), CodeUnit.PLATE_COMMENT,
                 "Common Rules value path stores the selected 16-bit value at the working array $7E:16FB + row*2. $81:D491 marks $7E:17AD = 2; Start at $81:D516 copies all 26 bytes to committed Rules $7E:17D1.");
             listing.setComment(toAddr(0xD491), CodeUnit.PLATE_COMMENT,
                 "Marks Rules state 2; the common dispatcher then reaches the shared $80:A3B8 " +
                 "exit/build/entrance transition instead of swapping pages in one frame.");
+            listing.setComment(toAddr(0xD59B), CodeUnit.PLATE_COMMENT,
+                "Rules redraw/viewport dispatcher. $81:D59B-$D5AB compares the logical row " +
+                "$1693 with 2 and clears slider-object enable $1639 for every discrete row. " +
+                "Only rows 0/1 may retain the two foul-meter objects while visible.");
+            listing.setComment(toAddr(0xD60E), CodeUnit.PLATE_COMMENT,
+                "Rules rows >=2 select their ON/OFF string, call $81:9FD4, set transfer " +
+                "length $0800 at $196E, and call $81:A28E. This replaces the BG3 text " +
+                "canvas; it does not paint a short value over the old one.");
         } else if (bank == 0x82) {
             createLabel(toAddr(0x8CD1), "set_options_frame", true);
             createLabel(toAddr(0x8CD9), "set_options_confirm_copy", true);

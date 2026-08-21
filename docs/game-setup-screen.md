@@ -229,12 +229,19 @@ apply slider changes immediately; the port applies Music Volume to the
 still-running Setup music stream and applies SFX Volume to the independently
 synthesized menu voice.
 
-Asset-pack version 8 adds page-specific Rules/Options open snapshots and PPU
-write traces plus the shared return snapshot/trace. It also carries the exact
+Asset-pack version 9 adds page-specific Rules/Options open and return snapshots
+with PPU write traces. Each transition frame now
+stores the ROM's brightness, main/sub layer designation, scroll positions,
+tilemap/CHR bases, and map dimensions. The builder temporarily repoints
+BG1/BG2/BG3 while VRAM is incomplete; rendering those bytes with the settled
+addresses was the source of the transient garbage. The pack also carries the exact
 OFF, MONO, and CPU BG3 states. `$82:8F9C -> $81:9FD4 -> $81:A1EE` uploads the
 redrawn `$0800`-byte BG3 canvas as a unit, so the port selects the complete
 OFF/MONO/STEREO canvas and a shorter value cannot retain the previous word's
-shadow. Bars/arrows are decoded from captured OAM and OBJ tiles;
+shadow. Rules follows the parallel `$81:D59B -> $81:9FD4 -> $81:A28E`
+path. The port clears the complete value cell before copying any ROM-authored
+ON/OFF/PLAYER/CPU glyph, including Shot Control and Slow Motion Dunks.
+Bars/arrows are decoded from captured OAM and OBJ tiles;
 the full Rules bar objects provide the game's shared dynamic bar tiles, while
 the Options OAM capture remains a packed, debugger-visible default-position
 oracle. These values have no host-font or hardcoded-pixel fallback, and a
@@ -245,7 +252,11 @@ OFF/MONO/CPU states, and exercises clamp, wrap, ignored-B, live SFX gain, and
 working-versus-committed behavior. It also fingerprints the exact WAV output,
 pitch, envelope, and shape for all three menu SRCNs.
 
-Version 8 also carries ten main-page BG3 value states captured after the ROM's
+`$81:D59B-$81:D5AB` enables the Rules slider objects only when logical row
+`$1693` is below 2. Accordingly the two foul meters are not drawn after the
+13-row viewport scrolls away from rows 0/1.
+
+Version 9 also carries ten main-page BG3 value states captured after the ROM's
 own writer produced Season, Playoffs, Load Series, Custom, Arcade, Starter,
 All-Star, and the 5/8/12-minute quarter choices. Rendering copies only those
 game-authored glyph pixels, allowing independent combinations without a host

@@ -39,8 +39,8 @@ EXPECTED_AUDIO_RMS_EIGHTHS = [
 ]
 EXPECTED_AUDIO_BAND_PPM = [889127, 48767, 32034, 14587, 14255, 1068, 162]
 EXPECTED_AUDIO_CHANNEL_RMS = [3363, 3363]
-EXPECTED_ASSET_DEBUGGER_SHA256 = "676984468dae3439172804742eb261651ecdb26b9abd3f5b1a7eb5a7dce0966d"
-EXPECTED_OAM_DEBUGGER_SHA256 = "51a7352c36baf6ba8016f9388b3bcf7ccf38673d58356a391d172cab86428cff"
+EXPECTED_ASSET_DEBUGGER_SHA256 = "7fc8a2e250fa2032179789d4d1e4476a926fa4bba7014c4000edb4adb177d304"
+EXPECTED_OAM_DEBUGGER_SHA256 = "b821c5d8f276d5f4a988cb31cc51f9a6083910bdfb2622411dd0506ea0828243"
 EXPECTED_RENDERED_MENU_SFX_SHA256 = {
     0x1A: "447a1ea48a94e2036ff0bdf1f4c5248d6284daec0b723b9a966f841976e703c4",
     0x1B: "96de89e954e4e8f75e555625abba5bf4380b8868b3263776a4cc27a6285de664",
@@ -77,31 +77,37 @@ EXPECTED_MENU_RGB_SHA256 = {
     "options": "4a1bc5f69c656dc1a3e5463768a5c2b99927393faa25616dfdbf2dcee1f57a91",
 }
 EXPECTED_MENU_ACTION_SHA256 = {
-    ("rules", 2, 1): "85f622ded992727f9fc02212afe5681e34d883eb2ad4c9569fb4ef92a751d736",
+    ("rules", 2, 1): "d6de470c5b368f85067331845eb4635cd8feb4992a426f8179d7c0bdc4a17fe3",
     ("options", 0, 1): "1d7a804a03721d8ce5b3ac0b36c3f1a3319df0ea67f3faf9cc74441994432dd1",
-    ("rules", 9, 0): "211b2d1efcc01c94b9c54627fed472988ab2ec7da26aafa98df3fbf1569f4055",
-    ("rules", 12, 0): "43f132b8b2d586a45e1b0dafcf1a74dfa4902317e868995a6c4aa2bb2208b390",
+    ("rules", 9, 0): "7cfdac4bc00793e00ca2d8bccd8237a25b3414550f965c42120716e2e5c5226d",
+    ("rules", 12, 0): "70f0c9594d49e0a140cb6f01b086e5737c9964b165fc0759a2f4123a52b5f6e8",
     ("options", 2, 1): "b1207fe4229d653965999494be1b7cd9517c818663c3b329753bf06a4618997f",
     ("options", 2, 2): "b0bdc06acf10615fcb21e35d030847a0f56b4d81828d735d6324fc0ab769dfa4",
     ("options", 5, 1): "4f99b6655e84b48094caad2f01626e6df84783f1f422169b4c76b3421140deec",
+    ("options", 6, 1): "b771385a3369d24ff6cef38edd65512c0c75725fc28ebf862107190ef6e19735",
 }
 EXPECTED_SUBMENU_TRANSITION_SHA256 = {
-    ("open", 198): "4e111bf6b8ceb0897f12599694924d6cb716c96564f029a3debd07d92c905cd9",
+    ("open", 198): "7cd8a4bc7b2f41ce41e2f2d35c0cbf683541ff01bc7decbdf09b3609a91131b3",
     ("open", 219): "2cbbeef1249170a43854962fa5b19fba628470c70beb9ce23e15a0f05cb891f2",
-    ("open", 259): "a1ea8bd143d57b7893e58d0783bf9301930c81a02937c80316b7b1784be33ae1",
+    # Pixel-exact Mesen frames 549/581/589. These catch transient layer-map
+    # mistakes that previously exposed partially built VRAM as garbage.
+    ("open", 246): "2cbbeef1249170a43854962fa5b19fba628470c70beb9ce23e15a0f05cb891f2",
+    ("open", 259): "b1761cd4c198f25cf53f839143cc9bf8f6850ad7ee8241255c71233705185784",
+    ("open", 278): "5ee642673003ccfb95b38ebad0ad11f06834a4d9a42106e7c806354d24e65b4d",
+    ("open", 286): "a09b7c8333bf2f6f4a93e5a79ad0a276b840d2cdf44b911520ba66d5bd351c1a",
     ("open", 299): "a287880be2348dedd10250106766b32594cab590569530ce85678a985dfae92d",
     ("open", 307): "1dc35df1e80987d5a2b507694a65ae84b1eb65a7167918c96e0e6aa7d35b38e4",
     ("open", 313): "dc47df3afd364178ea855980c1f9218f9e68530c2f4b3315678ab8e865b9f79b",
-    ("close", 329): "d0658790514d3845d6a7b7d7edefd1547885f7a08b50ba1ac869f91ae8ea4c97",
-    ("close", 345): "4e0009069c79ec0ab1a05ba0b88c5417b382a2a2028ff89d7f278195e489fc24",
-    ("close", 382): "2cbbeef1249170a43854962fa5b19fba628470c70beb9ce23e15a0f05cb891f2",
-    ("close", 424): "a12c633f18c9c5cb8379d26d470b7f6d8890189ec19ea1ae7a3bcdae18d39584",
+    ("close", 329): "2f7a28ac9880cfe5961c36adb88512e55d559b97e10967c5c465e91b82359674",
+    ("close", 345): "13c20c3ca470f68139175846f78b81236d72e6b5edbb438b41870e086877c102",
+    ("close", 382): "04627f8b67b4665b18820943373902e332671b7cd097686547b1d051212d18f0",
+    ("close", 424): "eb1defc3ee84449589dcbc7a30273dccbe9eba4c21817712a42e08eb2f496928",
     ("close", 450): "ace61bc3eb186f95f5a9dacb127ac7ff46cb566ac043d937de2d1264bd00a75b",
 }
 EXPECTED_OPTIONS_OPEN_TRANSITION_SHA256 = {
-    198: "92092d95a1417ab013f01ad409f480691c3810548f8352c0efc9ac7aecf761e7",
-    219: "1c5938fdb4afaf259d2042f1bb15bfad966e68519536f6970dbe461129c02e33",
-    259: "f15e1bf1d02a3bcd82ad0d82afb0aec027ed9f8a5f16f316ee813a5cf0b6691c",
+    198: "35c10bdf63959457ca01ceebd7b5fbe555ef79600c0244af71097fc30b41fbd1",
+    219: "2cbbeef1249170a43854962fa5b19fba628470c70beb9ce23e15a0f05cb891f2",
+    259: "426fbd0ce36a23d2d6cff5b19dcf7259ebf0f190e84e48a44cf730b4d39f08c0",
     299: "ec8a9690ee755fa6da43cb97574bd02419f35c2d47c97c027bbe0834a37bcfbb",
     300: "651b63bc47901714f6082cc242768160cf26ce6202ef9ab2bf1f1c67c92ac625",
 }
@@ -117,11 +123,11 @@ EXPECTED_MENU_SFX_SHA256 = {
 }
 EXPECTED_MENU_ASSET_SHA256 = {
     124: "acc87f5139c463275742a378f966c64cc030b40f9712dc0e7329ddc57e622b31",
-    125: "b495ba426eb8d96de9253aa567391c8fe45aa60e39103295620967f5da519a2e",
+    125: "d3fa496f57f7bfaca0780582175b06e1c897efdb4583210f8dbb7c81d05cba65",
     126: "0d25909881fe03449acf046c2d3a8cfaa64172f596864c3523c08806b581f89d",
-    127: "2ba2db37ad9656a7465b75a981b9bc5a1d54637fa3022636abc7ef6a971e1936",
-    128: "f6c9c6402fa29a40bfd2d406126d022d0b03034272935301716014c751998204",
-    129: "0f273aa9c49aa5a7262b98a215c31a1bdffe9cf77b6a760877b184dd0ec8e216",
+    127: "c8135644bda6768020d67743a823e56eab734193a967ccddd7b570ba63d715a2",
+    128: "824b693aab168ba4e993bfbbf5f68b1543245dca1910a9d7467c7eebfc399176",
+    129: "90bc3aacc02d39f34ecd99204e85ad31f1ffdcfa4f46a7316b0932274d16c228",
     130: "42cd32dc8df82febef1936d3f1c2600e070e32797cee09690b0ea802ff529bf1",
     131: "e98b9ea84551ff95e47d3eb479d7705ba47232d994b40889eedb9762dc0cba06",
     132: "6b184355c9acc37a6c367f0ef4a52aaa6df5feb3cec26757a885cf3d2fb14849",
@@ -135,15 +141,19 @@ EXPECTED_MENU_ASSET_SHA256 = {
     140: "abb16640b4954cc1d968305a345c3703a0447eb47fcbc5c98cc3af7d53e45887",
     141: "ed829c237970e861f130a6b7966ee0ef911623cd39d56c142238ec95432d2102",
     142: "e01ff3a82d09d77d018ed79f2b54fd7620f975b523c680690d15efeea8b6adfa",
-    143: "2ec5e18c4ad2d4ad79a4c81eb68647239c94ee237d2a41b02df87d789b13328a",
-    144: "b495ba426eb8d96de9253aa567391c8fe45aa60e39103295620967f5da519a2e",
-    145: "70a6efc8ce7b4b1ad89fb0719f8ea32db32a7b8f25b05a640f2b3212c85eb6f5",
-    146: "b1c30076febd001f8f90e896e6c3e9bce19fcf0fa1cd43d80fc65f44920b248f",
-    147: "2ba2db37ad9656a7465b75a981b9bc5a1d54637fa3022636abc7ef6a971e1936",
-    148: "41a0ea4a2fe9150f4d9e8879f11110c12400ada4b7b69a9aba340e4c1613dce7",
-    149: "7c674bef7f0cc36f3cd6dfcc6f106cbf3f524cef5973921e00b7a17a7c36fc91",
-    150: "2ba2db37ad9656a7465b75a981b9bc5a1d54637fa3022636abc7ef6a971e1936",
-    151: "d2a22996856310de8daf5d0435ad50539dc692bd1d44d114c0ab937c969ed03b",
+    143: "1e5c485b7ed12fe444588a5beebd984fa6489598fcb43064187e1617ab0238ce",
+    144: "6342436ee7e704b2ad719c98b84e0685e87c2131dbf53b6230f225e40b16d490",
+    145: "b19f19622060224f715b1e487167712c5b827aee27ef32faa5dde70ad3a98acc",
+    146: "1e5c485b7ed12fe444588a5beebd984fa6489598fcb43064187e1617ab0238ce",
+    147: "8a95be0e8f109eec61af8385fc022072cffd57c13b13bf94b441a0d273ea8e65",
+    148: "d7b5b74ae2939df8c8301d59a3744aab40c6173ebeaa8bb2f79df97b4c0d39ab",
+    149: "906335dc6637bc01d81cad135c00a8f16580dd83e2471850f70a5b82a641a392",
+    150: "c8135644bda6768020d67743a823e56eab734193a967ccddd7b570ba63d715a2",
+    151: "536a335d74a5e19ac2dfa5cbf5c27b28628861750f2f6359a9dd7cbead4f9598",
+    152: "906335dc6637bc01d81cad135c00a8f16580dd83e2471850f70a5b82a641a392",
+    153: "acc87f5139c463275742a378f966c64cc030b40f9712dc0e7329ddc57e622b31",
+    154: "d3fa496f57f7bfaca0780582175b06e1c897efdb4583210f8dbb7c81d05cba65",
+    155: "2aff621b3abca5fa8edc7eb7624ae72fccfa7b71f4b52dc14221ea2d6c52807b",
 }
 EXPECTED_MAIN_VALUE_RGB_SHA256 = {
     (0, 1): "e4204d3c33d0bae2680ad2a2ac2f5cc14ceec6e4bc4e8bee2f35cad05a0efdc9",
@@ -178,7 +188,7 @@ def load_pack(path):
     if len(data) < 16 or data[:8] != b"NBA95PAK":
         raise AssertionError("invalid asset pack")
     version, count = struct.unpack_from("<II", data, 8)
-    if version != 8 or 16 + count * 24 > len(data):
+    if version != 9 or 16 + count * 24 > len(data):
         raise AssertionError("invalid asset directory")
     assets = {}
     for index in range(count):
@@ -196,7 +206,7 @@ def load_pack(path):
 def check_pack(pack_path):
     raw, assets = load_pack(pack_path)
     required = {16, 17, 88, 89, 90, 91, 92, 93, 120, 121, 122,
-                *range(124, 152)}
+                *range(124, 156)}
     if not required.issubset(assets):
         raise AssertionError(f"missing Setup assets: {sorted(required - assets.keys())}")
     if len(assets[16]) != 0x10000 or len(assets[17]) != 0x200:
@@ -264,21 +274,31 @@ def check_pack(pack_path):
     if offset != len(assets[92]) or ppu_writes != 3094:
         raise AssertionError("invalid Setup entrance PPU write stream")
     for asset_id, expected_frames, expected_writes in (
-        (145, 75, 8148), (148, 61, 4523), (151, 41, 3094)
+        (145, 146, 25913), (148, 132, 23786),
+        (151, 132, 23070), (155, 132, 25001)
     ):
         trace = assets[asset_id]
-        if trace[:8] != b"NBSPPU1\0":
+        if trace[:8] != b"NBSPPU2\0":
             raise AssertionError(f"invalid submenu PPU trace {asset_id}")
         version, frames = struct.unpack_from("<II", trace, 8)
-        if version != 1 or frames != expected_frames:
+        if version != 2 or frames != expected_frames:
             raise AssertionError(f"unexpected submenu PPU dimensions {asset_id}")
         offset = 16
         writes = 0
         for _ in range(frames):
-            if offset + 4 > len(trace):
+            if offset + 38 > len(trace):
                 raise AssertionError(f"truncated submenu PPU trace {asset_id}")
-            vram_count, cgram_count = struct.unpack_from("<HH", trace, offset)
-            offset += 4 + (vram_count + cgram_count) * 3
+            brightness, main, sub, reserved = struct.unpack_from("<BBBB", trace, offset)
+            if brightness > 15 or main > 31 or sub > 31 or reserved != 0:
+                raise AssertionError(f"invalid submenu PPU screen state {asset_id}")
+            for layer in range(3):
+                hscroll, vscroll, tilemap, char_base, wide, tall = \
+                    struct.unpack_from("<HHHHBB", trace, offset + 4 + layer * 10)
+                if hscroll > 1023 or vscroll > 1023 or tilemap & 1 or \
+                        char_base & 1 or wide > 1 or tall > 1:
+                    raise AssertionError(f"invalid submenu PPU layer state {asset_id}")
+            vram_count, cgram_count = struct.unpack_from("<HH", trace, offset + 34)
+            offset += 38 + (vram_count + cgram_count) * 3
             writes += vram_count + cgram_count
         if offset != len(trace) or writes != expected_writes:
             raise AssertionError(f"invalid submenu PPU write stream {asset_id}")
@@ -314,7 +334,7 @@ def check_frames(exe, rom, pack):
         for index in range(incomplete_count):
             entry_offset = 16 + index * 24
             if struct.unpack_from("<I", incomplete_raw, entry_offset)[0] == 130:
-                struct.pack_into("<I", incomplete_raw, entry_offset, 152)
+                struct.pack_into("<I", incomplete_raw, entry_offset, 156)
                 break
         else:
             raise AssertionError("canonical pack is missing OFF variant asset 130")
@@ -333,7 +353,7 @@ def check_frames(exe, rom, pack):
         for index in range(main_count):
             entry_offset = 16 + index * 24
             if struct.unpack_from("<I", missing_main_raw, entry_offset)[0] == 133:
-                struct.pack_into("<I", missing_main_raw, entry_offset, 153)
+                struct.pack_into("<I", missing_main_raw, entry_offset, 157)
                 break
         missing_main_pack = Path(directory) / "missing_season_variant.pak"
         missing_main_pack.write_bytes(missing_main_raw)
@@ -673,6 +693,26 @@ def check_frames(exe, rom, pack):
                 raise AssertionError(
                     f"Set {menu.title()} row {row} action frame changed"
                 )
+            image = Image.open(output).convert("RGB")
+            if menu == "rules" and row >= 7:
+                stale_meter = any(
+                    red > 180 and blue < 100 and
+                    (green < 80 or green > 180)
+                    for red, green, blue in image.crop((144, 82, 192, 108)).getdata()
+                )
+                if stale_meter:
+                    raise AssertionError("scrolled Rules viewport retained foul meters")
+            if menu == "options" and row in (5, 6) and rights:
+                top = 68 + row * 18
+                tail_x = 184 if row == 5 else 190
+                stale_text = any(
+                    red > 100 or green > 100
+                    for red, green, _ in image.crop((tail_x, top, 248, top + 16)).getdata()
+                )
+                if stale_text:
+                    raise AssertionError(
+                        f"Set Options row {row} retained the previous value tail"
+                    )
 
         # $7E:16FB is a working copy: an edit must not alter the committed
         # block until Start runs $81:D516 or $82:8CD9/$82:8D0A.

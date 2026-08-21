@@ -174,9 +174,15 @@ typedef struct {
 
     int frame;              /* -105 forced-blank load; 0 = first visible frame */
     int bg1_hscroll;
+    int bg1_vscroll;
     int bg2_hscroll;
     int bg2_vscroll;
+    int bg3_hscroll;
     int bg3_vscroll;
+    uint16_t layer_tilemap[3];
+    uint16_t layer_chr[3];
+    bool layer_double_width[3];
+    bool layer_double_height[3];
     int brightness;         /* INIDISP 0..15 */
     uint8_t main_screen;
     uint8_t sub_screen;
@@ -198,6 +204,7 @@ typedef struct {
     const uint8_t *options_off_vram;
     const uint8_t *options_mono_vram;
     const uint8_t *options_cpu_vram;
+    const uint8_t *options_slow_off_vram;
     const uint8_t *rules_open_vram;
     const uint8_t *rules_open_cgram;
     const uint8_t *rules_open_trace;
@@ -210,6 +217,10 @@ typedef struct {
     const uint8_t *return_cgram;
     const uint8_t *return_trace;
     size_t return_trace_size;
+    const uint8_t *rules_return_vram;
+    const uint8_t *rules_return_cgram;
+    const uint8_t *rules_return_trace;
+    size_t rules_return_trace_size;
     uint8_t transition_vram[0x10000];
     uint8_t transition_cgram[0x200];
     const uint8_t *active_transition_trace;

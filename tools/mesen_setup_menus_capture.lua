@@ -20,6 +20,8 @@ local open_vram_writes = assert(io.open(out .. "/open_transition_vram_writes.txt
 local open_cgram_writes = assert(io.open(out .. "/open_transition_cgram_writes.txt", "wb"))
 local return_vram_writes = assert(io.open(out .. "/return_transition_vram_writes.txt", "wb"))
 local return_cgram_writes = assert(io.open(out .. "/return_transition_cgram_writes.txt", "wb"))
+local open_ppu_states = assert(io.open(out .. "/open_transition_ppu_states.txt", "wb"))
+local return_ppu_states = assert(io.open(out .. "/return_transition_ppu_states.txt", "wb"))
 local global_frame = 0
 local title_frame = -1
 local setup_frame = -1
@@ -67,6 +69,22 @@ local function trace_ppu(frame, vram, cgram, vram_file, cgram_file)
             cgram[address] = value
         end
     end
+end
+
+local function trace_ppu_state(frame, file)
+    local st = emu.getState()
+    local values = { frame,
+        st["ppu.screenBrightness"], st["ppu.mainScreenLayers"],
+        st["ppu.subScreenLayers"] }
+    for layer = 0, 2 do
+        values[#values + 1] = st[string.format("ppu.layers[%d].hscroll", layer)]
+        values[#values + 1] = st[string.format("ppu.layers[%d].vscroll", layer)]
+        values[#values + 1] = st[string.format("ppu.layers[%d].tilemapAddress", layer)]
+        values[#values + 1] = st[string.format("ppu.layers[%d].chrAddress", layer)]
+        values[#values + 1] = st[string.format("ppu.layers[%d].doubleWidth", layer)] and 1 or 0
+        values[#values + 1] = st[string.format("ppu.layers[%d].doubleHeight", layer)] and 1 or 0
+    end
+    file:write(table.concat(values, " ") .. "\n")
 end
 
 local function shot(name)
@@ -213,12 +231,15 @@ emu.addEventCallback(function()
                 if pulse(setup_frame, 730) or pulse(setup_frame, 742) or
                    pulse(setup_frame, 754) then input.down = true end
                 if pulse(setup_frame, 770) then input.right = true end
+                if pulse(setup_frame, 800) then input.down = true end
+                if pulse(setup_frame, 812) then input.right = true end
             end
             if pulse(setup_frame, 830) then input.start = true end
         elseif scroll_mode then
             for i = 0, 11 do
                 if pulse(setup_frame, 630 + i * 12) then input.down = true end
             end
+            if pulse(setup_frame, 830) then input.start = true end
         else
             if pulse(setup_frame, 650) then input.right = true end
             if pulse(setup_frame, 700) then input.down = true end
@@ -245,17 +266,19 @@ emu.addEventCallback(function()
     if frame == 560 then
         dump_wram("wram_open.bin"); shot("menu_open.png")
     end
-    if frame == 541 then
+    if frame == 470 then
         open_vram, open_cgram = snapshot_ppu("open_transition")
-    elseif frame >= 542 and frame <= 649 and open_vram then
+    elseif frame >= 471 and frame <= 649 and open_vram then
         trace_ppu(frame, open_vram, open_cgram,
                   open_vram_writes, open_cgram_writes)
+        trace_ppu_state(frame, open_ppu_states)
     end
-    if frame == 903 then
+    if frame == 830 then
         return_vram, return_cgram = snapshot_ppu("return_transition")
-    elseif frame >= 904 and frame <= 1000 and return_vram then
+    elseif frame >= 831 and frame <= 1000 and return_vram then
         trace_ppu(frame, return_vram, return_cgram,
                   return_vram_writes, return_cgram_writes)
+        trace_ppu_state(frame, return_ppu_states)
     end
     if frame == 649 then
         dump_wram("wram_before_change.bin"); shot("before_change.png")
@@ -280,6 +303,10 @@ emu.addEventCallback(function()
     if variant_mode and menu == "options" and frame == 790 then
         dump_mem("options_cpu_vram.bin", emu.memType.snesVideoRam, 0x10000)
         shot("options_cpu.png")
+    end
+    if variant_mode and menu == "options" and frame == 825 then
+        dump_mem("options_slow_off_vram.bin", emu.memType.snesVideoRam, 0x10000)
+        shot("options_slow_off.png")
     end
     if scroll_mode and frame == 690 then shot("rules_scroll_mid.png") end
     if scroll_mode and frame == 780 then shot("rules_scroll_bottom.png") end
@@ -310,6 +337,7 @@ emu.addEventCallback(function()
         wram_log:close(); dsp_log:close(); ppu_log:close(); call_log:close()
         open_vram_writes:close(); open_cgram_writes:close()
         return_vram_writes:close(); return_cgram_writes:close()
+        open_ppu_states:close(); return_ppu_states:close()
         local done = assert(io.open(out .. "/capture_complete.txt", "wb"))
         done:write("ok\n"); done:close(); emu.stop(0)
     end

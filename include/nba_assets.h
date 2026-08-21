@@ -81,6 +81,10 @@ typedef enum {
     NBA_ASSET_SETUP_RETURN_VRAM             = 149,
     NBA_ASSET_SETUP_RETURN_CGRAM            = 150,
     NBA_ASSET_SETUP_RETURN_PPU_TRACE        = 151,
+    NBA_ASSET_OPTIONS_SLOW_OFF_VRAM         = 152,
+    NBA_ASSET_RULES_RETURN_VRAM             = 153,
+    NBA_ASSET_RULES_RETURN_CGRAM            = 154,
+    NBA_ASSET_RULES_RETURN_PPU_TRACE        = 155,
     NBA_ASSET_MAX                   = 160
 } NbaAssetId;
 
