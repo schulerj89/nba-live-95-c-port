@@ -16,8 +16,11 @@
 
 `extract_assets.py` validates those captures and the ROM, then writes the asset
 pack. Its minimal 65816 decompressor lives in `snes65816_decompressor.py`.
-Pass `-CaptureName intro_capture`, `title_capture`, `setup_capture`, or
-`setup_transition` to refresh one capture while investigating it.
+Pass `-CaptureName intro_capture`, `title_capture`, `setup_capture`,
+`setup_transition`, `setup_rules`, `setup_options`, or `setup_main` to refresh
+one capture while investigating it. The orchestrator supplies the menu-specific
+environment flags and validates every extractor-required output before it
+reports success.
 
 ## Regression tools
 

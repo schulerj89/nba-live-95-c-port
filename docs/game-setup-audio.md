@@ -12,9 +12,10 @@ Ghidra identifies the 65816 side of the chain:
 - `$80:AACD` queues per-voice parameters and command `$0B`.
 
 The APU ports are mirrored through banks `$00`-`$3F` and `$80`-`$BF`. The
-brightness-1 capture at `$80:E600` contains 102,445 cycle-timed writes to
-`$2140-$2143` over 1,800 frames. The resident SPC700 program translates them
-into 19,928 writes through `$F2/$F3` to the S-DSP.
+current canonical capture follows 9,000 frames and contains 289,435
+cycle-timed writes to `$2140-$2143`. The resident SPC700 program translates
+them into 114,059 writes through `$F2/$F3` to the S-DSP. Earlier investigation
+captures covered only 1,800 frames; those dimensions are no longer canonical.
 
 Both streams are packed. Asset 91 preserves the Ghidra-facing CPU command
 evidence; asset 93 is the exact downstream S-DSP program used for playback.
@@ -58,8 +59,8 @@ nba95_port.exe --headless --setup-only --rom <rom> --assets <pack> \
 
 `tools/test_setup_transition.py` verifies:
 
-- asset 91 contains 102,445 ordered APU writes;
-- asset 93 contains 19,928 ordered DSP writes and no RIFF data;
+- asset 91 contains 289,435 ordered APU writes over 9,000 frames;
+- asset 93 contains 114,059 ordered DSP writes and no RIFF data;
 - F11 assets 94-123 match all 30 `$0200` directory start/loop pointers;
 - output format, duration, peak, spectral bands, stereo energy, and 125 ms
   onset/RMS windows;

@@ -13,7 +13,12 @@ static const uint16_t setup_option_max[NBA_SETUP_OPTION_COUNT] = {
     45, 45, 2, 1, 1, 1, 1
 };
 static const uint16_t setup_main_max[NBA_SETUP_MAIN_VALUE_COUNT] = { 3, 2, 2, 3 };
-static const uint16_t setup_main_defaults[NBA_SETUP_MAIN_VALUE_COUNT] = { 0, 1, 0, 0 };
+
+static NbaSetupUpdateResult setup_result(NbaSetupSound sound,
+                                         NbaSetupAction action) {
+    NbaSetupUpdateResult result = { sound, action };
+    return result;
+}
 
 static bool setup_menu_assets_ready(const NbaSetupScreen *s) {
     return s && s->rules_vram && s->rules_cgram && s->rules_oam &&
@@ -194,9 +199,11 @@ int nba_setup_screen_row_band_top(NbaSetupRow row) {
  * Purpose: Builds the Game Setup screen: binds the decompressed layer image,
  *          seeds the slide-in scroll offsets and starts the INIDISP fade.
  */
-void nba_setup_screen_init(NbaSetupScreen *s, const NbaAssetPack *assets) {
-    if (!s) return;
+void nba_setup_screen_init(NbaSetupScreen *s, const NbaAssetPack *assets,
+                           NbaGameConfig *config) {
+    if (!s || !config) return;
     memset(s, 0, sizeof(*s));
+    s->config = config;
 
     const NbaAssetItem *vram = nba_assets_get(assets, NBA_ASSET_SETUP_VRAM);
     const NbaAssetItem *cgram = nba_assets_get(assets, NBA_ASSET_SETUP_CGRAM);
@@ -228,18 +235,6 @@ void nba_setup_screen_init(NbaSetupScreen *s, const NbaAssetPack *assets) {
     s->sub_screen = 0;
     s->row = NBA_SETUP_ROW_MODE;
     s->page = NBA_SETUP_PAGE_MAIN;
-    {
-        memcpy(s->config.main_values, setup_main_defaults,
-               sizeof(s->config.main_values));
-        static const uint16_t default_rules[NBA_SETUP_RULE_COUNT] = {
-            45, 45, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
-        };
-        static const uint16_t default_options[NBA_SETUP_OPTION_COUNT] = {
-            30, 30, 2, 1, 0, 0, 0
-        };
-        memcpy(s->config.rules, default_rules, sizeof(default_rules));
-        memcpy(s->config.options, default_options, sizeof(default_options));
-    }
     const NbaAssetItem *rules_vram = nba_assets_get(assets, NBA_ASSET_SET_RULES_VRAM);
     const NbaAssetItem *rules_cgram = nba_assets_get(assets, NBA_ASSET_SET_RULES_CGRAM);
     const NbaAssetItem *options_vram = nba_assets_get(assets, NBA_ASSET_SET_OPTIONS_VRAM);
@@ -296,16 +291,19 @@ void nba_setup_screen_init(NbaSetupScreen *s, const NbaAssetPack *assets) {
  *          15-step brightness ramp, then holds the settled scroll values and
  *          advances the backdrop one pixel every third frame.
  */
-NbaSetupSound nba_setup_screen_update(NbaSetupScreen *s, const NbaInput *input) {
-    if (!s || !s->is_initialized) return NBA_SETUP_SOUND_NONE;
+NbaSetupUpdateResult nba_setup_screen_update(NbaSetupScreen *s,
+                                             const NbaInput *input) {
+    if (!s || !s->is_initialized)
+        return setup_result(NBA_SETUP_SOUND_NONE, NBA_SETUP_ACTION_NONE);
 
     s->frame++;
 
-    if (s->frame < 0) return NBA_SETUP_SOUND_NONE;
+    if (s->frame < 0)
+        return setup_result(NBA_SETUP_SOUND_NONE, NBA_SETUP_ACTION_NONE);
 
     if (!nba_setup_screen_decode_ppu_to(s, s->frame)) {
         s->has_gfx = false;
-        return NBA_SETUP_SOUND_NONE;
+        return setup_result(NBA_SETUP_SOUND_NONE, NBA_SETUP_ACTION_NONE);
     }
 
     if (s->frame <= NBA_SETUP_ENTER_FRAMES) {
@@ -351,11 +349,11 @@ NbaSetupSound nba_setup_screen_update(NbaSetupScreen *s, const NbaInput *input) 
                             ? NBA_SETUP_SUB_SETTLED : 0;
     }
 
-    if (!input) return NBA_SETUP_SOUND_NONE;
+    if (!input) return setup_result(NBA_SETUP_SOUND_NONE, NBA_SETUP_ACTION_NONE);
 
     if (s->transition != NBA_SETUP_TRANSITION_NONE) {
         setup_update_page_transition(s);
-        return NBA_SETUP_SOUND_NONE;
+        return setup_result(NBA_SETUP_SOUND_NONE, NBA_SETUP_ACTION_NONE);
     }
 
     if (s->page != NBA_SETUP_PAGE_MAIN) {
@@ -392,28 +390,30 @@ NbaSetupSound nba_setup_screen_update(NbaSetupScreen *s, const NbaInput *input) 
                                       (uint16_t)(values[s->menu_row] + 1u);
                 changed = true;
             }
-            if (changed) return NBA_SETUP_SOUND_ADJUST;
+            if (changed)
+                return setup_result(NBA_SETUP_SOUND_ADJUST, NBA_SETUP_ACTION_NONE);
         } else if (input->pressed & NBA_BTN_START) {
             /* $81:D516 copies 26 bytes to $17D1; $82:8CD9/$8D0A copies
              * 14 bytes to $17B5. B is deliberately ignored by the ROM. */
             if (s->page == NBA_SETUP_PAGE_RULES) {
-                memcpy(s->config.rules, s->working_rules, sizeof(s->config.rules));
+                memcpy(s->config->rules, s->working_rules, sizeof(s->config->rules));
             } else {
-                memcpy(s->config.options, s->working_options, sizeof(s->config.options));
+                memcpy(s->config->options, s->working_options, sizeof(s->config->options));
             }
             s->menu_row = 0;
             s->menu_scroll = 0;
             s->transition = NBA_SETUP_TRANSITION_RETURN;
             s->transition_target = NBA_SETUP_PAGE_MAIN;
             s->transition_frame = 0;
-            return NBA_SETUP_SOUND_CONFIRM;
+            return setup_result(NBA_SETUP_SOUND_CONFIRM,
+                                NBA_SETUP_ACTION_RETURN_MAIN);
         }
 
         if (s->menu_row < s->menu_scroll) s->menu_scroll = s->menu_row;
         if (s->menu_row >= s->menu_scroll + 7) s->menu_scroll = s->menu_row - 6;
         if (input->pressed & (NBA_BTN_UP | NBA_BTN_DOWN))
-            return NBA_SETUP_SOUND_MOVE;
-        return NBA_SETUP_SOUND_NONE;
+            return setup_result(NBA_SETUP_SOUND_MOVE, NBA_SETUP_ACTION_NONE);
+        return setup_result(NBA_SETUP_SOUND_NONE, NBA_SETUP_ACTION_NONE);
     }
 
     /* $80:A62D - row cursor wraps at both ends. */
@@ -426,7 +426,7 @@ NbaSetupSound nba_setup_screen_update(NbaSetupScreen *s, const NbaInput *input) 
     if ((input->pressed & (NBA_BTN_LEFT | NBA_BTN_RIGHT)) &&
         s->row < NBA_SETUP_ROW_RULES) {
         int row = (int)s->row;
-        uint16_t old_value = s->config.main_values[row];
+        uint16_t old_value = s->config->main_values[row];
         uint16_t max = setup_main_max[row];
         uint16_t new_value = (input->pressed & NBA_BTN_LEFT) ?
             (old_value == 0u ? max : (uint16_t)(old_value - 1u)) :
@@ -434,30 +434,36 @@ NbaSetupSound nba_setup_screen_update(NbaSetupScreen *s, const NbaInput *input) 
         /* The ROM redraws these values into BG3 at $7E:16FB + row*2.
          * Refuse a state whose captured game-authored glyph canvas is absent. */
         if (s->main_value_vram[row][new_value]) {
-            s->config.main_values[row] = new_value;
-            return NBA_SETUP_SOUND_ADJUST;
+            s->config->main_values[row] = new_value;
+            return setup_result(NBA_SETUP_SOUND_ADJUST, NBA_SETUP_ACTION_NONE);
         }
     }
     if (input->pressed & NBA_BTN_A) {
         if (s->row == NBA_SETUP_ROW_RULES && setup_menu_assets_ready(s)) {
-            memcpy(s->working_rules, s->config.rules, sizeof(s->working_rules));
+            memcpy(s->working_rules, s->config->rules, sizeof(s->working_rules));
             s->menu_row = s->menu_scroll = 0;
             s->transition = NBA_SETUP_TRANSITION_OPEN;
             s->transition_target = NBA_SETUP_PAGE_RULES;
             s->transition_frame = 0;
-            return NBA_SETUP_SOUND_CONFIRM;
+            return setup_result(NBA_SETUP_SOUND_CONFIRM,
+                                NBA_SETUP_ACTION_OPEN_RULES);
         }
         if (s->row == NBA_SETUP_ROW_OPTIONS && setup_menu_assets_ready(s)) {
-            memcpy(s->working_options, s->config.options, sizeof(s->working_options));
+            memcpy(s->working_options, s->config->options, sizeof(s->working_options));
             s->menu_row = s->menu_scroll = 0;
             s->transition = NBA_SETUP_TRANSITION_OPEN;
             s->transition_target = NBA_SETUP_PAGE_OPTIONS;
             s->transition_frame = 0;
-            return NBA_SETUP_SOUND_CONFIRM;
+            return setup_result(NBA_SETUP_SOUND_CONFIRM,
+                                NBA_SETUP_ACTION_OPEN_OPTIONS);
         }
+        if (s->row < NBA_SETUP_ROW_RULES)
+            return setup_result(NBA_SETUP_SOUND_CONFIRM,
+                                NBA_SETUP_ACTION_CONFIRM_MODE);
     }
-    if (input->pressed & (NBA_BTN_UP | NBA_BTN_DOWN)) return NBA_SETUP_SOUND_MOVE;
-    return NBA_SETUP_SOUND_NONE;
+    if (input->pressed & (NBA_BTN_UP | NBA_BTN_DOWN))
+        return setup_result(NBA_SETUP_SOUND_MOVE, NBA_SETUP_ACTION_NONE);
+    return setup_result(NBA_SETUP_SOUND_NONE, NBA_SETUP_ACTION_NONE);
 }
 
 static void setup_restore_bg2_rect(const NbaSetupScreen *s, NbaRenderer *ren,
@@ -484,8 +490,8 @@ static void setup_restore_bg2_rect(const NbaSetupScreen *s, NbaRenderer *ren,
 static void setup_render_main_values(const NbaSetupScreen *s, NbaRenderer *ren) {
     if (!s || s->page != NBA_SETUP_PAGE_MAIN) return;
     for (int row = 0; row < NBA_SETUP_MAIN_VALUE_COUNT; ++row) {
-        uint16_t value = s->config.main_values[row];
-        if (value == setup_main_defaults[row] || value > setup_main_max[row]) continue;
+        uint16_t value = s->config->main_values[row];
+        if (value == nba_default_main_values[row] || value > setup_main_max[row]) continue;
         const uint8_t *source_vram = s->main_value_vram[row][value];
         if (!source_vram) continue;
         int top = nba_setup_screen_row_band_top((NbaSetupRow)row);
@@ -654,14 +660,8 @@ static void setup_render_menu_values(const NbaSetupScreen *s, NbaRenderer *ren,
                              s->working_rules : s->working_options;
     int count = s->page == NBA_SETUP_PAGE_RULES ?
                 NBA_SETUP_RULE_COUNT : NBA_SETUP_OPTION_COUNT;
-    static const uint16_t default_rules[NBA_SETUP_RULE_COUNT] = {
-        45, 45, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
-    };
-    static const uint16_t default_options[NBA_SETUP_OPTION_COUNT] = {
-        30, 30, 2, 1, 0, 0, 0
-    };
     const uint16_t *defaults = s->page == NBA_SETUP_PAGE_RULES ?
-                               default_rules : default_options;
+                               nba_default_rules : nba_default_options;
 
     if (s->menu_scroll > 0)
         setup_restore_bg2_rect(s, ren, vram, cgram, 16, 70, 212, 10);

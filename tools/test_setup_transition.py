@@ -533,6 +533,28 @@ def check_frames(exe, rom, pack):
         if "mode=0 style=1 level=0 quarter=1" not in persisted.stdout:
             raise AssertionError("main Setup values did not survive a Rules round trip")
 
+        reentered = subprocess.run(
+            [str(exe), "--headless", "--setup-only", "--setup-main-row", "3",
+             "--setup-main-right", "1", "--setup-reenter", "--rom", str(rom),
+             "--assets", str(pack), "--frames", "200"],
+            text=True, capture_output=True, check=True,
+        )
+        if "[SETUP REENTER] mode=0 style=1 level=0 quarter=1" not in reentered.stdout:
+            raise AssertionError("session-owned Setup values were reset on scene re-entry")
+
+        mode_routes = ("TEAM_SELECTION", "SEASON", "PLAYOFFS", "LOAD_SERIES")
+        for mode, route in enumerate(mode_routes):
+            navigation = subprocess.run(
+                [str(exe), "--headless", "--setup-only", "--setup-main-row", "0",
+                 "--setup-main-right", str(mode), "--setup-main-confirm",
+                 "--rom", str(rom), "--assets", str(pack), "--frames", "200"],
+                text=True, capture_output=True, check=True,
+            )
+            marker = f"Mode confirmed: mode={mode} route={route}"
+            if "action=4" not in navigation.stdout or marker not in navigation.stdout or \
+                    "DSP menu SFX SRCN $1C" not in navigation.stdout:
+                raise AssertionError(f"main mode {mode} emitted the wrong route/action")
+
         # The settled Rules/Options pages are rendered from the captured ROM
         # VRAM/CGRAM, not recreated screenshots or host fonts.
         for menu, expected_hash in EXPECTED_MENU_RGB_SHA256.items():

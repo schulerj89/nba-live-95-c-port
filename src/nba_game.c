@@ -5,7 +5,7 @@
 #include <string.h>
 
 #define NBA_DEBUG_MAX_LINES 8
-#define NBA_DEBUG_LINE_SIZE 48
+#define NBA_DEBUG_LINE_SIZE 80
 
 typedef struct {
     char line[NBA_DEBUG_MAX_LINES][NBA_DEBUG_LINE_SIZE];
@@ -44,9 +44,21 @@ static const char *nba_debug_transition_name(NbaSetupTransition transition) {
            names[transition] : "?";
 }
 
+static const char *nba_debug_setup_action_name(NbaSetupAction action) {
+    static const char *const names[] = { "NONE", "RULES", "OPTIONS", "MAIN", "MODE" };
+    return (unsigned)action < sizeof(names) / sizeof(names[0]) ? names[action] : "?";
+}
+
 static const char *nba_debug_audio_name(uint8_t track) {
     static const char *const names[] = { "NONE", "WAV", "TITLE_SPC", "SETUP_SPC" };
     return track < sizeof(names) / sizeof(names[0]) ? names[track] : "?";
+}
+
+static const char *nba_debug_audio_status_name(uint8_t status) {
+    static const char *const names[] = {
+        "IDLE", "READY", "PLAYING", "HOST_FAIL", "SYNTH_FAIL"
+    };
+    return status < sizeof(names) / sizeof(names[0]) ? names[status] : "?";
 }
 
 static void nba_game_debug_lines(const NbaGame *game, NbaDebugLines *out) {
@@ -65,18 +77,20 @@ static void nba_game_debug_lines(const NbaGame *game, NbaDebugLines *out) {
              "IN P:%04X H:%04X R:%04X", game->input.pressed,
              game->input.held, game->input.released);
 
-    if (game->state == NBA_STATE_GAME_SETUP && game->setup_screen.is_initialized) {
-        const NbaSetupScreen *s = &game->setup_screen;
-        uint16_t mode = s->config.main_values[0];
-        uint16_t style = s->config.main_values[1];
-        uint16_t level = s->config.main_values[2];
-        uint16_t quarter = s->config.main_values[3];
+    if (game->state == NBA_STATE_GAME_SETUP && game->scene.setup.is_initialized) {
+        const NbaSetupScreen *s = &game->scene.setup;
+        uint16_t mode = s->config->main_values[0];
+        uint16_t style = s->config->main_values[1];
+        uint16_t level = s->config->main_values[2];
+        uint16_t quarter = s->config->main_values[3];
         snprintf(out->line[out->count++], NBA_DEBUG_LINE_SIZE,
                  "PG:%s ROW:%s MR:%02d", nba_debug_setup_page_name(s->page),
                  nba_debug_setup_row_name(s->row), s->menu_row);
         snprintf(out->line[out->count++], NBA_DEBUG_LINE_SIZE,
-                 "TR:%s TF:%03d BLK:%d", nba_debug_transition_name(s->transition),
-                 s->transition_frame, s->transition_blank ? 1 : 0);
+                 "TR:%s TF:%03d BLK:%d ACT:%s",
+                 nba_debug_transition_name(s->transition), s->transition_frame,
+                 s->transition_blank ? 1 : 0,
+                 nba_debug_setup_action_name(game->last_setup_action));
         snprintf(out->line[out->count++], NBA_DEBUG_LINE_SIZE,
                  "CFG M:%s S:%s L:%s Q:%s",
                  mode < 4u ? modes[mode] : "?", style < 3u ? styles[style] : "?",
@@ -87,12 +101,12 @@ static void nba_game_debug_lines(const NbaGame *game, NbaDebugLines *out) {
                  s->bg1_hscroll, s->bg2_hscroll, s->bg2_vscroll, s->bg3_vscroll);
     } else if (game->state == NBA_STATE_TITLE_SEQUENCE) {
         static const char *const phases[] = { "BUILD", "HOLD", "FADE" };
-        unsigned phase = (unsigned)game->title_sequence.phase;
+        unsigned phase = (unsigned)game->scene.title.phase;
         snprintf(out->line[out->count++], NBA_DEBUG_LINE_SIZE,
                  "TITLE PH:%s B:%02d HOLD:%03d SNAP:%d",
-                 phase < 3u ? phases[phase] : "?", game->title_sequence.brightness,
-                 game->title_sequence.hold_frames_left,
-                 game->title_sequence.snap_frame);
+                 phase < 3u ? phases[phase] : "?", game->scene.title.brightness,
+                 game->scene.title.hold_frames_left,
+                 game->scene.title.snap_frame);
     }
 
     if (out->count < NBA_DEBUG_MAX_LINES) {
@@ -100,9 +114,10 @@ static void nba_game_debug_lines(const NbaGame *game, NbaDebugLines *out) {
         if (audio->last_setup_sfx_srcn != 0xFFu)
             snprintf(srcn, sizeof(srcn), "%02X", audio->last_setup_sfx_srcn);
         snprintf(out->line[out->count++], NBA_DEBUG_LINE_SIZE,
-                 "AUD:%s MV:%02u SV:%02u SRC:%s",
+                 "AUD:%s ST:%s MV:%02u SV:%02u SRC:%s",
                  nba_debug_audio_name(audio->active_track),
-                 audio->setup_music_volume, audio->setup_sfx_volume, srcn);
+                 nba_debug_audio_status_name(audio->status), audio->setup_music_volume,
+                 audio->setup_sfx_volume, srcn);
     }
 }
 
@@ -122,10 +137,11 @@ static void nba_game_debug_hud_lines(const NbaGame *game, uint8_t page,
         if (full.count > 2) nba_debug_add_line(out, full.line[2]);
         if (game->audio.last_setup_sfx_srcn != 0xFFu)
             snprintf(srcn, sizeof(srcn), "%02X", game->audio.last_setup_sfx_srcn);
-        snprintf(audio_line, sizeof(audio_line), "AUD:%s MV:%02u SV:%02u FX:%s",
+        snprintf(audio_line, sizeof(audio_line), "AUD:%s %s MV:%02u SV:%02u FX:%s",
                  game->audio.active_track == NBA_AUDIO_TRACK_SETUP_SPC ? "SETUP" :
                  game->audio.active_track == NBA_AUDIO_TRACK_TITLE_SPC ? "TITLE" :
                  nba_debug_audio_name(game->audio.active_track),
+                 nba_debug_audio_status_name(game->audio.status),
                  game->audio.setup_music_volume, game->audio.setup_sfx_volume, srcn);
         nba_debug_add_line(out, audio_line);
         return;
@@ -143,7 +159,7 @@ static void nba_game_debug_hud_lines(const NbaGame *game, uint8_t page,
         nba_debug_add_line(out, full.line[4]);
         nba_debug_add_line(out, full.line[5]);
         {
-            const NbaSetupScreen *s = &game->setup_screen;
+            const NbaSetupScreen *s = &game->scene.setup;
             char ppu[NBA_DEBUG_LINE_SIZE];
             snprintf(ppu, sizeof(ppu), "PPU B:%d X1:%d X2:%d Y2:%d Y3:%d",
                      s->brightness, s->bg1_hscroll, s->bg2_hscroll,
@@ -164,10 +180,40 @@ void nba_game_debug_print(const NbaGame *game) {
         printf("[DEBUG STATE] %s\n", lines.line[index]);
 }
 
-static void nba_game_enter_state(NbaGame *game, NbaGameState state) {
+bool nba_game_enter_state(NbaGame *game, NbaGameState state) {
+    if (!game) return false;
+    if (game->audio.active_track != NBA_AUDIO_TRACK_NONE)
+        nba_audio_stop(&game->audio);
+    memset(&game->scene, 0, sizeof(game->scene));
     game->state = state;
     game->state_frame = 0;
     game->state_timer = 0.0f;
+    game->ea_intro_audio_started = false;
+    game->last_setup_action = NBA_SETUP_ACTION_NONE;
+
+    if (state == NBA_STATE_TITLE_SEQUENCE) {
+        nba_title_sequence_init(&game->scene.title);
+        game->scene.title.audio_started =
+            nba_audio_play_title_spc(&game->audio, &game->assets);
+        if (!game->scene.title.audio_started) {
+            game->audio.status = NBA_AUDIO_STATUS_SYNTH_FAILED;
+            fprintf(stderr, "[AUDIO] Title synthesis failed; continuing silently.\n");
+            return false;
+        }
+    } else if (state == NBA_STATE_GAME_SETUP) {
+        nba_setup_screen_init(&game->scene.setup, &game->assets,
+                              &game->session.config);
+        if (!game->scene.setup.is_initialized || !game->scene.setup.has_gfx) {
+            fprintf(stderr, "[GAME] Game Setup graphics initialization failed.\n");
+            return false;
+        }
+        if (!nba_audio_play_setup_dsp(&game->audio, &game->assets)) {
+            game->audio.status = NBA_AUDIO_STATUS_SYNTH_FAILED;
+            fprintf(stderr, "[AUDIO] Game Setup synthesis failed; continuing silently.\n");
+            return false;
+        }
+    }
+    return true;
 }
 
 /* SNES INIDISP master-brightness levels are linear values from 0 through 15. */
@@ -207,6 +253,7 @@ bool nba_game_init(NbaGame *game, const char *rom_path, const char *assets_path)
     nba_renderer_init(&game->renderer);
     nba_font_init();
     nba_audio_init(&game->audio);
+    nba_session_init(&game->session);
 
     /* Load asset pack if provided via parameter */
     if (assets_path && assets_path[0] != '\0' &&
@@ -228,7 +275,6 @@ bool nba_game_init(NbaGame *game, const char *rom_path, const char *assets_path)
     game->frame_count = 0;
     nba_audio_debugger_init(&game->audio_debugger);
     nba_asset_debugger_init(&game->asset_debugger);
-    nba_title_sequence_init(&game->title_sequence);
     game->is_initialized = true;
 
     printf("[GAME] Initialization complete. Entering state NBA_STATE_NINTENDO_LICENSE.\n");
@@ -337,28 +383,20 @@ void nba_game_tick(NbaGame *game, float delta_time) {
 
             /* Step through the authentic 4 assembly stages (5.05s total hold) or advance on button press */
             if (game->input.pressed & (NBA_BTN_START | NBA_BTN_A | NBA_BTN_B)) {
-                nba_audio_stop(&game->audio);
                 nba_game_enter_state(game, NBA_STATE_TITLE_SEQUENCE);
-                nba_title_sequence_init(&game->title_sequence);
             } else if (game->state_frame >= NBA_INTRO_TOTAL_FRAMES) {
                 nba_game_enter_state(game, NBA_STATE_TITLE_SEQUENCE);
-                nba_title_sequence_init(&game->title_sequence);
             }
             break;
 
         case NBA_STATE_TITLE_SEQUENCE:
             /* $80:E01E enters the NBA shield/title scene immediately after $82:AC0E. */
-            if (!game->title_sequence.audio_started) {
-                nba_audio_play_title_spc(&game->audio, &game->assets);
-                game->title_sequence.audio_started = true;
-            }
-
             /* $80:E5C7 - dismissing the title. Bit 7 of $0A4C selects the path:
              * if the build is still running the ROM snaps it complete via
              * $80:F07E and holds 120 frames ($80:E5D3 #$0078); if it had already
              * finished it holds 40 ($80:E5D9 #$0028). Pressing again during the
              * hold does nothing - the count is fixed. */
-            if (game->title_sequence.phase == NBA_TITLE_PHASE_BUILD) {
+            if (game->scene.title.phase == NBA_TITLE_PHASE_BUILD) {
                 int title_frame = (int)game->state_frame;
                 bool build_complete = title_frame >= NBA_TITLE_BUILD_COMPLETE_FRAMES;
                 bool dismissed =
@@ -366,25 +404,22 @@ void nba_game_tick(NbaGame *game, float delta_time) {
 
                 if (dismissed || title_frame >= NBA_TITLE_SEQUENCE_FRAMES) {
                     if (!build_complete) {
-                        nba_title_sequence_snap_complete(&game->title_sequence);
+                        nba_title_sequence_snap_complete(&game->scene.title);
                         /* $80:E5F9 DEC A / BPL runs the wait count+1 times. */
-                        game->title_sequence.hold_frames_left = NBA_TITLE_SNAP_HOLD_FRAMES + 1;
+                        game->scene.title.hold_frames_left = NBA_TITLE_SNAP_HOLD_FRAMES + 1;
                         printf("[TITLE] Start during build: snapped complete ($80:F07E), "
                                "holding %d frames.\n", NBA_TITLE_SNAP_HOLD_FRAMES);
                     } else {
                         /* $80:E5F9 DEC A / BPL runs the wait count+1 times. */
-                        game->title_sequence.hold_frames_left = NBA_TITLE_COMPLETE_HOLD_FRAMES + 1;
+                        game->scene.title.hold_frames_left = NBA_TITLE_COMPLETE_HOLD_FRAMES + 1;
                         printf("[TITLE] Start after build: holding %d frames.\n",
                                NBA_TITLE_COMPLETE_HOLD_FRAMES);
                     }
-                    game->title_sequence.phase = NBA_TITLE_PHASE_HOLD;
+                    game->scene.title.phase = NBA_TITLE_PHASE_HOLD;
                 }
-            } else if (nba_title_sequence_advance(&game->title_sequence)) {
+            } else if (nba_title_sequence_advance(&game->scene.title)) {
                 /* $80:CF1B finished ramping INIDISP to zero. */
-                nba_audio_stop(&game->audio);
                 nba_game_enter_state(game, NBA_STATE_GAME_SETUP);
-                nba_setup_screen_init(&game->setup_screen, &game->assets);
-                nba_audio_play_setup_dsp(&game->audio, &game->assets);
             }
             break;
 
@@ -393,9 +428,12 @@ void nba_game_tick(NbaGame *game, float delta_time) {
              * scroll and row cursor. $80:A9E3/$80:AA7B/$80:AACD feed the
              * cycle-timed SPC command path started at the title handoff. */
             {
-                NbaSetupPage page_before = game->setup_screen.page;
-                NbaSetupSound sound =
-                    nba_setup_screen_update(&game->setup_screen, &game->input);
+                NbaSetupPage page_before = game->scene.setup.page;
+                NbaSetupUpdateResult update =
+                    nba_setup_screen_update(&game->scene.setup, &game->input);
+                NbaSetupSound sound = update.sound;
+                if (update.action != NBA_SETUP_ACTION_NONE)
+                    game->last_setup_action = update.action;
                 uint8_t srcn = 0xFFu;
                 if (sound == NBA_SETUP_SOUND_ADJUST) srcn = 0x1Au;
                 if (sound == NBA_SETUP_SOUND_MOVE) srcn = 0x1Bu;
@@ -405,16 +443,28 @@ void nba_game_tick(NbaGame *game, float delta_time) {
                  * waveOut music stream in sync without disturbing menu SFX. */
                 if (page_before == NBA_SETUP_PAGE_OPTIONS &&
                     sound == NBA_SETUP_SOUND_ADJUST) {
-                    if (game->setup_screen.menu_row == 0) {
+                    if (game->scene.setup.menu_row == 0) {
                         nba_audio_set_setup_music_volume(
-                            &game->audio, game->setup_screen.working_options[0], 45u);
-                    } else if (game->setup_screen.menu_row == 1) {
+                            &game->audio, game->scene.setup.working_options[0], 45u);
+                    } else if (game->scene.setup.menu_row == 1) {
                         nba_audio_set_setup_sfx_volume(
-                            &game->audio, game->setup_screen.working_options[1], 45u);
+                            &game->audio, game->scene.setup.working_options[1], 45u);
                     }
                 }
                 if (srcn != 0xFFu) {
                     nba_audio_play_setup_sfx(&game->audio, &game->assets, srcn);
+                }
+                if (update.action == NBA_SETUP_ACTION_CONFIRM_MODE) {
+                    static const char *const routes[] = {
+                        "TEAM_SELECTION", "SEASON", "PLAYOFFS", "LOAD_SERIES"
+                    };
+                    uint16_t mode = game->session.config.main_values[0];
+                    printf("[SETUP] Mode confirmed: mode=%u route=%s style=%u "
+                           "level=%u quarter=%u.\n", mode,
+                           mode < 4u ? routes[mode] : "UNKNOWN",
+                           game->session.config.main_values[1],
+                           game->session.config.main_values[2],
+                           game->session.config.main_values[3]);
                 }
             }
             break;
@@ -545,12 +595,12 @@ void nba_game_render(NbaGame *game) {
             break;
 
         case NBA_STATE_TITLE_SEQUENCE:
-            nba_title_sequence_render(&game->title_sequence, &game->assets, ren,
+            nba_title_sequence_render(&game->scene.title, &game->assets, ren,
                                       (int)game->state_frame);
             break;
 
         case NBA_STATE_GAME_SETUP:
-            nba_setup_screen_render(&game->setup_screen, ren);
+            nba_setup_screen_render(&game->scene.setup, ren);
             break;
     }
 

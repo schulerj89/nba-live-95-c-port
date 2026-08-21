@@ -110,8 +110,11 @@ bool nba_renderer_save_bmp(const NbaRenderer *renderer, const char *filepath) {
     ih.biCompression = 0;
     ih.biSizeImage = image_size;
 
-    fwrite(&fh, sizeof(fh), 1, f);
-    fwrite(&ih, sizeof(ih), 1, f);
+    if (fwrite(&fh, sizeof(fh), 1, f) != 1 ||
+        fwrite(&ih, sizeof(ih), 1, f) != 1) {
+        fclose(f);
+        return false;
+    }
 
     uint8_t *row_buffer = (uint8_t *)calloc(1, (size_t)row_stride);
     if (!row_buffer) {
@@ -126,10 +129,14 @@ bool nba_renderer_save_bmp(const NbaRenderer *renderer, const char *filepath) {
             row_buffer[x * 3 + 1] = (uint8_t)((argb >> 8) & 0xFF);  /* Green */
             row_buffer[x * 3 + 2] = (uint8_t)((argb >> 16) & 0xFF); /* Red */
         }
-        fwrite(row_buffer, 1, (size_t)row_stride, f);
+        if (fwrite(row_buffer, 1, (size_t)row_stride, f) !=
+            (size_t)row_stride) {
+            free(row_buffer);
+            fclose(f);
+            return false;
+        }
     }
 
     free(row_buffer);
-    fclose(f);
-    return true;
+    return fclose(f) == 0;
 }

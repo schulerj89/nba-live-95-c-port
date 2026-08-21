@@ -13,7 +13,8 @@ The shared snapshot reports:
 - Game Setup page, selected row, submenu row, transition phase/frame/blanking;
 - Mode, Style, Level, and Quarter using human-readable values;
 - captured brightness and BG1/BG2/BG3 scroll values;
-- active audio track, Setup music/SFX volumes, and last menu SRCN.
+- active audio track/status, Setup music/SFX volumes, and last menu SRCN;
+- the last Setup navigation action, including the future team-selection handoff.
 
 Print one snapshot after a deterministic headless run:
 

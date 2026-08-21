@@ -129,13 +129,16 @@ static bool audio_prepare_spc_track(const NbaAssetPack *assets,
 }
 
 static bool audio_play_generated(NbaAudio *audio, NbaSpcTrackRender *render,
-                                 bool loop) {
+                                 bool loop, NbaAudioTrack track) {
     free(render->spc);
     render->spc = NULL;
     nba_audio_stop(audio);
     audio->generated_wav = render->wav;
     audio->generated_wav_size = render->wav_size;
+    audio->active_track = (uint8_t)track;
+    audio->status = NBA_AUDIO_STATUS_READY;
     render->wav = NULL;
+    if (!audio->host_playback_enabled) return true;
 #if defined(_WIN32)
     if (loop) {
         if (render->sample_count < NBA_SETUP_LOOP_END_SAMPLE) {
@@ -148,8 +151,9 @@ static bool audio_play_generated(NbaAudio *audio, NbaSpcTrackRender *render,
         if (!stream || waveOutOpen(&stream->device, WAVE_MAPPER, &format,
                                    0, 0, CALLBACK_NULL) != MMSYSERR_NOERROR) {
             free(stream);
-            nba_audio_stop(audio);
-            return false;
+            audio->status = NBA_AUDIO_STATUS_HOST_FAILED;
+            fprintf(stderr, "[AUDIO] Host waveOut device unavailable; synthesized PCM retained.\n");
+            return true;
         }
         char *pcm = (char *)audio->generated_wav + 44;
         stream->intro.lpData = pcm;
@@ -172,14 +176,19 @@ static bool audio_play_generated(NbaAudio *audio, NbaSpcTrackRender *render,
             waveOutUnprepareHeader(stream->device, &stream->loop, sizeof(stream->loop));
             waveOutClose(stream->device);
             free(stream);
-            nba_audio_stop(audio);
-            return false;
+            audio->status = NBA_AUDIO_STATUS_HOST_FAILED;
+            fprintf(stderr, "[AUDIO] Host waveOut playback failed; synthesized PCM retained.\n");
+            return true;
         }
         audio->loop_playback = stream;
+        audio->status = NBA_AUDIO_STATUS_PLAYING;
     } else if (!PlaySoundA((LPCSTR)audio->generated_wav, NULL,
                            SND_MEMORY | SND_ASYNC | SND_NODEFAULT)) {
-        nba_audio_stop(audio);
-        return false;
+        audio->status = NBA_AUDIO_STATUS_HOST_FAILED;
+        fprintf(stderr, "[AUDIO] Host WAV playback failed; synthesized PCM retained.\n");
+        return true;
+    } else {
+        audio->status = NBA_AUDIO_STATUS_PLAYING;
     }
 #endif
     return true;
@@ -201,7 +210,13 @@ void nba_audio_init(NbaAudio *audio) {
     audio->setup_sfx_volume = 30u;
     audio->setup_music_volume = 30u;
     audio->last_setup_sfx_srcn = 0xFFu;
+    audio->host_playback_enabled = true;
     printf("[AUDIO] Initializing Audio Subsystem...\n");
+}
+
+void nba_audio_set_host_playback_enabled(NbaAudio *audio, bool enabled) {
+    if (!audio) return;
+    audio->host_playback_enabled = enabled;
 }
 
 /**
@@ -209,6 +224,7 @@ void nba_audio_init(NbaAudio *audio) {
  * Purpose: Stops any active asynchronous audio stream and releases audio resources.
  */
 void nba_audio_shutdown(NbaAudio *audio) {
+    if (!audio) return;
     nba_audio_stop(audio);
     free(audio->setup_sfx_wav);
     audio->setup_sfx_wav = NULL;
@@ -226,9 +242,14 @@ void nba_audio_play_wav(NbaAudio *audio, const void *data, size_t size) {
 
     nba_audio_stop(audio);
     audio->active_track = NBA_AUDIO_TRACK_WAV;
+    audio->status = NBA_AUDIO_STATUS_READY;
 
 #if defined(_WIN32)
-    PlaySoundA((LPCSTR)data, NULL, SND_MEMORY | SND_ASYNC | SND_NODEFAULT);
+    if (audio->host_playback_enabled) {
+        audio->status = PlaySoundA((LPCSTR)data, NULL,
+                                   SND_MEMORY | SND_ASYNC | SND_NODEFAULT) ?
+                        NBA_AUDIO_STATUS_PLAYING : NBA_AUDIO_STATUS_HOST_FAILED;
+    }
 #else
     (void)data;
     (void)size;
@@ -262,7 +283,7 @@ void nba_audio_play_setup_sfx(NbaAudio *audio, const NbaAssetPack *assets,
     const size_t pcm_bytes = (size_t)sample_frames * 2u * sizeof(int16_t);
     const size_t wav_size = 44u + pcm_bytes;
 #if defined(_WIN32)
-    PlaySoundA(NULL, NULL, 0);
+    if (audio->host_playback_enabled) PlaySoundA(NULL, NULL, 0);
 #endif
     if (audio->setup_sfx_wav_size < wav_size) {
         uint8_t *grown = (uint8_t *)realloc(audio->setup_sfx_wav, wav_size);
@@ -331,8 +352,10 @@ void nba_audio_play_setup_sfx(NbaAudio *audio, const NbaAssetPack *assets,
            "volume=%u/45 DSPVOL=$%02X peak=%d.\n", srcn, pitch,
            audio->setup_sfx_volume, (unsigned)voice_volume, peak);
 #if defined(_WIN32)
-    PlaySoundA((LPCSTR)audio->setup_sfx_wav, NULL,
-               SND_MEMORY | SND_ASYNC | SND_NODEFAULT);
+    if (audio->host_playback_enabled) {
+        PlaySoundA((LPCSTR)audio->setup_sfx_wav, NULL,
+                   SND_MEMORY | SND_ASYNC | SND_NODEFAULT);
+    }
 #endif
 }
 
@@ -418,8 +441,8 @@ bool nba_audio_play_title_spc(NbaAudio *audio, const NbaAssetPack *assets) {
     }
     uint32_t frame_count = render.frame_count;
     uint32_t event_count = render.event_count;
-    if (!audio_play_generated(audio, &render, false)) return false;
-    audio->active_track = NBA_AUDIO_TRACK_TITLE_SPC;
+    if (!audio_play_generated(audio, &render, false,
+                              NBA_AUDIO_TRACK_TITLE_SPC)) return false;
     printf("[AUDIO] Synthesized title through SPC700/S-DSP: %u frames, %u APU writes.\n",
            frame_count, event_count);
     return true;
@@ -486,8 +509,8 @@ bool nba_audio_play_setup_dsp(NbaAudio *audio, const NbaAssetPack *assets) {
 
     uint32_t frame_count = render.frame_count;
     uint32_t event_count = render.event_count;
-    if (!audio_play_generated(audio, &render, true)) return false;
-    audio->active_track = NBA_AUDIO_TRACK_SETUP_SPC;
+    if (!audio_play_generated(audio, &render, true,
+                              NBA_AUDIO_TRACK_SETUP_SPC)) return false;
     printf("[AUDIO] Synthesized Game Setup through ROM BRR/S-DSP: "
            "%u frames, %u cycle-timed DSP writes, peak=%d; "
            "seamless host loop %u..%u enabled.\n",
@@ -514,7 +537,7 @@ bool nba_audio_save_generated_wav(const NbaAudio *audio, const char *path) {
 void nba_audio_stop(NbaAudio *audio) {
     if (!audio) return;
 #if defined(_WIN32)
-    PlaySoundA(NULL, NULL, 0);
+    if (audio->host_playback_enabled) PlaySoundA(NULL, NULL, 0);
     NbaWaveLoop *stream = (NbaWaveLoop *)audio->loop_playback;
     if (stream) {
         waveOutReset(stream->device);
@@ -529,4 +552,5 @@ void nba_audio_stop(NbaAudio *audio) {
     audio->generated_wav = NULL;
     audio->generated_wav_size = 0;
     audio->active_track = NBA_AUDIO_TRACK_NONE;
+    audio->status = NBA_AUDIO_STATUS_IDLE;
 }

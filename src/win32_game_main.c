@@ -174,18 +174,25 @@ int win32_run_game(const char *rom_path, const char *assets_path,
     }
 
     if (title_only) {
-        g_game.state = NBA_STATE_TITLE_SEQUENCE;
-        g_game.state_frame = 0;
-        g_game.state_timer = 0.0f;
-        nba_title_sequence_init(&g_game.title_sequence);
+        if (!nba_game_enter_state(&g_game, NBA_STATE_TITLE_SEQUENCE)) {
+            MessageBoxA(hwnd, "Title scene assets/audio failed to initialize",
+                        "Error", MB_OK | MB_ICONERROR);
+            nba_game_shutdown(&g_game);
+            win32_free_framebuffer(&g_framebuffer);
+            DestroyWindow(hwnd);
+            return 1;
+        }
     }
 
     if (setup_only) {
-        g_game.state = NBA_STATE_GAME_SETUP;
-        g_game.state_frame = 0;
-        g_game.state_timer = 0.0f;
-        nba_setup_screen_init(&g_game.setup_screen, &g_game.assets);
-        nba_audio_play_setup_dsp(&g_game.audio, &g_game.assets);
+        if (!nba_game_enter_state(&g_game, NBA_STATE_GAME_SETUP)) {
+            MessageBoxA(hwnd, "Game Setup assets/audio failed to initialize",
+                        "Error", MB_OK | MB_ICONERROR);
+            nba_game_shutdown(&g_game);
+            win32_free_framebuffer(&g_framebuffer);
+            DestroyWindow(hwnd);
+            return 1;
+        }
     }
 
     /* Pacing timer setup: 59.94 Hz SNES frame rate */

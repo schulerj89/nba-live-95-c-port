@@ -73,8 +73,8 @@ the overview into `--dump-frame`, while `--debug-hud-page 1|2` selects either
 compact page explicitly.
 
 On Game Setup, Left/Right changes Mode, Style, Level, and Quarter length using
-the original game cycles and menu sounds. These choices remain in the running
-session while entering and returning from Set Rules or Set Options.
+the original game cycles and menu sounds. These choices belong to the running
+game session rather than the Setup screen, so scene re-entry preserves them.
 
 ## Technical notes
 
@@ -84,6 +84,7 @@ session while entering and returning from Set Rules or Set Options.
 - [Game Setup audio](docs/game-setup-audio.md)
 - [Reverse-engineering tools](tools/README.md)
 - [Live and CLI debugging](docs/debugging.md)
+- [Runtime architecture](docs/architecture.md)
 
 Remaining fidelity work is documented in the subsystem notes. Setup's CPU-side
 music decisions currently use a cycle-timed control trace rather than a direct

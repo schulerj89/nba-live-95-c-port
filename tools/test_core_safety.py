@@ -15,6 +15,32 @@ def pack_entry(asset_id, offset, size, width=0, height=0, flags=0):
     return struct.pack("<6I", asset_id, offset, size, width, height, flags)
 
 
+def write_pack_subset(source, destination, selected_ids):
+    raw = source.read_bytes()
+    if raw[:8] != b"NBA95PAK":
+        raise AssertionError("source asset pack magic changed")
+    version, count = struct.unpack_from("<II", raw, 8)
+    selected = []
+    for index in range(count):
+        fields = struct.unpack_from("<6I", raw, 16 + index * 24)
+        asset_id, offset, size, width, height, flags = fields
+        if asset_id in selected_ids:
+            selected.append((asset_id, raw[offset:offset + size], width, height, flags))
+    if {item[0] for item in selected} != set(selected_ids):
+        raise AssertionError("source pack omitted a requested subset asset")
+    payload_offset = 16 + len(selected) * 24
+    directory = bytearray()
+    payload = bytearray()
+    for asset_id, data, width, height, flags in selected:
+        directory += pack_entry(asset_id, payload_offset + len(payload), len(data),
+                                width, height, flags)
+        payload += data
+    destination.write_bytes(
+        b"NBA95PAK" + struct.pack("<II", version, len(selected)) +
+        directory + payload
+    )
+
+
 def run(exe, *args):
     return subprocess.run(
         [str(exe), *map(str, args)], text=True, capture_output=True, check=False
@@ -178,10 +204,10 @@ def check_debug_telemetry(exe, rom, pack, directory):
         "GF:000170 SF:00170",
         "IN P:0000 H:0000 R:0000",
         "PG:MAIN ROW:QUARTER MR:00",
-        "TR:NONE TF:000 BLK:0",
+        "TR:NONE TF:000 BLK:0 ACT:NONE",
         "CFG M:EXHIB S:SIM L:ROOKIE Q:5MIN",
         "PPU B:15 X1:512 X2:000 Y2:020 Y3:000",
-        "AUD:SETUP_SPC MV:30 SV:30 SRC:1A",
+        "AUD:SETUP_SPC ST:READY MV:30 SV:30 SRC:1A",
     )
     for marker in expected:
         if marker not in result.stdout:
@@ -189,7 +215,7 @@ def check_debug_telemetry(exe, rom, pack, directory):
     if result.stdout.count("[DEBUG SAMPLE]") != 2:
         raise AssertionError("periodic CLI debug sampling count changed")
     digest = hashlib.sha256(frame.read_bytes()).hexdigest()
-    expected_digest = "7288d27c77a5f424180d03f1a452ad34d6a755e620fbc3169a934c32e856ede9"
+    expected_digest = "6e81d0296a4bf78d1d3c24a071674234408e9bd3592de624a4ea04eb414a5ca0"
     if digest != expected_digest:
         raise AssertionError(f"F10 overview HUD changed: {digest}")
 
@@ -201,9 +227,59 @@ def check_debug_telemetry(exe, rom, pack, directory):
     )
     require_success(detail, "compact F10 Setup-detail HUD")
     detail_digest = hashlib.sha256(detail_frame.read_bytes()).hexdigest()
-    expected_detail = "ef84d94fa8003d236af561bb2459992b5f36e4e9a647e2922047a8f1b38a8eb7"
+    expected_detail = "e9abbf46b9d0ce04ea3ff2b88662704137ebf5ffc34bef8f4e16b47a5ce4c591"
     if detail_digest != expected_detail:
         raise AssertionError(f"F10 Setup-detail HUD changed: {detail_digest}")
+
+
+def check_scene_audio_failures(exe, rom, minimal_pack, full_pack, directory):
+    title = run(
+        exe, "--headless", "--title-only", "--rom", rom,
+        "--assets", minimal_pack, "--frames", 0,
+    )
+    require_failure(title, "missing title audio entry")
+    if "Title synthesis failed" not in title.stderr:
+        raise AssertionError("title entry did not expose synthesis failure")
+
+    missing_gfx = run(
+        exe, "--headless", "--setup-only", "--rom", rom,
+        "--assets", minimal_pack, "--frames", 0,
+    )
+    require_failure(missing_gfx, "missing Setup graphics entry")
+    if "graphics initialization failed" not in missing_gfx.stderr or \
+            "Game Setup synthesis failed" in missing_gfx.stderr:
+        raise AssertionError("Setup graphics failure was misclassified as audio")
+
+    graphics_only = directory / "setup_graphics_only.pak"
+    write_pack_subset(full_pack, graphics_only, {16, 17, 92})
+    missing_audio = run(
+        exe, "--headless", "--setup-only", "--rom", rom,
+        "--assets", graphics_only, "--frames", 0,
+    )
+    require_failure(missing_audio, "missing Setup audio entry")
+    if "Game Setup synthesis failed" not in missing_audio.stderr:
+        raise AssertionError("valid-gfx Setup audio failure was not exercised")
+
+
+def check_capture_orchestrator():
+    script = (Path(__file__).resolve().parent / "capture_assets.ps1").read_text()
+    required = (
+        "setup_rules", "setup_options", "setup_main",
+        "mesen_setup_menus_capture.lua", "mesen_setup_main_capture.lua",
+        "NBA95_CAPTURE_MENU", "NBA95_CAPTURE_VARIANTS", "Required",
+    )
+    for marker in required:
+        if marker not in script:
+            raise AssertionError(f"capture orchestrator omitted {marker}")
+
+
+def check_capture_write_failure(exe, minimal_pack, directory):
+    missing_parent = directory / "missing" / "frame.bmp"
+    require_failure(
+        run(exe, "--headless", "--assets", minimal_pack, "--frames", 0,
+            "--dump-frame", missing_parent),
+        "unwritable frame capture",
+    )
 
 
 def main():
@@ -225,7 +301,11 @@ def main():
         check_host_rate_equivalence(args.exe, args.rom, args.pack, directory)
         check_asset_debug_cli(args.exe, args.pack)
         check_debug_telemetry(args.exe, args.rom, args.pack, directory)
-    print("[TEST] PASS: asset/ROM safety, host-rate timing, and debug telemetry")
+        check_scene_audio_failures(args.exe, args.rom, valid_pack,
+                                   args.pack, directory)
+        check_capture_orchestrator()
+        check_capture_write_failure(args.exe, valid_pack, directory)
+    print("[TEST] PASS: core safety, scene/audio lifecycle, captures, and debug telemetry")
 
 
 if __name__ == "__main__":

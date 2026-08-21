@@ -181,8 +181,12 @@ through the exact Mesen-observed cycles:
 `$80:9DEA` dispatches the input, `$80:A62D` selects the row state, and
 `$80:A77C` selects the value passed to the proportional BG3 glyph writer.
 Every accepted adjustment uses command `$49`/SRCN `$1A`, while row movement
-uses `$4A`/SRCN `$1B`. The port stores these values in `NbaSetupConfig` so
-they survive Rules/Options round trips for the running session.
+uses `$4A`/SRCN `$1B`. The port stores these values in the session-owned
+`NbaGameConfig`, so they survive Rules/Options round trips and complete Setup
+scene reinitialization. A on a main value row returns the separate
+`NBA_SETUP_ACTION_CONFIRM_MODE` navigation event with confirm SRCN `$1C`; the
+scene dispatcher uses the persistent Mode value to choose Exhibition team
+selection, Season, Playoffs, or Load Series.
 
 ## Set Rules and Set Options
 

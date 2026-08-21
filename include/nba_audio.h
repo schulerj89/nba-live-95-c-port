@@ -22,6 +22,8 @@ typedef struct {
     uint16_t setup_music_volume;
     uint8_t last_setup_sfx_srcn;
     uint8_t active_track;
+    uint8_t status;
+    bool host_playback_enabled;
 } NbaAudio;
 
 typedef enum {
@@ -31,7 +33,16 @@ typedef enum {
     NBA_AUDIO_TRACK_SETUP_SPC
 } NbaAudioTrack;
 
+typedef enum {
+    NBA_AUDIO_STATUS_IDLE = 0,
+    NBA_AUDIO_STATUS_READY,
+    NBA_AUDIO_STATUS_PLAYING,
+    NBA_AUDIO_STATUS_HOST_FAILED,
+    NBA_AUDIO_STATUS_SYNTH_FAILED
+} NbaAudioStatus;
+
 void nba_audio_init(NbaAudio *audio);
+void nba_audio_set_host_playback_enabled(NbaAudio *audio, bool enabled);
 void nba_audio_shutdown(NbaAudio *audio);
 void nba_audio_play_wav(NbaAudio *audio, const void *data, size_t size);
 void nba_audio_play_setup_sfx(NbaAudio *audio, const NbaAssetPack *assets, uint8_t srcn);

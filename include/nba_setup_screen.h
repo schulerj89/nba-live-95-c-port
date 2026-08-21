@@ -4,6 +4,7 @@
 #include "nba_types.h"
 #include "nba_assets.h"
 #include "nba_renderer.h"
+#include "nba_session.h"
 
 /**
  * NBA Live '95 Game Setup screen.
@@ -149,15 +150,18 @@ typedef enum {
     NBA_SETUP_SOUND_CONFIRM   /* $80:9DF3 command $4B, SRCN $1C */
 } NbaSetupSound;
 
-#define NBA_SETUP_RULE_COUNT   13
-#define NBA_SETUP_OPTION_COUNT 7
-#define NBA_SETUP_MAIN_VALUE_COUNT 4
+typedef enum {
+    NBA_SETUP_ACTION_NONE = 0,
+    NBA_SETUP_ACTION_OPEN_RULES,
+    NBA_SETUP_ACTION_OPEN_OPTIONS,
+    NBA_SETUP_ACTION_RETURN_MAIN,
+    NBA_SETUP_ACTION_CONFIRM_MODE
+} NbaSetupAction;
 
 typedef struct {
-    uint16_t main_values[NBA_SETUP_MAIN_VALUE_COUNT]; /* working block $7E:16FB */
-    uint16_t rules[NBA_SETUP_RULE_COUNT];    /* ROM commit block $7E:17D1 */
-    uint16_t options[NBA_SETUP_OPTION_COUNT];/* ROM commit block $7E:17B5 */
-} NbaSetupConfig;
+    NbaSetupSound sound;
+    NbaSetupAction action;
+} NbaSetupUpdateResult;
 
 typedef struct {
     uint8_t vram[0x10000];  /* mutable $80:A2BF entrance VRAM + DMA trace */
@@ -195,14 +199,16 @@ typedef struct {
     const uint8_t *options_mono_vram;
     const uint8_t *options_cpu_vram;
     const uint8_t *main_value_vram[NBA_SETUP_MAIN_VALUE_COUNT][4];
-    NbaSetupConfig config;
+    NbaGameConfig *config; /* persistent session-owned configuration */
     uint16_t working_rules[NBA_SETUP_RULE_COUNT];
     uint16_t working_options[NBA_SETUP_OPTION_COUNT];
     bool is_initialized;
 } NbaSetupScreen;
 
-void nba_setup_screen_init(NbaSetupScreen *s, const NbaAssetPack *assets);
-NbaSetupSound nba_setup_screen_update(NbaSetupScreen *s, const NbaInput *input);
+void nba_setup_screen_init(NbaSetupScreen *s, const NbaAssetPack *assets,
+                           NbaGameConfig *config);
+NbaSetupUpdateResult nba_setup_screen_update(NbaSetupScreen *s,
+                                             const NbaInput *input);
 int  nba_setup_screen_row_band_top(NbaSetupRow row);
 void nba_setup_screen_render(const NbaSetupScreen *s, NbaRenderer *ren);
 

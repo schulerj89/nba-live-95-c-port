@@ -11,6 +11,7 @@
 #include "nba_ea_intro.h"
 #include "nba_title_sequence.h"
 #include "nba_setup_screen.h"
+#include "nba_session.h"
 
 /* SNES Subroutine Addresses (LoROM Bank $80 and Bank $82) */
 #define SNES_ADDR_RESET_BOOT            0x808020  /* $80:8020 - Cold boot reset handler */
@@ -43,13 +44,18 @@ typedef struct {
     bool ea_intro_audio_started;
     NbaAudioDebugger audio_debugger;
     NbaAssetDebugger asset_debugger;
-    NbaTitleSequence title_sequence;
-    NbaSetupScreen setup_screen;
+    NbaSession session;
+    union {
+        NbaTitleSequence title;
+        NbaSetupScreen setup;
+    } scene;
+    NbaSetupAction last_setup_action;
     uint8_t debug_hud_page; /* F10: 0 off, 1 overview, 2 scene detail */
     bool is_initialized;
 } NbaGame;
 
 bool nba_game_init(NbaGame *game, const char *rom_path, const char *assets_path);
+bool nba_game_enter_state(NbaGame *game, NbaGameState state);
 void nba_game_shutdown(NbaGame *game);
 void nba_game_input_update(NbaInput *input, uint16_t raw_buttons);
 void nba_game_tick(NbaGame *game, float delta_time);

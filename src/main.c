@@ -34,6 +34,8 @@ int main(int argc, char *argv[]) {
     int setup_main_row = -1;
     int setup_main_right = 0;
     int setup_main_left = 0;
+    bool setup_main_confirm = false;
+    bool setup_reenter = false;
     bool setup_menu_confirm = false;
     bool setup_menu_b = false;
     bool timing_debug = false;
@@ -94,6 +96,10 @@ int main(int argc, char *argv[]) {
             setup_main_right = atoi(argv[++i]);
         } else if (strcmp(argv[i], "--setup-main-left") == 0 && i + 1 < argc) {
             setup_main_left = atoi(argv[++i]);
+        } else if (strcmp(argv[i], "--setup-main-confirm") == 0) {
+            setup_main_confirm = true;
+        } else if (strcmp(argv[i], "--setup-reenter") == 0) {
+            setup_reenter = true;
         } else if (strcmp(argv[i], "--setup-menu-confirm") == 0) {
             setup_menu_confirm = true;
         } else if (strcmp(argv[i], "--setup-menu-b") == 0) {
@@ -141,6 +147,8 @@ int main(int argc, char *argv[]) {
             printf("  --setup-main-row N    Select main Setup row 0..3\n");
             printf("  --setup-main-right N  Apply N right adjustments on the main row\n");
             printf("  --setup-main-left N   Apply N left adjustments on the main row\n");
+            printf("  --setup-main-confirm  Press A and report the requested scene action\n");
+            printf("  --setup-reenter       Reinitialize Setup to verify session persistence\n");
             printf("  --timing-debug        Draw compact F10 overview page in a frame dump\n");
             printf("  --debug-hud-page N    Draw compact F10 page 1 or 2 in a frame dump\n");
             printf("  --debug-state         Print one expanded state snapshot after stepping\n");
@@ -182,11 +190,13 @@ int main(int argc, char *argv[]) {
         }
         printf("[HEADLESS] Starting headless verification (ROM: %s, Assets: %s, frames: %d)\n",
                rom_path ? rom_path : "(none)", assets_path ? assets_path : "(none)", step_frames);
-        NbaGame game;
+        static NbaGame game; /* large renderer/active-scene buffers live off-stack */
         if (!nba_game_init(&game, rom_path, assets_path)) {
             fprintf(stderr, "[HEADLESS] Error: Failed to initialize game\n");
             return 1;
         }
+        /* Synthesis and capture must not depend on a Windows output device. */
+        nba_audio_set_host_playback_enabled(&game.audio, false);
 
         bool enter_setup = false;
         int title_press_frame = -1;
@@ -197,6 +207,7 @@ int main(int argc, char *argv[]) {
         int setup_menu_right_done = 0;
         int setup_main_right_done = 0;
         int setup_main_left_done = 0;
+        bool setup_main_confirm_done = false;
         bool setup_main_done = setup_main_row < 0;
         for (int i = 1; i < argc; i++) {
             if (strcmp(argv[i], "--enter-setup") == 0) enter_setup = true;
@@ -208,18 +219,17 @@ int main(int argc, char *argv[]) {
         game.debug_hud_page = (uint8_t)debug_hud_page;
 
         if (start_at_title) {
-            game.state = NBA_STATE_TITLE_SEQUENCE;
-            game.state_frame = 0;
-            game.state_timer = 0.0f;
-            nba_title_sequence_init(&game.title_sequence);
+            if (!nba_game_enter_state(&game, NBA_STATE_TITLE_SEQUENCE)) {
+                nba_game_shutdown(&game);
+                return 1;
+            }
         }
 
         if (start_at_setup) {
-            game.state = NBA_STATE_GAME_SETUP;
-            game.state_frame = 0;
-            game.state_timer = 0.0f;
-            nba_setup_screen_init(&game.setup_screen, &game.assets);
-            nba_audio_play_setup_dsp(&game.audio, &game.assets);
+            if (!nba_game_enter_state(&game, NBA_STATE_GAME_SETUP)) {
+                nba_game_shutdown(&game);
+                return 1;
+            }
         }
 
         if (audio_debug_test) {
@@ -247,8 +257,8 @@ int main(int argc, char *argv[]) {
             /* --setup-down N: step the Game Setup cursor down N rows, one press
              * every 8 frames once the screen has settled. */
             if (setup_down_count > 0 && game.state == NBA_STATE_GAME_SETUP &&
-                game.setup_screen.frame > NBA_SETUP_ENTER_FRAMES) {
-                int since = game.setup_screen.frame - NBA_SETUP_ENTER_FRAMES;
+                game.scene.setup.frame > NBA_SETUP_ENTER_FRAMES) {
+                int since = game.scene.setup.frame - NBA_SETUP_ENTER_FRAMES;
                 if (since % 8 == 1 && (since / 8) < setup_down_count) {
                     game.input.pressed = NBA_BTN_DOWN;
                 }
@@ -258,18 +268,18 @@ int main(int argc, char *argv[]) {
              * One new press is issued per frame, after $80:A3B8 has settled. */
             if (setup_menu && !setup_menu_done &&
                 game.state == NBA_STATE_GAME_SETUP &&
-                game.setup_screen.frame >= NBA_SETUP_BG3_SETTLE_FRAME) {
+                game.scene.setup.frame >= NBA_SETUP_BG3_SETTLE_FRAME) {
                 NbaSetupRow target = strcmp(setup_menu, "rules") == 0 ?
                                      NBA_SETUP_ROW_RULES : NBA_SETUP_ROW_OPTIONS;
                 if (!setup_menu_opened) {
-                    if (game.setup_screen.row != target) {
+                    if (game.scene.setup.row != target) {
                         game.input.pressed = NBA_BTN_DOWN;
                     } else {
                         game.input.pressed = NBA_BTN_A;
                         setup_menu_opened = true;
                     }
-                } else if (game.setup_screen.page != NBA_SETUP_PAGE_MAIN &&
-                           game.setup_screen.transition == NBA_SETUP_TRANSITION_NONE) {
+                } else if (game.scene.setup.page != NBA_SETUP_PAGE_MAIN &&
+                           game.scene.setup.transition == NBA_SETUP_TRANSITION_NONE) {
                     if (setup_menu_moves_done < setup_menu_row) {
                         game.input.pressed = NBA_BTN_DOWN;
                         setup_menu_moves_done++;
@@ -288,9 +298,9 @@ int main(int argc, char *argv[]) {
                 }
             }
             if (!setup_main_done && game.state == NBA_STATE_GAME_SETUP &&
-                game.setup_screen.page == NBA_SETUP_PAGE_MAIN &&
-                game.setup_screen.frame >= NBA_SETUP_BG3_SETTLE_FRAME) {
-                if ((int)game.setup_screen.row != setup_main_row) {
+                game.scene.setup.page == NBA_SETUP_PAGE_MAIN &&
+                game.scene.setup.frame >= NBA_SETUP_BG3_SETTLE_FRAME) {
+                if ((int)game.scene.setup.row != setup_main_row) {
                     game.input.pressed = NBA_BTN_DOWN;
                 } else if (setup_main_right_done < setup_main_right) {
                     game.input.pressed = NBA_BTN_RIGHT;
@@ -298,6 +308,9 @@ int main(int argc, char *argv[]) {
                 } else if (setup_main_left_done < setup_main_left) {
                     game.input.pressed = NBA_BTN_LEFT;
                     setup_main_left_done++;
+                } else if (setup_main_confirm && !setup_main_confirm_done) {
+                    game.input.pressed = NBA_BTN_A;
+                    setup_main_confirm_done = true;
                 } else {
                     setup_main_done = true;
                 }
@@ -339,7 +352,7 @@ int main(int argc, char *argv[]) {
         }
 
         if (setup_menu) {
-            const NbaSetupScreen *s = &game.setup_screen;
+            const NbaSetupScreen *s = &game.scene.setup;
             int menu_count = strcmp(setup_menu, "rules") == 0 ?
                              NBA_SETUP_RULE_COUNT : NBA_SETUP_OPTION_COUNT;
             int report_row = setup_menu_row % menu_count;
@@ -348,19 +361,31 @@ int main(int argc, char *argv[]) {
                    "option_row=%d working=%u committed=%u\n",
                    (int)s->page, s->menu_row, (int)s->transition,
                    s->transition_frame, s->transition_blank, s->has_gfx,
-                   s->working_rules[0], s->config.rules[0],
-                   s->working_options[0], s->config.options[0],
+                   s->working_rules[0], s->config->rules[0],
+                   s->working_options[0], s->config->options[0],
                    report_row,
                    strcmp(setup_menu, "rules") == 0 ?
                        s->working_rules[report_row] : s->working_options[report_row],
                    strcmp(setup_menu, "rules") == 0 ?
-                       s->config.rules[report_row] : s->config.options[report_row]);
+                       s->config->rules[report_row] : s->config->options[report_row]);
         }
         if (setup_main_row >= 0) {
-            const NbaSetupScreen *s = &game.setup_screen;
-            printf("[SETUP MAIN TEST] row=%d mode=%u style=%u level=%u quarter=%u\n",
-                   (int)s->row, s->config.main_values[0], s->config.main_values[1],
-                   s->config.main_values[2], s->config.main_values[3]);
+            const NbaSetupScreen *s = &game.scene.setup;
+            printf("[SETUP MAIN TEST] row=%d mode=%u style=%u level=%u quarter=%u action=%d\n",
+                   (int)s->row, s->config->main_values[0], s->config->main_values[1],
+                   s->config->main_values[2], s->config->main_values[3],
+                   (int)game.last_setup_action);
+        }
+        if (setup_reenter) {
+            if (!nba_game_enter_state(&game, NBA_STATE_GAME_SETUP)) {
+                nba_game_shutdown(&game);
+                return 1;
+            }
+            printf("[SETUP REENTER] mode=%u style=%u level=%u quarter=%u\n",
+                   game.session.config.main_values[0],
+                   game.session.config.main_values[1],
+                   game.session.config.main_values[2],
+                   game.session.config.main_values[3]);
         }
         if (debug_state) nba_game_debug_print(&game);
 
@@ -373,6 +398,8 @@ int main(int argc, char *argv[]) {
                        game.renderer.width, game.renderer.height);
             } else {
                 fprintf(stderr, "[HEADLESS] Failed to write BMP file: %s\n", dump_frame_path);
+                nba_game_shutdown(&game);
+                return 1;
             }
         }
 
