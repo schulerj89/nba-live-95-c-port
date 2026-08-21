@@ -20,7 +20,7 @@ static void nba_debug_add_line(NbaDebugLines *out, const char *text) {
 const char *nba_game_state_name(NbaGameState state) {
     static const char *const names[] = {
         "BOOT_RESET", "NINTENDO_LICENSE", "NBA_LEGAL", "EA_INTRO",
-        "TITLE", "GAME_SETUP"
+        "TITLE", "GAME_SETUP", "TEAM_SELECT"
     };
     return (unsigned)state < sizeof(names) / sizeof(names[0]) ?
            names[state] : "UNKNOWN";
@@ -107,6 +107,18 @@ static void nba_game_debug_lines(const NbaGame *game, NbaDebugLines *out) {
                  phase < 3u ? phases[phase] : "?", game->scene.title.brightness,
                  game->scene.title.hold_frames_left,
                  game->scene.title.snap_frame);
+    } else if (game->state == NBA_STATE_TEAM_SELECT &&
+               game->scene.team_select.is_initialized) {
+        const NbaTeamSelect *s = &game->scene.team_select;
+        snprintf(out->line[out->count++], NBA_DEBUG_LINE_SIZE,
+                 "SIDE:%s CAT:%u TF:%03d", s->active_side == NBA_TEAM_SIDE_LEFT ?
+                 "LEFT" : "RIGHT", (unsigned)s->category, s->transition_frame);
+        snprintf(out->line[out->count++], NBA_DEBUG_LINE_SIZE,
+                 "TEAM L:%02u %-12s", s->session->left_team,
+                 nba_team_records[s->session->left_team].name);
+        snprintf(out->line[out->count++], NBA_DEBUG_LINE_SIZE,
+                 "TEAM R:%02u %-12s", s->session->right_team,
+                 nba_team_records[s->session->right_team].name);
     }
 
     if (out->count < NBA_DEBUG_MAX_LINES) {
@@ -182,14 +194,20 @@ void nba_game_debug_print(const NbaGame *game) {
 
 bool nba_game_enter_state(NbaGame *game, NbaGameState state) {
     if (!game) return false;
-    if (game->audio.active_track != NBA_AUDIO_TRACK_NONE)
+    NbaGameState previous_state = game->state;
+    bool keep_setup_audio = previous_state == NBA_STATE_GAME_SETUP &&
+                            state == NBA_STATE_TEAM_SELECT;
+    if (previous_state == NBA_STATE_TEAM_SELECT)
+        nba_team_select_shutdown(&game->scene.team_select);
+    if (!keep_setup_audio && game->audio.active_track != NBA_AUDIO_TRACK_NONE)
         nba_audio_stop(&game->audio);
     memset(&game->scene, 0, sizeof(game->scene));
     game->state = state;
     game->state_frame = 0;
     game->state_timer = 0.0f;
     game->ea_intro_audio_started = false;
-    game->last_setup_action = NBA_SETUP_ACTION_NONE;
+    if (state != NBA_STATE_TEAM_SELECT)
+        game->last_setup_action = NBA_SETUP_ACTION_NONE;
 
     if (state == NBA_STATE_TITLE_SEQUENCE) {
         nba_title_sequence_init(&game->scene.title);
@@ -210,6 +228,12 @@ bool nba_game_enter_state(NbaGame *game, NbaGameState state) {
         if (!nba_audio_play_setup_dsp(&game->audio, &game->assets)) {
             game->audio.status = NBA_AUDIO_STATUS_SYNTH_FAILED;
             fprintf(stderr, "[AUDIO] Game Setup synthesis failed; continuing silently.\n");
+            return false;
+        }
+    } else if (state == NBA_STATE_TEAM_SELECT) {
+        if (!nba_team_select_init(&game->scene.team_select, &game->assets,
+                                  &game->session, game->renderer.pixels)) {
+            fprintf(stderr, "[GAME] Team Select asset initialization failed.\n");
             return false;
         }
     }
@@ -287,6 +311,8 @@ bool nba_game_init(NbaGame *game, const char *rom_path, const char *assets_path)
  */
 void nba_game_shutdown(NbaGame *game) {
     if (!game) return;
+    if (game->state == NBA_STATE_TEAM_SELECT)
+        nba_team_select_shutdown(&game->scene.team_select);
     nba_audio_shutdown(&game->audio);
     if (game->assets.is_loaded) {
         nba_assets_free(&game->assets);
@@ -465,7 +491,24 @@ void nba_game_tick(NbaGame *game, float delta_time) {
                            game->session.config.main_values[1],
                            game->session.config.main_values[2],
                            game->session.config.main_values[3]);
+                    if (mode == 0u &&
+                        !nba_game_enter_state(game, NBA_STATE_TEAM_SELECT)) {
+                        fprintf(stderr, "[GAME] Could not enter Team Select.\n");
+                    }
                 }
+            }
+            break;
+
+        case NBA_STATE_TEAM_SELECT:
+            {
+                NbaTeamSelectSound sound = nba_team_select_update(
+                    &game->scene.team_select, &game->input);
+                uint8_t srcn = 0xFFu;
+                if (sound == NBA_TEAM_SOUND_SIDE) srcn = 0x19u;
+                if (sound == NBA_TEAM_SOUND_CATEGORY) srcn = 0x1Bu;
+                if (sound == NBA_TEAM_SOUND_CHANGE) srcn = 0x1Au;
+                if (srcn != 0xFFu)
+                    nba_audio_play_setup_sfx(&game->audio, &game->assets, srcn);
             }
             break;
 
@@ -601,6 +644,10 @@ void nba_game_render(NbaGame *game) {
 
         case NBA_STATE_GAME_SETUP:
             nba_setup_screen_render(&game->scene.setup, ren);
+            break;
+
+        case NBA_STATE_TEAM_SELECT:
+            nba_team_select_render(&game->scene.team_select, ren);
             break;
     }
 

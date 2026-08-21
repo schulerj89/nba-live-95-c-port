@@ -811,8 +811,10 @@ def create_asset_pack(rom_path, output_path):
 
     team_capture_dir = os.environ.get("NBA95_TEAM_CAPTURE_DIR") or os.path.join(
         os.path.dirname(os.path.abspath(__file__)), "..", ".analysis",
-        "team_select_logos_slow")
+        "team_select_logos")
     team_logo_assets = []
+    team_vram_assets = []
+    team_cgram_assets = []
     for team in range(27):
         prefix = os.path.join(team_capture_dir, f"team_{team:02d}")
         paths = [prefix + "_vram.bin", prefix + "_cgram.bin", prefix + "_oam.bin"]
@@ -831,9 +833,13 @@ def create_asset_pack(rom_path, output_path):
         if not any(logo[index + 3] for index in range(0, len(logo), 4)):
             raise RuntimeError(f"Team {team} logo decoded as fully transparent")
         team_logo_assets.append((160 + team, 48, 56, team, logo))
+        team_vram_assets.append((192 + team, 0, 0, team, payloads[0]))
+        team_cgram_assets.append((219 + team, 0, 0, team, payloads[1]))
     if len({hashlib.sha256(asset[4]).digest() for asset in team_logo_assets}) != 27:
         raise RuntimeError("Team Select logo captures are not unique for all 27 teams")
     print("[ASSET EXTRACTOR] Packed 27 Team Select logos from raw SNES VRAM/CGRAM/OAM")
+    team_select_oam_asset = (187, 0, 0, 0,
+                             open(os.path.join(team_capture_dir, "team_18_oam.bin"), "rb").read())
 
     assets = [
         (1, 128, 11, 0, nintendo_license_bytes),               # ASSET_NINTENDO_LICENSE
@@ -876,6 +882,9 @@ def create_asset_pack(rom_path, output_path):
     ])
     assets.extend(setup_sample_assets)
     assets.extend(team_logo_assets)
+    assets.append(team_select_oam_asset)
+    assets.extend(team_vram_assets)
+    assets.extend(team_cgram_assets)
     assets.extend([
         (124, 0, 0, 0, rules_vram_bytes),
         (125, 0, 0, 0, rules_cgram_bytes),
@@ -934,7 +943,7 @@ def create_asset_pack(rom_path, output_path):
                     extra_audio_id += 1
 
     header_magic = b"NBA95PAK"
-    version = 11
+    version = 12
     asset_count = len(assets)
     entry_size = 24 # 6 * 4 bytes
 

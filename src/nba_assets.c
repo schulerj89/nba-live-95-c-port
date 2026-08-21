@@ -5,7 +5,7 @@
 
 #define NBA_ASSET_MAGIC "NBA95PAK"
 
-#define NBA_ASSET_PACK_VERSION 11u
+#define NBA_ASSET_PACK_VERSION 12u
 #define NBA_ASSET_HEADER_SIZE 16u
 #define NBA_ASSET_ENTRY_SIZE 24u
 
@@ -28,6 +28,14 @@ static bool asset_metadata_valid(uint32_t id, uint32_t size, uint32_t width,
         return width == 48u && height == 56u && flags == id - NBA_ASSET_TEAM_LOGO_BASE &&
                size == width * height * sizeof(uint32_t);
     }
+    if (id >= NBA_ASSET_TEAM_VRAM_BASE && id <= NBA_ASSET_TEAM_VRAM_LAST)
+        return size == 0x10000u && width == 0u && height == 0u &&
+               flags == id - NBA_ASSET_TEAM_VRAM_BASE;
+    if (id >= NBA_ASSET_TEAM_CGRAM_BASE && id <= NBA_ASSET_TEAM_CGRAM_LAST)
+        return size == 0x200u && width == 0u && height == 0u &&
+               flags == id - NBA_ASSET_TEAM_CGRAM_BASE;
+    if (id == NBA_ASSET_TEAM_SELECT_OAM)
+        return size == 0x220u && width == 0u && height == 0u && flags == 0u;
     if (id == NBA_ASSET_EA_A_FIXED_SEQUENCE) {
         uint32_t x = flags >> 16;
         uint32_t y = flags & 0xFFFFu;

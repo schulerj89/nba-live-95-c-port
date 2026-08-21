@@ -14,6 +14,8 @@ static void asset_fill(NbaRenderer *ren, int x, int y, int w, int h,
 
 static const char *asset_kind(const NbaAssetItem *item) {
     if (!item) return "NONE";
+    if (item->id >= NBA_ASSET_TEAM_LOGO_BASE && item->id <= NBA_ASSET_TEAM_LOGO_LAST)
+        return "ROM OBJ LOGO";
     if (item->size == 0x10000u) return "SNES VRAM";
     if (item->size == 0x200u) return "SNES CGRAM";
     if (item->size == 0x220u) return "SNES OAM";
@@ -39,6 +41,9 @@ static const uint8_t *asset_palette_for(const NbaAssetPack *assets,
         palette = NBA_ASSET_SET_OPTIONS_CGRAM;
     if (id >= NBA_ASSET_SETUP_MODE_SEASON_VRAM &&
         id <= NBA_ASSET_SETUP_QUARTER_12_VRAM) palette = NBA_ASSET_SETUP_CGRAM;
+    if (id >= NBA_ASSET_TEAM_VRAM_BASE && id <= NBA_ASSET_TEAM_VRAM_LAST)
+        palette = (NbaAssetId)(NBA_ASSET_TEAM_CGRAM_BASE +
+                              (id - NBA_ASSET_TEAM_VRAM_BASE));
     const NbaAssetItem *item = nba_assets_get(assets, palette);
     return item && item->size == 0x200u ? (const uint8_t *)item->data : NULL;
 }
@@ -145,7 +150,18 @@ void nba_asset_debugger_render(const NbaAssetDebugger *dbg,
     nba_font_render_text(ren->pixels, NBA_SNES_WIDTH, 8, 41,
                          "UP/DN ASSET  LEFT/RIGHT TILE PAGE", 0xFF8CFF9Du, 0, 1);
 
-    if (item->size == 0x220u &&
+    if (item->id >= NBA_ASSET_TEAM_LOGO_BASE &&
+        item->id <= NBA_ASSET_TEAM_LOGO_LAST) {
+        const uint32_t *pixels = (const uint32_t *)item->data;
+        int ox = (NBA_SNES_WIDTH - (int)item->width) / 2;
+        int oy = 82;
+        for (uint32_t y = 0; y < item->height; ++y)
+            for (uint32_t x = 0; x < item->width; ++x) {
+                uint32_t color = pixels[y * item->width + x];
+                if (color >> 24)
+                    ren->pixels[(oy + (int)y) * NBA_SNES_WIDTH + ox + (int)x] = color;
+            }
+    } else if (item->size == 0x220u &&
         (item->id == NBA_ASSET_SET_RULES_OAM ||
          item->id == NBA_ASSET_SET_OPTIONS_OAM)) {
         nba_font_render_text(ren->pixels, NBA_SNES_WIDTH, 8, 55,

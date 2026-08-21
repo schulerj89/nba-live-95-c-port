@@ -875,7 +875,7 @@ NbaSetupUpdateResult nba_setup_screen_update(NbaSetupScreen *s,
             return setup_result(NBA_SETUP_SOUND_ADJUST, NBA_SETUP_ACTION_NONE);
         }
     }
-    if (input->pressed & NBA_BTN_A) {
+    if (input->pressed & (NBA_BTN_A | NBA_BTN_START)) {
         if (s->row == NBA_SETUP_ROW_RULES && setup_menu_assets_ready(s)) {
             memcpy(s->working_rules, s->config->rules, sizeof(s->working_rules));
             s->menu_row = s->menu_scroll = 0;

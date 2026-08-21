@@ -15,6 +15,8 @@ typedef struct {
 
 typedef struct {
     NbaGameConfig config;
+    uint8_t left_team;  /* Team Select $7E:16FB */
+    uint8_t right_team; /* Team Select $7E:16FD */
 } NbaSession;
 
 extern const uint16_t nba_default_main_values[NBA_SETUP_MAIN_VALUE_COUNT];

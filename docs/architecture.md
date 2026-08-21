@@ -10,13 +10,16 @@ audio, resets scene-local timing, clears the inactive union, initializes the
 new scene, and applies its audio policy. GUI shortcuts, headless starts, and
 production transitions all use this path.
 
-`NbaSession.config` owns Mode, Style, Level, Quarter, Rules, and Options.
+`NbaSession.config` owns Mode, Style, Level, Quarter, Rules, and Options;
+`NbaSession.left_team/right_team` own the Exhibition matchup across scenes.
 `NbaSetupScreen` receives a pointer to that configuration and owns only
 temporary presentation/input state. Reinitializing Setup therefore cannot
 silently restore defaults. Its update result separates menu sound from
 navigation action. Confirming a main value row emits the generic `CONFIRM_MODE`
-event; the scene dispatcher then routes the persistent mode value to Exhibition
-team selection, Season, Playoffs, or Load Series without conflating them.
+event; the scene dispatcher then routes Exhibition to the Team Select scene.
+That handoff intentionally preserves the resident Setup SPC track. Team Select
+uses its own scene-local active side, ranking category, PPU presentation, and
+transition state while writing team IDs back to the session.
 
 Audio synthesis and host playback are separate outcomes. Headless runs disable
 host playback before entering an audio scene, retain synthesized PCM for WAV

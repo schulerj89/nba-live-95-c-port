@@ -18,7 +18,8 @@
 `extract_assets.py` validates those captures and the ROM, then writes the asset
 pack. Its minimal 65816 decompressor lives in `snes65816_decompressor.py`.
 Pass `-CaptureName intro_capture`, `title_capture`, `setup_capture`,
-`setup_transition`, `setup_rules`, `setup_options`, or `setup_main` to refresh
+`setup_transition`, `setup_rules`, `setup_options`, `setup_main`, or
+`team_select_logos` to refresh
 one capture while investigating it. The orchestrator supplies the menu-specific
 environment flags and validates every extractor-required output before it
 reports success.
@@ -30,6 +31,7 @@ reports success.
 - `test_setup_transition.py`: transition, cursor rows, exit paths, PCM,
   Rules/Options page hashes, edit/commit storage, and F11 menu SFX
 - `test_core_safety.py`: pack/ROM validation, host-rate timing, and SPC vectors
+- `test_team_select.py`: Exhibition handoff, all 27 ROM teams/logos, side switching, rank-order navigation, and Team Select frame hashes
 
 ## Investigation utilities
 

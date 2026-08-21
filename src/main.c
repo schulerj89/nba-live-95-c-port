@@ -63,12 +63,14 @@ int main(int argc, char *argv[]) {
     const char *dump_audio_path = NULL;
     const char *dump_menu_sfx_path = NULL;
     const char *setup_transition_trace_path = NULL;
+    const char *dump_sequence_dir = NULL;
     int menu_sfx_srcn = 0x1B;
     bool is_headless = false;
     bool audio_debug_test = false;
     int asset_debug_id = -1;
     bool start_at_title = false;
     bool start_at_setup = false;
+    bool start_at_team = false;
     bool spc_self_test = false;
     int step_frames = 30;
     double tick_rate = 60.0;
@@ -86,6 +88,13 @@ int main(int argc, char *argv[]) {
     bool debug_state = false;
     int debug_every = 0;
     int debug_hud_page = 0;
+    bool team_side_toggle = false;
+    int team_category = -1;
+    int team_right = 0;
+    int team_left = 0;
+    bool team_list = false;
+    bool team_demo = false;
+    int team_action_gap = 1;
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--rom") == 0 && i + 1 < argc) {
@@ -126,6 +135,24 @@ int main(int argc, char *argv[]) {
             start_at_title = true;
         } else if (strcmp(argv[i], "--setup-only") == 0) {
             start_at_setup = true;
+        } else if (strcmp(argv[i], "--team-only") == 0) {
+            start_at_team = true;
+        } else if (strcmp(argv[i], "--team-side-toggle") == 0) {
+            team_side_toggle = true;
+        } else if (strcmp(argv[i], "--team-category") == 0 && i + 1 < argc) {
+            team_category = atoi(argv[++i]);
+        } else if (strcmp(argv[i], "--team-right") == 0 && i + 1 < argc) {
+            team_right = atoi(argv[++i]);
+        } else if (strcmp(argv[i], "--team-left") == 0 && i + 1 < argc) {
+            team_left = atoi(argv[++i]);
+        } else if (strcmp(argv[i], "--team-list") == 0) {
+            team_list = true;
+        } else if (strcmp(argv[i], "--team-demo") == 0) {
+            team_demo = true;
+        } else if (strcmp(argv[i], "--team-action-gap") == 0 && i + 1 < argc) {
+            team_action_gap = atoi(argv[++i]);
+        } else if (strcmp(argv[i], "--dump-sequence-dir") == 0 && i + 1 < argc) {
+            dump_sequence_dir = argv[++i];
         } else if (strcmp(argv[i], "--spc-self-test") == 0) {
             spc_self_test = true;
         } else if (strcmp(argv[i], "--setup-menu") == 0 && i + 1 < argc) {
@@ -186,6 +213,15 @@ int main(int argc, char *argv[]) {
             printf("  --menu-sfx-srcn N     Select menu SRCN 0x1A..0x1C (default 0x1B)\n");
             printf("  --title-only          Start at $80:E01E title state (headless tests)\n");
             printf("  --setup-only          Start at the $80:E600 -> $80:A2BF handoff\n");
+            printf("  --team-only           Start at the $80:DBF6 -> $82:809A Team Select handoff\n");
+            printf("  --team-side-toggle    Toggle the active Team Select side once\n");
+            printf("  --team-category N     Select ranking category 0..4 with Down\n");
+            printf("  --team-right N        Advance N teams in the selected ranking order\n");
+            printf("  --team-left N         Move back N teams in the selected ranking order\n");
+            printf("  --team-list           Print all 27 ROM ranking records and exit\n");
+            printf("  --team-demo           Script right cycle, side toggle, then left cycle\n");
+            printf("  --team-action-gap N   Frames between scripted Team Select inputs\n");
+            printf("  --dump-sequence-dir D Save every rendered headless frame in directory D\n");
             printf("  --setup-menu <name>   Open Rules or Options in headless mode\n");
             printf("  --setup-menu-row <N>  Move to submenu row N\n");
             printf("  --setup-menu-right N  Apply N right-value adjustments\n");
@@ -196,7 +232,7 @@ int main(int argc, char *argv[]) {
             printf("  --setup-main-row N    Select main Setup row 0..3\n");
             printf("  --setup-main-right N  Apply N right adjustments on the main row\n");
             printf("  --setup-main-left N   Apply N left adjustments on the main row\n");
-            printf("  --setup-main-confirm  Press A and report the requested scene action\n");
+            printf("  --setup-main-confirm  Press Start and report the requested scene action\n");
             printf("  --setup-reenter       Reinitialize Setup to verify session persistence\n");
             printf("  --timing-debug        Draw compact F10 overview page in a frame dump\n");
             printf("  --debug-hud-page N    Draw compact F10 page 1 or 2 in a frame dump\n");
@@ -208,6 +244,16 @@ int main(int argc, char *argv[]) {
             printf("  --help, -h            Show this help text\n");
             return 0;
         }
+    }
+
+    if (team_list) {
+        for (int team = 0; team < NBA_TEAM_COUNT; ++team) {
+            const NbaTeamRecord *record = &nba_team_records[team];
+            printf("[TEAM DATA] %02d %-14s %-14s S=%02u R=%02u B=%02u D=%02u O=%02u\n",
+                   team, record->name, record->nickname, record->rank[0],
+                   record->rank[1], record->rank[2], record->rank[3], record->rank[4]);
+        }
+        return 0;
     }
 
     if (spc_self_test) {
@@ -237,6 +283,12 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "[HEADLESS] Invalid Setup menu row or adjustment count.\n");
             return 1;
         }
+        if (team_category < -1 || team_category >= NBA_TEAM_RANK_COUNT ||
+            team_right < 0 || team_right > 1000 || team_left < 0 || team_left > 1000 ||
+            team_action_gap < 1 || team_action_gap > 1000) {
+            fprintf(stderr, "[HEADLESS] Invalid Team Select category or adjustment count.\n");
+            return 1;
+        }
         printf("[HEADLESS] Starting headless verification (ROM: %s, Assets: %s, frames: %d)\n",
                rom_path ? rom_path : "(none)", assets_path ? assets_path : "(none)", step_frames);
         static NbaGame game; /* large renderer/active-scene buffers live off-stack */
@@ -258,6 +310,10 @@ int main(int argc, char *argv[]) {
         int setup_main_left_done = 0;
         bool setup_main_confirm_done = false;
         bool setup_main_done = setup_main_row < 0;
+        bool team_toggle_done = false;
+        int team_right_done = 0;
+        int team_left_done = 0;
+        int team_action_wait = team_action_gap;
         FILE *setup_trace_file = NULL;
         int setup_trace_rows = 0;
         for (int i = 1; i < argc; i++) {
@@ -299,6 +355,12 @@ int main(int argc, char *argv[]) {
 
         if (start_at_setup) {
             if (!nba_game_enter_state(&game, NBA_STATE_GAME_SETUP)) {
+                nba_game_shutdown(&game);
+                return 1;
+            }
+        }
+        if (start_at_team) {
+            if (!nba_game_enter_state(&game, NBA_STATE_TEAM_SELECT)) {
                 nba_game_shutdown(&game);
                 return 1;
             }
@@ -381,10 +443,39 @@ int main(int argc, char *argv[]) {
                     game.input.pressed = NBA_BTN_LEFT;
                     setup_main_left_done++;
                 } else if (setup_main_confirm && !setup_main_confirm_done) {
-                    game.input.pressed = NBA_BTN_A;
+                    game.input.pressed = NBA_BTN_START;
                     setup_main_confirm_done = true;
                 } else {
                     setup_main_done = true;
+                }
+            }
+            if (game.state == NBA_STATE_TEAM_SELECT &&
+                game.scene.team_select.transition_frame >= NBA_TEAM_TRANSITION_FRAMES) {
+                NbaTeamSelect *team = &game.scene.team_select;
+                if (team_demo) {
+                    int at = team->steady_frame;
+                    if (at == 30 || at == 60 || at == 130 || at == 160)
+                        game.input.pressed = NBA_BTN_RIGHT;
+                    else if (at == 100)
+                        game.input.pressed = NBA_BTN_A;
+                } else if (team_action_wait > 0) {
+                    team_action_wait--;
+                } else if (team_side_toggle && !team_toggle_done) {
+                    game.input.pressed = NBA_BTN_A;
+                    team_toggle_done = true;
+                    team_action_wait = team_action_gap;
+                } else if (team_category >= 0 &&
+                           (int)team->category != team_category) {
+                    game.input.pressed = NBA_BTN_DOWN;
+                    team_action_wait = team_action_gap;
+                } else if (team_right_done < team_right) {
+                    game.input.pressed = NBA_BTN_RIGHT;
+                    team_right_done++;
+                    team_action_wait = team_action_gap;
+                } else if (team_left_done < team_left) {
+                    game.input.pressed = NBA_BTN_LEFT;
+                    team_left_done++;
+                    team_action_wait = team_action_gap;
                 }
             }
             NbaSetupTransitionRoute route_before =
@@ -410,6 +501,18 @@ int main(int argc, char *argv[]) {
                 printf("[DEBUG SAMPLE] stepped=%d\n", frame + 1);
                 nba_game_debug_print(&game);
             }
+            if (dump_sequence_dir) {
+                char sequence_path[1024];
+                nba_game_render(&game);
+                snprintf(sequence_path, sizeof(sequence_path), "%s/frame_%04d.bmp",
+                         dump_sequence_dir, frame + 1);
+                if (!nba_renderer_save_bmp(&game.renderer, sequence_path)) {
+                    fprintf(stderr, "[HEADLESS] Failed sequence frame: %s\n", sequence_path);
+                    if (setup_trace_file) fclose(setup_trace_file);
+                    nba_game_shutdown(&game);
+                    return 1;
+                }
+            }
         }
         if (setup_trace_file) {
             if (fclose(setup_trace_file) != 0) {
@@ -421,6 +524,9 @@ int main(int argc, char *argv[]) {
             printf("[HEADLESS] Wrote %d Setup transition rows to: %s\n",
                    setup_trace_rows, setup_transition_trace_path);
         }
+        if (dump_sequence_dir)
+            printf("[HEADLESS] Wrote %d rendered sequence frames to: %s\n",
+                   step_frames, dump_sequence_dir);
         if (asset_debug_id >= 0) {
             game.asset_debugger.is_active = true;
             bool found = false;
@@ -470,10 +576,13 @@ int main(int argc, char *argv[]) {
                        s->config->rules[report_row] : s->config->options[report_row]);
         }
         if (setup_main_row >= 0) {
-            const NbaSetupScreen *s = &game.scene.setup;
             printf("[SETUP MAIN TEST] row=%d mode=%u style=%u level=%u quarter=%u action=%d\n",
-                   (int)s->row, s->config->main_values[0], s->config->main_values[1],
-                   s->config->main_values[2], s->config->main_values[3],
+                   game.state == NBA_STATE_GAME_SETUP ? (int)game.scene.setup.row :
+                       setup_main_row,
+                   game.session.config.main_values[0],
+                   game.session.config.main_values[1],
+                   game.session.config.main_values[2],
+                   game.session.config.main_values[3],
                    (int)game.last_setup_action);
         }
         if (setup_reenter) {
@@ -486,6 +595,17 @@ int main(int argc, char *argv[]) {
                    game.session.config.main_values[1],
                    game.session.config.main_values[2],
                    game.session.config.main_values[3]);
+        }
+        if (game.state == NBA_STATE_TEAM_SELECT) {
+            const NbaTeamSelect *team = &game.scene.team_select;
+            printf("[TEAM SELECT TEST] active=%s category=%u left=%u:%s right=%u:%s "
+                   "transition=%d\n",
+                   team->active_side == NBA_TEAM_SIDE_LEFT ? "LEFT" : "RIGHT",
+                   (unsigned)team->category, team->session->left_team,
+                   nba_team_records[team->session->left_team].name,
+                   team->session->right_team,
+                   nba_team_records[team->session->right_team].name,
+                   team->transition_frame);
         }
         if (debug_state) nba_game_debug_print(&game);
 

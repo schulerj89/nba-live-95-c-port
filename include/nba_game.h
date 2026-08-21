@@ -12,6 +12,7 @@
 #include "nba_title_sequence.h"
 #include "nba_setup_screen.h"
 #include "nba_session.h"
+#include "nba_team_select.h"
 
 /* SNES Subroutine Addresses (LoROM Bank $80 and Bank $82) */
 #define SNES_ADDR_RESET_BOOT            0x808020  /* $80:8020 - Cold boot reset handler */
@@ -28,7 +29,8 @@ typedef enum {
     NBA_STATE_NBA_LEGAL_NOTICE,
     NBA_STATE_EA_INTRO,
     NBA_STATE_TITLE_SEQUENCE,
-    NBA_STATE_GAME_SETUP
+    NBA_STATE_GAME_SETUP,
+    NBA_STATE_TEAM_SELECT
 } NbaGameState;
 
 typedef struct {
@@ -48,6 +50,7 @@ typedef struct {
     union {
         NbaTitleSequence title;
         NbaSetupScreen setup;
+        NbaTeamSelect team_select;
     } scene;
     NbaSetupAction last_setup_action;
     uint8_t debug_hud_page; /* F10: 0 off, 1 overview, 2 scene detail */

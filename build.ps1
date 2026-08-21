@@ -98,6 +98,11 @@ if ($Test) {
     if ($LASTEXITCODE -ne 0) {
         throw "Core safety regression tests failed with exit code $LASTEXITCODE"
     }
+    & python (Join-Path $Root "tools\test_team_select.py") `
+        --pack $AssetPack --exe $ConsoleExePath --rom $RomPath
+    if ($LASTEXITCODE -ne 0) {
+        throw "Team Select regression tests failed with exit code $LASTEXITCODE"
+    }
     & python (Join-Path $Root "tools\test_intro_sequence.py") `
         --pack $AssetPack --exe $ConsoleExePath --rom $RomPath
     if ($LASTEXITCODE -ne 0) {

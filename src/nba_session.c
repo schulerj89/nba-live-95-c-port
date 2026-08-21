@@ -16,4 +16,6 @@ void nba_session_init(NbaSession *session) {
            sizeof(nba_default_main_values));
     memcpy(session->config.rules, nba_default_rules, sizeof(nba_default_rules));
     memcpy(session->config.options, nba_default_options, sizeof(nba_default_options));
+    session->left_team = 3;   /* Chicago */
+    session->right_team = 18; /* Orlando */
 }

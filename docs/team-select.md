@@ -40,6 +40,26 @@ The C port keeps these small semantic records in source control. Team logos
 remain SNES graphics assets: they are extracted from ROM-driven Mesen PPU
 captures into the asset pack and are not recreated with host artwork or fonts.
 
+Asset-pack version 12 stores each team logo as a transparent 48x56 ARGB canvas
+decoded from the capture's first six OBJ entries and their original 4bpp VRAM
+tiles/CGRAM colors. It also stores per-team raw VRAM/CGRAM so names, ordinal
+ranks, shadows, wallpaper, and palette changes continue to come from the ROM.
+The runtime composites those assets with the captured OBJ panel pieces; no host
+menu font or replacement team artwork participates in Team Select.
+
+## Port controls and transition
+
+Enter/Start on Exhibition enters Team Select. The original Setup SPC stream is
+kept alive. A/B/X/Y/L/R toggles the active side, Up/Down selects the ranking
+category, and Left/Right moves to the adjacent one-based rank with 1/27 wrap.
+Both team IDs live in `NbaSession`.
+
+`NbaTeamSelect.transition_frame` reproduces the 176-frame captured edge from
+Setup confirm through the outgoing fade, forced blank, opposing BG1/BG2 slide,
+BG3 vertical staging, and OBJ release. `--dump-sequence-dir` exports every
+headless rendered frame for video/regression inspection; `--team-demo` scripts
+right-team cycling, the ROM side toggle, then left-team cycling.
+
 ## Reproduction
 
 ```powershell

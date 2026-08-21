@@ -243,7 +243,7 @@ apply slider changes immediately; the port applies Music Volume to the
 still-running Setup music stream and applies SFX Volume to the independently
 synthesized menu voice.
 
-Asset-pack version 11 retains the version 9 page-specific Rules/Options open and return snapshots
+Asset-pack version 12 retains the version 9 page-specific Rules/Options open and return snapshots
 with PPU write traces. Each transition frame now
 stores the ROM's brightness, main/sub layer designation, scroll positions,
 tilemap/CHR bases, and map dimensions. The builder temporarily repoints

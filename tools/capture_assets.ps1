@@ -5,7 +5,7 @@ param(
     [string]$AnalysisPath = '',
     [ValidateSet('all', 'intro_capture', 'title_capture', 'setup_capture',
                  'setup_transition', 'setup_rules', 'setup_options',
-                 'setup_option_values', 'setup_main')]
+                 'setup_option_values', 'setup_main', 'team_select_logos')]
     [string]$CaptureName = 'all'
 )
 
@@ -65,7 +65,14 @@ $Captures = @(
                     'row0_step3_vram.bin', 'row1_step1_vram.bin',
                     'row1_step2_vram.bin', 'row2_step1_vram.bin',
                     'row2_step2_vram.bin', 'row3_step1_vram.bin',
-                    'row3_step2_vram.bin', 'row3_step3_vram.bin') }
+                    'row3_step2_vram.bin', 'row3_step3_vram.bin') },
+    @{ Name = 'team_select_logos'; Script = 'mesen_team_select_capture.lua';
+       Env = @{ NBA95_TEAM_CONFIRM = 'start'; NBA95_TEAM_LOGOS = '1';
+                NBA95_TEAM_LOGO_STEP = '90' };
+       Required = @(0..26 | ForEach-Object {
+           @("team_{0:D2}_vram.bin" -f $_, "team_{0:D2}_cgram.bin" -f $_,
+             "team_{0:D2}_oam.bin" -f $_)
+       }) }
 )
 if ($CaptureName -ne 'all') {
     $Captures = @($Captures | Where-Object Name -eq $CaptureName)
@@ -78,7 +85,8 @@ foreach ($Capture in $Captures) {
     $env:NBA95_CAPTURE_DIR = $Output -replace '\\', '/'
     foreach ($Name in @('NBA95_CAPTURE_MENU', 'NBA95_CAPTURE_SCROLL',
                          'NBA95_CAPTURE_VARIANTS', 'NBA95_CAPTURE_VALUES',
-                         'NBA95_CAPTURE_CALLS')) {
+                         'NBA95_CAPTURE_CALLS', 'NBA95_TEAM_CONFIRM',
+                         'NBA95_TEAM_LOGOS', 'NBA95_TEAM_LOGO_STEP')) {
         [Environment]::SetEnvironmentVariable($Name, $null, 'Process')
     }
     if ($Capture.Env) {
@@ -129,6 +137,6 @@ foreach ($Capture in $Captures) {
 }
 } finally {
     Remove-Item Env:NBA95_CAPTURE_DIR -ErrorAction SilentlyContinue
-    Remove-Item Env:NBA95_CAPTURE_MENU,Env:NBA95_CAPTURE_SCROLL,Env:NBA95_CAPTURE_VARIANTS,Env:NBA95_CAPTURE_VALUES,Env:NBA95_CAPTURE_CALLS -ErrorAction SilentlyContinue
+    Remove-Item Env:NBA95_CAPTURE_MENU,Env:NBA95_CAPTURE_SCROLL,Env:NBA95_CAPTURE_VARIANTS,Env:NBA95_CAPTURE_VALUES,Env:NBA95_CAPTURE_CALLS,Env:NBA95_TEAM_CONFIRM,Env:NBA95_TEAM_LOGOS,Env:NBA95_TEAM_LOGO_STEP -ErrorAction SilentlyContinue
 }
 Write-Host 'All asset captures completed.' -ForegroundColor Green
