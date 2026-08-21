@@ -1,6 +1,7 @@
 """Regression checks for asset-pack safety, ROM identity, and host-rate timing."""
 
 import argparse
+import hashlib
 import struct
 import subprocess
 import sys
@@ -155,6 +156,56 @@ def check_asset_debug_cli(exe, pack):
     )
 
 
+def check_debug_telemetry(exe, rom, pack, directory):
+    require_failure(
+        run(exe, "--headless", "--debug-every", 0),
+        "zero debug sampling interval",
+    )
+    require_failure(
+        run(exe, "--headless", "--debug-hud-page", 3),
+        "invalid debug HUD page",
+    )
+    frame = directory / "debug_setup.bmp"
+    result = run(
+        exe, "--headless", "--setup-only", "--rom", rom, "--assets", pack,
+        "--frames", 170, "--setup-main-row", 3, "--setup-main-right", 1,
+        "--debug-state", "--debug-every", 85, "--timing-debug",
+        "--dump-frame", frame,
+    )
+    require_success(result, "expanded CLI/HUD debug telemetry")
+    expected = (
+        "SCN:GAME_SETUP",
+        "GF:000170 SF:00170",
+        "IN P:0000 H:0000 R:0000",
+        "PG:MAIN ROW:QUARTER MR:00",
+        "TR:NONE TF:000 BLK:0",
+        "CFG M:EXHIB S:SIM L:ROOKIE Q:5MIN",
+        "PPU B:15 X1:512 X2:000 Y2:020 Y3:000",
+        "AUD:SETUP_SPC MV:30 SV:30 SRC:1A",
+    )
+    for marker in expected:
+        if marker not in result.stdout:
+            raise AssertionError(f"debug telemetry omitted {marker!r}")
+    if result.stdout.count("[DEBUG SAMPLE]") != 2:
+        raise AssertionError("periodic CLI debug sampling count changed")
+    digest = hashlib.sha256(frame.read_bytes()).hexdigest()
+    expected_digest = "7288d27c77a5f424180d03f1a452ad34d6a755e620fbc3169a934c32e856ede9"
+    if digest != expected_digest:
+        raise AssertionError(f"F10 overview HUD changed: {digest}")
+
+    detail_frame = directory / "debug_setup_detail.bmp"
+    detail = run(
+        exe, "--headless", "--setup-only", "--rom", rom, "--assets", pack,
+        "--frames", 170, "--setup-main-row", 3, "--setup-main-right", 1,
+        "--debug-hud-page", 2, "--dump-frame", detail_frame,
+    )
+    require_success(detail, "compact F10 Setup-detail HUD")
+    detail_digest = hashlib.sha256(detail_frame.read_bytes()).hexdigest()
+    expected_detail = "ef84d94fa8003d236af561bb2459992b5f36e4e9a647e2922047a8f1b38a8eb7"
+    if detail_digest != expected_detail:
+        raise AssertionError(f"F10 Setup-detail HUD changed: {detail_digest}")
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--pack", required=True, type=Path)
@@ -173,7 +224,8 @@ def main():
         check_rom_identity(args.exe, args.rom, valid_pack, directory)
         check_host_rate_equivalence(args.exe, args.rom, args.pack, directory)
         check_asset_debug_cli(args.exe, args.pack)
-    print("[TEST] PASS: asset-pack safety, ROM identity, and host-rate timing")
+        check_debug_telemetry(args.exe, args.rom, args.pack, directory)
+    print("[TEST] PASS: asset/ROM safety, host-rate timing, and debug telemetry")
 
 
 if __name__ == "__main__":

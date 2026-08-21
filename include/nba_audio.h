@@ -19,7 +19,17 @@ typedef struct {
     size_t setup_sfx_wav_size;
     size_t setup_sfx_wav_length;
     uint16_t setup_sfx_volume;
+    uint16_t setup_music_volume;
+    uint8_t last_setup_sfx_srcn;
+    uint8_t active_track;
 } NbaAudio;
+
+typedef enum {
+    NBA_AUDIO_TRACK_NONE = 0,
+    NBA_AUDIO_TRACK_WAV,
+    NBA_AUDIO_TRACK_TITLE_SPC,
+    NBA_AUDIO_TRACK_SETUP_SPC
+} NbaAudioTrack;
 
 void nba_audio_init(NbaAudio *audio);
 void nba_audio_shutdown(NbaAudio *audio);

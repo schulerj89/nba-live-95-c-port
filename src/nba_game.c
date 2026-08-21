@@ -4,6 +4,166 @@
 #include <stdio.h>
 #include <string.h>
 
+#define NBA_DEBUG_MAX_LINES 8
+#define NBA_DEBUG_LINE_SIZE 48
+
+typedef struct {
+    char line[NBA_DEBUG_MAX_LINES][NBA_DEBUG_LINE_SIZE];
+    int count;
+} NbaDebugLines;
+
+static void nba_debug_add_line(NbaDebugLines *out, const char *text) {
+    if (out->count >= NBA_DEBUG_MAX_LINES) return;
+    snprintf(out->line[out->count++], NBA_DEBUG_LINE_SIZE, "%s", text);
+}
+
+const char *nba_game_state_name(NbaGameState state) {
+    static const char *const names[] = {
+        "BOOT_RESET", "NINTENDO_LICENSE", "NBA_LEGAL", "EA_INTRO",
+        "TITLE", "GAME_SETUP"
+    };
+    return (unsigned)state < sizeof(names) / sizeof(names[0]) ?
+           names[state] : "UNKNOWN";
+}
+
+static const char *nba_debug_setup_page_name(NbaSetupPage page) {
+    static const char *const names[] = { "MAIN", "RULES", "OPTIONS" };
+    return (unsigned)page < sizeof(names) / sizeof(names[0]) ? names[page] : "?";
+}
+
+static const char *nba_debug_setup_row_name(NbaSetupRow row) {
+    static const char *const names[] = {
+        "MODE", "STYLE", "LEVEL", "QUARTER", "RULES", "OPTIONS"
+    };
+    return (unsigned)row < sizeof(names) / sizeof(names[0]) ? names[row] : "?";
+}
+
+static const char *nba_debug_transition_name(NbaSetupTransition transition) {
+    static const char *const names[] = { "NONE", "OPEN", "RETURN" };
+    return (unsigned)transition < sizeof(names) / sizeof(names[0]) ?
+           names[transition] : "?";
+}
+
+static const char *nba_debug_audio_name(uint8_t track) {
+    static const char *const names[] = { "NONE", "WAV", "TITLE_SPC", "SETUP_SPC" };
+    return track < sizeof(names) / sizeof(names[0]) ? names[track] : "?";
+}
+
+static void nba_game_debug_lines(const NbaGame *game, NbaDebugLines *out) {
+    static const char *const modes[] = { "EXHIB", "SEASON", "PLAYOFF", "LOAD" };
+    static const char *const styles[] = { "ARCADE", "SIM", "CUSTOM" };
+    static const char *const levels[] = { "ROOKIE", "STARTER", "ALLSTAR" };
+    static const char *const quarters[] = { "3MIN", "5MIN", "8MIN", "12MIN" };
+    const NbaAudio *audio = &game->audio;
+    memset(out, 0, sizeof(*out));
+    snprintf(out->line[out->count++], NBA_DEBUG_LINE_SIZE,
+             "DEBUG [F10] SCN:%s", nba_game_state_name(game->state));
+    snprintf(out->line[out->count++], NBA_DEBUG_LINE_SIZE,
+             "GF:%06u SF:%05u T:%6.2f", game->frame_count,
+             game->state_frame, game->state_timer);
+    snprintf(out->line[out->count++], NBA_DEBUG_LINE_SIZE,
+             "IN P:%04X H:%04X R:%04X", game->input.pressed,
+             game->input.held, game->input.released);
+
+    if (game->state == NBA_STATE_GAME_SETUP && game->setup_screen.is_initialized) {
+        const NbaSetupScreen *s = &game->setup_screen;
+        uint16_t mode = s->config.main_values[0];
+        uint16_t style = s->config.main_values[1];
+        uint16_t level = s->config.main_values[2];
+        uint16_t quarter = s->config.main_values[3];
+        snprintf(out->line[out->count++], NBA_DEBUG_LINE_SIZE,
+                 "PG:%s ROW:%s MR:%02d", nba_debug_setup_page_name(s->page),
+                 nba_debug_setup_row_name(s->row), s->menu_row);
+        snprintf(out->line[out->count++], NBA_DEBUG_LINE_SIZE,
+                 "TR:%s TF:%03d BLK:%d", nba_debug_transition_name(s->transition),
+                 s->transition_frame, s->transition_blank ? 1 : 0);
+        snprintf(out->line[out->count++], NBA_DEBUG_LINE_SIZE,
+                 "CFG M:%s S:%s L:%s Q:%s",
+                 mode < 4u ? modes[mode] : "?", style < 3u ? styles[style] : "?",
+                 level < 3u ? levels[level] : "?",
+                 quarter < 4u ? quarters[quarter] : "?");
+        snprintf(out->line[out->count++], NBA_DEBUG_LINE_SIZE,
+                 "PPU B:%02d X1:%03d X2:%03d Y2:%03d Y3:%03d", s->brightness,
+                 s->bg1_hscroll, s->bg2_hscroll, s->bg2_vscroll, s->bg3_vscroll);
+    } else if (game->state == NBA_STATE_TITLE_SEQUENCE) {
+        static const char *const phases[] = { "BUILD", "HOLD", "FADE" };
+        unsigned phase = (unsigned)game->title_sequence.phase;
+        snprintf(out->line[out->count++], NBA_DEBUG_LINE_SIZE,
+                 "TITLE PH:%s B:%02d HOLD:%03d SNAP:%d",
+                 phase < 3u ? phases[phase] : "?", game->title_sequence.brightness,
+                 game->title_sequence.hold_frames_left,
+                 game->title_sequence.snap_frame);
+    }
+
+    if (out->count < NBA_DEBUG_MAX_LINES) {
+        char srcn[4] = "--";
+        if (audio->last_setup_sfx_srcn != 0xFFu)
+            snprintf(srcn, sizeof(srcn), "%02X", audio->last_setup_sfx_srcn);
+        snprintf(out->line[out->count++], NBA_DEBUG_LINE_SIZE,
+                 "AUD:%s MV:%02u SV:%02u SRC:%s",
+                 nba_debug_audio_name(audio->active_track),
+                 audio->setup_music_volume, audio->setup_sfx_volume, srcn);
+    }
+}
+
+static void nba_game_debug_hud_lines(const NbaGame *game, uint8_t page,
+                                     NbaDebugLines *out) {
+    NbaDebugLines full;
+    nba_game_debug_lines(game, &full);
+    memset(out, 0, sizeof(*out));
+    if (page == 1u) {
+        char title[NBA_DEBUG_LINE_SIZE];
+        char audio_line[NBA_DEBUG_LINE_SIZE];
+        char srcn[4] = "--";
+        snprintf(title, sizeof(title), "DEBUG 1/2 [F10] %s",
+                 nba_game_state_name(game->state));
+        nba_debug_add_line(out, title);
+        if (full.count > 1) nba_debug_add_line(out, full.line[1]);
+        if (full.count > 2) nba_debug_add_line(out, full.line[2]);
+        if (game->audio.last_setup_sfx_srcn != 0xFFu)
+            snprintf(srcn, sizeof(srcn), "%02X", game->audio.last_setup_sfx_srcn);
+        snprintf(audio_line, sizeof(audio_line), "AUD:%s MV:%02u SV:%02u FX:%s",
+                 game->audio.active_track == NBA_AUDIO_TRACK_SETUP_SPC ? "SETUP" :
+                 game->audio.active_track == NBA_AUDIO_TRACK_TITLE_SPC ? "TITLE" :
+                 nba_debug_audio_name(game->audio.active_track),
+                 game->audio.setup_music_volume, game->audio.setup_sfx_volume, srcn);
+        nba_debug_add_line(out, audio_line);
+        return;
+    }
+
+    {
+        char title[NBA_DEBUG_LINE_SIZE];
+        snprintf(title, sizeof(title), "DEBUG 2/2 [F10] %s",
+                 game->state == NBA_STATE_GAME_SETUP ? "SETUP" :
+                 nba_game_state_name(game->state));
+        nba_debug_add_line(out, title);
+    }
+    if (game->state == NBA_STATE_GAME_SETUP && full.count >= 7) {
+        nba_debug_add_line(out, full.line[3]);
+        nba_debug_add_line(out, full.line[4]);
+        nba_debug_add_line(out, full.line[5]);
+        {
+            const NbaSetupScreen *s = &game->setup_screen;
+            char ppu[NBA_DEBUG_LINE_SIZE];
+            snprintf(ppu, sizeof(ppu), "PPU B:%d X1:%d X2:%d Y2:%d Y3:%d",
+                     s->brightness, s->bg1_hscroll, s->bg2_hscroll,
+                     s->bg2_vscroll, s->bg3_vscroll);
+            nba_debug_add_line(out, ppu);
+        }
+    } else if (full.count > 3) {
+        for (int index = 3; index < full.count; ++index)
+            nba_debug_add_line(out, full.line[index]);
+    }
+}
+
+void nba_game_debug_print(const NbaGame *game) {
+    if (!game) return;
+    NbaDebugLines lines;
+    nba_game_debug_lines(game, &lines);
+    for (int index = 0; index < lines.count; ++index)
+        printf("[DEBUG STATE] %s\n", lines.line[index]);
+}
+
 static void nba_game_enter_state(NbaGame *game, NbaGameState state) {
     game->state = state;
     game->state_frame = 0;
@@ -110,8 +270,9 @@ void nba_game_input_update(NbaInput *input, uint16_t raw_buttons) {
 void nba_game_tick(NbaGame *game, float delta_time) {
     /* Handle F10 Timing Debug overlay toggle */
     if (game->input.pressed & NBA_BTN_DEBUG_F10) {
-        game->show_timing_debug = !game->show_timing_debug;
-        printf("[DEBUG] Timing HUD overlay %s\n", game->show_timing_debug ? "ENABLED" : "DISABLED");
+        game->debug_hud_page = (uint8_t)((game->debug_hud_page + 1u) % 3u);
+        printf("[DEBUG] State HUD %s\n", game->debug_hud_page == 0u ? "OFF" :
+               game->debug_hud_page == 1u ? "OVERVIEW (1/2)" : "SCENE (2/2)");
     }
 
     /* Handle F11 Audio Debugger toggle */
@@ -393,15 +554,15 @@ void nba_game_render(NbaGame *game) {
             break;
     }
 
-    /* Render Timing Debug Overlay [F10] if enabled */
-    if (game->show_timing_debug && !game->audio_debugger.is_active) {
-        /* Draw top debug banner */
+    /* Render live state Debug Overlay [F10] if enabled. */
+    if (game->debug_hud_page != 0u && !game->audio_debugger.is_active) {
         uint32_t hud_bg = 0xCC001020;
         uint32_t hud_border = 0xFF4A90E2;
         uint32_t col_cyan = 0xFF40C0FF;
         uint32_t col_yellow = 0xFFFFD700;
-
-        int bx = 4, by = 4, bw = 248, bh = 38;
+        NbaDebugLines lines;
+        nba_game_debug_hud_lines(game, game->debug_hud_page, &lines);
+        int bx = 4, by = 4, bw = 248, bh = 8 + lines.count * 10;
         for (int y = by; y < by + bh; y++) {
             for (int x = bx; x < bx + bw; x++) {
                 if (x == bx || x == bx + bw - 1 || y == by || y == by + bh - 1) {
@@ -412,34 +573,13 @@ void nba_game_render(NbaGame *game) {
             }
         }
 
-        char l1[40], l2[40], l3[40];
-        const char *state_str = "UNKNOWN";
-        const char *stage_str = "";
-
-        switch (game->state) {
-            case NBA_STATE_NINTENDO_LICENSE: state_str = "NINTENDO LICENSE"; break;
-            case NBA_STATE_NBA_LEGAL_NOTICE: state_str = "NBA LEGAL NOTICE"; break;
-            case NBA_STATE_EA_INTRO: {
-                state_str = "EA INTRO";
-                if (game->state_frame < 32) stage_str = "STG 1: 'E'";
-                else if (game->state_frame < 63) stage_str = "STG 2: 'A'";
-                else if (game->state_frame < 123) stage_str = "STG 3: 'SPORTS'";
-                else stage_str = "STG 4: 'GAME' (HOLD)";
-                break;
-            }
-            case NBA_STATE_TITLE_SEQUENCE: state_str = "TITLE SEQUENCE"; break;
-            case NBA_STATE_GAME_SETUP: state_str = "GAME SETUP"; break;
-            default: break;
+        for (int index = 0; index < lines.count; ++index) {
+            uint32_t color = index == 0 ? col_yellow :
+                             index == lines.count - 1 ? col_cyan : col_white;
+            nba_font_render_text(ren->pixels, NBA_SNES_WIDTH, bx + 6,
+                                 by + 4 + index * 10, lines.line[index],
+                                 color, col_shadow, 1);
         }
-
-        snprintf(l1, sizeof(l1), "TIMING DEBUG [F10]");
-        snprintf(l2, sizeof(l2), "ST: %-10s %s", state_str, stage_str);
-        snprintf(l3, sizeof(l3), "F:%04u  T:%4.2fs  VOICE:%s", game->frame_count,
-                 game->state_timer, game->ea_intro_audio_started ? "ON" : "OFF");
-
-        nba_font_render_text(ren->pixels, NBA_SNES_WIDTH, bx + 6, by + 4, l1, col_yellow, col_shadow, 1);
-        nba_font_render_text(ren->pixels, NBA_SNES_WIDTH, bx + 6, by + 14, l2, col_white, col_shadow, 1);
-        nba_font_render_text(ren->pixels, NBA_SNES_WIDTH, bx + 6, by + 24, l3, col_cyan, col_shadow, 1);
     }
 
     /* Render Audio Debugger Overlay on top of any game screen if active */

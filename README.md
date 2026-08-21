@@ -60,9 +60,17 @@ runtime-PCM fingerprints, and focused SPC700/S-DSP vectors.
 | **Start** | Enter |
 | **Select** | Space / Shift |
 
-F10 toggles the timing HUD, F11 opens the audio debugger, and F12 opens the ROM
+F10 toggles the live state HUD, F11 opens the audio debugger, and F12 opens the ROM
 asset browser for pack metadata, CGRAM palettes, paged SNES VRAM tiles, and
 screen-positioned OAM/OBJ reconstruction.
+
+F10 cycles through off, a compact scene/timing/input/audio overview, and a
+compact scene-detail page. Together they report Setup page/row/transition and
+choices plus PPU brightness/scroll state without covering most of the screen.
+Headless runs expose the complete snapshot with
+`--debug-state` or periodically with `--debug-every N`; `--timing-debug` draws
+the overview into `--dump-frame`, while `--debug-hud-page 1|2` selects either
+compact page explicitly.
 
 On Game Setup, Left/Right changes Mode, Style, Level, and Quarter length using
 the original game cycles and menu sounds. These choices remain in the running
@@ -75,6 +83,7 @@ session while entering and returning from Set Rules or Set Options.
 - [Game Setup rendering](docs/game-setup-screen.md)
 - [Game Setup audio](docs/game-setup-audio.md)
 - [Reverse-engineering tools](tools/README.md)
+- [Live and CLI debugging](docs/debugging.md)
 
 Remaining fidelity work is documented in the subsystem notes. Setup's CPU-side
 music decisions currently use a cycle-timed control trace rather than a direct

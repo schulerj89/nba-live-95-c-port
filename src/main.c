@@ -36,6 +36,10 @@ int main(int argc, char *argv[]) {
     int setup_main_left = 0;
     bool setup_menu_confirm = false;
     bool setup_menu_b = false;
+    bool timing_debug = false;
+    bool debug_state = false;
+    int debug_every = 0;
+    int debug_hud_page = 0;
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--rom") == 0 && i + 1 < argc) {
@@ -94,6 +98,26 @@ int main(int argc, char *argv[]) {
             setup_menu_confirm = true;
         } else if (strcmp(argv[i], "--setup-menu-b") == 0) {
             setup_menu_b = true;
+        } else if (strcmp(argv[i], "--timing-debug") == 0) {
+            timing_debug = true;
+        } else if (strcmp(argv[i], "--debug-hud-page") == 0 && i + 1 < argc) {
+            char *end = NULL;
+            long value = strtol(argv[++i], &end, 10);
+            if (!end || *end != '\0' || value < 1 || value > 2) {
+                fprintf(stderr, "[HEADLESS] --debug-hud-page must be 1 or 2.\n");
+                return 1;
+            }
+            debug_hud_page = (int)value;
+        } else if (strcmp(argv[i], "--debug-state") == 0) {
+            debug_state = true;
+        } else if (strcmp(argv[i], "--debug-every") == 0 && i + 1 < argc) {
+            char *end = NULL;
+            long value = strtol(argv[++i], &end, 10);
+            if (!end || *end != '\0' || value <= 0 || value > 1000000) {
+                fprintf(stderr, "[HEADLESS] --debug-every must be 1..1000000.\n");
+                return 1;
+            }
+            debug_every = (int)value;
         } else if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
             printf("NBA Live '95 Native C Port\n");
             printf("Usage: nba95_port.exe [options]\n\n");
@@ -117,6 +141,10 @@ int main(int argc, char *argv[]) {
             printf("  --setup-main-row N    Select main Setup row 0..3\n");
             printf("  --setup-main-right N  Apply N right adjustments on the main row\n");
             printf("  --setup-main-left N   Apply N left adjustments on the main row\n");
+            printf("  --timing-debug        Draw compact F10 overview page in a frame dump\n");
+            printf("  --debug-hud-page N    Draw compact F10 page 1 or 2 in a frame dump\n");
+            printf("  --debug-state         Print one expanded state snapshot after stepping\n");
+            printf("  --debug-every N       Print an expanded state snapshot every N frames\n");
             printf("  --spc-self-test       Run deterministic SPC700/S-DSP core vectors\n");
             printf("  --dump-frame <file>   Save rendered frame to 24-bit BMP image\n");
             printf("  --dump-audio <file>   Save the active runtime-synthesized WAV\n");
@@ -160,7 +188,6 @@ int main(int argc, char *argv[]) {
             return 1;
         }
 
-        bool timing_debug_test = false;
         bool enter_setup = false;
         int title_press_frame = -1;
         int setup_down_count = 0;
@@ -172,15 +199,13 @@ int main(int argc, char *argv[]) {
         int setup_main_left_done = 0;
         bool setup_main_done = setup_main_row < 0;
         for (int i = 1; i < argc; i++) {
-            if (strcmp(argv[i], "--timing-debug") == 0) timing_debug_test = true;
             if (strcmp(argv[i], "--enter-setup") == 0) enter_setup = true;
             if (strcmp(argv[i], "--title-press") == 0 && i + 1 < argc) title_press_frame = atoi(argv[++i]);
             if (strcmp(argv[i], "--setup-down") == 0 && i + 1 < argc) setup_down_count = atoi(argv[++i]);
         }
 
-        if (timing_debug_test) {
-            game.show_timing_debug = true;
-        }
+        if (timing_debug && debug_hud_page == 0) debug_hud_page = 1;
+        game.debug_hud_page = (uint8_t)debug_hud_page;
 
         if (start_at_title) {
             game.state = NBA_STATE_TITLE_SEQUENCE;
@@ -278,6 +303,10 @@ int main(int argc, char *argv[]) {
                 }
             }
             nba_game_tick(&game, (float)(1.0 / tick_rate));
+            if (debug_every > 0 && (frame + 1) % debug_every == 0) {
+                printf("[DEBUG SAMPLE] stepped=%d\n", frame + 1);
+                nba_game_debug_print(&game);
+            }
         }
         if (asset_debug_id >= 0) {
             game.asset_debugger.is_active = true;
@@ -333,6 +362,7 @@ int main(int argc, char *argv[]) {
                    (int)s->row, s->config.main_values[0], s->config.main_values[1],
                    s->config.main_values[2], s->config.main_values[3]);
         }
+        if (debug_state) nba_game_debug_print(&game);
 
         nba_game_render(&game);
 

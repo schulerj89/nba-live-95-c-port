@@ -45,7 +45,7 @@ typedef struct {
     NbaAssetDebugger asset_debugger;
     NbaTitleSequence title_sequence;
     NbaSetupScreen setup_screen;
-    bool show_timing_debug;
+    uint8_t debug_hud_page; /* F10: 0 off, 1 overview, 2 scene detail */
     bool is_initialized;
 } NbaGame;
 
@@ -56,5 +56,7 @@ void nba_game_tick(NbaGame *game, float delta_time);
 void nba_game_render(NbaGame *game);
 void nba_game_render_nba_legal_notice(NbaGame *game);
 void nba_game_render_ea_intro(NbaGame *game);
+const char *nba_game_state_name(NbaGameState state);
+void nba_game_debug_print(const NbaGame *game);
 
 #endif /* NBA_GAME_H */

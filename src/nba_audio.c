@@ -199,6 +199,8 @@ void nba_audio_init(NbaAudio *audio) {
     if (!audio) return;
     memset(audio, 0, sizeof(*audio));
     audio->setup_sfx_volume = 30u;
+    audio->setup_music_volume = 30u;
+    audio->last_setup_sfx_srcn = 0xFFu;
     printf("[AUDIO] Initializing Audio Subsystem...\n");
 }
 
@@ -223,6 +225,7 @@ void nba_audio_play_wav(NbaAudio *audio, const void *data, size_t size) {
     if (!audio || !data || size == 0) return;
 
     nba_audio_stop(audio);
+    audio->active_track = NBA_AUDIO_TRACK_WAV;
 
 #if defined(_WIN32)
     PlaySoundA((LPCSTR)data, NULL, SND_MEMORY | SND_ASYNC | SND_NODEFAULT);
@@ -317,6 +320,7 @@ void nba_audio_play_setup_sfx(NbaAudio *audio, const NbaAssetPack *assets,
     memcpy(audio->setup_sfx_wav + 36, "data", 4);
     audio_put_u32(audio->setup_sfx_wav + 40, (uint32_t)pcm_bytes);
     audio->setup_sfx_wav_length = wav_size;
+    audio->last_setup_sfx_srcn = srcn;
 
     int peak = 0;
     for (uint32_t i = 0; i < sample_frames * 2u; ++i) {
@@ -351,10 +355,12 @@ void nba_audio_set_setup_sfx_volume(NbaAudio *audio, uint16_t value,
 
 void nba_audio_set_setup_music_volume(NbaAudio *audio, uint16_t value,
                                       uint16_t maximum) {
-    if (!audio || !audio->loop_playback || maximum == 0u) return;
+    if (!audio || maximum == 0u) return;
+    audio->setup_music_volume = value > maximum ? maximum : value;
+    if (!audio->loop_playback) return;
 #if defined(_WIN32)
     NbaWaveLoop *stream = (NbaWaveLoop *)audio->loop_playback;
-    uint32_t channel = ((uint32_t)value * 0xFFFFu) / maximum;
+    uint32_t channel = ((uint32_t)audio->setup_music_volume * 0xFFFFu) / maximum;
     waveOutSetVolume(stream->device, channel | (channel << 16));
 #else
     (void)value;
@@ -413,6 +419,7 @@ bool nba_audio_play_title_spc(NbaAudio *audio, const NbaAssetPack *assets) {
     uint32_t frame_count = render.frame_count;
     uint32_t event_count = render.event_count;
     if (!audio_play_generated(audio, &render, false)) return false;
+    audio->active_track = NBA_AUDIO_TRACK_TITLE_SPC;
     printf("[AUDIO] Synthesized title through SPC700/S-DSP: %u frames, %u APU writes.\n",
            frame_count, event_count);
     return true;
@@ -480,6 +487,7 @@ bool nba_audio_play_setup_dsp(NbaAudio *audio, const NbaAssetPack *assets) {
     uint32_t frame_count = render.frame_count;
     uint32_t event_count = render.event_count;
     if (!audio_play_generated(audio, &render, true)) return false;
+    audio->active_track = NBA_AUDIO_TRACK_SETUP_SPC;
     printf("[AUDIO] Synthesized Game Setup through ROM BRR/S-DSP: "
            "%u frames, %u cycle-timed DSP writes, peak=%d; "
            "seamless host loop %u..%u enabled.\n",
@@ -520,4 +528,5 @@ void nba_audio_stop(NbaAudio *audio) {
     free(audio->generated_wav);
     audio->generated_wav = NULL;
     audio->generated_wav_size = 0;
+    audio->active_track = NBA_AUDIO_TRACK_NONE;
 }
