@@ -312,7 +312,7 @@ def build_player_animation_asset(rom_data):
                 f"${descriptor_address:06X}")
         records.append((resource_id, rom_data[descriptor_offset:descriptor_offset + size]))
 
-    header_size = struct.calcsize("<8sIIIIIIIIIII")
+    header_size = struct.calcsize("<8sIIIIIIIIIIII")
     bank84_offset = header_size
     attachment_offset = bank84_offset + 0x8000
     attachment_size = 0x830
@@ -324,11 +324,12 @@ def build_player_animation_asset(rom_data):
     bcd_table_offset = digit_source_offset + 90 * 32
     number_attachment_offset = bcd_table_offset + 100
     number_palette_offset = number_attachment_offset + attachment_size * 2
+    number_visibility_offset = number_palette_offset + 64 + 29 * 4
     payload = bytearray(struct.pack(
-        "<8sIIIIIIIIIII", b"NBPANIM1", 3, state_count, len(records),
+        "<8sIIIIIIIIIIII", b"NBPANIM1", 4, state_count, len(records),
         bank84_offset, attachment_offset, directory_offset, data_offset,
         digit_source_offset, bcd_table_offset, number_attachment_offset,
-        number_palette_offset))
+        number_palette_offset, number_visibility_offset))
     payload.extend(rom_data[lorom_offset(0x848000):lorom_offset(0x848000) + 0x8000])
     payload.extend(rom_data[lorom_offset(0xA9D86E):lorom_offset(0xA9D86E) + attachment_size])
     payload.extend(rom_data[lorom_offset(0xA9D03E):lorom_offset(0xA9D03E) + attachment_size])
@@ -352,6 +353,9 @@ def build_player_animation_asset(rom_data):
     # $85:8CBD-$8CD7 patches one team color for each side from $AF:DD76.
     payload.extend(rom_data[lorom_offset(0xAFE99F):lorom_offset(0xAFE99F) + 64])
     payload.extend(rom_data[lorom_offset(0xAFDD76):lorom_offset(0xAFDD76) + 29 * 4])
+    # $87:A506-$A51E sign-extends $AC:C7E3[upper resource]. Negative entries
+    # suppress the separate jersey-number overlay for that body frame.
+    payload.extend(rom_data[lorom_offset(0xACC7E3):lorom_offset(0xACC7E3) + attachment_size])
     return bytes(payload)
 
 
@@ -1180,7 +1184,7 @@ def create_asset_pack(rom_path, output_path):
         (253, 16, 32, 0, player_tile_sources),
         (254, 0xAFEF00, 0x2A0, 0, player_palette_tables),
         (255, 7, 0, 0, player_pose_layout),
-        (256, 57, 8, 3, player_animations),
+        (256, 57, 8, 4, player_animations),
     ])
     assets.extend([
         (124, 0, 0, 0, rules_vram_bytes),

@@ -6,7 +6,7 @@
 
 #define PLAYER_HEADER_SIZE 24u
 #define PLAYER_RECORD_SIZE 64u
-#define PLAYER_ANIMATION_HEADER_SIZE 52u
+#define PLAYER_ANIMATION_HEADER_SIZE 56u
 #define PLAYER_ANIMATION_STATES NBA_PLAYER_ANIMATION_STATES
 #define PLAYER_ANIMATION_BANK84_SIZE 0x8000u
 #define PLAYER_ATTACHMENT_TABLE_SIZE 0x830u
@@ -91,7 +91,7 @@ static const uint8_t *animation_data(const NbaAssetPack *assets,
     const NbaAssetItem *item = nba_assets_get(assets, NBA_ASSET_PLAYER_ANIMATIONS);
     if (!item || !item->data || item->size < PLAYER_ANIMATION_HEADER_SIZE ||
         memcmp(item->data, "NBPANIM1", 8) != 0 ||
-        read_u32((const uint8_t *)item->data + 8) != 3u ||
+        read_u32((const uint8_t *)item->data + 8) != 4u ||
         read_u32((const uint8_t *)item->data + 12) != PLAYER_ANIMATION_STATES)
         return NULL;
     if (item_out) *item_out = item;
@@ -167,6 +167,22 @@ static int8_t number_attachment(const NbaAssetPack *assets,
         (y_axis ? PLAYER_ATTACHMENT_TABLE_SIZE : 0u) + upper_resource;
     if (offset >= item->size) return 0;
     return (int8_t)data[offset];
+}
+
+static int8_t number_visibility_for_upper(const NbaAssetPack *assets,
+                                          uint16_t upper_resource) {
+    const NbaAssetItem *item;
+    const uint8_t *data = animation_data(assets, &item);
+    if (!data || upper_resource >= PLAYER_ATTACHMENT_TABLE_SIZE) return -1;
+    uint32_t table = read_u32(data + 52);
+    if (table > item->size || upper_resource >= item->size - table) return -1;
+    /* $87:A506-$A51E suppresses the overlay when this signed byte is negative. */
+    return (int8_t)data[table + upper_resource];
+}
+
+static bool number_allowed_for_upper(const NbaAssetPack *assets,
+                                     uint16_t upper_resource) {
+    return number_visibility_for_upper(assets, upper_resource) >= 0;
 }
 
 static const uint8_t *jersey_asset_table(const NbaAssetPack *assets,
@@ -338,7 +354,10 @@ static void draw_animation_resource(NbaRenderer *ren, const NbaAssetPack *assets
         uint16_t attributes = read_u16(part + 4);
         uint8_t base_tile = (uint8_t)attributes;
         int extent = part[6] == 0xffu ? 16 : 8;
-        int part_x = flip ? -x - extent : x;
+        /* $80:B452-$B498 mirrors an OBJ part as origin - descriptor_x - 7
+         * for an 8x8 part, or -15 for a 16x16 part.  Those are the final
+         * pixel indices (extent - 1), not the pixel counts. */
+        int part_x = flip ? -x - (extent - 1) : x;
         for (int py = 0; py < extent; ++py) for (int px = 0; px < extent; ++px) {
             bool x_flip = (attributes & 0x4000u) != 0;
             int sx = x_flip != flip ? extent - 1 - px : px;
@@ -455,7 +474,8 @@ static bool draw_player_animation(NbaRenderer *ren, const NbaAssetPack *assets,
     draw_animation_resource(ren, assets, upper_resource, palette, upper_x, upper_y,
                             flip, NULL);
     uint8_t number_tile[32];
-    if (compose_jersey_tile(assets, player->jersey, lab->direction, number_tile)) {
+    if (number_allowed_for_upper(assets, upper_resource) &&
+        compose_jersey_tile(assets, player->jersey, lab->direction, number_tile)) {
         static const uint16_t number_resources[8] = {
             0x0593, 0xffff, 0x0591, 0x0592, 0x0593, 0xffff, 0x0591, 0x0592
         };
@@ -577,10 +597,23 @@ void nba_player_lab_update(NbaPlayerLab *lab, const NbaAssetPack *assets,
 void nba_player_lab_print(const NbaPlayerLab *lab, const NbaAssetPack *assets) {
     PlayerLabRecord p;
     if (!lab || !player_record(assets, lab->team, lab->player, &p)) return;
+    const uint8_t *bank = animation_bank84(assets, NULL);
+    const uint8_t *upper = animation_descriptor(
+        assets, PLAYER_UPPER_STATE_TABLE, lab->animation_state);
+    uint16_t upper_resource = 0xffffu;
+    int8_t number_gate = -1;
+    if (bank && upper) {
+        uint8_t frame = animation_frame_index(upper, bank, lab->animation_tick);
+        upper_resource = animation_frame_resource(
+            upper, bank, lab->direction, frame);
+        number_gate = number_visibility_for_upper(assets, upper_resource);
+    }
+    bool number_visible = p.jersey != 0xffu && lab->direction != 1u &&
+                          lab->direction != 5u && number_gate >= 0;
     printf("[PLAYER LAB] team=%02u %s roster=%02u name=%s jersey=%u pos=%u "
            "height=%u appearance=%02X+%02X=%02X head=%02X/$%04X palette=%u "
            "animation=$%02X lower=$%02X direction=%u angle=%u flip=%s tick=%u "
-           "rom=$%06X source=asset-pack\n",
+           "upper=$%04X number=%s gate=$%02X rom=$%06X source=asset-pack\n",
            (unsigned)lab->team, nba_team_records[lab->team].name,
            (unsigned)lab->player, p.name, (unsigned)p.jersey,
            (unsigned)p.position, (unsigned)p.height, p.appearance_a,
@@ -588,7 +621,9 @@ void nba_player_lab_print(const NbaPlayerLab *lab, const NbaAssetPack *assets) {
            p.head_resource_front, p.palette_variant, lab->animation_state,
            animation_lower_state(lab->animation_state), lab->direction,
            (unsigned)lab->direction * 45u, lab->direction < 3u ? "on" : "off",
-           (unsigned)lab->animation_tick, p.rom_address);
+           (unsigned)lab->animation_tick, upper_resource,
+           number_visible ? "visible" : "hidden", (uint8_t)number_gate,
+           p.rom_address);
 }
 
 void nba_player_lab_render(const NbaPlayerLab *lab, const NbaAssetPack *assets,

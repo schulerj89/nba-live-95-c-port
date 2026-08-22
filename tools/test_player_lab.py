@@ -77,26 +77,30 @@ def main():
        len(assets[254][0]) != 36 + 29 * 2 * 3 * 32:
         raise AssertionError("player team/palette matrix is incomplete")
     animations, states, directions, schema = assets[256]
-    if animations[:8] != b"NBPANIM1" or (states, directions, schema) != (57, 8, 3):
+    if animations[:8] != b"NBPANIM1" or (states, directions, schema) != (57, 8, 4):
         raise AssertionError("invalid ROM player-animation schema")
     (animation_version, state_count, resource_count, bank84_offset,
      attachment_offset, directory_offset, data_offset, digit_source_offset,
-     bcd_table_offset, number_attachment_offset, number_palette_offset) = \
-        struct.unpack_from("<11I", animations, 8)
-    if animation_version != 3 or state_count != 57 or resource_count < 1800 or \
-       bank84_offset != 52 or attachment_offset != 52 + 0x8000 or \
+     bcd_table_offset, number_attachment_offset, number_palette_offset,
+     number_visibility_offset) = struct.unpack_from("<12I", animations, 8)
+    if animation_version != 4 or state_count != 57 or resource_count < 1800 or \
+       bank84_offset != 56 or attachment_offset != 56 + 0x8000 or \
        not attachment_offset < directory_offset < data_offset < \
        digit_source_offset < bcd_table_offset < number_attachment_offset or \
        digit_source_offset + 90 * 32 != bcd_table_offset or \
        bcd_table_offset + 100 != number_attachment_offset or \
        number_attachment_offset + 0x830 * 2 != number_palette_offset or \
-       number_palette_offset + 64 + 29 * 4 != len(animations):
+       number_palette_offset + 64 + 29 * 4 != number_visibility_offset or \
+       number_visibility_offset + 0x830 != len(animations):
         raise AssertionError("player-animation ROM tables are incomplete")
     if animations[bcd_table_offset + 54] != 0x54 or \
        not any(animations[digit_source_offset:digit_source_offset + 90 * 32]):
         raise AssertionError("jersey-number ROM tables are incomplete")
     if not any(animations[number_palette_offset:number_palette_offset + 64]):
         raise AssertionError("jersey-number OBJ palette source is incomplete")
+    if animations[number_visibility_offset + 0x00F3] != 0x08 or \
+       animations[number_visibility_offset + 0x01A7] != 0xF5:
+        raise AssertionError("jersey-number upper-frame eligibility table changed")
     resource_ids = []
     for index in range(resource_count):
         resource_id, reserved, offset, size = struct.unpack_from(
@@ -137,7 +141,7 @@ def main():
            "angle=270 flip=off" not in result.stdout:
             raise AssertionError("Player Lab CLI diagnostics missing")
         digest = hashlib.sha256(frame.read_bytes()).hexdigest()
-        expected = "8ae90135c81e1596f1f19f1df80f7033fae819f1412fcbf38f4e4378b4b9c290"
+        expected = "8ee7d108ea55b0be9ddece53e3bb83f1ae8c4bb8ebbe82756ffe00ef1cb5d30d"
         if digest != expected:
             raise AssertionError(f"Player Lab frame changed: {digest}")
         second = Path(directory) / "oneal.bmp"
@@ -167,11 +171,29 @@ def main():
            "ea4648bb03388987ce2254e269aeb7c60c71f2cfbd0836f16f1082c980588f37":
             raise AssertionError(
                 f"front jersey-number tile/palette changed: {front_digest}")
+        visibility_cases = (
+            (0, "upper=$00F3 number=visible gate=$08",
+             "0a06aff372e90da95c85473b2245696ae3eab986144bf5c2c14f91fa86cadd96"),
+            (1, "upper=$01A7 number=hidden gate=$F5",
+             "49caab038eb97fb2bf5ea7ada3f4f4caf9f38be44a238e1072e063cf19be703d"),
+        )
+        for state, diagnostic, expected_hash in visibility_cases:
+            frame = Path(directory) / f"number_gate_state_{state}.bmp"
+            result = run(args.exe, args.rom, args.pack, "--player-lab",
+                         "--player-team", 18, "--player-roster", 2,
+                         "--player-animation", state, "--player-direction", 0,
+                         "--dump-frame", frame)
+            digest = hashlib.sha256(frame.read_bytes()).hexdigest()
+            if result.returncode or diagnostic not in result.stdout or \
+               digest != expected_hash:
+                raise AssertionError(
+                    f"upper-frame number eligibility changed for state "
+                    f"{state}: {digest}\n{result.stdout}{result.stderr}")
         # $80:AE78-$80:AE86 flips only number overlay $0591. Direction 0
         # ($0593) must remain unflipped, while direction 6 ($0591) must flip.
         oblique_expected = {
-            0: "b7e8367991b99d0e1bd7dd0f3f77aae4b044dfd9274fd2a33413f47efa826e9e",
-            6: "df80be9c6e692d6c3b8223daa2b7ececd7d891cfc0f89cef574aa2cf65e684bb",
+            0: "359a6117d03bacee279f54b708dca08cd698d53b1cc8a150d16b84523d33126e",
+            6: "1e8fc1430ed6118a85f6f6531878cdce991fa3051cfd1018c742437bb6649a4a",
         }
         for direction, expected_hash in oblique_expected.items():
             frame = Path(directory) / f"cleveland_18_direction_{direction}.bmp"
@@ -185,8 +207,8 @@ def main():
                     f"oblique jersey-number flip changed at direction "
                     f"{direction}: {digest}")
         oneal_expected = {
-            0: "4f7223bb95c79572200e05fcc7c3c547462020034816cc898dc13ad96b8a45e3",
-            6: "c11746250a3eea4ff74b6099fb8bd52afa60fb509c064f515a2113f55cb1c686",
+            0: "c7a6d7f54b144816c836f9dd8f9361c631fe934d0456708e720d74a9e11f13da",
+            6: "1741fa348c967ef10ff08010872aff9d54bc62da75cd13093e1c66a6a68f1757",
         }
         for direction, expected_hash in oneal_expected.items():
             frame = Path(directory) / f"oneal_32_direction_{direction}.bmp"

@@ -19,10 +19,11 @@ Runtime data comes from asset-pack v15:
   palette variants reconstructed from `$AB:FDE2`, `$AE:DB76`, and the
   `$AF:F022/$F042` overlays;
 - asset 255: `NBPPOSE2` OBJ layout and hardware palette proven by the pre-tip frame;
-- asset 256: `NBPANIM1`, containing all 57 state slots, the complete bank-$84
+- asset 256: `NBPANIM1` schema 4, containing all 57 state slots, the complete bank-$84
   descriptor data, 1,878 referenced raw sprite resources, and ROM attachment
   tables for composing lower body, upper body, roster-selected head, and the
-  dynamically generated jersey-number overlay.
+  dynamically generated jersey-number overlay, including its per-upper-frame
+  visibility table.
 
 The pack build does not read screenshots, VRAM, CGRAM, or OAM captures for the
 Player Lab pose. Mesen is an oracle for the live arrangement; the art itself is
@@ -62,6 +63,9 @@ select the authentic body frames and cadence from bank `$84`.
 - `$80:AD92-$AEC1` attaches lower body, upper body, and head using the signed
   resource offsets at `$A9:D86E/$A9:D03E`, then queues each raw descriptor via
   `$80:B348`.
+- `$80:B452-$B498` mirrors queued sprite parts around their final pixel index:
+  it subtracts `7` for 8x8 parts and `15` for 16x16 parts. Player Lab uses the
+  same `extent - 1` rule, including the direction-6 `$0591` number overlay.
 - `$87:B357-$B378` reads roster byte `+$00` and maps the binary jersey number
   through `$80:859C`; `$87:B05B-$B354` composites its three directional glyph
   views from `$A6:AFD6`. `$87:A98E` selects overlay resource `$0591-$0593`, and
@@ -71,6 +75,11 @@ select the authentic body frames and cadence from bank `$84`.
   does not inherit the upper body's direction flip. `$87:A99E` maps directions
   0 and 6 to their perspective buffers at `$86F0/$8730`; Player Lab retains
   that exact direction-specific mapping.
+- `$87:A506-$A51E` reads signed byte `$AC:C7E3[upper resource]`; a negative
+  entry leaves `$D8` negative, and `$80:AE74-$AE76` skips the number overlay.
+  Player Lab packs the complete `$830`-byte table and applies this gate before
+  composing or drawing a jersey tile. Its CLI reports the selected upper
+  resource, visibility state, and raw gate byte.
 - `$85:8CAE-$8CB9` copies the 64-byte palette source at `$AF:E99F` to WRAM,
   `$85:8CBD-$8CE3` patches the two teams' colors, and `$85:8CF7` uploads OBJ
   palettes 6 and 7 starting at CGRAM `$E0`. `$80:AE86` selects palette 7 for
