@@ -45,12 +45,12 @@ def bgr555_to_argb(w):
 
 
 def decode_team_logo(vram, cgram, oam):
-    """Decode Team Select's six ROM OBJ logo pieces into transparent ARGB."""
+    """Decode the variable-length, palette-4 right-team OBJ logo."""
     width, height = 48, 56
     origin_x, origin_y = 182, 62
     pixels = [0] * (width * height)
     # Lower OAM indexes win ties, matching the SNES object priority ordering.
-    for index in range(5, -1, -1):
+    for index in range(127, -1, -1):
         high = (oam[512 + index // 4] >> ((index & 3) * 2)) & 3
         x = oam[index * 4] | ((high & 1) << 8)
         if x >= 256:
@@ -60,6 +60,10 @@ def decode_team_logo(vram, cgram, oam):
         attr = oam[index * 4 + 3]
         size = 16 if high & 2 else 8
         palette = (attr >> 1) & 7
+        # Logo piece counts vary by team (6..13 in the verified captures).
+        # The following 15 objects are the palette-2 gold plate, not logo art.
+        if palette != 4:
+            continue
         tile += 256 if attr & 1 else 0
         for py in range(size):
             sy = size - 1 - py if attr & 0x80 else py
@@ -76,6 +80,279 @@ def decode_team_logo(vram, cgram, oam):
                     word = cgram[palette_offset] | (cgram[palette_offset + 1] << 8)
                     pixels[dy * width + dx] = bgr555_to_argb(word)
     return b"".join(struct.pack("<I", pixel) for pixel in pixels)
+
+
+def lorom_offset(address):
+    """Convert a verified 24-bit LoROM address to its headerless file offset."""
+    return ((address >> 16) & 0x7f) * 0x8000 + (address & 0x7fff)
+
+
+def build_player_roster_asset(rom_data):
+    """Pack the ROM's 29 teams x 12 player records for the F9 Player Lab.
+
+    $84:E640 contains 4-byte entries (reserved, 24-bit roster pointer). Each
+    roster starts with twelve 16-bit record offsets. Ghidra/Mesen prove that
+    +$06 selects the player palette variant, +$07 selects a five-direction
+    head resource family, +$36/+$37 form the appearance key, and names begin
+    at +$4A.
+    """
+    payload = bytearray(struct.pack("<8sIIII", b"NBPROST1", 1, 29, 12, 64))
+    table = lorom_offset(0x84E640)
+    for team in range(29):
+        entry = table + team * 4
+        pointer = (rom_data[entry + 1] | (rom_data[entry + 2] << 8) |
+                   (rom_data[entry + 3] << 16))
+        base = lorom_offset(pointer)
+        offsets = [struct.unpack_from("<H", rom_data, base + i * 2)[0]
+                   for i in range(12)]
+        for player, relative in enumerate(offsets):
+            start = base + relative
+            record = rom_data[start:start + 0x80]
+            if len(record) < 0x4b:
+                raise RuntimeError(f"Truncated roster record team={team} player={player}")
+            name_end = record.find(b"\0", 0x4a, 0x70)
+            if name_end < 0:
+                raise RuntimeError(f"Unterminated roster name team={team} player={player}")
+            name = record[0x4a:name_end]
+            if not name or any(byte < 0x20 or byte > 0x7e for byte in name):
+                raise RuntimeError(f"Invalid roster name team={team} player={player}")
+            appearance_a, appearance_b = record[0x36], record[0x37]
+            fixed_name = name[:31] + b"\0" * (32 - len(name[:31]))
+            head_raw = record[7]
+            head_style = head_raw & 0x1f if head_raw >= 0x27 else head_raw
+            head_base = 0x049c + head_style * 5
+            packed = bytearray(64)
+            struct.pack_into("<IBBBBBBBB", packed, 0, pointer + relative,
+                             record[0], record[1], record[2], record[3],
+                             appearance_a, appearance_b,
+                             (appearance_a + appearance_b) & 0xff, player)
+            struct.pack_into("<BBBBHH", packed, 12, min(record[6], 2),
+                             head_raw, head_style, record[8], head_base,
+                             head_base + 2)
+            packed[32:64] = fixed_name
+            payload.extend(packed)
+    return bytes(payload)
+
+
+def build_player_front_pose(rom_data):
+    """Assemble the camera-facing default pose from exact ROM OBJ tiles.
+
+    Mesen establishes the OAM layout only. Every art byte below is copied from
+    its byte-for-byte matching ROM location; no screenshot or VRAM capture is
+    consumed by the asset pack build.
+    """
+    tile_sources = {
+        0x4c: 0x09c5cb, 0x48: 0x0587b1, 0x49: 0x0587d1,
+        0x58: 0x058831, 0x59: 0x058851, 0x4a: 0x0587f1,
+        0x4b: 0x058811, 0x60: 0x0b5c55, 0x61: 0x0b5c75,
+        0x70: 0x0b5d15, 0x71: 0x0b5d35, 0x62: 0x0b5c95,
+        0x63: 0x0b5cb5, 0x72: 0x0b5d55, 0x73: 0x0b5d75,
+        0x64: 0x0b5cd5, 0x65: 0x0b5cf5,
+    }
+    vram = bytearray(0x10000)
+    # $87:B01D-$B03A accepts selectors 0..38 directly (values >= $27 are
+    # normalized with & $1F). Rambis uses 37 and Workman uses 38, so all 39
+    # five-direction families must be present in the asset pack.
+    head_count = 39 * 5
+    source_manifest = bytearray(struct.pack("<8sIII", b"NBPTILE2", 2,
+                                             len(tile_sources), head_count))
+    for tile, offset in tile_sources.items():
+        data = rom_data[offset:offset + 32]
+        if len(data) != 32:
+            raise RuntimeError(f"Truncated player tile at ROM file offset ${offset:06X}")
+        vram[0xc000 + tile * 32:0xc000 + (tile + 1) * 32] = data
+        source_manifest.extend(struct.pack("<B3xI32s", tile, offset, data))
+
+    # $89:8000 is the four-byte relative sprite-resource table consumed by
+    # $80:B348. $87:B01D-$B03A proves that roster +$07 selects a five-entry
+    # family beginning at resource $049C. Entry +2 is the straight-on head.
+    resource_table = lorom_offset(0x898000)
+    for style in range(39):
+        for orientation in range(5):
+            resource_id = 0x049c + style * 5 + orientation
+            entry = resource_table + resource_id * 4
+            relative = struct.unpack_from("<I", rom_data, entry)[0]
+            descriptor_address = 0x898000 + relative
+            tile_address = descriptor_address + 17
+            tile_offset = lorom_offset(tile_address)
+            data = rom_data[tile_offset:tile_offset + 32]
+            if len(data) != 32:
+                raise RuntimeError(
+                    f"Truncated head resource ${resource_id:04X} at ${tile_address:06X}")
+            source_manifest.extend(struct.pack(
+                "<HBBI32s", resource_id, style, orientation,
+                tile_address, data))
+
+    # Front-facing Orlando player: Mesen pre-tip OAM 42,43,44,46,47,48,49.
+    # x,y,tile,attributes,size; $40 is horizontal flip, palette is OBJ palette 2.
+    layout = [(25, 51, 0x4c, 0x64, 8), (20, 57, 0x48, 0x64, 16),
+              (21, 73, 0x4a, 0x64, 16), (18, 71, 0x60, 0x64, 16),
+              (19, 87, 0x62, 0x64, 16), (29, 103, 0x64, 0x64, 8),
+              (21, 103, 0x65, 0x64, 8)]
+    layout_asset = bytearray(struct.pack("<8sII", b"NBPPOSE2", 2, len(layout)))
+    for entry in layout:
+        layout_asset.extend(struct.pack("<hhBBB", *entry))
+
+    # Hardware output of the ROM's palette builder. The complete source tables
+    # ($AF:EF00-$AF:F19F) are packed beside the pose for continued mapping work.
+    palette_words = [0x2656, 0x7c05, 0x6318, 0x469c, 0x363a, 0x25b6,
+                     0x1132, 0x006b, 0x6318, 0x6318, 0x7fff, 0x6318,
+                     0x0000, 0x7c05, 0x7fff, 0x5ad6]
+    # Keep the hardware palette beside the OAM-like layout so the C port can
+    # compose the pose from raw 4bpp assets at runtime. Asset 252 remains a
+    # regression oracle only; it is not the Player Lab render source.
+    layout_asset.extend(struct.pack("<16H", *palette_words))
+    cgram = bytearray(0x200)
+    for index, word in enumerate(palette_words):
+        struct.pack_into("<H", cgram, (128 + 2 * 16 + index) * 2, word)
+
+    width, height, origin_x, origin_y = 24, 64, 16, 47
+    pixels = [0] * (width * height)
+    for x, y, tile, attr, size in reversed(layout):
+        palette = (attr >> 1) & 7
+        for py in range(size):
+            sy = size - 1 - py if attr & 0x80 else py
+            for px in range(size):
+                sx = size - 1 - px if attr & 0x40 else px
+                subtile = tile + (sx >> 3) + (sy >> 3) * 16
+                offset = 0xc000 + subtile * 32
+                color = int(decode_4bpp_tile(vram[offset:offset + 32])
+                            [sy & 7, sx & 7])
+                dx, dy = x + px - origin_x, y + py - origin_y
+                if color and 0 <= dx < width and 0 <= dy < height:
+                    palette_offset = (128 + palette * 16 + color) * 2
+                    word = cgram[palette_offset] | (cgram[palette_offset + 1] << 8)
+                    pixels[dy * width + dx] = bgr555_to_argb(word)
+    if not any(pixel >> 24 for pixel in pixels):
+        raise RuntimeError("Gameplay default pose decoded as fully transparent")
+    pose = b"".join(struct.pack("<I", pixel) for pixel in pixels)
+    # $85:8DB0 expands one 16-color team palette and copies it three times.
+    # It then replaces colors 3..7 in variants 1 and 2 from $AF:F022/F042.
+    # $87:AFD4-$AFF4 maps roster +$06 (clamped to 2) to those variants.
+    decompressed = []
+    for bank, address in ((0xAB, 0xFDE2), (0xAE, 0xDB76)):
+        emu = Snes65816Decompressor(rom_data)
+        emu.decompress(bank, address, 0x7F, 0x0000)
+        decompressed.append(bytes(emu.wram[0x10000:0x10000 + 29 * 32]))
+    overlays = [None,
+                rom_data[lorom_offset(0xAFF022):lorom_offset(0xAFF022) + 10],
+                rom_data[lorom_offset(0xAFF042):lorom_offset(0xAFF042) + 10]]
+    palette_asset = bytearray(struct.pack(
+        "<8sIIIIIII", b"NBPALET2", 2, 29, 2, 3,
+        0xABFDE2, 0xAEDB76, 0xAFF01C))
+    for team in range(29):
+        for side in range(2):
+            base = decompressed[side][team * 32:(team + 1) * 32]
+            for variant in range(3):
+                colors = bytearray(base)
+                if variant:
+                    colors[6:16] = overlays[variant]
+                for color in range(16):
+                    word = struct.unpack_from("<H", colors, color * 2)[0] & 0x7fff
+                    palette_asset.extend(struct.pack("<H", word))
+    return pose, bytes(source_manifest), bytes(palette_asset), bytes(layout_asset)
+
+
+def build_player_animation_asset(rom_data):
+    """Pack the ROM's complete gameplay animation tables and sprite resources.
+
+    Ghidra labels $87:AB38-$AD5A as the frame updater.  It indexes the two
+    lower-body tables at $84:C218/$84:C28A and the upper-body table at
+    $84:C2FC.  Each descriptor supplies a cadence mode, timing, frame count,
+    and eight directional resource lists.  $80:AD92-$AEC1 attaches lower,
+    upper, and head resources using the signed X/Y tables at
+    $A9:D86E/$A9:D03E.  The payload keeps those ROM structures intact and
+    bundles every referenced raw resource descriptor; no captured pixels are
+    used.
+    """
+    state_tables = (0x84C218, 0x84C28A, 0x84C2FC)
+    state_count = (0x84C36E - 0x84C2FC) // 2
+    resources = set()
+    for table in state_tables:
+        for state in range(state_count):
+            descriptor = struct.unpack_from(
+                "<H", rom_data, lorom_offset(table + state * 2))[0]
+            if descriptor < 0x8000:
+                continue
+            descriptor_offset = lorom_offset(0x840000 + descriptor)
+            frame_count = struct.unpack_from(
+                "<H", rom_data, descriptor_offset + 6)[0]
+            if not 1 <= frame_count <= 64:
+                raise RuntimeError(
+                    f"Invalid player animation frame count at $84:{descriptor:04X}")
+            for direction in range(8):
+                frame_list = struct.unpack_from(
+                    "<H", rom_data, descriptor_offset + 8 + direction * 2)[0]
+                if frame_list < 0x8000:
+                    raise RuntimeError(
+                        f"Invalid player animation list at $84:{descriptor:04X}")
+                list_offset = lorom_offset(0x840000 + frame_list)
+                resources.update(struct.unpack_from(
+                    f"<{frame_count}H", rom_data, list_offset))
+
+    # The roster-selected five-direction head families occupy this exact
+    # resource range; include them so the lab composes the selected player.
+    resources.update(range(0x049C, 0x049C + 39 * 5))
+    # $87:A98E selects one of these overlays for the generated jersey tile.
+    resources.update((0x0591, 0x0592, 0x0593))
+    resource_table = lorom_offset(0x898000)
+    records = []
+    for resource_id in sorted(resources):
+        entry = resource_table + resource_id * 4
+        relative = struct.unpack_from("<I", rom_data, entry)[0] & 0xFFFFFF
+        descriptor_address = 0x898000 + relative
+        descriptor_offset = lorom_offset(descriptor_address)
+        part_word, _, graphics_a, graphics_b, _ = struct.unpack_from(
+            "<5H", rom_data, descriptor_offset)
+        part_count = part_word & 0x7FFF
+        size = 10 + part_count * 7 + graphics_a + graphics_b
+        if part_count > 32 or size > 0x10000 or descriptor_offset + size > len(rom_data):
+            raise RuntimeError(
+                f"Invalid player sprite resource ${resource_id:04X} at "
+                f"${descriptor_address:06X}")
+        records.append((resource_id, rom_data[descriptor_offset:descriptor_offset + size]))
+
+    header_size = struct.calcsize("<8sIIIIIIIIIII")
+    bank84_offset = header_size
+    attachment_offset = bank84_offset + 0x8000
+    attachment_size = 0x830
+    directory_offset = attachment_offset + attachment_size * 2
+    directory_size = len(records) * struct.calcsize("<HHII")
+    data_offset = directory_offset + directory_size
+    resource_bytes = sum(len(data) for _, data in records)
+    digit_source_offset = data_offset + resource_bytes
+    bcd_table_offset = digit_source_offset + 90 * 32
+    number_attachment_offset = bcd_table_offset + 100
+    number_palette_offset = number_attachment_offset + attachment_size * 2
+    payload = bytearray(struct.pack(
+        "<8sIIIIIIIIIII", b"NBPANIM1", 3, state_count, len(records),
+        bank84_offset, attachment_offset, directory_offset, data_offset,
+        digit_source_offset, bcd_table_offset, number_attachment_offset,
+        number_palette_offset))
+    payload.extend(rom_data[lorom_offset(0x848000):lorom_offset(0x848000) + 0x8000])
+    payload.extend(rom_data[lorom_offset(0xA9D86E):lorom_offset(0xA9D86E) + attachment_size])
+    payload.extend(rom_data[lorom_offset(0xA9D03E):lorom_offset(0xA9D03E) + attachment_size])
+    cursor = data_offset
+    for resource_id, data in records:
+        payload.extend(struct.pack("<HHII", resource_id, 0, cursor, len(data)))
+        cursor += len(data)
+    for _, data in records:
+        payload.extend(data)
+    # $87:B05B sets the long source bank to $A6 before $87:B074-$B354
+    # composites three direction-dependent jersey-number orientations.
+    payload.extend(rom_data[lorom_offset(0xA6AFD6):lorom_offset(0xA6AFD6) + 90 * 32])
+    # $87:B357-$B378 maps roster byte +$00 (binary jersey number) to BCD.
+    payload.extend(rom_data[lorom_offset(0x80859C):lorom_offset(0x80859C) + 100])
+    # $80:AE20/$AE3C place the separate number resource relative to the
+    # current upper-body resource. Keep the complete signed X/Y tables.
+    payload.extend(rom_data[lorom_offset(0xACD07B):lorom_offset(0xACD07B) + attachment_size])
+    payload.extend(rom_data[lorom_offset(0xACAE1B):lorom_offset(0xACAE1B) + attachment_size])
+    # $85:8CAE-$8CB9 copies this 64-byte ROM block to WRAM $7F:0000. The
+    # second half becomes OBJ palette 7, used by $80:AE86's number overlay.
+    # $85:8CBD-$8CD7 patches one team color for each side from $AF:DD76.
+    payload.extend(rom_data[lorom_offset(0xAFE99F):lorom_offset(0xAFE99F) + 64])
+    payload.extend(rom_data[lorom_offset(0xAFDD76):lorom_offset(0xAFDD76) + 29 * 4])
+    return bytes(payload)
 
 
 def create_asset_pack(rom_path, output_path):
@@ -815,7 +1092,7 @@ def create_asset_pack(rom_path, output_path):
     team_logo_assets = []
     team_vram_assets = []
     team_cgram_assets = []
-    for team in range(27):
+    for team in range(29):
         prefix = os.path.join(team_capture_dir, f"team_{team:02d}")
         paths = [prefix + "_vram.bin", prefix + "_cgram.bin", prefix + "_oam.bin"]
         expected = [0x10000, 0x200, 0x220]
@@ -834,12 +1111,23 @@ def create_asset_pack(rom_path, output_path):
             raise RuntimeError(f"Team {team} logo decoded as fully transparent")
         team_logo_assets.append((160 + team, 48, 56, team, logo))
         team_vram_assets.append((192 + team, 0, 0, team, payloads[0]))
-        team_cgram_assets.append((219 + team, 0, 0, team, payloads[1]))
-    if len({hashlib.sha256(asset[4]).digest() for asset in team_logo_assets}) != 27:
-        raise RuntimeError("Team Select logo captures are not unique for all 27 teams")
-    print("[ASSET EXTRACTOR] Packed 27 Team Select logos from raw SNES VRAM/CGRAM/OAM")
-    team_select_oam_asset = (187, 0, 0, 0,
+        team_cgram_assets.append((221 + team, 0, 0, team, payloads[1]))
+    if len({hashlib.sha256(asset[4]).digest() for asset in team_logo_assets}) != 29:
+        raise RuntimeError("Team Select logo captures are not unique for all 29 teams")
+    print("[ASSET EXTRACTOR] Packed 29 Team Select logos from raw SNES VRAM/CGRAM/OAM")
+    team_select_oam_asset = (189, 0, 0, 0,
                              open(os.path.join(team_capture_dir, "team_18_oam.bin"), "rb").read())
+    # $82:8933-$8967 advances through seven overlapping 14-byte windows of
+    # this 26-byte ROM table. Each window is copied to CGRAM $A1-$A7, so the
+    # selected gold plate animates without changing OAM.
+    team_selected_palette_cycle = rom_data[0x10968:0x10968 + 26]
+    if len(team_selected_palette_cycle) != 26:
+        raise RuntimeError("Team Select selected-plate palette table is truncated")
+
+    player_rosters = build_player_roster_asset(rom_data)
+    (player_default_pose, player_tile_sources, player_palette_tables,
+     player_pose_layout) = build_player_front_pose(rom_data)
+    player_animations = build_player_animation_asset(rom_data)
 
     assets = [
         (1, 128, 11, 0, nintendo_license_bytes),               # ASSET_NINTENDO_LICENSE
@@ -885,6 +1173,15 @@ def create_asset_pack(rom_path, output_path):
     assets.append(team_select_oam_asset)
     assets.extend(team_vram_assets)
     assets.extend(team_cgram_assets)
+    assets.append((250, 7, 7, 8, team_selected_palette_cycle))
+    assets.extend([
+        (251, 29, 12, 64, player_rosters),
+        (252, 24, 64, 0, player_default_pose),
+        (253, 16, 32, 0, player_tile_sources),
+        (254, 0xAFEF00, 0x2A0, 0, player_palette_tables),
+        (255, 7, 0, 0, player_pose_layout),
+        (256, 57, 8, 3, player_animations),
+    ])
     assets.extend([
         (124, 0, 0, 0, rules_vram_bytes),
         (125, 0, 0, 0, rules_cgram_bytes),
@@ -943,7 +1240,7 @@ def create_asset_pack(rom_path, output_path):
                     extra_audio_id += 1
 
     header_magic = b"NBA95PAK"
-    version = 12
+    version = 15
     asset_count = len(assets)
     entry_size = 24 # 6 * 4 bytes
 

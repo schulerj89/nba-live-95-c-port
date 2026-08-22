@@ -67,6 +67,7 @@ static void win32_handle_key(WPARAM key, bool is_down) {
         case VK_SPACE:
         case VK_SHIFT:  mask = NBA_BTN_SELECT; break;
 
+        case VK_F9:     mask = NBA_BTN_DEBUG_F9; break;
         case VK_F10:    mask = NBA_BTN_DEBUG_F10; break;
         case VK_F11:    mask = NBA_BTN_DEBUG_F11; break;
         case VK_F12:    mask = NBA_BTN_DEBUG_F12; break;

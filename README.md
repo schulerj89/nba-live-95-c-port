@@ -27,6 +27,10 @@ Enable script file I/O in Mesen, then create the ignored `.analysis` captures:
 .\tools\capture_assets.ps1 -RomPath '<path-to-rom>' -MesenPath '<path-to-Mesen.exe>'
 ```
 
+Press **F9** for the ROM-backed Player Lab. Left/Right cycles all teams and
+Up/Down cycles the selected team's 12-player roster; see
+[`docs/player-lab.md`](docs/player-lab.md) for asset and Ghidra provenance.
+
 Extract a fresh pack, compile at MSVC `/W4`, and run every regression:
 
 ```powershell
@@ -41,7 +45,7 @@ Run the GUI:
 
 The tests lock intro/title/Setup/Team Select pixels, both title-exit paths, all Setup cursor
 rows, malformed-pack handling, ROM identity, 59.94/60 Hz equivalence, robust
-runtime-PCM fingerprints, all 27 ROM-derived logos/ranking records, independent
+runtime-PCM fingerprints, all 29 currently exposed ROM-derived logos/ranking records, independent
 left/right team cycling, and focused SPC700/S-DSP vectors.
 
 ## Controls
@@ -78,11 +82,14 @@ On Game Setup, Left/Right changes Mode, Style, Level, and Quarter length using
 the original game cycles and menu sounds. These choices belong to the running
 game session rather than the Setup screen, so scene re-entry preserves them.
 
-On Team Select, Up/Down chooses Scoring, Rebounds, Ball Control, Defense, or
-Overall. Left/Right walks teams in that ranking order. A/B/X/Y/L/R toggles the
-active matchup side exactly like `$82:83BC`; both selected teams persist in the
-running session. Enter confirms Exhibition on Game Setup and keeps the Setup
-SPC music running through the handoff.
+On Team Select, Left/Right walks teams alphabetically while a team name is
+selected. Up/Down moves between the active team name and Scoring, Rebounds,
+Ball Control, Defense, or Overall; Left/Right then walks that ranking order.
+A/B/X/Y/L/R toggles the active matchup side; a selected name follows the new
+side while a selected ranking remains selected, exactly like `$82:83BC`.
+Both selected teams persist in the running session.
+Enter confirms Exhibition on Game Setup and keeps the Setup SPC music running
+through the handoff.
 
 ## Technical notes
 

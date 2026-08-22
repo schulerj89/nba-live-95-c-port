@@ -110,9 +110,17 @@ static void nba_game_debug_lines(const NbaGame *game, NbaDebugLines *out) {
     } else if (game->state == NBA_STATE_TEAM_SELECT &&
                game->scene.team_select.is_initialized) {
         const NbaTeamSelect *s = &game->scene.team_select;
+        static const char *const selector_names[] = {
+            "LEFT NAME", "RIGHT NAME", "SCORING", "REBOUNDS",
+            "BALL CONTROL", "DEFENSE", "OVERALL"
+        };
         snprintf(out->line[out->count++], NBA_DEBUG_LINE_SIZE,
-                 "SIDE:%s CAT:%u TF:%03d", s->active_side == NBA_TEAM_SIDE_LEFT ?
-                 "LEFT" : "RIGHT", (unsigned)s->category, s->transition_frame);
+                 "SIDE:%s SEL:%u %-12s TF:%03d",
+                 s->active_side == NBA_TEAM_SIDE_LEFT ? "LEFT" : "RIGHT",
+                 (unsigned)s->selector,
+                 s->selector < NBA_TEAM_SELECT_POSITION_COUNT ?
+                     selector_names[s->selector] : "?",
+                 s->transition_frame);
         snprintf(out->line[out->count++], NBA_DEBUG_LINE_SIZE,
                  "TEAM L:%02u %-12s", s->session->left_team,
                  nba_team_records[s->session->left_team].name);
@@ -299,6 +307,7 @@ bool nba_game_init(NbaGame *game, const char *rom_path, const char *assets_path)
     game->frame_count = 0;
     nba_audio_debugger_init(&game->audio_debugger);
     nba_asset_debugger_init(&game->asset_debugger);
+    nba_player_lab_init(&game->player_lab, &game->assets);
     game->is_initialized = true;
 
     printf("[GAME] Initialization complete. Entering state NBA_STATE_NINTENDO_LICENSE.\n");
@@ -340,6 +349,14 @@ void nba_game_input_update(NbaInput *input, uint16_t raw_buttons) {
  * Purpose: Main game loop dispatcher and scene timer state machine.
  */
 void nba_game_tick(NbaGame *game, float delta_time) {
+    if (game->input.pressed & NBA_BTN_DEBUG_F9) {
+        nba_player_lab_toggle(&game->player_lab, &game->assets);
+        if (game->player_lab.is_active) {
+            game->audio_debugger.is_active = false;
+            game->asset_debugger.is_active = false;
+            game->debug_hud_page = 0;
+        }
+    }
     /* Handle F10 Timing Debug overlay toggle */
     if (game->input.pressed & NBA_BTN_DEBUG_F10) {
         game->debug_hud_page = (uint8_t)((game->debug_hud_page + 1u) % 3u);
@@ -359,9 +376,11 @@ void nba_game_tick(NbaGame *game, float delta_time) {
     nba_audio_debugger_update(&game->audio_debugger, &game->audio,
                               &game->assets, &game->input);
     nba_asset_debugger_update(&game->asset_debugger, &game->assets, &game->input);
+    nba_player_lab_update(&game->player_lab, &game->assets, &game->input);
 
     /* If audio debugger is active, freeze game state progression */
-    if (game->audio_debugger.is_active || game->asset_debugger.is_active) {
+    if (game->audio_debugger.is_active || game->asset_debugger.is_active ||
+        game->player_lab.is_active) {
         return;
     }
 
@@ -685,5 +704,8 @@ void nba_game_render(NbaGame *game) {
     }
     if (game->asset_debugger.is_active) {
         nba_asset_debugger_render(&game->asset_debugger, &game->assets, ren);
+    }
+    if (game->player_lab.is_active) {
+        nba_player_lab_render(&game->player_lab, &game->assets, ren);
     }
 }

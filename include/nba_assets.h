@@ -88,13 +88,20 @@ typedef enum {
     NBA_ASSET_OPTIONS_SLOW_ON_VRAM          = 156,
     NBA_ASSET_OPTIONS_ASSISTANCE_ON_VRAM    = 157,
     NBA_ASSET_TEAM_LOGO_BASE                = 160,
-    NBA_ASSET_TEAM_LOGO_LAST                = 186,
-    NBA_ASSET_TEAM_SELECT_OAM               = 187,
+    NBA_ASSET_TEAM_LOGO_LAST                = 188,
+    NBA_ASSET_TEAM_SELECT_OAM               = 189,
     NBA_ASSET_TEAM_VRAM_BASE                = 192,
-    NBA_ASSET_TEAM_VRAM_LAST                = 218,
-    NBA_ASSET_TEAM_CGRAM_BASE               = 219,
-    NBA_ASSET_TEAM_CGRAM_LAST               = 245,
-    NBA_ASSET_MAX                   = 248
+    NBA_ASSET_TEAM_VRAM_LAST                = 220,
+    NBA_ASSET_TEAM_CGRAM_BASE               = 221,
+    NBA_ASSET_TEAM_CGRAM_LAST               = 249,
+    NBA_ASSET_TEAM_SELECTED_PALETTE_CYCLE   = 250,
+    NBA_ASSET_PLAYER_ROSTERS                = 251,
+    NBA_ASSET_PLAYER_DEFAULT_POSE           = 252,
+    NBA_ASSET_PLAYER_TILE_SOURCES           = 253,
+    NBA_ASSET_PLAYER_PALETTE_TABLES         = 254,
+    NBA_ASSET_PLAYER_POSE_LAYOUT            = 255,
+    NBA_ASSET_PLAYER_ANIMATIONS              = 256,
+    NBA_ASSET_MAX                   = 257
 } NbaAssetId;
 
 typedef struct {

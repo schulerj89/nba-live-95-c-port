@@ -27,6 +27,7 @@
 #define NBA_BTN_DEBUG_F10  (1 << 12)
 #define NBA_BTN_DEBUG_F11  (1 << 13)
 #define NBA_BTN_DEBUG_F12  (1 << 14)
+#define NBA_BTN_DEBUG_F9   (1 << 15)
 
 typedef struct {
     uint16_t held;

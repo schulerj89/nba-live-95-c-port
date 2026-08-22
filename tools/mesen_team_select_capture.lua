@@ -4,48 +4,80 @@
 local out = os.getenv("NBA95_CAPTURE_DIR")
 assert(out and out ~= "", "NBA95_CAPTURE_DIR is not set")
 
-local confirm = os.getenv("NBA95_TEAM_CONFIRM") or "start"
-assert(confirm == "start" or confirm == "a", "NBA95_TEAM_CONFIRM must be start or a")
 local single_button = os.getenv("NBA95_TEAM_PROBE_BUTTON")
 local logo_capture = os.getenv("NBA95_TEAM_LOGOS") == "1"
+local alignment_capture = os.getenv("NBA95_TEAM_ALIGNMENT") == "1"
+local panel_anim_capture = os.getenv("NBA95_TEAM_PANEL_ANIM") == "1"
 local valid_buttons = { up=true, down=true, left=true, right=true, a=true, b=true,
     x=true, y=true, l=true, r=true, select=true, start=true }
 assert(not single_button or valid_buttons[single_button],
     "NBA95_TEAM_PROBE_BUTTON is not a supported SNES button")
 local probe_navigation = os.getenv("NBA95_TEAM_NAV") == "1" or
-    single_button ~= nil or logo_capture
+    single_button ~= nil or logo_capture or alignment_capture or panel_anim_capture
 local log = assert(io.open(out .. "/capture_log.txt", "wb"))
 local writes = assert(io.open(out .. "/wram_writes.txt", "wb"))
 local ppu = assert(io.open(out .. "/ppu_states.txt", "wb"))
 local global_frame, title_frame, setup_frame = 0, -1, -1
+local team_select_entered = false
 local PRESS_TITLE_AT, PRESS_SETUP_AT = 850, 400
-local LAST_FRAME = single_button and 720 or (probe_navigation and 1020 or 760)
-local seen_exec, last_wram, nav_exec = {}, {}, {}
+local LAST_FRAME = single_button and 720 or (probe_navigation and 1190 or 760)
+local seen_exec, last_wram, nav_exec, panel_exec = {}, {}, {}, {}
 local nav_steps = single_button and {
     { name = "probe_" .. single_button, frame = 650, button = single_button, settle = 690 },
 } or {
-    { name = "left_team_next", frame = 650, button = "down", settle = 690 },
-    { name = "activate_right", frame = 720, button = "right", settle = 760 },
-    { name = "right_team_next", frame = 790, button = "down", settle = 830 },
-    { name = "activate_left", frame = 860, button = "left", settle = 900 },
-    { name = "left_team_previous", frame = 930, button = "up", settle = 970 },
+    { name = "alphabetical_right", frame = 650, button = "right", settle = 690 },
+    { name = "alphabetical_left", frame = 720, button = "left", settle = 760 },
+    { name = "down_to_scoring", frame = 790, button = "down", settle = 830 },
+    { name = "scoring_rank_right", frame = 860, button = "right", settle = 900 },
+    { name = "toggle_left_preserve_scoring", frame = 930, button = "l", settle = 970 },
+    { name = "up_to_left_name", frame = 1000, button = "up", settle = 1040 },
+    { name = "left_alphabetical", frame = 1070, button = "left", settle = 1110 },
+    { name = "left_up_to_overall", frame = 1140, button = "up", settle = 1180 },
 }
-if logo_capture then
+if panel_anim_capture then
+    nav_steps = {}
+    LAST_FRAME = 710
+elseif alignment_capture then
+    nav_steps = {
+        { name = "activate_left", frame = 650, button = "l", settle = 690 },
+        { name = "left_cleveland", frame = 720, button = "right", settle = 750 },
+        { name = "left_dallas", frame = 770, button = "right", settle = 800 },
+        { name = "left_denver", frame = 820, button = "right", settle = 850 },
+        { name = "left_detroit", frame = 870, button = "right", settle = 900 },
+        { name = "left_golden_state", frame = 920, button = "right", settle = 960 },
+        { name = "activate_right", frame = 1000, button = "l", settle = 1040 },
+        { name = "right_philadelphia", frame = 1070, button = "right", settle = 1110 },
+    }
+    LAST_FRAME = 1130
+elseif logo_capture then
     nav_steps = {}
     local logo_step = tonumber(os.getenv("NBA95_TEAM_LOGO_STEP")) or 50
-    for row = 1, 4 do
+    for row = 1, 5 do
         nav_steps[#nav_steps + 1] = {
             name = "overall_row_" .. row, frame = 620 + (row - 1) * 25,
             button = "down", settle = 0
         }
     end
     for rank = 1, 32 do
-        local at = 740 + (rank - 1) * logo_step
+        local at = 790 + (rank - 1) * logo_step
         nav_steps[#nav_steps + 1] = {
             name = "overall_next_" .. rank, frame = at,
             button = "right", settle = at + 38
         }
     end
+    -- Exhibition normally caps alphabetical navigation at Washington, but the
+    -- ROM's native team/name/rank tables continue with East (27) and West
+    -- (28). Seed the live selector immediately before an ordinary D-pad redraw
+    -- so Mesen captures the ROM-rendered PPU state for those two table entries.
+    local special_at = nav_steps[#nav_steps].settle + logo_step
+    nav_steps[#nav_steps + 1] = {
+        name = "east", frame = special_at, button = "left",
+        force_team = 28, settle = special_at + 38
+    }
+    nav_steps[#nav_steps + 1] = {
+        name = "west", frame = special_at + logo_step, button = "right",
+        force_team = 27, settle = special_at + logo_step + 38
+    }
     LAST_FRAME = nav_steps[#nav_steps].settle + 12
 end
 local captured_teams = {}
@@ -81,6 +113,16 @@ emu.addMemoryCallback(function()
 end, emu.callbackType.exec, 0x80E1B1, 0x80E1B1,
     emu.cpuType.snes, emu.memType.snesMemory)
 
+-- $80:DBF6 dispatches here only after the ROM accepts Start on Exhibition.
+emu.addMemoryCallback(function()
+    if not team_select_entered then
+        team_select_entered = true
+        log:write(string.format("entered team select global=%d setup=%d\n",
+            global_frame, setup_frame)); log:flush()
+    end
+end, emu.callbackType.exec, 0x82809A, 0x82809A,
+    emu.cpuType.snes, emu.memType.snesMemory)
+
 for bank = 0x80, 0x8F do
     emu.addMemoryCallback(function(address)
         if setup_frame >= PRESS_SETUP_AT - 10 then
@@ -92,6 +134,10 @@ for bank = 0x80, 0x8F do
                         nav_exec[step.name][address] = true
                     end
                 end
+            end
+            if panel_anim_capture and setup_frame >= 624 and setup_frame <= 629 then
+                panel_exec[setup_frame] = panel_exec[setup_frame] or {}
+                panel_exec[setup_frame][address] = true
             end
         end
     end, emu.callbackType.exec, bank * 0x10000 + 0x8000,
@@ -112,9 +158,15 @@ emu.addEventCallback(function()
     if setup_frame < 0 then
         if pulse(title_frame, PRESS_TITLE_AT) then input.start = true end
     elseif pulse(setup_frame, PRESS_SETUP_AT) then
-        input[confirm] = true
+        input.start = true
     elseif probe_navigation then
         for _, step in ipairs(nav_steps) do
+            if setup_frame == step.frame and step.force_team then
+                emu.write(0x16fd, step.force_team, emu.memType.snesWorkRam)
+                emu.write(0x16fe, 0, emu.memType.snesWorkRam)
+                emu.write(0x1695, step.force_team, emu.memType.snesWorkRam)
+                emu.write(0x1696, 0, emu.memType.snesWorkRam)
+            end
             if pulse(setup_frame, step.frame) then input[step.button] = true end
         end
     end
@@ -141,9 +193,18 @@ emu.addEventCallback(function()
         if frame % 5 == 0 and (not logo_capture or frame <= 620) then
             shot(string.format("frame_%04d.png", frame))
         end
+        if panel_anim_capture and frame >= 620 and frame <= 700 then
+            dump_mem(string.format("panel_%04d_cgram.bin", frame),
+                emu.memType.snesCgRam, 0x200)
+            dump_mem(string.format("panel_%04d_oam.bin", frame),
+                emu.memType.snesSpriteRam, 0x220)
+            shot(string.format("panel_%04d.png", frame))
+        end
     end
 
     if frame == 650 then
+        assert(team_select_entered,
+            "Team Select $82:809A was not entered; refusing mislabeled capture")
         dump_mem("team_select_vram.bin", emu.memType.snesVideoRam, 0x10000)
         dump_mem("team_select_cgram.bin", emu.memType.snesCgRam, 0x200)
         dump_mem("team_select_oam.bin", emu.memType.snesSpriteRam, 0x220)
@@ -162,7 +223,7 @@ emu.addEventCallback(function()
 
     if logo_capture and (frame == 700) then
         local team = emu.read(0x16fd, emu.memType.snesWorkRam, false) or 0xff
-        if team <= 26 and not captured_teams[team] then
+        if team <= 28 and not captured_teams[team] then
             captured_teams[team] = true
             dump_mem(string.format("team_%02d_vram.bin", team), emu.memType.snesVideoRam, 0x10000)
             dump_mem(string.format("team_%02d_cgram.bin", team), emu.memType.snesCgRam, 0x200)
@@ -173,7 +234,7 @@ emu.addEventCallback(function()
         for _, step in ipairs(nav_steps) do
             if step.settle > 0 and frame == step.settle then
                 local team = emu.read(0x16fd, emu.memType.snesWorkRam, false) or 0xff
-                if team <= 26 and not captured_teams[team] then
+                if team <= 28 and not captured_teams[team] then
                     captured_teams[team] = true
                     dump_mem(string.format("team_%02d_vram.bin", team), emu.memType.snesVideoRam, 0x10000)
                     dump_mem(string.format("team_%02d_cgram.bin", team), emu.memType.snesCgRam, 0x200)
@@ -209,6 +270,19 @@ emu.addEventCallback(function()
                 nav:write(string.format("%06X\n", address))
             end
             nav:close()
+        end
+        for frame, trace in pairs(panel_exec) do
+            local panel = assert(io.open(out .. string.format(
+                "/panel_exec_%04d.txt", frame), "wb"))
+            local panel_addresses = {}
+            for address in pairs(trace) do
+                panel_addresses[#panel_addresses + 1] = address
+            end
+            table.sort(panel_addresses)
+            for _, address in ipairs(panel_addresses) do
+                panel:write(string.format("%06X\n", address))
+            end
+            panel:close()
         end
         local done = assert(io.open(out .. "/capture_complete.txt", "wb"))
         done:write("ok\n"); done:close(); emu.stop(0)

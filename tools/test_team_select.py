@@ -11,41 +11,57 @@ from PIL import Image
 
 
 EXPECTED_FRAME_HASHES = {
-    "initial": "73a518db950e159a8462131b323cfc8090bed38ce91ca47e898229b3f4c748ed",
-    "right": "b6f520d388a93c4fb4594ce57b2e6d5872660f0fb74583f8f4ca831817683459",
-    "left": "34dc2617977dfe01f6988525ecfb02ae740d7bb1d661c2e338f3b64cc59a3693",
-    "overall": "f6b2212fbe443f50847c6f7766a24fa2584d9a1fa96171cb79c55438b136892a",
-    "logo_debug": "fd650adfa8647660a06feaa56161586dc0e56cff0e710a1565a627bf25162ec1",
+    # Captures correspond to live-ROM $7E:1693 selector states, not merely
+    # self-consistent port behavior. See docs/team-select.md.
+    "initial": "7d774d07aab89faf773c6f18b6b2c126e3fae9c1366512d95dbfa91239c6f906",
+    "plate_phase_1": "f4daf58e2396ae6163246c11e0e27e89137d69d746190a25e140575b8af7e003",
+    "alphabetical_right": "4efd24e3b1fafbdd68cfbe19154eb4f75f125bf73bc7bb91318aaa2a50183301",
+    "scoring": "3d32e61e823232242957c5b978532a4fee5135e3269af48fda90cbf2703b3ce0",
+    "overall": "ded276d556c5531c14032aae9a20f83b0e7dad43dabfac511d29a1eab728a67d",
+    "side_toggle_name": "12aadcca4222b45324bc34c731d0d2d46dbde3cc11a3842639d053fa593b1115",
+    "side_toggle_rank": "200f84bbbc4de696dd573c6538e20815e74a5dedd12112b20157cdef573dec51",
+    "ranked_right": "88b21affd2c2ee3b2e796342ba2e2eaabd64ce872d9771cd8672505c4bf1869c",
+    "alpha_wrap_right": "7cb160685cc71b5e0c666a32deb2f2e0194002c2d4a4f9eb5e74186fffefa932",
+    "alpha_wrap_left": "b58bc47cb9f0128621f5739bf667450a6140ad8035d50a200612c3e1b589fedd",
+    "rank_wrap": "1ff537623a02762701a20379ed5ff9b50a89c6175f2fbe64067a5ebbe5440d40",
+    "wallpaper_orlando": "32a648a2c0ca4cecb684ecb6c987cf53c7fd3aef3e7bf9f3fa928aa75f182cb6",
+    "left_golden_state": "aaacaaf7e22af0cf466f5e514fc7b5131e0d1bbd499acb019dd60e180092d02a",
+    "right_philadelphia": "ca4d126ef130b0e7d47636218d05c4d2357a1b2d080961bd01f5131307c4be3c",
+    "east": "fe0bc64162af9c341b92fde6be732907bbbc9c30443b9b3435bac1433b997312",
+    "west": "e384503f8b20c1fa2abadf0d055062c58fe6f59e0716936f5401c832dbb711a0",
+    "logo_debug": "1196a18e5823ef6f1f88d805ea2a19164e40fd79176aad5f2939ad4d28904815",
 }
 
 EXPECTED_LOGO_HASHES = {
-    160: "65ee770e91a66fb13b1cd583b8ca8820e480cbbc39fca8b1d88d84f60d21db17",
-    161: "47bf96b5069037cef3ec0ebab9cd0ec6df6091b2c583c8d45cedefbfc8bba000",
-    162: "a6eb6ddf5b3cfe31c9fc90ba93f705364ca1fe87939da8375787cb13aafb10f9",
-    163: "35bcb5c2eb9e7287267837ad8d2c55bf5e6b4bd0da50f4110975a7956a3d2783",
-    164: "47b15cb281c56963ebae2a42575b5d7ef0495a41b104ad0dc18599791f21cbf6",
-    165: "ea2cbe3ab390544bd510c38f46253e87f51b31a5053ded6cb194d24e9330d77a",
-    166: "2769ece1503e861b0e182a481e23a30d889b6fdc2bace1f389476b545551e6d2",
-    167: "4545d3bd22f269eaa28d14d17c703c9a2a1471df54a14edb9ebd6eed2ff583b3",
-    168: "9dc563f127813871525837338258fa057594af91a11de41ea31f6c567909aa0b",
-    169: "babc66d987ac40b923ec414c82fab5a1ac7141e0b23986341b0e958cedd9c98f",
-    170: "f216dd25c4ced25ce5fc7c06ebab057f9597219d0948fe2327ab6c9c9b5d5ed3",
-    171: "c9408439d3636f92ff9dc912c59467f1570d48ae2bb9342958673a854e965e70",
-    172: "5b7e5489e1e2ef7c99669c04e26740e9453d0bc4ed8e5f992ebec2713186e71b",
-    173: "cb3747568960c1f8155dd4cb7e7957b5e2fb496c4ef5fa6eb7eae6aba270a95f",
-    174: "6e150f51454f4e17691f96c280efdcc8e2f85803c46b7d2e9741d078d738db73",
-    175: "d8686414eb08c348062cb9541fa03abbffdc623da68e3d6e244b256495652487",
-    176: "417576df9347a2960c85fb1bf107390d219fd1df5034b83fc7ac50e18ba27d63",
-    177: "d66117b27f42c57be036bd5e966069c7b24c6c0c00cdce11fb4a819398fadd44",
+    160: "83012b77eeda4d75735eeb22f88690260ab82b55ff53560d46b6d8d306b99510",
+    161: "8ef535efc6581fb321baeb59c45aac5f3c9efb3f0bffaa6adb2377a88110763d",
+    162: "80b8dd4f439904978c08f4c541136fe0cce25ce9326136d810544328f54651a6",
+    163: "9eb03cd3f0c6c2f0274b26170213d94f6648950c9e5e5e4b59b77458c772a058",
+    164: "93002e4dae85f238ce91a12fa522465d93d5be5105f654ec23d81117446fb4ec",
+    165: "bd3e47ea2581b40b670981d3a06aa77076df8ac0b457683de8022a0dc168578b",
+    166: "0ceae3491a050d7e9ae4f6fbb5404d6cae3d4073ced7adc9c7b7d75aee5b989f",
+    167: "10277e0b0e30bd3ee9437168c8895dc03ddc45ad2b620462eeef712368e78057",
+    168: "0306e60c9deeca17b264e3d66bcc2eb598498dab2f2d9904afce9f67a23c3494",
+    169: "44d9640cd838ee40c45c5c94cf6c8aa77c34b1ccbf7203c6087fea7700d6dab7",
+    170: "bb7ee47e65c8bfb3a778b30286f2936f4af216e6e8b69e8f79f2c768b930fbeb",
+    171: "742836f093b32445d20048dc18355da8e95b20e29604f7554c6cd5d124440f19",
+    172: "20faad0e5f9b499562f42930416ec8cd90a4e55d1eaa79558cdfa2989042066b",
+    173: "85dca3eaa6fdbcd85fca69412eca78b72b5f26221a58a44e4b7933a64b3274de",
+    174: "9a0ea37db371de454d0f44ee209aad9cee790cac78b6900733442e5881d1d220",
+    175: "08b2c4bd46a4aa33835891e0a6bbcb3a2cece52ca8d0a98621255660f28d774a",
+    176: "e9c581c0d504ec69b89a170dbdf90e4ea45bfe548b25b864499276f5261b81ea",
+    177: "af0a154de1c1e100857d5eb35350bc4af896d5429223becb26bdb882c16d7f63",
     178: "63a5d9be700611d2218cc2058754da3c5f6e783dc06bf57f270b2633e7379385",
-    179: "b757096e82487fee0c36ac0dd8fa1b1a9f147ca25bdbc8e86a730fcec3e6b8e1",
-    180: "d773e6e38da19ee8f0a5198dffd848015f518451ccb8f01a1ca4a9baf3617c93",
-    181: "f0a2dd4ae162a522ec4fe1cd98646f4d44312cd0f46c353176d291422208087b",
-    182: "8ad9064db726b4024c85f820c5770732603346ce7dcdb21a4ef4e6a5f6641d2d",
-    183: "7d4f25fd95e3176ca293cd864d8b33094846aa724a5aca64d65590901b2b4f2f",
-    184: "fa23f8310f715206f0162df7a6b8c8684261efc33fcbe4cf8c0d5a218b8bfc0f",
+    179: "acdea1dec6c0a17c210a4e709e58fdcf3d65a3f6eb308c97a8336cbb178f63ac",
+    180: "e8a0973e948cf5316c0123680ce8e3d84498b32b2045163f262790c3694b01db",
+    181: "d80e230e2f90f65b4e7a9450bd5cdec2e2f8925c0baae55be0090f260a96818b",
+    182: "217b1acc086f8d16a863e92b6d22146198b5116e16d47a2c95adbb6fa54dbdce",
+    183: "a09065b4befb54649dd0659450900e99c3ef93a09bd33b6f7df8eb6747b0b2d0",
+    184: "f88f04049d53ff218ca711b0d55063817c6d01c279e6376ba0b7883c7ae155cb",
     185: "a52025e851bcdc8677d1c803b21c0840162711aca0427a7e2b64268d4fcbd82c",
     186: "a5bfb7c7ed686eddc4dfb5218ac23d45879c3b625496e43f5a2efb244c51798a",
+    187: "f7a3797f8dfbfdc3d8c5bc2cc4abbece613ee123ac5aa4fae103d7a475c03e4d",
+    188: "47d113c163119cf0c73c2256e854f2eaea9c88323e65f630487a2067d6b9ff33",
 }
 
 
@@ -54,7 +70,7 @@ def load_pack(path):
     if raw[:8] != b"NBA95PAK":
         raise AssertionError("invalid pack magic")
     version, count = struct.unpack_from("<II", raw, 8)
-    if version != 12 or 16 + count * 24 > len(raw):
+    if version != 15 or 16 + count * 24 > len(raw):
         raise AssertionError("invalid Team Select pack directory")
     assets = {}
     for index in range(count):
@@ -78,6 +94,25 @@ def frame_hash(path):
     return hashlib.sha256(Image.open(path).convert("RGB").tobytes()).hexdigest()
 
 
+def wallpaper_hash(path):
+    image = Image.open(path).convert("RGB")
+    return hashlib.sha256(image.crop((232, 120, 256, 224)).tobytes()).hexdigest()
+
+
+def rank_text_bounds(path, left, right):
+    image = Image.open(path).convert("RGB")
+    rows = ((119, 132), (135, 148), (151, 164), (167, 180), (187, 200))
+    bounds = []
+    for top, bottom in rows:
+        points = [(x, y) for y in range(top, bottom) for x in range(left, right)
+                  if all(channel > 150 for channel in image.getpixel((x, y)))]
+        if not points:
+            raise AssertionError("rank ordinal disappeared")
+        bounds.append((min(x for x, _ in points), min(y for _, y in points),
+                       max(x for x, _ in points), max(y for _, y in points)))
+    return bounds
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--pack", required=True)
@@ -87,7 +122,7 @@ def main():
     pack, exe, rom = Path(args.pack), Path(args.exe), Path(args.rom)
 
     assets = load_pack(pack)
-    required = {187, *range(160, 187), *range(192, 246)}
+    required = {189, 250, *range(160, 189), *range(192, 221), *range(221, 250)}
     if not required.issubset(assets):
         raise AssertionError(f"missing Team Select assets: {sorted(required - assets.keys())}")
     for asset_id, expected in EXPECTED_LOGO_HASHES.items():
@@ -96,36 +131,122 @@ def main():
             raise AssertionError(f"logo metadata changed for asset {asset_id}")
         if hashlib.sha256(data).hexdigest() != expected:
             raise AssertionError(f"ROM OBJ logo {asset_id} changed")
-    for team in range(27):
+    for team in range(29):
         if (len(assets[192 + team][0]), assets[192 + team][3]) != (0x10000, team):
             raise AssertionError(f"team {team} VRAM asset changed")
-        if (len(assets[219 + team][0]), assets[219 + team][3]) != (0x200, team):
+        if (len(assets[221 + team][0]), assets[221 + team][3]) != (0x200, team):
             raise AssertionError(f"team {team} CGRAM asset changed")
+    cycle, width, height, cadence = assets[250]
+    if (len(cycle), width, height, cadence) != (26, 7, 7, 8):
+        raise AssertionError("selected-plate palette-cycle metadata changed")
+    phases = [cycle[phase * 2:phase * 2 + 14] for phase in range(7)]
+    colors = [struct.unpack_from("<H", cycle, offset)[0] & 0x7FFF
+              for offset in range(0, 26, 2)]
+    if hashlib.sha256(cycle).hexdigest() != \
+       "f3573907c51de1bb052e0fd0000431e9d20e4328837ec76e6c7cf25e06f9a459" or \
+       len(set(phases)) != 7 or colors[7:] != colors[:6]:
+        raise AssertionError("$82:8968 selected-plate cycle no longer wraps seven ROM colors")
+    oam = assets[189][0]
+    def obj(index):
+        high = (oam[512 + index // 4] >> ((index & 3) * 2)) & 3
+        x = oam[index * 4] | ((high & 1) << 8)
+        if x >= 256:
+            x -= 512
+        return (x, oam[index * 4 + 1], oam[index * 4 + 2],
+                (oam[index * 4 + 3] >> 1) & 7, 16 if high & 2 else 8)
+    plate_tiles = [0x20, 0x22, 0x24, 0x26, 0x28, 0x2A, 0x2C, 0x2E,
+                   0x40, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42]
+    right_plate = [obj(index) for index in range(6, 21)]
+    left_plate = [obj(index) for index in range(32, 47)]
+    if [item[2] for item in right_plate] != plate_tiles or \
+       [item[2] for item in left_plate] != plate_tiles or \
+       {item[3] for item in right_plate} != {2} or \
+       {item[3] for item in left_plate} != {1} or \
+       (min(item[0] for item in left_plate),
+        max(item[0] + item[4] for item in left_plate)) != (30, 78):
+        raise AssertionError("complete 15-piece silver/gold plate geometry changed")
 
     listing = run(exe, "--team-list")
     lines = [line for line in listing.splitlines() if line.startswith("[TEAM DATA]")]
-    if len(lines) != 27 or "03 CHICAGO" not in lines[3] or "S=23 R=09 B=13 D=03 O=07" not in lines[3]:
-        raise AssertionError("source-controlled $80:D9AF ranking table changed")
+    if len(lines) != 29 or "03 CHICAGO" not in lines[3] or \
+       "S=23 R=09 B=13 D=03 O=07" not in lines[3] or \
+       "27 EAST" not in lines[27] or "S=- R=- B=- D=- O=-" not in lines[27] or \
+       "28 WEST" not in lines[28] or "S=- R=- B=- D=- O=-" not in lines[28]:
+        raise AssertionError("source-controlled $80:D9AF-$DA3F ranking table changed")
 
     with tempfile.TemporaryDirectory() as directory:
         directory = Path(directory)
         base = ["--headless", "--rom", rom, "--assets", pack,
-                "--team-only", "--frames", "205"]
+                "--team-only", "--team-action-gap", "1"]
+        # These are the semantic states observed in Mesen and traced through
+        # $82:83BC-$8548. Selector 0/1 is a name row; 2..6 is a rank row.
         cases = {
-            "initial": ([], "active=RIGHT category=0 left=3:CHICAGO right=18:ORLANDO"),
-            "right": (["--team-right", "1"], "left=3:CHICAGO right=13:MIAMI"),
-            "left": (["--team-side-toggle", "--team-right", "1"],
-                     "active=LEFT category=0 left=7:DETROIT right=18:ORLANDO"),
-            "overall": (["--team-category", "4", "--team-right", "1"],
-                        "active=RIGHT category=4 left=3:CHICAGO right=8:GOLDEN STATE"),
+            "initial": (225, [],
+                        "active=RIGHT selector=1 category=-1 left=3:CHICAGO right=18:ORLANDO"),
+            "plate_phase_1": (233, [],
+                              "active=RIGHT selector=1 category=-1 left=3:CHICAGO right=18:ORLANDO"),
+            "alphabetical_right": (225, ["--team-right", "1"],
+                                   "selector=1 category=-1 left=3:CHICAGO right=19:PHILADELPHIA"),
+            "scoring": (225, ["--team-down", "1"],
+                        "active=RIGHT selector=2 category=0 left=3:CHICAGO right=18:ORLANDO"),
+            "overall": (225, ["--team-up", "1"],
+                        "active=RIGHT selector=6 category=4 left=3:CHICAGO right=18:ORLANDO"),
+            "side_toggle_name": (225, ["--team-side-toggle"],
+                                 "active=LEFT selector=0 category=-1 left=3:CHICAGO right=18:ORLANDO"),
+            "side_toggle_rank": (225, ["--team-category", "3", "--team-side-toggle"],
+                                 "active=LEFT selector=5 category=3 left=3:CHICAGO right=18:ORLANDO"),
+            "ranked_right": (225, ["--team-category", "0", "--team-right", "1"],
+                             "active=RIGHT selector=2 category=0 left=3:CHICAGO right=13:MIAMI"),
+            "alpha_wrap_right": (225, ["--team-right", "11"],
+                                 "selector=1 category=-1 left=3:CHICAGO right=0:ATLANTA"),
+            "alpha_wrap_left": (225, ["--team-left", "21"],
+                                "selector=1 category=-1 left=3:CHICAGO right=26:WASHINGTON"),
+            "rank_wrap": (250, ["--team-category", "0", "--team-right", "27"],
+                          "selector=2 category=0 left=3:CHICAGO right=18:ORLANDO"),
+            # Long names exercise $81:9FD4 left anchoring and $81:A01F right
+            # anchoring. These also distinguish visitor changes from the
+            # right/home team's wallpaper ownership.
+            "wallpaper_orlando": (240, [],
+                                  "left=3:CHICAGO right=18:ORLANDO"),
+            "left_golden_state": (240, ["--team-side-toggle", "--team-right", "5"],
+                                  "active=LEFT selector=0 category=-1 left=8:GOLDEN STATE right=18:ORLANDO"),
+            "right_philadelphia": (240, ["--team-right", "1"],
+                                   "active=RIGHT selector=1 category=-1 left=3:CHICAGO right=19:PHILADELPHIA"),
+            "east": (240, ["--team-right", "9"],
+                     "active=RIGHT selector=1 category=-1 left=3:CHICAGO right=27:EAST"),
+            "west": (240, ["--team-right", "10"],
+                     "active=RIGHT selector=1 category=-1 left=3:CHICAGO right=28:WEST"),
         }
-        for name, (extra, expected_state) in cases.items():
+        captured = {}
+        for name, (frames, extra, expected_state) in cases.items():
             image = directory / f"{name}.bmp"
-            output = run(exe, *base, *extra, "--dump-frame", image)
+            output = run(exe, *base, "--frames", frames, *extra,
+                         "--dump-frame", image)
             if expected_state not in output:
                 raise AssertionError(f"Team Select navigation failed for {name}:\n{output}")
             if frame_hash(image) != EXPECTED_FRAME_HASHES[name]:
                 raise AssertionError(f"Team Select {name} frame changed")
+            captured[name] = image
+
+        if wallpaper_hash(captured["wallpaper_orlando"]) != \
+           wallpaper_hash(captured["left_golden_state"]):
+            raise AssertionError("visitor change incorrectly replaced the home wallpaper")
+        if wallpaper_hash(captured["wallpaper_orlando"]) == \
+           wallpaper_hash(captured["right_philadelphia"]):
+            raise AssertionError("home-team change failed to replace the wallpaper")
+
+        if rank_text_bounds(captured["initial"], 36, 70) != [
+                (40, 119, 65, 131), (40, 135, 57, 147),
+                (40, 151, 62, 163), (40, 167, 58, 179),
+                (40, 187, 58, 199)]:
+            raise AssertionError("left rank values shifted, overlapped, or were clipped")
+        # Stop at x=216: the silver plate has bright pixels at x=216-217 on
+        # the first row, immediately beside (but not part of) the ordinal.
+        if rank_text_bounds(captured["initial"], 188, 216) != [
+                (192, 119, 215, 131), (192, 135, 215, 147),
+                (192, 151, 214, 163), (192, 167, 214, 179),
+                (192, 187, 209, 199)]:
+            raise AssertionError("right rank values shifted, overlapped, or were clipped")
 
         logo_debug = directory / "logo_debug.bmp"
         run(exe, "--headless", "--rom", rom, "--assets", pack,
@@ -140,7 +261,14 @@ def main():
        "AUD:SETUP_SPC" not in handoff or "transition=176" not in handoff:
         raise AssertionError(f"Start handoff or continuous Setup music failed:\n{handoff}")
 
-    print("[TEST] PASS: Team Select handoff, 27 ROM teams/logos, side toggle, and rank-order cycling")
+    a_handoff = run(exe, "--headless", "--rom", rom, "--assets", pack,
+                    "--setup-only", "--setup-main-row", "0", "--setup-main-a",
+                    "--frames", "400", "--debug-state")
+    if "action=0" not in a_handoff or "SCN:GAME_SETUP" not in a_handoff or \
+       "route=TEAM_SELECTION" in a_handoff:
+        raise AssertionError(f"Controller A incorrectly confirmed Exhibition:\n{a_handoff}")
+
+    print("[TEST] PASS: Start-only handoff, seven-position ROM selector, 29 teams/logos, dash ranks, and navigation wrap")
 
 
 if __name__ == "__main__":

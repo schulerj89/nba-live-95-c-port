@@ -40,8 +40,8 @@ EXPECTED_AUDIO_RMS_EIGHTHS = [
 ]
 EXPECTED_AUDIO_BAND_PPM = [889127, 48767, 32034, 14587, 14255, 1068, 162]
 EXPECTED_AUDIO_CHANNEL_RMS = [3363, 3363]
-EXPECTED_ASSET_DEBUGGER_SHA256 = "7017b24654e862c706b22fac286ce32508b2521c8093a3a26f1ce02bd430acd0"
-EXPECTED_OAM_DEBUGGER_SHA256 = "7672ae2f5eea16cc44945a0d8c46b0128b80e03e8605fe3480c10b192ff8ca2e"
+EXPECTED_ASSET_DEBUGGER_SHA256 = "52953504183d32b1fd2b9af9f3e926af93226279beb2fbf092e15a38c0534f4d"
+EXPECTED_OAM_DEBUGGER_SHA256 = "ea04641bd47673e5c6f8191914d51b054e9a980239f153cacb0e26516483c271"
 EXPECTED_RENDERED_MENU_SFX_SHA256 = {
     0x1A: "447a1ea48a94e2036ff0bdf1f4c5248d6284daec0b723b9a966f841976e703c4",
     0x1B: "96de89e954e4e8f75e555625abba5bf4380b8868b3263776a4cc27a6285de664",
@@ -221,7 +221,7 @@ def load_pack(path):
     if len(data) < 16 or data[:8] != b"NBA95PAK":
         raise AssertionError("invalid asset pack")
     version, count = struct.unpack_from("<II", data, 8)
-    if version != 12 or 16 + count * 24 > len(data):
+    if version != 15 or 16 + count * 24 > len(data):
         raise AssertionError("invalid asset directory")
     assets = {}
     for index in range(count):

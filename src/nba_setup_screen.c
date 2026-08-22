@@ -893,7 +893,8 @@ NbaSetupUpdateResult nba_setup_screen_update(NbaSetupScreen *s,
             return setup_result(NBA_SETUP_SOUND_CONFIRM,
                                 NBA_SETUP_ACTION_OPEN_OPTIONS);
         }
-        if (s->row < NBA_SETUP_ROW_RULES)
+        /* Live ROM: A opens Rules/Options, but only Start confirms a mode. */
+        if (s->row < NBA_SETUP_ROW_RULES && (input->pressed & NBA_BTN_START))
             return setup_result(NBA_SETUP_SOUND_CONFIRM,
                                 NBA_SETUP_ACTION_CONFIRM_MODE);
     }

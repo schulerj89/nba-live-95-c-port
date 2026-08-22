@@ -69,7 +69,7 @@ $Captures = @(
     @{ Name = 'team_select_logos'; Script = 'mesen_team_select_capture.lua';
        Env = @{ NBA95_TEAM_CONFIRM = 'start'; NBA95_TEAM_LOGOS = '1';
                 NBA95_TEAM_LOGO_STEP = '90' };
-       Required = @(0..26 | ForEach-Object {
+       Required = @(0..28 | ForEach-Object {
            @("team_{0:D2}_vram.bin" -f $_, "team_{0:D2}_cgram.bin" -f $_,
              "team_{0:D2}_oam.bin" -f $_)
        }) }

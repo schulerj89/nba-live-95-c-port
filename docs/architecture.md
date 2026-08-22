@@ -18,8 +18,15 @@ silently restore defaults. Its update result separates menu sound from
 navigation action. Confirming a main value row emits the generic `CONFIRM_MODE`
 event; the scene dispatcher then routes Exhibition to the Team Select scene.
 That handoff intentionally preserves the resident Setup SPC track. Team Select
-uses its own scene-local active side, ranking category, PPU presentation, and
+uses its own scene-local active side, seven-position name/ranking selector, PPU presentation, and
 transition state while writing team IDs back to the session.
+
+Debug screens are process-lifetime overlays outside the scene union. F9 owns
+`NbaPlayerLab`, freezes scene progression, and reads fixed roster, ROM-tile,
+palette-table, and pose-layout assets from the loaded pack. F10 remains compact
+state telemetry, F11 owns audio/sample inspection, and F12 owns the general
+asset browser. Keeping Player Lab separate from gameplay lets the same roster
+and appearance diagnostics survive future gameplay scene extraction.
 
 Audio synthesis and host playback are separate outcomes. Headless runs disable
 host playback before entering an audio scene, retain synthesized PCM for WAV

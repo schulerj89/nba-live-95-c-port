@@ -68,6 +68,15 @@ int main(int argc, char *argv[]) {
     bool is_headless = false;
     bool audio_debug_test = false;
     int asset_debug_id = -1;
+    bool player_lab = false;
+    int player_lab_team = 3;
+    int player_lab_roster = 0;
+    int player_lab_team_right = 0;
+    int player_lab_roster_down = 0;
+    int player_lab_animation = 3;
+    int player_lab_direction = 6;
+    int player_lab_animation_right = 0;
+    int player_lab_direction_right = 0;
     bool start_at_title = false;
     bool start_at_setup = false;
     bool start_at_team = false;
@@ -81,6 +90,7 @@ int main(int argc, char *argv[]) {
     int setup_main_right = 0;
     int setup_main_left = 0;
     bool setup_main_confirm = false;
+    bool setup_main_a = false;
     bool setup_reenter = false;
     bool setup_menu_confirm = false;
     bool setup_menu_b = false;
@@ -90,6 +100,8 @@ int main(int argc, char *argv[]) {
     int debug_hud_page = 0;
     bool team_side_toggle = false;
     int team_category = -1;
+    int team_up = 0;
+    int team_down = 0;
     int team_right = 0;
     int team_left = 0;
     bool team_list = false;
@@ -121,6 +133,24 @@ int main(int argc, char *argv[]) {
                 return 1;
             }
             asset_debug_id = (int)value;
+        } else if (strcmp(argv[i], "--player-lab") == 0) {
+            player_lab = true;
+        } else if (strcmp(argv[i], "--player-team") == 0 && i + 1 < argc) {
+            player_lab_team = atoi(argv[++i]);
+        } else if (strcmp(argv[i], "--player-roster") == 0 && i + 1 < argc) {
+            player_lab_roster = atoi(argv[++i]);
+        } else if (strcmp(argv[i], "--player-team-right") == 0 && i + 1 < argc) {
+            player_lab_team_right = atoi(argv[++i]);
+        } else if (strcmp(argv[i], "--player-roster-down") == 0 && i + 1 < argc) {
+            player_lab_roster_down = atoi(argv[++i]);
+        } else if (strcmp(argv[i], "--player-animation") == 0 && i + 1 < argc) {
+            player_lab_animation = (int)strtol(argv[++i], NULL, 0);
+        } else if (strcmp(argv[i], "--player-direction") == 0 && i + 1 < argc) {
+            player_lab_direction = atoi(argv[++i]);
+        } else if (strcmp(argv[i], "--player-animation-right") == 0 && i + 1 < argc) {
+            player_lab_animation_right = atoi(argv[++i]);
+        } else if (strcmp(argv[i], "--player-direction-right") == 0 && i + 1 < argc) {
+            player_lab_direction_right = atoi(argv[++i]);
         } else if (strcmp(argv[i], "--dump-menu-sfx") == 0 && i + 1 < argc) {
             dump_menu_sfx_path = argv[++i];
         } else if (strcmp(argv[i], "--menu-sfx-srcn") == 0 && i + 1 < argc) {
@@ -141,6 +171,10 @@ int main(int argc, char *argv[]) {
             team_side_toggle = true;
         } else if (strcmp(argv[i], "--team-category") == 0 && i + 1 < argc) {
             team_category = atoi(argv[++i]);
+        } else if (strcmp(argv[i], "--team-up") == 0 && i + 1 < argc) {
+            team_up = atoi(argv[++i]);
+        } else if (strcmp(argv[i], "--team-down") == 0 && i + 1 < argc) {
+            team_down = atoi(argv[++i]);
         } else if (strcmp(argv[i], "--team-right") == 0 && i + 1 < argc) {
             team_right = atoi(argv[++i]);
         } else if (strcmp(argv[i], "--team-left") == 0 && i + 1 < argc) {
@@ -169,6 +203,8 @@ int main(int argc, char *argv[]) {
             setup_main_left = atoi(argv[++i]);
         } else if (strcmp(argv[i], "--setup-main-confirm") == 0) {
             setup_main_confirm = true;
+        } else if (strcmp(argv[i], "--setup-main-a") == 0) {
+            setup_main_a = true;
         } else if (strcmp(argv[i], "--setup-reenter") == 0) {
             setup_reenter = true;
         } else if (strcmp(argv[i], "--setup-menu-confirm") == 0) {
@@ -209,16 +245,27 @@ int main(int argc, char *argv[]) {
             printf("  --tick-rate <Hz>      Headless host tick rate (default: 60.0)\n");
             printf("  --audio-debug         Activate audio sample debugger in headless render\n");
             printf("  --asset-debug <ID>    Render the F12 ROM asset browser at asset ID\n");
+            printf("  --player-lab          Render the F9 Player Lab from packed ROM data\n");
+            printf("  --player-team N       Player Lab team 0..28 (default Chicago 3)\n");
+            printf("  --player-roster N     Player Lab roster slot 0..11\n");
+            printf("  --player-team-right N Apply N Player Lab Right presses\n");
+            printf("  --player-roster-down N Apply N Player Lab Down presses\n");
+            printf("  --player-animation N  Select ROM animation state 0x00..0x38\n");
+            printf("  --player-direction N  Select ROM direction 0..7 (default 6)\n");
+            printf("  --player-animation-right N Apply N Player Lab E presses\n");
+            printf("  --player-direction-right N Apply N Player Lab I presses\n");
             printf("  --dump-menu-sfx FILE  Save a deterministic packed-SPC menu sound\n");
             printf("  --menu-sfx-srcn N     Select menu SRCN 0x1A..0x1C (default 0x1B)\n");
             printf("  --title-only          Start at $80:E01E title state (headless tests)\n");
             printf("  --setup-only          Start at the $80:E600 -> $80:A2BF handoff\n");
             printf("  --team-only           Start at the $80:DBF6 -> $82:809A Team Select handoff\n");
             printf("  --team-side-toggle    Toggle the active Team Select side once\n");
-            printf("  --team-category N     Select ranking category 0..4 with Down\n");
-            printf("  --team-right N        Advance N teams in the selected ranking order\n");
-            printf("  --team-left N         Move back N teams in the selected ranking order\n");
-            printf("  --team-list           Print all 27 ROM ranking records and exit\n");
+            printf("  --team-category N     Move from the name row to ranking category 0..4\n");
+            printf("  --team-up N           Apply N raw Team Select Up presses\n");
+            printf("  --team-down N         Apply N raw Team Select Down presses\n");
+            printf("  --team-right N        Advance N teams alphabetically or by selected rank\n");
+            printf("  --team-left N         Move back N teams alphabetically or by selected rank\n");
+            printf("  --team-list           Print all 29 ROM team/ranking records and exit\n");
             printf("  --team-demo           Script right cycle, side toggle, then left cycle\n");
             printf("  --team-action-gap N   Frames between scripted Team Select inputs\n");
             printf("  --dump-sequence-dir D Save every rendered headless frame in directory D\n");
@@ -233,6 +280,7 @@ int main(int argc, char *argv[]) {
             printf("  --setup-main-right N  Apply N right adjustments on the main row\n");
             printf("  --setup-main-left N   Apply N left adjustments on the main row\n");
             printf("  --setup-main-confirm  Press Start and report the requested scene action\n");
+            printf("  --setup-main-a        Press A on the selected main Setup row\n");
             printf("  --setup-reenter       Reinitialize Setup to verify session persistence\n");
             printf("  --timing-debug        Draw compact F10 overview page in a frame dump\n");
             printf("  --debug-hud-page N    Draw compact F10 page 1 or 2 in a frame dump\n");
@@ -249,9 +297,17 @@ int main(int argc, char *argv[]) {
     if (team_list) {
         for (int team = 0; team < NBA_TEAM_COUNT; ++team) {
             const NbaTeamRecord *record = &nba_team_records[team];
-            printf("[TEAM DATA] %02d %-14s %-14s S=%02u R=%02u B=%02u D=%02u O=%02u\n",
-                   team, record->name, record->nickname, record->rank[0],
-                   record->rank[1], record->rank[2], record->rank[3], record->rank[4]);
+            char rank_text[NBA_TEAM_RANK_COUNT][3];
+            for (int rank = 0; rank < NBA_TEAM_RANK_COUNT; ++rank) {
+                if (record->rank[rank] > NBA_REGULAR_TEAM_COUNT)
+                    snprintf(rank_text[rank], sizeof(rank_text[rank]), "-");
+                else
+                    snprintf(rank_text[rank], sizeof(rank_text[rank]), "%02u",
+                             record->rank[rank]);
+            }
+            printf("[TEAM DATA] %02d %-14s %-14s S=%s R=%s B=%s D=%s O=%s\n",
+                   team, record->name, record->nickname, rank_text[0], rank_text[1],
+                   rank_text[2], rank_text[3], rank_text[4]);
         }
         return 0;
     }
@@ -284,9 +340,21 @@ int main(int argc, char *argv[]) {
             return 1;
         }
         if (team_category < -1 || team_category >= NBA_TEAM_RANK_COUNT ||
+            team_up < 0 || team_up > 1000 || team_down < 0 || team_down > 1000 ||
             team_right < 0 || team_right > 1000 || team_left < 0 || team_left > 1000 ||
             team_action_gap < 1 || team_action_gap > 1000) {
             fprintf(stderr, "[HEADLESS] Invalid Team Select category or adjustment count.\n");
+            return 1;
+        }
+        if (player_lab_team < 0 || player_lab_team >= NBA_TEAM_COUNT ||
+            player_lab_roster < 0 || player_lab_roster >= NBA_PLAYER_ROSTER_SIZE ||
+            player_lab_team_right < 0 || player_lab_team_right > 1000 ||
+            player_lab_roster_down < 0 || player_lab_roster_down > 1000 ||
+            player_lab_animation < 0 || player_lab_animation >= NBA_PLAYER_ANIMATION_STATES ||
+            player_lab_direction < 0 || player_lab_direction > 7 ||
+            player_lab_animation_right < 0 || player_lab_animation_right > 1000 ||
+            player_lab_direction_right < 0 || player_lab_direction_right > 1000) {
+            fprintf(stderr, "[HEADLESS] Player Lab team must be 0..28 and roster must be 0..11.\n");
             return 1;
         }
         printf("[HEADLESS] Starting headless verification (ROM: %s, Assets: %s, frames: %d)\n",
@@ -309,8 +377,12 @@ int main(int argc, char *argv[]) {
         int setup_main_right_done = 0;
         int setup_main_left_done = 0;
         bool setup_main_confirm_done = false;
+        bool setup_main_a_done = false;
         bool setup_main_done = setup_main_row < 0;
         bool team_toggle_done = false;
+        bool team_category_done = team_category < 0;
+        int team_up_done = 0;
+        int team_down_done = 0;
         int team_right_done = 0;
         int team_left_done = 0;
         int team_action_wait = team_action_gap;
@@ -371,10 +443,37 @@ int main(int argc, char *argv[]) {
             nba_audio_debugger_update(&game.audio_debugger, &game.audio,
                                       &game.assets, &game.input);
         }
+        if (player_lab) {
+            game.player_lab.team = (uint8_t)player_lab_team;
+            game.player_lab.player = (uint8_t)player_lab_roster;
+            game.player_lab.animation_state = (uint8_t)player_lab_animation;
+            game.player_lab.direction = (uint8_t)player_lab_direction;
+            game.player_lab.is_active = true;
+        }
+        int player_team_right_done = 0;
+        int player_roster_down_done = 0;
+        int player_animation_right_done = 0;
+        int player_direction_right_done = 0;
 
         /* Step frames to reach desired screen */
         for (int frame = 0; frame < step_frames; frame++) {
             game.input.pressed = 0;
+
+            if (game.player_lab.is_active) {
+                if (player_team_right_done < player_lab_team_right) {
+                    game.input.pressed = NBA_BTN_RIGHT;
+                    player_team_right_done++;
+                } else if (player_roster_down_done < player_lab_roster_down) {
+                    game.input.pressed = NBA_BTN_DOWN;
+                    player_roster_down_done++;
+                } else if (player_animation_right_done < player_lab_animation_right) {
+                    game.input.pressed = NBA_BTN_R;
+                    player_animation_right_done++;
+                } else if (player_direction_right_done < player_lab_direction_right) {
+                    game.input.pressed = NBA_BTN_X;
+                    player_direction_right_done++;
+                }
+            }
 
             if (enter_setup) {
                 if (game.state == NBA_STATE_TITLE_SEQUENCE) {
@@ -445,6 +544,9 @@ int main(int argc, char *argv[]) {
                 } else if (setup_main_confirm && !setup_main_confirm_done) {
                     game.input.pressed = NBA_BTN_START;
                     setup_main_confirm_done = true;
+                } else if (setup_main_a && !setup_main_a_done) {
+                    game.input.pressed = NBA_BTN_A;
+                    setup_main_a_done = true;
                 } else {
                     setup_main_done = true;
                 }
@@ -460,13 +562,25 @@ int main(int argc, char *argv[]) {
                         game.input.pressed = NBA_BTN_A;
                 } else if (team_action_wait > 0) {
                     team_action_wait--;
+                } else if (team_up_done < team_up) {
+                    game.input.pressed = NBA_BTN_UP;
+                    team_up_done++;
+                    team_action_wait = team_action_gap;
+                } else if (team_down_done < team_down) {
+                    game.input.pressed = NBA_BTN_DOWN;
+                    team_down_done++;
+                    team_action_wait = team_action_gap;
+                } else if (!team_category_done) {
+                    if ((int)team->selector !=
+                        (int)NBA_TEAM_SELECT_SCORING + team_category) {
+                        game.input.pressed = NBA_BTN_DOWN;
+                        team_action_wait = team_action_gap;
+                    } else {
+                        team_category_done = true;
+                    }
                 } else if (team_side_toggle && !team_toggle_done) {
                     game.input.pressed = NBA_BTN_A;
                     team_toggle_done = true;
-                    team_action_wait = team_action_gap;
-                } else if (team_category >= 0 &&
-                           (int)team->category != team_category) {
-                    game.input.pressed = NBA_BTN_DOWN;
                     team_action_wait = team_action_gap;
                 } else if (team_right_done < team_right) {
                     game.input.pressed = NBA_BTN_RIGHT;
@@ -546,6 +660,9 @@ int main(int argc, char *argv[]) {
                 return 1;
             }
         }
+        if (player_lab) {
+            nba_player_lab_print(&game.player_lab, &game.assets);
+        }
 
         if (dump_menu_sfx_path) {
             nba_audio_play_setup_sfx(&game.audio, &game.assets,
@@ -598,10 +715,12 @@ int main(int argc, char *argv[]) {
         }
         if (game.state == NBA_STATE_TEAM_SELECT) {
             const NbaTeamSelect *team = &game.scene.team_select;
-            printf("[TEAM SELECT TEST] active=%s category=%u left=%u:%s right=%u:%s "
+            int category = team->selector >= NBA_TEAM_SELECT_SCORING ?
+                           (int)team->selector - NBA_TEAM_SELECT_SCORING : -1;
+            printf("[TEAM SELECT TEST] active=%s selector=%u category=%d left=%u:%s right=%u:%s "
                    "transition=%d\n",
                    team->active_side == NBA_TEAM_SIDE_LEFT ? "LEFT" : "RIGHT",
-                   (unsigned)team->category, team->session->left_team,
+                   (unsigned)team->selector, category, team->session->left_team,
                    nba_team_records[team->session->left_team].name,
                    team->session->right_team,
                    nba_team_records[team->session->right_team].name,
