@@ -46,9 +46,24 @@ The camera word labels and complete pass/shoot/switch policy are intentionally
 provisional. The next ROM pass uses isolated one-frame button injections and
 records call sites at `$87:9B38` and branches through `$87:A160–$A2CE`.
 
+`tools/mesen_tipoff_capture.lua` writes the ROM-side equivalent to
+`gameplay_rom.jsonl`. Compare it with the port trace using:
+
+```powershell
+python tools/compare_gameplay_traces.py `
+  --rom-trace .analysis/<capture>/gameplay_rom.jsonl `
+  --port-trace gameplay-port.jsonl --report comparison.json
+```
+
+Core mode locks phase plus all ten actors' identity, visibility, world
+coordinates and visible sprite origins/directions/animation. `--mode all`
+reports every common non-unknown field, making unfinished controller, camera,
+ball and AI behavior visible without incorrectly passing it as implemented.
+
 ## Regression contract
 
 `tools/test_gameplay_debugger.py` locks the F8 mapping, ten actor records,
 eight-player settled-camera visibility, Player 1 slot mapping, controller,
 ball, camera, collision and AI raw fields, overlay pixels, JSON parsing, and
-paused single-frame stepping.
+paused single-frame stepping, and both comparator pass and intentional-failure
+paths.

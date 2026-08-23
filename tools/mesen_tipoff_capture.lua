@@ -23,7 +23,10 @@ local routine_log = assert(io.open(out .. "/routine_hits.txt", "wb"))
 local actor_log = assert(io.open(out .. "/actor_states.txt", "wb"))
 local placement_log = assert(io.open(out .. "/placement_writes.txt", "wb"))
 local draw_log = assert(io.open(out .. "/draw_origins.txt", "wb"))
+local gameplay_jsonl = assert(io.open(out .. "/gameplay_rom.jsonl", "wb"))
 local current_draw_actor = 0xffff
+local draw_screen, previous_pad, routine_hits_frame = {}, {}, {}
+for pad = 0, 4 do previous_pad[pad] = 0 end
 for _, segment in ipairs(segments) do exec_seen[segment.name] = {} end
 
 local function pulse(frame, at)
@@ -107,6 +110,7 @@ for address, name in pairs(probes) do
         if gameplay_frame >= 90 and gameplay_frame <= 260 then
             routine_log:write(string.format("f=%03d %s\n", gameplay_frame, name))
         end
+        if gameplay_frame >= 0 then routine_hits_frame[address] = true end
     end, emu.callbackType.exec, address, address,
         emu.cpuType.snes, emu.memType.snesMemory)
 end
@@ -117,17 +121,22 @@ local function word(address)
     return lo + hi * 0x100
 end
 
+local function signed_word(address)
+    local value = word(address)
+    return value >= 0x8000 and value - 0x10000 or value
+end
+
 local function trace_draw_frame()
     return (gameplay_frame >= 89 and gameplay_frame <= 92) or
            (gameplay_frame >= 218 and gameplay_frame <= 222)
 end
 
 emu.addMemoryCallback(function()
+    local state = emu.getState()
+    local direct = state["cpu.d"] or 0
+    local list_index = word((direct + 0x96) & 0xffff)
+    current_draw_actor = word(0x7e44 + list_index)
     if trace_draw_frame() then
-        local state = emu.getState()
-        local direct = state["cpu.d"] or 0
-        local list_index = word((direct + 0x96) & 0xffff)
-        current_draw_actor = word(0x7e44 + list_index)
         draw_log:write(string.format(
             "f=%03d prepare list=%04X actor=%04X slot=%d world=%04X,%04X,%04X\n",
             gameplay_frame, list_index, current_draw_actor,
@@ -141,9 +150,17 @@ end, emu.callbackType.exec, 0x87a47a, 0x87a47a,
 
 
 emu.addMemoryCallback(function()
+    local state = emu.getState()
+    local direct = state["cpu.d"] or 0
+    local slot = current_draw_actor >= 0x34eb and
+        math.floor((current_draw_actor - 0x34eb) / 0x100) or -1
+    if slot >= 0 and slot <= 9 then
+        draw_screen[slot] = {
+            x = state["cpu.x"] or -32768,
+            y = signed_word((direct + 0xa0) & 0xffff)
+        }
+    end
     if trace_draw_frame() then
-        local state = emu.getState()
-        local direct = state["cpu.d"] or 0
         local function dpword(offset)
             return word((direct + offset) & 0xffff)
         end
@@ -171,6 +188,117 @@ local function dump_actor_states(frame)
             word(base + 0x38), word(base + 0x3a), word(base + 0x3c), word(base + 0x28)))
     end
     actor_log:write("\n")
+end
+
+local function dump_gameplay_jsonl(frame)
+    local held, pressed, released = {}, {}, {}
+    for pad = 0, 4 do
+        held[pad] = word(0x0576 + pad * 2)
+        pressed[pad] = held[pad] & (~previous_pad[pad] & 0xffff)
+        released[pad] = previous_pad[pad] & (~held[pad] & 0xffff)
+        previous_pad[pad] = held[pad]
+    end
+    local phase = frame < 140 and 0 or frame < 220 and 1 or
+                  frame < 400 and 2 or 3
+    gameplay_jsonl:write(string.format(
+        "{\"source\":\"rom\",\"frame\":%d,\"scene_frame\":%d," ..
+        "\"simulation_tick\":%d,\"phase\":%d," ..
+        "\"input\":{\"pressed\":%u,\"held\":%u,\"released\":%u}," ..
+        "\"controllers\":{\"active_raw\":%d,\"selected_raw\":%d," ..
+        "\"held_raw\":[%u,%u,%u,%u,%u]," ..
+        "\"assignment_raw\":[%u,%u,%u,%u,%u]," ..
+        "\"repeat_raw\":[%u,%u,%u,%u,%u]},",
+        frame, frame, frame, phase, pressed[0], held[0], released[0],
+        signed_word(0x1615), signed_word(0x095e),
+        held[0], held[1], held[2], held[3], held[4],
+        word(0x08d4), word(0x08d6), word(0x08d8), word(0x08da), word(0x08dc),
+        word(0x15f7), word(0x15f9), word(0x15fb), word(0x15fd), word(0x15ff)))
+    gameplay_jsonl:write(string.format(
+        "\"control\":{\"actor\":%d,\"side_raw\":%d," ..
+        "\"initial_slot_raw\":%d,\"selected_slot_raw\":%d," ..
+        "\"actor_pointer_raw\":%u}," ..
+        "\"possession\":{\"actor\":%d,\"team\":%d," ..
+        "\"candidate_raw\":%d,\"play_code_raw\":%u," ..
+        "\"rng_state_raw\":65535}," ..
+        "\"camera\":{\"x\":%d,\"y\":%d,\"routine\":%u," ..
+        "\"raw_085c\":%u,\"raw_085e\":%u,\"raw_0860\":%u," ..
+        "\"raw_0862\":%u,\"raw_086c\":%u,\"raw_086e\":%u," ..
+        "\"raw_0874\":%u,\"raw_0876\":%u,\"raw_0878\":%u," ..
+        "\"raw_087a\":%u},",
+        signed_word(0x093e), signed_word(0x093a), signed_word(0x0954),
+        signed_word(0x093e), word(0x0940), signed_word(0x0946),
+        signed_word(0x093a), signed_word(0x0946), word(0x0996),
+        signed_word(0x085c), signed_word(0x0860), 0x858ee6,
+        word(0x085c), word(0x085e), word(0x0860), word(0x0862),
+        word(0x086c), word(0x086e), word(0x0874), word(0x0876),
+        word(0x0878), word(0x087a)))
+    local ball = 0x3eeb
+    gameplay_jsonl:write(string.format(
+        "\"collision\":{\"a\":-1,\"b\":-1,\"routine\":0}," ..
+        "\"ball\":{\"x\":%d,\"y\":%d,\"z\":%d," ..
+        "\"screen_x\":-32768,\"screen_y\":-32768," ..
+        "\"vx\":%d,\"vy\":%d,\"vz\":%d,\"owner\":%d," ..
+        "\"state\":%u,\"flags_raw\":%u,\"routine\":%u}," ..
+        "\"routines\":{\"controller\":%u,\"selection\":%u," ..
+        "\"possession\":%u},\"routine_hits\":[",
+        signed_word(ball + 4), signed_word(ball + 8), signed_word(ball + 12),
+        signed_word(ball + 0x38), signed_word(ball + 0x3a),
+        signed_word(ball + 0x3c), signed_word(0x0946), word(ball + 0x18),
+        word(ball + 0x28), 0x86e054, 0x80cb8f, 0x85c37d,
+        frame >= 200 and 0x86d3f9 or 0))
+    local hit_addresses = {}
+    for address in pairs(routine_hits_frame) do hit_addresses[#hit_addresses + 1] = address end
+    table.sort(hit_addresses)
+    for index, address in ipairs(hit_addresses) do
+        gameplay_jsonl:write(string.format("%s%u", index > 1 and "," or "", address))
+    end
+    gameplay_jsonl:write("],\"actors\":[")
+    for actor = 0, 9 do
+        local base = 0x34eb + actor * 0x100
+        local screen = draw_screen[actor]
+        gameplay_jsonl:write(string.format(
+            "%s{\"id\":%d,\"team\":%d,\"roster\":%d," ..
+            "\"control\":%d,\"visible\":%s," ..
+            "\"x\":%d,\"y\":%d,\"z\":%d," ..
+            "\"screen_x\":%d,\"screen_y\":%d," ..
+            "\"vx\":0,\"vy\":0,\"vz\":0," ..
+            "\"direction\":%u,\"animation\":%u," ..
+            "\"lower_animation\":%u,\"ai_state\":%u," ..
+            "\"ai_target\":255,\"actor_routine\":%u," ..
+            "\"ai_routine\":%u,\"raw\":{\"base\":%u,\"id\":%u," ..
+            "\"action\":%u,\"flags\":%u,\"upper_resource\":%u," ..
+            "\"lower_resource\":%u,\"head_resource\":%u," ..
+            "\"motion_38\":%u,\"motion_3a\":%u,\"motion_3c\":%u," ..
+            "\"direction_4e\":%u,\"direction_50\":%u," ..
+            "\"direction_52\":%u,\"control_mode\":%u," ..
+            "\"control_mode_saved\":%u,\"side_group\":%u," ..
+            "\"assignment_base\":%u,\"assignment_current\":%u," ..
+            "\"assignment_alternate\":%u,\"assignment_distance\":%u," ..
+            "\"assignment_direction\":%u,\"pair_distance\":%u," ..
+            "\"reaction_threshold\":%u,\"upper_restart\":%u," ..
+            "\"lower_restart\":%u,\"upper_phase\":%u," ..
+            "\"lower_phase\":%u,\"behavior_flags\":%u," ..
+            "\"palette\":%u}}",
+            actor > 0 and "," or "", actor, actor >= 5 and 1 or 0,
+            actor % 5, signed_word(0x093e) == actor and 1 or 0,
+            screen and "true" or "false", signed_word(base + 4),
+            signed_word(base + 8), signed_word(base + 12),
+            screen and screen.x or -32768, screen and screen.y or -32768,
+            word(base + 0x4e), word(base + 0x30), word(base + 0x32),
+            word(base + 0x5e), 0x80ad92, 0x87a160, base, word(base),
+            word(base + 0x18), word(base + 0x28), word(base + 0x2a),
+            word(base + 0x2c), word(base + 0x2e), word(base + 0x38),
+            word(base + 0x3a), word(base + 0x3c), word(base + 0x4e),
+            word(base + 0x50), word(base + 0x52), word(base + 0x5e),
+            word(base + 0x84), word(base + 0x6e), word(base + 0x76),
+            word(base + 0x74), word(base + 0x78), word(base + 0x8e),
+            word(base + 0x86), word(base + 0x8a), word(base + 0x60),
+            word(base + 0x46), word(base + 0x48), word(base + 0x3a),
+            word(base + 0x44), word(base + 0x7e), word(base + 0xac)))
+    end
+    gameplay_jsonl:write("]}\n")
+    gameplay_jsonl:flush()
+    routine_hits_frame = {}
 end
 
 for actor = 0, 10 do
@@ -247,6 +375,7 @@ emu.addEventCallback(function()
     local frame = gameplay_frame
     gameplay_frame = gameplay_frame + 1
     if frame <= 300 then dump_actor_states(frame) end
+    dump_gameplay_jsonl(frame)
     if frame % 5 == 0 then shot(string.format("tipoff_%04d.png", frame)) end
     if frame == 0 or frame == 140 or frame == 220 or frame == 400 or
        frame == LAST_GAMEPLAY_FRAME then
@@ -290,6 +419,7 @@ emu.addEventCallback(function()
         end
         wram:close()
         actor_log:close(); routine_log:close(); placement_log:close(); draw_log:close()
+        gameplay_jsonl:close()
         local done = assert(io.open(out .. "/capture_complete.txt", "wb"))
         done:write(string.format("frames=%d\n", gameplay_frame)); done:close()
         log:write("capture done\n"); log:close(); emu.stop(0)

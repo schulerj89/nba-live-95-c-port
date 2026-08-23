@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -69,6 +70,28 @@ def main():
         if "GF:000003 SF:00003" not in paused.stdout:
             raise AssertionError("paused single-frame stepping did not advance exactly 3 frames")
 
+        rom_proxy = root / "rom_proxy.jsonl"
+        proxy_rows = []
+        for row in rows[:4]:
+            copied = json.loads(json.dumps(row))
+            copied["source"] = "rom"
+            copied["frame"] -= 1
+            copied["scene_frame"] -= 1
+            proxy_rows.append(copied)
+        rom_proxy.write_text("".join(json.dumps(row) + "\n" for row in proxy_rows))
+        comparator = Path(__file__).with_name("compare_gameplay_traces.py")
+        compared = run([sys.executable, str(comparator), "--rom-trace", str(rom_proxy),
+                        "--port-trace", str(trace)], "Gameplay trace comparator")
+        if "PASS" not in compared.stdout or "frames=4" not in compared.stdout:
+            raise AssertionError("aligned core comparison did not pass")
+        proxy_rows[0]["actors"][0]["x"] += 1
+        rom_proxy.write_text("".join(json.dumps(row) + "\n" for row in proxy_rows))
+        failed = subprocess.run(
+            [sys.executable, str(comparator), "--rom-trace", str(rom_proxy),
+             "--port-trace", str(trace)], capture_output=True, text=True, check=False)
+        if failed.returncode == 0 or "actors.0.x" not in failed.stdout:
+            raise AssertionError("trace comparator did not reject an actor-position mismatch")
+
     source = Path(__file__).parents[1]
     win32 = (source / "src" / "win32_game_main.c").read_text()
     debugger = (source / "src" / "nba_gameplay_debugger.c").read_text()
@@ -79,6 +102,11 @@ def main():
                    "nba_gameplay_telemetry_write_jsonl"):
         if marker not in debugger:
             raise AssertionError(f"Gameplay Lab implementation lost {marker}")
+    mesen = (source / "tools" / "mesen_tipoff_capture.lua").read_text()
+    for marker in ("gameplay_rom.jsonl", "0x80cb8f", "0x87a160",
+                   "assignment_current", "raw_087a"):
+        if marker not in mesen:
+            raise AssertionError(f"Mesen gameplay oracle lost {marker}")
     print("Gameplay Lab regression checks passed")
 
 
