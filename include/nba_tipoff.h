@@ -28,10 +28,38 @@ typedef enum {
 } NbaTipoffPhase;
 
 typedef struct {
+    int32_t x_fp, y_fp, z_fp;
+    int16_t velocity_x, velocity_y, velocity_z;
+    int16_t target_x, target_y;
+    uint8_t direction;
+    uint8_t animation_state;
+    uint8_t control_mode;
+    uint8_t assignment_actor;
+    uint16_t reaction_threshold;
+    uint16_t action_state;
+    bool visible;
+} NbaTipoffActor;
+
+typedef struct {
+    int32_t x_fp, y_fp, z_fp;
+    int16_t velocity_x, velocity_y, velocity_z;
+    int8_t owner_actor;
+    uint8_t state;
+} NbaTipoffBall;
+
+typedef struct {
     const NbaAssetPack *assets;
     NbaSession *session;
     int frame;
     NbaTipoffPhase phase;
+    NbaTipoffActor actors[NBA_GAMEPLAY_ACTOR_COUNT];
+    NbaTipoffBall ball;
+    int16_t camera_x, camera_y;
+    int8_t possession_actor;
+    int8_t possession_team;
+    uint16_t play_code;
+    uint32_t simulation_tick;
+    bool cpu_vs_cpu;
     bool is_initialized;
 } NbaTipoff;
 

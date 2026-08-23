@@ -169,8 +169,9 @@ static void nba_game_debug_lines(const NbaGame *game, NbaDebugLines *out) {
         snprintf(out->line[out->count++], NBA_DEBUG_LINE_SIZE,
                  "ROM FORM:$86:DDA7 BALL:$86:E054 JUMP:$86:ECF4");
         snprintf(out->line[out->count++], NBA_DEBUG_LINE_SIZE,
-                 "TEAM L:%02u R:%02u ACT:10 VIS:8 PACK:ROM",
-                 s->session->left_team, s->session->right_team);
+                 "CPU:CPU POS:%d BALL:%d PLAY:$%02X CAM:%d,%d",
+                 s->possession_actor, s->ball.owner_actor, s->play_code,
+                 s->camera_x, s->camera_y);
     }
 
     if (out->count < NBA_DEBUG_MAX_LINES) {

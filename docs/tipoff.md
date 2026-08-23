@@ -30,8 +30,22 @@ correlates instructions and calls in those windows:
   200, `$86:D3F9 -> $86:B04C` initializes the post-tip actor/task state;
   `$86:9B80 -> $86:9846` resets the selected player and `$85:B100–$B245`
   performs the ROM's randomized possession decision.
-- `$87:B832` supplies the repeated directional movement calculation as the
-  players begin breaking from the circle.
+- `$85:B100–$B28B` writes play `$35` for the captured winning side. The live
+  trace then shows actor 8 as the first ballhandler and assignment changes
+  `2→8`, `3→7`, `7→3`, and `8→2` (WRAM stores actor indices doubled).
+- `$85:B95C–$B9D1` gates each CPU response using ball distance and RNG. That
+  explains the staggered break: actors begin responding on different frames,
+  with center actor 0 remaining planted until roughly frame 320.
+- `$85:F34F` quantizes a target delta to one of eight directions and
+  `$87:B832–$B952` applies its movement vector. The C scene uses that same
+  target/direction/update split rather than a list of captured screen points.
+- `$87:A160–$A2CE` is the CPU/human steering split. CPU-vs-CPU leaves every
+  actor on its CPU branch; actor 8 being selected as ballhandler does not make
+  it a human-controlled player.
+- `$85:8EE6–$9191` updates the camera from the ball subject. Player and ball
+  screen coordinates are consequently projected from world coordinates with
+  `screen_x = world_x + world_y - camera_x` and
+  `screen_y = (world_y - world_x)/4 - camera_y - z`.
 
 Regenerate the evidence with `tools/mesen_tipoff_capture.lua`, then run
 `tools/ghidra/Run-TipoffAnalysis.ps1`. The ignored `.analysis` outputs include
@@ -41,4 +55,7 @@ per-frame actor state, routine hits, sprite origins, raw PPU states, and frames.
 
 `tools/test_tipoff.py` locks pack version 17, the raw ball/court assets, the
 formation/jump/contact cadence, Ghidra-address diagnostics, and RGB hashes at
-frames 90, 170, and 220.
+frames 90, 170, and 220. `tools/test_cpu_gameplay.py` runs through frame 520
+and locks CPU-only ownership, play `$35`, staggered reactions, changed
+assignments, eight-or-more moving actors, camera following, a CPU pass, and
+post-tip proof-frame hashes.

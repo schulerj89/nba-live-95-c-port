@@ -11,7 +11,7 @@ from pathlib import Path
 from PIL import Image
 
 
-EXPECTED_LAB_RGB = "4954df7f9aa803895fa8f54d31d1de20dbbba4d2f65a9f4dea1e0c8e8b1eb8ec"
+EXPECTED_LAB_RGB = "99f55e6f9ea981a377ddd05df22bd771958262069c1e3abfe3a82470dd1e535c"
 
 
 def run(command, label):
@@ -49,9 +49,11 @@ def main():
         if sum(bool(a["visible"]) for a in sample["actors"]) != 8:
             raise AssertionError("settled tip-off visibility telemetry changed")
         if sample["control"] != {
-                "actor": 7, "side_raw": 5, "initial_slot_raw": 7,
-                "selected_slot_raw": 7, "actor_pointer_raw": 0x3BEB}:
-            raise AssertionError(f"controlled-player mapping changed: {sample['control']}")
+                "actor": 255, "side_raw": -1, "initial_slot_raw": 0,
+                "selected_slot_raw": 0, "actor_pointer_raw": 0}:
+            raise AssertionError(f"CPU-only control mapping changed: {sample['control']}")
+        if any(actor["control"] != 0 for actor in sample["actors"]):
+            raise AssertionError("tip-off introduced a human-controlled actor")
         required = {"base", "action", "flags", "control_mode", "side_group",
                     "assignment_current", "reaction_threshold", "upper_restart",
                     "lower_restart", "behavior_flags"}

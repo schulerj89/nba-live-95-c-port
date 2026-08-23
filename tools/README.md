@@ -38,6 +38,7 @@ reports success.
 - `test_player_setup.py`: Team Select confirmation, measured 200-frame handoff, ROM PPU assets, selected-team persistence, controller-side movement, and settled frame hashes
 - `test_player_intro.py`: 290-key visitor/home portrait catalog, Player Setup handoff, card cadence, and non-default Golden State/San Antonio frame hashes
 - `test_tipoff.py`: gameplay court/ball assets, shared ten-player compositor, ROM cadence, and formation/jump/contact frame hashes
+- `test_cpu_gameplay.py`: CPU-vs-CPU post-tip movement, assignment, camera, possession/pass, telemetry, and proof-frame regression
 
 ## Investigation utilities
 

@@ -128,6 +128,11 @@ if ($Test) {
     if ($LASTEXITCODE -ne 0) {
         throw "Gameplay Lab regression tests failed with exit code $LASTEXITCODE"
     }
+    & python (Join-Path $Root "tools\test_cpu_gameplay.py") `
+        --pack $AssetPack --exe $ConsoleExePath --rom $RomPath
+    if ($LASTEXITCODE -ne 0) {
+        throw "CPU gameplay regression tests failed with exit code $LASTEXITCODE"
+    }
     & python (Join-Path $Root "tools\test_intro_sequence.py") `
         --pack $AssetPack --exe $ConsoleExePath --rom $RomPath
     if ($LASTEXITCODE -ne 0) {

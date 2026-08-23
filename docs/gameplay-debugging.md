@@ -42,9 +42,12 @@ without changing the comparison contract.
 | `$85:B100–$B28B` | randomized initial possession/play decision |
 | `$85:8EE6–$9191` | provisional camera/court streaming state |
 
-The camera word labels and complete pass/shoot/switch policy are intentionally
-provisional. The next ROM pass uses isolated one-frame button injections and
-records call sites at `$87:9B38` and branches through `$87:A160–$A2CE`.
+The longer CPU-only capture now covers 651 frames. It confirms the `$35`
+post-tip play, CPU reaction staggering, live matchup reassignment, the
+eight-direction movement map, ballhandler changes, and camera projection.
+Complete pass/shoot/switch policy and scoring remain later gameplay work; the
+current C state machine implements the traced first possession far enough to
+exercise ten autonomous actors and a CPU ball transfer.
 
 `tools/mesen_tipoff_capture.lua` writes the ROM-side equivalent to
 `gameplay_rom.jsonl`. Compare it with the port trace using:
@@ -63,7 +66,7 @@ ball and AI behavior visible without incorrectly passing it as implemented.
 ## Regression contract
 
 `tools/test_gameplay_debugger.py` locks the F8 mapping, ten actor records,
-eight-player settled-camera visibility, Player 1 slot mapping, controller,
+eight-player settled-camera visibility, CPU-only mapping, controller,
 ball, camera, collision and AI raw fields, overlay pixels, JSON parsing, and
 paused single-frame stepping, and both comparator pass and intentional-failure
-paths.
+paths. `tools/test_cpu_gameplay.py` separately protects the live CPU behavior.
