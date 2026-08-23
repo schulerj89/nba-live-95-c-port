@@ -7,7 +7,8 @@
 #include "nba_spc.h"
 
 extern int win32_run_game(const char *rom_path, const char *assets_path,
-                          bool title_only, bool setup_only);
+                          bool title_only, bool setup_only, bool team_only,
+                          bool player_setup_only);
 
 static uint64_t trace_fnv1a64(const void *data, size_t size) {
     const uint8_t *bytes = (const uint8_t *)data;
@@ -80,6 +81,7 @@ int main(int argc, char *argv[]) {
     bool start_at_title = false;
     bool start_at_setup = false;
     bool start_at_team = false;
+    bool start_at_player_setup = false;
     bool spc_self_test = false;
     int step_frames = 30;
     double tick_rate = 60.0;
@@ -107,6 +109,8 @@ int main(int argc, char *argv[]) {
     bool team_list = false;
     bool team_demo = false;
     int team_action_gap = 1;
+    bool team_confirm = false;
+    bool player_setup_left = false;
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--rom") == 0 && i + 1 < argc) {
@@ -167,6 +171,12 @@ int main(int argc, char *argv[]) {
             start_at_setup = true;
         } else if (strcmp(argv[i], "--team-only") == 0) {
             start_at_team = true;
+        } else if (strcmp(argv[i], "--player-setup-only") == 0) {
+            start_at_player_setup = true;
+        } else if (strcmp(argv[i], "--team-confirm") == 0) {
+            team_confirm = true;
+        } else if (strcmp(argv[i], "--player-setup-left") == 0) {
+            player_setup_left = true;
         } else if (strcmp(argv[i], "--team-side-toggle") == 0) {
             team_side_toggle = true;
         } else if (strcmp(argv[i], "--team-category") == 0 && i + 1 < argc) {
@@ -259,6 +269,9 @@ int main(int argc, char *argv[]) {
             printf("  --title-only          Start at $80:E01E title state (headless tests)\n");
             printf("  --setup-only          Start at the $80:E600 -> $80:A2BF handoff\n");
             printf("  --team-only           Start at the $80:DBF6 -> $82:809A Team Select handoff\n");
+            printf("  --player-setup-only   Start at the Team Select -> Player Setup handoff\n");
+            printf("  --team-confirm        Press Start after Team Select settles\n");
+            printf("  --player-setup-left   Assign Player 1 to the visitor/left team\n");
             printf("  --team-side-toggle    Toggle the active Team Select side once\n");
             printf("  --team-category N     Move from the name row to ranking category 0..4\n");
             printf("  --team-up N           Apply N raw Team Select Up presses\n");
@@ -437,6 +450,12 @@ int main(int argc, char *argv[]) {
                 return 1;
             }
         }
+        if (start_at_player_setup) {
+            if (!nba_game_enter_state(&game, NBA_STATE_PLAYER_SETUP)) {
+                nba_game_shutdown(&game);
+                return 1;
+            }
+        }
 
         if (audio_debug_test) {
             game.audio_debugger.is_active = true;
@@ -454,6 +473,8 @@ int main(int argc, char *argv[]) {
         int player_roster_down_done = 0;
         int player_animation_right_done = 0;
         int player_direction_right_done = 0;
+        bool team_confirm_done = false;
+        bool player_setup_left_done = false;
 
         /* Step frames to reach desired screen */
         for (int frame = 0; frame < step_frames; frame++) {
@@ -590,7 +611,17 @@ int main(int argc, char *argv[]) {
                     game.input.pressed = NBA_BTN_LEFT;
                     team_left_done++;
                     team_action_wait = team_action_gap;
+                } else if (team_confirm && !team_confirm_done) {
+                    game.input.pressed = NBA_BTN_START;
+                    team_confirm_done = true;
                 }
+            }
+            if (game.state == NBA_STATE_PLAYER_SETUP &&
+                game.scene.player_setup.transition_frame >=
+                    NBA_PLAYER_SETUP_TRANSITION_FRAMES &&
+                player_setup_left && !player_setup_left_done) {
+                game.input.pressed = NBA_BTN_LEFT;
+                player_setup_left_done = true;
             }
             NbaSetupTransitionRoute route_before =
                 game.state == NBA_STATE_GAME_SETUP ?
@@ -726,6 +757,19 @@ int main(int argc, char *argv[]) {
                    nba_team_records[team->session->right_team].name,
                    team->transition_frame);
         }
+        if (game.state == NBA_STATE_PLAYER_SETUP) {
+            const NbaPlayerSetup *player_setup = &game.scene.player_setup;
+            printf("[PLAYER SETUP TEST] p1=%s left=%u:%s right=%u:%s "
+                   "transition=%d steady=%d confirm=%d\n",
+                   player_setup->player_one_side == NBA_TEAM_SIDE_LEFT ?
+                       "LEFT" : "RIGHT",
+                   player_setup->session->left_team,
+                   nba_team_records[player_setup->session->left_team].name,
+                   player_setup->session->right_team,
+                   nba_team_records[player_setup->session->right_team].name,
+                   player_setup->transition_frame, player_setup->steady_frame,
+                   player_setup->confirm_requested ? 1 : 0);
+        }
         if (debug_state) nba_game_debug_print(&game);
 
         nba_game_render(&game);
@@ -757,5 +801,6 @@ int main(int argc, char *argv[]) {
     }
 
     /* Normal Win32 graphical execution */
-    return win32_run_game(rom_path, assets_path, start_at_title, start_at_setup);
+    return win32_run_game(rom_path, assets_path, start_at_title, start_at_setup,
+                          start_at_team, start_at_player_setup);
 }

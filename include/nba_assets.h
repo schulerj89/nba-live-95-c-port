@@ -101,7 +101,10 @@ typedef enum {
     NBA_ASSET_PLAYER_PALETTE_TABLES         = 254,
     NBA_ASSET_PLAYER_POSE_LAYOUT            = 255,
     NBA_ASSET_PLAYER_ANIMATIONS              = 256,
-    NBA_ASSET_MAX                   = 257
+    NBA_ASSET_PLAYER_SETUP_VRAM              = 257,
+    NBA_ASSET_PLAYER_SETUP_CGRAM             = 258,
+    NBA_ASSET_PLAYER_SETUP_OAM               = 259,
+    NBA_ASSET_MAX                   = 260
 } NbaAssetId;
 
 typedef struct {

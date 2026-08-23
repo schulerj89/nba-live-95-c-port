@@ -56,7 +56,8 @@ typedef enum {
     NBA_TEAM_SOUND_NONE = 0,
     NBA_TEAM_SOUND_SIDE,
     NBA_TEAM_SOUND_CATEGORY,
-    NBA_TEAM_SOUND_CHANGE
+    NBA_TEAM_SOUND_CHANGE,
+    NBA_TEAM_SOUND_CONFIRM
 } NbaTeamSelectSound;
 
 typedef struct {
@@ -73,6 +74,7 @@ typedef struct {
     NbaTeamSelectPosition selector;
     int transition_frame;
     int steady_frame;
+    bool confirm_requested;
     bool is_initialized;
 } NbaTeamSelect;
 

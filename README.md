@@ -2,7 +2,7 @@
 
 An in-progress native C99 port of the US SNES release of NBA Live '95. The
 current playable path covers the Nintendo license, NBA legal screen, EA SPORTS
-intro, animated title, Game Setup, and Exhibition Team Select.
+intro, animated title, Game Setup, Exhibition Team Select, and Player Setup.
 
 Graphics and audio come from a user-supplied ROM-derived asset pack. The title
 and Game Setup music run the original SPC700 driver and BRR samples; the pack
@@ -43,7 +43,7 @@ Run the GUI:
 .\build.ps1 -RomPath '<path-to-rom>' -Run
 ```
 
-The tests lock intro/title/Setup/Team Select pixels, both title-exit paths, all Setup cursor
+The tests lock intro/title/Setup/Team Select/Player Setup pixels, both title-exit paths, all Setup cursor
 rows, malformed-pack handling, ROM identity, 59.94/60 Hz equivalence, robust
 runtime-PCM fingerprints, all 29 currently exposed ROM-derived logos/ranking records, independent
 left/right team cycling, and focused SPC700/S-DSP vectors.
@@ -89,7 +89,8 @@ A/B/X/Y/L/R toggles the active matchup side; a selected name follows the new
 side while a selected ranking remains selected, exactly like `$82:83BC`.
 Both selected teams persist in the running session.
 Enter confirms Exhibition on Game Setup and keeps the Setup SPC music running
-through the handoff.
+through Team Select and Player Setup. Enter on settled Team Select opens Player
+Setup; Left/Right assigns Player 1 to the visitor/home side.
 
 ## Technical notes
 
@@ -98,6 +99,7 @@ through the handoff.
 - [Game Setup rendering](docs/game-setup-screen.md)
 - [Game Setup audio](docs/game-setup-audio.md)
 - [Team Select routines, data, and controls](docs/team-select.md)
+- [Player Setup routines, assets, transition, and controls](docs/player-setup.md)
 - [Reverse-engineering tools](tools/README.md)
 - [Live and CLI debugging](docs/debugging.md)
 - [Runtime architecture](docs/architecture.md)

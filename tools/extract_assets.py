@@ -1133,6 +1133,22 @@ def create_asset_pack(rom_path, output_path):
      player_pose_layout) = build_player_front_pose(rom_data)
     player_animations = build_player_animation_asset(rom_data)
 
+    player_setup_capture_dir = os.environ.get("NBA95_PLAYER_SETUP_CAPTURE_DIR") or os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "..", ".analysis", "player_setup")
+    player_setup_payloads = []
+    for name, size in (("player_setup_vram.bin", 0x10000),
+                       ("player_setup_cgram.bin", 0x200),
+                       ("player_setup_oam.bin", 0x220)):
+        path = os.path.join(player_setup_capture_dir, name)
+        if not os.path.exists(path):
+            raise RuntimeError(f"Missing Player Setup PPU asset: {path}. Run "
+                               "mesen_player_setup_capture.lua against the verified ROM.")
+        payload = open(path, "rb").read()
+        if len(payload) != size:
+            raise RuntimeError(f"Invalid Player Setup PPU asset {path}: "
+                               f"expected {size} bytes, got {len(payload)}")
+        player_setup_payloads.append(payload)
+
     assets = [
         (1, 128, 11, 0, nintendo_license_bytes),               # ASSET_NINTENDO_LICENSE
         (2, 256, num_legal_rows, start_y_legal, nba_legal_bytes), # ASSET_NBA_LEGAL_NOTICE (flags = start_y)
@@ -1185,6 +1201,9 @@ def create_asset_pack(rom_path, output_path):
         (254, 0xAFEF00, 0x2A0, 0, player_palette_tables),
         (255, 7, 0, 0, player_pose_layout),
         (256, 57, 8, 4, player_animations),
+        (257, 0, 0, 0, player_setup_payloads[0]),
+        (258, 0, 0, 0, player_setup_payloads[1]),
+        (259, 0, 0, 0, player_setup_payloads[2]),
     ])
     assets.extend([
         (124, 0, 0, 0, rules_vram_bytes),
@@ -1244,7 +1263,7 @@ def create_asset_pack(rom_path, output_path):
                     extra_audio_id += 1
 
     header_magic = b"NBA95PAK"
-    version = 15
+    version = 16
     asset_count = len(assets)
     entry_size = 24 # 6 * 4 bytes
 

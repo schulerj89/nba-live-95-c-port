@@ -18,8 +18,12 @@ silently restore defaults. Its update result separates menu sound from
 navigation action. Confirming a main value row emits the generic `CONFIRM_MODE`
 event; the scene dispatcher then routes Exhibition to the Team Select scene.
 That handoff intentionally preserves the resident Setup SPC track. Team Select
-uses its own scene-local active side, seven-position name/ranking selector, PPU presentation, and
-transition state while writing team IDs back to the session.
+uses its own scene-local active side, seven-position name/ranking selector, PPU
+presentation, and transition state while writing team IDs back to the session.
+Confirming Team Select enters Player Setup without restarting that SPC track.
+Player Setup reads both team IDs from the session, owns only its transition and
+controller-assignment presentation state, and renders ROM-derived PPU assets
+plus the shared team-logo assets.
 
 Debug screens are process-lifetime overlays outside the scene union. F9 owns
 `NbaPlayerLab`, freezes scene progression, and reads fixed roster, ROM-tile,

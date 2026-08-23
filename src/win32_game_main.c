@@ -128,7 +128,8 @@ static LRESULT CALLBACK win32_wnd_proc(HWND hwnd, UINT msg, WPARAM wparam, LPARA
  * Purpose: Creates desktop application window, initializes 60 FPS pacing timer, and hosts message/render pump.
  */
 int win32_run_game(const char *rom_path, const char *assets_path,
-                   bool title_only, bool setup_only) {
+                   bool title_only, bool setup_only, bool team_only,
+                   bool player_setup_only) {
     HINSTANCE hInstance = GetModuleHandleA(NULL);
 
     WNDCLASSA wc = {0};
@@ -188,6 +189,28 @@ int win32_run_game(const char *rom_path, const char *assets_path,
     if (setup_only) {
         if (!nba_game_enter_state(&g_game, NBA_STATE_GAME_SETUP)) {
             MessageBoxA(hwnd, "Game Setup assets/audio failed to initialize",
+                        "Error", MB_OK | MB_ICONERROR);
+            nba_game_shutdown(&g_game);
+            win32_free_framebuffer(&g_framebuffer);
+            DestroyWindow(hwnd);
+            return 1;
+        }
+    }
+
+    if (team_only) {
+        if (!nba_game_enter_state(&g_game, NBA_STATE_TEAM_SELECT)) {
+            MessageBoxA(hwnd, "Team Select assets failed to initialize",
+                        "Error", MB_OK | MB_ICONERROR);
+            nba_game_shutdown(&g_game);
+            win32_free_framebuffer(&g_framebuffer);
+            DestroyWindow(hwnd);
+            return 1;
+        }
+    }
+
+    if (player_setup_only) {
+        if (!nba_game_enter_state(&g_game, NBA_STATE_PLAYER_SETUP)) {
+            MessageBoxA(hwnd, "Player Setup assets failed to initialize",
                         "Error", MB_OK | MB_ICONERROR);
             nba_game_shutdown(&g_game);
             win32_free_framebuffer(&g_framebuffer);

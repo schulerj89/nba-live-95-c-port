@@ -30,6 +30,7 @@ local trace_deep = {}
 local trace_resources = {}
 local trace_animation = {}
 local trace_palette_calls = {}
+local trace_scene_hits = {}
 local state_dumped, register_pc_frame = false, -1
 
 local function pulse(frame, at)
@@ -68,6 +69,26 @@ emu.addMemoryCallback(function()
         global_frame, setup_frame)); log:flush()
 end, emu.callbackType.exec, 0x82809A, 0x82809A,
     emu.cpuType.snes, emu.memType.snesMemory)
+
+-- High-level matchup-screen probes used to separate Team Select confirmation,
+-- the shared transition interpreter, Player Setup construction, and its live
+-- controller-assignment redraw from the much larger gameplay discovery trace.
+local scene_probe_addresses = {
+    0x828553, 0x81C41E, 0x80E95B, 0x81A489, 0x81B404, 0x81B545,
+    0x81B592, 0x81B5FF, 0x81B62C, 0x81B680, 0x81B719, 0x81B7C1,
+    0x81BF55, 0x81C0BA,
+}
+for _, probe in ipairs(scene_probe_addresses) do
+    emu.addMemoryCallback(function(address)
+        if setup_frame >= TRACE_FIRST and setup_frame <= TRACE_LAST then
+            local state = emu.getState()
+            trace_scene_hits[#trace_scene_hits + 1] = string.format(
+                "%d %06X a=%04X x=%04X y=%04X\n", setup_frame, address,
+                state["cpu.a"] or 0, state["cpu.x"] or 0, state["cpu.y"] or 0)
+        end
+    end, emu.callbackType.exec, probe, probe,
+        emu.cpuType.snes, emu.memType.snesMemory)
+end
 
 if not FAST_ANIMATION_TRACE then for bank = 0x80, 0xBF do
     emu.addMemoryCallback(function(address)
@@ -328,6 +349,8 @@ emu.addEventCallback(function()
         resources:write(table.concat(trace_resources)); resources:close()
         local palettes = assert(io.open(out .. "/player_palette_calls.txt", "wb"))
         palettes:write(table.concat(trace_palette_calls)); palettes:close()
+        local scene_hits = assert(io.open(out .. "/player_setup_scene_hits.txt", "wb"))
+        scene_hits:write(table.concat(trace_scene_hits)); scene_hits:close()
         if ANIMATION_TRACE then
             local animation = assert(io.open(out .. "/player_animation_states.txt", "wb"))
             animation:write(table.concat(trace_animation)); animation:close()

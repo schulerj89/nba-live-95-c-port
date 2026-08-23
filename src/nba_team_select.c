@@ -131,6 +131,13 @@ NbaTeamSelectSound nba_team_select_update(NbaTeamSelect *screen,
     screen->steady_frame++;
     if (!input) return NBA_TEAM_SOUND_NONE;
 
+    /* $82:854B-$85B3: Start commits both selected team IDs, plays command
+     * $4B, and runs the shared fade/transition path into Player Setup. */
+    if (input->pressed & NBA_BTN_START) {
+        screen->confirm_requested = true;
+        return NBA_TEAM_SOUND_CONFIRM;
+    }
+
     /* $82:83B7 BIT #$C0F0: A/B/X/Y/L/R all use the same side toggle. */
     if (input->pressed & (NBA_BTN_A | NBA_BTN_B | NBA_BTN_X | NBA_BTN_Y |
                           NBA_BTN_L | NBA_BTN_R)) {
