@@ -4,6 +4,7 @@
 #include "nba_assets.h"
 #include "nba_renderer.h"
 #include "nba_session.h"
+#include "nba_gameplay_debugger.h"
 
 /* ROM routines correlated with live Mesen execution. */
 #define SNES_ADDR_TIPOFF_PLAYER_FORMATION 0x86DDA7
@@ -38,5 +39,8 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
                      NbaSession *session);
 void nba_tipoff_update(NbaTipoff *tipoff, const NbaInput *input);
 void nba_tipoff_render(const NbaTipoff *tipoff, NbaRenderer *renderer);
+void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
+                                  const NbaInput *input,
+                                  NbaGameplayTelemetry *telemetry);
 
 #endif

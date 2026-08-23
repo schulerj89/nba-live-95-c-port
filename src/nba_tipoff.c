@@ -105,6 +105,136 @@ static void ball_position(int frame, int *x, int *y) {
     *y = 51 + (83 - 51) * t / 22;
 }
 
+static bool actor_visible(unsigned actor) {
+    for (unsigned i = 0; i < sizeof(visible_submission); ++i)
+        if (visible_submission[i] == actor) return true;
+    return false;
+}
+
+static uint8_t actor_animation(const NbaTipoff *tipoff, unsigned actor) {
+    if (actor == 5u && tipoff->frame >= NBA_TIPOFF_JUMP_FRAME &&
+        tipoff->frame < NBA_TIPOFF_CONTACT_FRAME) return 0x32u;
+    if (actor == 5u && tipoff->frame >= NBA_TIPOFF_CONTACT_FRAME &&
+        tipoff->frame < 210) return 0x25u;
+    if (actor == 0u && tipoff->frame >= NBA_TIPOFF_CONTACT_FRAME &&
+        tipoff->frame < 220) return 0x37u;
+    return 0;
+}
+
+void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
+                                  const NbaInput *input,
+                                  NbaGameplayTelemetry *telemetry) {
+    if (!tipoff || !telemetry) return;
+    memset(telemetry, 0, sizeof(*telemetry));
+    telemetry->scene_frame = (uint32_t)tipoff->frame;
+    telemetry->simulation_tick = (uint32_t)tipoff->frame;
+    telemetry->phase = (uint8_t)tipoff->phase;
+    telemetry->input_pressed = input ? input->pressed : 0u;
+    telemetry->input_held = input ? input->held : 0u;
+    telemetry->input_released = input ? input->released : 0u;
+    telemetry->pad_held_raw[0] = (uint16_t)(telemetry->input_held & 0x0FFFu);
+    for (unsigned pad = 0; pad < NBA_GAMEPLAY_PAD_COUNT; ++pad) {
+        telemetry->controller_assignment_raw[pad] = NBA_GAMEPLAY_UNKNOWN_WORD;
+        telemetry->controller_repeat_raw[pad] = NBA_GAMEPLAY_UNKNOWN_WORD;
+    }
+    telemetry->active_controller_raw = 0;
+    telemetry->selected_controller_raw = 0;
+    telemetry->controlled_side_raw = tipoff->session->player_one_side ? 5 : 0;
+    telemetry->initial_controlled_slot_raw = tipoff->session->player_one_side ? 7 : 2;
+    telemetry->selected_slot_raw = telemetry->initial_controlled_slot_raw;
+    telemetry->controlled_actor = (uint8_t)telemetry->selected_slot_raw;
+    telemetry->controlled_actor_pointer_raw = (uint16_t)(
+        0x34EBu + (unsigned)telemetry->controlled_actor * 0x100u);
+    telemetry->controller_assignment_raw[0] = telemetry->controlled_actor;
+    telemetry->possession_actor = -1;
+    telemetry->possession_team = -1;
+    telemetry->possession_candidate_raw = -1;
+    telemetry->play_code_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
+    telemetry->rng_state_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
+    telemetry->collision_actor_a = tipoff->frame >= NBA_TIPOFF_CONTACT_FRAME ? 0 : -1;
+    telemetry->collision_actor_b = tipoff->frame >= NBA_TIPOFF_CONTACT_FRAME ? 5 : -1;
+    telemetry->controller_routine = 0x80CB8Fu;
+    telemetry->selection_routine = 0x85C37Du;
+    telemetry->collision_routine = tipoff->frame >= NBA_TIPOFF_CONTACT_FRAME ?
+                                   SNES_ADDR_TIPOFF_CONTACT : 0u;
+    telemetry->possession_routine = tipoff->frame >= NBA_TIPOFF_POSSESSION_FRAME ?
+                                    SNES_ADDR_TIPOFF_POSSESSION : 0u;
+    telemetry->camera_085c_raw = telemetry->camera_085e_raw =
+        telemetry->camera_0860_raw = telemetry->camera_0862_raw =
+        telemetry->camera_086c_raw = telemetry->camera_086e_raw =
+        telemetry->camera_0874_raw = telemetry->camera_0876_raw =
+        telemetry->camera_0878_raw = telemetry->camera_087a_raw =
+            NBA_GAMEPLAY_UNKNOWN_WORD;
+
+    int ball_x, ball_y, previous_x, previous_y;
+    ball_position(tipoff->frame, &ball_x, &ball_y);
+    ball_position(tipoff->frame > 0 ? tipoff->frame - 1 : 0,
+                  &previous_x, &previous_y);
+    telemetry->ball.world_x = (int16_t)ball_x;
+    telemetry->ball.world_y = (int16_t)ball_y;
+    telemetry->ball.world_z = 0;
+    telemetry->ball.screen_x = (int16_t)ball_x;
+    telemetry->ball.screen_y = (int16_t)ball_y;
+    telemetry->ball.velocity_x = (int16_t)(ball_x - previous_x);
+    telemetry->ball.velocity_y = (int16_t)(ball_y - previous_y);
+    telemetry->ball.owner_actor = -1;
+    telemetry->ball.state = tipoff->frame < NBA_TIPOFF_BALL_APPEAR_FRAME ? 0u :
+                            tipoff->frame < NBA_TIPOFF_CONTACT_FRAME ? 1u : 2u;
+    telemetry->ball.routine = SNES_ADDR_TIPOFF_BALL_INIT;
+    telemetry->ball.flags_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
+
+    for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
+        NbaGameplayActorTelemetry *out = &telemetry->actors[actor];
+        out->index = (uint8_t)actor;
+        out->team_side = actor >= 5u;
+        out->roster_slot = (uint8_t)(actor % 5u);
+        out->control = actor == telemetry->controlled_actor ?
+                       NBA_GAMEPLAY_CONTROL_PLAYER_1 : NBA_GAMEPLAY_CONTROL_CPU;
+        out->visible = actor_visible(actor);
+        out->world_x = formation[actor].world_x;
+        out->world_y = formation[actor].world_y;
+        out->world_z = actor == 5u ? (int16_t)center_jump_height(tipoff->frame) : 0;
+        out->screen_x = formation[actor].screen_x;
+        out->screen_y = (int16_t)(formation[actor].screen_y - out->world_z);
+        out->direction = formation[actor].direction;
+        out->animation_state = actor_animation(tipoff, actor);
+        out->lower_animation_state = out->animation_state;
+        out->ai_target_actor = NBA_GAMEPLAY_NO_ACTOR;
+        out->actor_base = (uint16_t)(0x34EBu + actor * 0x100u);
+        out->id_raw = (uint16_t)actor;
+        out->action_raw = out->animation_state;
+        out->flags_raw = 0;
+        out->upper_resource_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
+        out->lower_resource_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
+        out->head_resource_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
+        out->motion_38_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
+        out->motion_3a_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
+        out->motion_3c_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
+        out->direction_4e_raw = out->direction;
+        out->direction_50_raw = out->direction;
+        out->direction_52_raw = out->direction;
+        out->side_group_raw = actor >= 5u ? 5u : 0u;
+        out->control_mode_raw = actor == telemetry->controlled_actor ? 0x0Bu :
+                                out->side_group_raw ==
+                                    (uint16_t)telemetry->controlled_side_raw ? 1u : 2u;
+        out->control_mode_saved_raw = out->control_mode_raw;
+        out->assignment_base_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
+        out->assignment_current_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
+        out->assignment_alternate_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
+        out->assignment_distance_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
+        out->assignment_direction_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
+        out->pair_distance_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
+        out->reaction_threshold_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
+        out->upper_restart_raw = out->lower_restart_raw = 0;
+        out->upper_phase_raw = out->lower_phase_raw = 0;
+        out->behavior_flags_raw = 0;
+        out->palette_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
+        out->actor_routine = 0x80AD92u;
+        out->ai_routine = tipoff->frame >= NBA_TIPOFF_POSSESSION_FRAME ?
+                          0x87A160u : 0u;
+    }
+}
+
 void nba_tipoff_render(const NbaTipoff *tipoff, NbaRenderer *ren) {
     if (!tipoff || !tipoff->is_initialized || !ren) return;
     const NbaAssetItem *court = nba_assets_get(
@@ -118,15 +248,12 @@ void nba_tipoff_render(const NbaTipoff *tipoff, NbaRenderer *ren) {
         uint8_t slot = (uint8_t)(actor % 5u);
         uint8_t team = team_side ? tipoff->session->right_team :
                                    tipoff->session->left_team;
-        uint8_t state = 0;
+        uint8_t state = actor_animation(tipoff, actor);
         int jump = 0;
         if (actor == 5u && tipoff->frame >= NBA_TIPOFF_JUMP_FRAME &&
             tipoff->frame < NBA_TIPOFF_CONTACT_FRAME) {
-            state = 0x32; jump = center_jump_height(tipoff->frame);
-        } else if (actor == 5u && tipoff->frame < 210 &&
-                   tipoff->frame >= NBA_TIPOFF_CONTACT_FRAME) state = 0x25;
-        else if (actor == 0u && tipoff->frame >= NBA_TIPOFF_CONTACT_FRAME &&
-                 tipoff->frame < 220) state = 0x37;
+            jump = center_jump_height(tipoff->frame);
+        }
         nba_player_sprite_render(ren, tipoff->assets, team, slot, uniform_side, state,
                                  formation[actor].direction,
                                  (uint32_t)tipoff->frame,

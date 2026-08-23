@@ -1,0 +1,86 @@
+"""Regression checks for the F8 Gameplay Lab and JSONL telemetry contract."""
+
+import argparse
+import hashlib
+import json
+import subprocess
+import tempfile
+from pathlib import Path
+
+from PIL import Image
+
+
+EXPECTED_LAB_RGB = "4954df7f9aa803895fa8f54d31d1de20dbbba4d2f65a9f4dea1e0c8e8b1eb8ec"
+
+
+def run(command, label):
+    result = subprocess.run(command, capture_output=True, text=True, check=False)
+    if result.returncode:
+        raise AssertionError(f"{label} failed\n{result.stdout}{result.stderr}")
+    return result
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--pack", required=True)
+    parser.add_argument("--exe", required=True)
+    parser.add_argument("--rom", required=True)
+    args = parser.parse_args()
+    base = [args.exe, "--headless", "--rom", args.rom, "--assets", args.pack,
+            "--tipoff-only"]
+
+    with tempfile.TemporaryDirectory() as directory:
+        root = Path(directory)
+        trace = root / "gameplay.jsonl"
+        frame = root / "gameplay_lab.bmp"
+        result = run(base + ["--frames", "170", "--gameplay-trace", str(trace),
+                             "--gameplay-lab", "--gameplay-actor", "7",
+                             "--gameplay-page", "2", "--dump-frame", str(frame)],
+                     "Gameplay Lab trace/render")
+        if "Wrote 170 gameplay JSONL rows" not in result.stdout:
+            raise AssertionError("Gameplay trace row diagnostic missing")
+        rows = [json.loads(line) for line in trace.read_text().splitlines()]
+        if len(rows) != 170:
+            raise AssertionError(f"expected 170 gameplay rows, got {len(rows)}")
+        sample = rows[-1]
+        if len(sample["actors"]) != 10 or [a["id"] for a in sample["actors"]] != list(range(10)):
+            raise AssertionError("telemetry did not preserve all ten actor slots")
+        if sum(bool(a["visible"]) for a in sample["actors"]) != 8:
+            raise AssertionError("settled tip-off visibility telemetry changed")
+        if sample["control"] != {
+                "actor": 7, "side_raw": 5, "initial_slot_raw": 7,
+                "selected_slot_raw": 7, "actor_pointer_raw": 0x3BEB}:
+            raise AssertionError(f"controlled-player mapping changed: {sample['control']}")
+        required = {"base", "action", "flags", "control_mode", "side_group",
+                    "assignment_current", "reaction_threshold", "upper_restart",
+                    "lower_restart", "behavior_flags"}
+        if not required.issubset(sample["actors"][0]["raw"]):
+            raise AssertionError("AI/actor raw telemetry schema is incomplete")
+        if len(sample["controllers"]["held_raw"]) != 5 or \
+                "raw_087a" not in sample["camera"] or "flags_raw" not in sample["ball"]:
+            raise AssertionError("controller/camera/ball telemetry schema is incomplete")
+        digest = hashlib.sha256(Image.open(frame).convert("RGB").tobytes()).hexdigest()
+        if digest != EXPECTED_LAB_RGB:
+            raise AssertionError(f"Gameplay Lab pixels changed: {digest}")
+
+        paused = run(base + ["--gameplay-lab", "--gameplay-paused",
+                             "--gameplay-step-count", "3", "--frames", "10",
+                             "--debug-state"], "Gameplay Lab pause/step")
+        if "GF:000003 SF:00003" not in paused.stdout:
+            raise AssertionError("paused single-frame stepping did not advance exactly 3 frames")
+
+    source = Path(__file__).parents[1]
+    win32 = (source / "src" / "win32_game_main.c").read_text()
+    debugger = (source / "src" / "nba_gameplay_debugger.c").read_text()
+    for marker in ("VK_F8", "NBA_BTN_DEBUG_F8"):
+        if marker not in win32:
+            raise AssertionError(f"F8 input mapping lost {marker}")
+    for marker in ("NBA_BTN_A", "NBA_BTN_X", "selected_actor",
+                   "nba_gameplay_telemetry_write_jsonl"):
+        if marker not in debugger:
+            raise AssertionError(f"Gameplay Lab implementation lost {marker}")
+    print("Gameplay Lab regression checks passed")
+
+
+if __name__ == "__main__":
+    main()

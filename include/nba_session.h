@@ -17,6 +17,7 @@ typedef struct {
     NbaGameConfig config;
     uint8_t left_team;  /* Team Select $7E:16FB */
     uint8_t right_team; /* Team Select $7E:16FD */
+    uint8_t player_one_side; /* Player Setup controller ownership, 0 left/1 right */
 } NbaSession;
 
 extern const uint16_t nba_default_main_values[NBA_SETUP_MAIN_VALUE_COUNT];

@@ -9,6 +9,7 @@ src/nba_spc.c
 src/nba_audio_debugger.c
 src/nba_asset_debugger.c
 src/nba_player_lab.c
+src/nba_gameplay_debugger.c
 src/nba_font.c
 src/nba_renderer.c
 src/nba_snes_ppu.c

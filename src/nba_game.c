@@ -374,6 +374,7 @@ bool nba_game_init(NbaGame *game, const char *rom_path, const char *assets_path)
     nba_audio_debugger_init(&game->audio_debugger);
     nba_asset_debugger_init(&game->asset_debugger);
     nba_player_lab_init(&game->player_lab, &game->assets);
+    nba_gameplay_debugger_init(&game->gameplay_debugger);
     game->is_initialized = true;
 
     printf("[GAME] Initialization complete. Entering state NBA_STATE_NINTENDO_LICENSE.\n");
@@ -407,10 +408,10 @@ void nba_game_shutdown(NbaGame *game) {
  * Offset/Address/Size: 0x00059A | $00:059A | size: 0x10
  * Purpose: Polls controller joypad button edge states (pressed, held, released) per frame.
  */
-void nba_game_input_update(NbaInput *input, uint16_t raw_buttons) {
+void nba_game_input_update(NbaInput *input, uint32_t raw_buttons) {
     if (!input) return;
-    input->pressed = (uint16_t)(raw_buttons & ~input->held);
-    input->released = (uint16_t)(~raw_buttons & input->held);
+    input->pressed = raw_buttons & ~input->held;
+    input->released = ~raw_buttons & input->held;
     input->held = raw_buttons;
 }
 
@@ -419,9 +420,23 @@ void nba_game_input_update(NbaInput *input, uint16_t raw_buttons) {
  * Purpose: Main game loop dispatcher and scene timer state machine.
  */
 void nba_game_tick(NbaGame *game, float delta_time) {
+    if (game->input.pressed & NBA_BTN_DEBUG_F8) {
+        if (game->state == NBA_STATE_TIPOFF) {
+            nba_gameplay_debugger_toggle(&game->gameplay_debugger);
+            if (game->gameplay_debugger.is_active) {
+                game->audio_debugger.is_active = false;
+                game->asset_debugger.is_active = false;
+                game->player_lab.is_active = false;
+                game->debug_hud_page = 0;
+            }
+        } else {
+            printf("[GAMEPLAY LAB] F8 is available after gameplay begins.\n");
+        }
+    }
     if (game->input.pressed & NBA_BTN_DEBUG_F9) {
         nba_player_lab_toggle(&game->player_lab, &game->assets);
         if (game->player_lab.is_active) {
+            game->gameplay_debugger.is_active = false;
             game->audio_debugger.is_active = false;
             game->asset_debugger.is_active = false;
             game->debug_hud_page = 0;
@@ -447,12 +462,20 @@ void nba_game_tick(NbaGame *game, float delta_time) {
                               &game->assets, &game->input);
     nba_asset_debugger_update(&game->asset_debugger, &game->assets, &game->input);
     nba_player_lab_update(&game->player_lab, &game->assets, &game->input);
+    if (game->state == NBA_STATE_TIPOFF) {
+        nba_tipoff_capture_telemetry(&game->scene.tipoff, &game->input,
+                                     &game->gameplay_telemetry);
+        game->gameplay_telemetry.global_frame = game->frame_count;
+        nba_gameplay_debugger_update(&game->gameplay_debugger, &game->input);
+    }
 
     /* If audio debugger is active, freeze game state progression */
     if (game->audio_debugger.is_active || game->asset_debugger.is_active ||
         game->player_lab.is_active) {
         return;
     }
+    if (game->state == NBA_STATE_TIPOFF &&
+        !nba_gameplay_debugger_should_advance(&game->gameplay_debugger)) return;
 
     game->state_timer += delta_time;
     game->state_frame++;
@@ -629,6 +652,9 @@ void nba_game_tick(NbaGame *game, float delta_time) {
 
         case NBA_STATE_TIPOFF:
             nba_tipoff_update(&game->scene.tipoff, &game->input);
+            nba_tipoff_capture_telemetry(&game->scene.tipoff, &game->input,
+                                         &game->gameplay_telemetry);
+            game->gameplay_telemetry.global_frame = game->frame_count;
             break;
 
         default:
@@ -808,6 +834,11 @@ void nba_game_render(NbaGame *game) {
                                  by + 4 + index * 10, lines.line[index],
                                  color, col_shadow, 1);
         }
+    }
+
+    if (game->state == NBA_STATE_TIPOFF) {
+        nba_gameplay_debugger_render(&game->gameplay_debugger,
+                                     &game->gameplay_telemetry, ren);
     }
 
     /* Render Audio Debugger Overlay on top of any game screen if active */

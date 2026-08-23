@@ -17,6 +17,7 @@
 #include "nba_player_setup.h"
 #include "nba_player_intro.h"
 #include "nba_tipoff.h"
+#include "nba_gameplay_debugger.h"
 
 /* SNES Subroutine Addresses (LoROM Bank $80 and Bank $82) */
 #define SNES_ADDR_RESET_BOOT            0x808020  /* $80:8020 - Cold boot reset handler */
@@ -54,6 +55,8 @@ typedef struct {
     NbaAudioDebugger audio_debugger;
     NbaAssetDebugger asset_debugger;
     NbaPlayerLab player_lab;
+    NbaGameplayDebugger gameplay_debugger;
+    NbaGameplayTelemetry gameplay_telemetry;
     NbaSession session;
     union {
         NbaTitleSequence title;
@@ -71,7 +74,7 @@ typedef struct {
 bool nba_game_init(NbaGame *game, const char *rom_path, const char *assets_path);
 bool nba_game_enter_state(NbaGame *game, NbaGameState state);
 void nba_game_shutdown(NbaGame *game);
-void nba_game_input_update(NbaInput *input, uint16_t raw_buttons);
+void nba_game_input_update(NbaInput *input, uint32_t raw_buttons);
 void nba_game_tick(NbaGame *game, float delta_time);
 void nba_game_render(NbaGame *game);
 void nba_game_render_nba_legal_notice(NbaGame *game);

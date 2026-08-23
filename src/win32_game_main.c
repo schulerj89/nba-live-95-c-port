@@ -15,7 +15,7 @@ typedef struct {
 
 static Win32Framebuffer g_framebuffer;
 static bool g_is_running = true;
-static uint16_t g_raw_input_buttons = 0;
+static uint32_t g_raw_input_buttons = 0;
 static NbaGame g_game;
 
 static void win32_init_framebuffer(Win32Framebuffer *fb, int width, int height) {
@@ -40,7 +40,7 @@ static void win32_free_framebuffer(Win32Framebuffer *fb) {
 }
 
 static void win32_handle_key(WPARAM key, bool is_down) {
-    uint16_t mask = 0;
+    uint32_t mask = 0;
     switch (key) {
         case VK_RIGHT:
         case 'D': mask = NBA_BTN_RIGHT; break;
@@ -67,6 +67,7 @@ static void win32_handle_key(WPARAM key, bool is_down) {
         case VK_SPACE:
         case VK_SHIFT:  mask = NBA_BTN_SELECT; break;
 
+        case VK_F8:     mask = NBA_BTN_DEBUG_F8; break;
         case VK_F9:     mask = NBA_BTN_DEBUG_F9; break;
         case VK_F10:    mask = NBA_BTN_DEBUG_F10; break;
         case VK_F11:    mask = NBA_BTN_DEBUG_F11; break;

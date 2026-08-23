@@ -18,4 +18,5 @@ void nba_session_init(NbaSession *session) {
     memcpy(session->config.options, nba_default_options, sizeof(nba_default_options));
     session->left_team = 3;   /* Chicago */
     session->right_team = 18; /* Orlando */
+    session->player_one_side = 1; /* Live Exhibition path defaults to home/right. */
 }

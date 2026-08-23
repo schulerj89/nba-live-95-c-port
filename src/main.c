@@ -64,12 +64,18 @@ int main(int argc, char *argv[]) {
     const char *dump_audio_path = NULL;
     const char *dump_menu_sfx_path = NULL;
     const char *setup_transition_trace_path = NULL;
+    const char *gameplay_trace_path = NULL;
     const char *dump_sequence_dir = NULL;
     int menu_sfx_srcn = 0x1B;
     bool is_headless = false;
     bool audio_debug_test = false;
     int asset_debug_id = -1;
     bool player_lab = false;
+    bool gameplay_lab = false;
+    int gameplay_actor = 0;
+    int gameplay_page = 1;
+    bool gameplay_paused = false;
+    int gameplay_step_count = 0;
     int player_lab_team = 3;
     int player_lab_roster = 0;
     int player_lab_team_right = 0;
@@ -141,6 +147,28 @@ int main(int argc, char *argv[]) {
             asset_debug_id = (int)value;
         } else if (strcmp(argv[i], "--player-lab") == 0) {
             player_lab = true;
+        } else if (strcmp(argv[i], "--gameplay-lab") == 0) {
+            gameplay_lab = true;
+        } else if (strcmp(argv[i], "--gameplay-actor") == 0 && i + 1 < argc) {
+            gameplay_actor = atoi(argv[++i]);
+            if (gameplay_actor < 0 || gameplay_actor >= NBA_GAMEPLAY_ACTOR_COUNT) {
+                fprintf(stderr, "[HEADLESS] --gameplay-actor must be 0..9.\n");
+                return 1;
+            }
+        } else if (strcmp(argv[i], "--gameplay-page") == 0 && i + 1 < argc) {
+            gameplay_page = atoi(argv[++i]);
+            if (gameplay_page < 1 || gameplay_page > 3) {
+                fprintf(stderr, "[HEADLESS] --gameplay-page must be 1..3.\n");
+                return 1;
+            }
+        } else if (strcmp(argv[i], "--gameplay-paused") == 0) {
+            gameplay_paused = true;
+        } else if (strcmp(argv[i], "--gameplay-step-count") == 0 && i + 1 < argc) {
+            gameplay_step_count = atoi(argv[++i]);
+            if (gameplay_step_count < 0) {
+                fprintf(stderr, "[HEADLESS] --gameplay-step-count must be nonnegative.\n");
+                return 1;
+            }
         } else if (strcmp(argv[i], "--player-team") == 0 && i + 1 < argc) {
             player_lab_team = atoi(argv[++i]);
         } else if (strcmp(argv[i], "--player-roster") == 0 && i + 1 < argc) {
@@ -230,6 +258,8 @@ int main(int argc, char *argv[]) {
         } else if (strcmp(argv[i], "--setup-transition-trace") == 0 &&
                    i + 1 < argc) {
             setup_transition_trace_path = argv[++i];
+        } else if (strcmp(argv[i], "--gameplay-trace") == 0 && i + 1 < argc) {
+            gameplay_trace_path = argv[++i];
         } else if (strcmp(argv[i], "--timing-debug") == 0) {
             timing_debug = true;
         } else if (strcmp(argv[i], "--debug-hud-page") == 0 && i + 1 < argc) {
@@ -262,6 +292,11 @@ int main(int argc, char *argv[]) {
             printf("  --audio-debug         Activate audio sample debugger in headless render\n");
             printf("  --asset-debug <ID>    Render the F12 ROM asset browser at asset ID\n");
             printf("  --player-lab          Render the F9 Player Lab from packed ROM data\n");
+            printf("  --gameplay-lab        Render the F8 gameplay telemetry overlay\n");
+            printf("  --gameplay-actor N    Select gameplay actor 0..9\n");
+            printf("  --gameplay-page N     Select Gameplay Lab page 1..3\n");
+            printf("  --gameplay-paused     Start Gameplay Lab with simulation paused\n");
+            printf("  --gameplay-step-count N  Step N simulation frames while paused\n");
             printf("  --player-team N       Player Lab team 0..28 (default Chicago 3)\n");
             printf("  --player-roster N     Player Lab roster slot 0..11\n");
             printf("  --player-team-right N Apply N Player Lab Right presses\n");
@@ -306,6 +341,7 @@ int main(int argc, char *argv[]) {
             printf("  --timing-debug        Draw compact F10 overview page in a frame dump\n");
             printf("  --debug-hud-page N    Draw compact F10 page 1 or 2 in a frame dump\n");
             printf("  --debug-state         Print one expanded state snapshot after stepping\n");
+            printf("  --gameplay-trace FILE Write per-frame gameplay telemetry as JSONL\n");
             printf("  --debug-every N       Print an expanded state snapshot every N frames\n");
             printf("  --spc-self-test       Run deterministic SPC700/S-DSP core vectors\n");
             printf("  --dump-frame <file>   Save rendered frame to 24-bit BMP image\n");
@@ -409,6 +445,8 @@ int main(int argc, char *argv[]) {
         int team_action_wait = team_action_gap;
         FILE *setup_trace_file = NULL;
         int setup_trace_rows = 0;
+        FILE *gameplay_trace_file = NULL;
+        int gameplay_trace_rows = 0;
         for (int i = 1; i < argc; i++) {
             if (strcmp(argv[i], "--enter-setup") == 0) enter_setup = true;
             if (strcmp(argv[i], "--title-press") == 0 && i + 1 < argc) title_press_frame = atoi(argv[++i]);
@@ -437,6 +475,22 @@ int main(int argc, char *argv[]) {
                     "bg1map,bg2map,bg3map,bg1chr,bg2chr,bg3chr,bg1wide,bg2wide,bg3wide,"
                     "bg1tall,bg2tall,bg3tall,"
                     "vram_fnv64,cgram_fnv64,rgb_fnv64\n");
+        }
+
+        if (gameplay_trace_path) {
+#ifdef _MSC_VER
+            if (fopen_s(&gameplay_trace_file, gameplay_trace_path, "wb") != 0)
+                gameplay_trace_file = NULL;
+#else
+            gameplay_trace_file = fopen(gameplay_trace_path, "wb");
+#endif
+            if (!gameplay_trace_file) {
+                fprintf(stderr, "[HEADLESS] Failed to open gameplay trace: %s\n",
+                        gameplay_trace_path);
+                if (setup_trace_file) fclose(setup_trace_file);
+                nba_game_shutdown(&game);
+                return 1;
+            }
         }
 
         if (start_at_title) {
@@ -483,6 +537,17 @@ int main(int argc, char *argv[]) {
             game.player_lab.direction = (uint8_t)player_lab_direction;
             game.player_lab.is_active = true;
         }
+        if (gameplay_lab) {
+            if (game.state != NBA_STATE_TIPOFF) {
+                fprintf(stderr, "[HEADLESS] --gameplay-lab requires --tipoff-only.\n");
+                nba_game_shutdown(&game);
+                return 1;
+            }
+            game.gameplay_debugger.is_active = true;
+            game.gameplay_debugger.selected_actor = (uint8_t)gameplay_actor;
+            game.gameplay_debugger.page = (uint8_t)(gameplay_page - 1);
+            game.gameplay_debugger.is_paused = gameplay_paused;
+        }
         int player_team_right_done = 0;
         int player_roster_down_done = 0;
         int player_animation_right_done = 0;
@@ -490,6 +555,7 @@ int main(int argc, char *argv[]) {
         bool team_confirm_done = false;
         bool player_setup_left_done = false;
         bool player_intro_confirm_done = false;
+        int gameplay_steps_done = 0;
 
         /* Step frames to reach desired screen */
         for (int frame = 0; frame < step_frames; frame++) {
@@ -509,6 +575,12 @@ int main(int argc, char *argv[]) {
                     game.input.pressed = NBA_BTN_X;
                     player_direction_right_done++;
                 }
+            }
+            if (game.gameplay_debugger.is_active &&
+                game.gameplay_debugger.is_paused &&
+                gameplay_steps_done < gameplay_step_count) {
+                game.input.pressed = NBA_BTN_X;
+                gameplay_steps_done++;
             }
 
             if (enter_setup) {
@@ -658,6 +730,11 @@ int main(int argc, char *argv[]) {
             bool release_before = transition_before &&
                 game.scene.setup.transition_release_pending;
             nba_game_tick(&game, (float)(1.0 / tick_rate));
+            if (gameplay_trace_file && game.state == NBA_STATE_TIPOFF) {
+                nba_gameplay_telemetry_write_jsonl(gameplay_trace_file,
+                                                   &game.gameplay_telemetry);
+                gameplay_trace_rows++;
+            }
             bool transition_after = game.state == NBA_STATE_GAME_SETUP &&
                 game.scene.setup.transition_route != NBA_SETUP_TRANSITION_ROUTE_NONE;
             if (setup_trace_file &&
@@ -681,6 +758,7 @@ int main(int argc, char *argv[]) {
                 if (!nba_renderer_save_bmp(&game.renderer, sequence_path)) {
                     fprintf(stderr, "[HEADLESS] Failed sequence frame: %s\n", sequence_path);
                     if (setup_trace_file) fclose(setup_trace_file);
+                    if (gameplay_trace_file) fclose(gameplay_trace_file);
                     nba_game_shutdown(&game);
                     return 1;
                 }
@@ -695,6 +773,16 @@ int main(int argc, char *argv[]) {
             setup_trace_file = NULL;
             printf("[HEADLESS] Wrote %d Setup transition rows to: %s\n",
                    setup_trace_rows, setup_transition_trace_path);
+        }
+        if (gameplay_trace_file) {
+            if (fclose(gameplay_trace_file) != 0) {
+                fprintf(stderr, "[HEADLESS] Failed to finish gameplay trace.\n");
+                nba_game_shutdown(&game);
+                return 1;
+            }
+            gameplay_trace_file = NULL;
+            printf("[HEADLESS] Wrote %d gameplay JSONL rows to: %s\n",
+                   gameplay_trace_rows, gameplay_trace_path);
         }
         if (dump_sequence_dir)
             printf("[HEADLESS] Wrote %d rendered sequence frames to: %s\n",

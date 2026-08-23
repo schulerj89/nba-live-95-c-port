@@ -23,7 +23,7 @@ bool nba_player_setup_init(NbaPlayerSetup *screen, const NbaAssetPack *assets,
     screen->assets = assets;
     screen->session = session;
     /* The live Exhibition path enters with Player 1 assigned to home/right. */
-    screen->player_one_side = NBA_TEAM_SIDE_RIGHT;
+    screen->player_one_side = (NbaTeamSide)session->player_one_side;
     screen->outgoing_pixels = (uint32_t *)malloc(
         (size_t)NBA_SNES_WIDTH * NBA_SNES_HEIGHT * sizeof(uint32_t));
     if (!screen->outgoing_pixels) return false;
@@ -76,6 +76,7 @@ NbaPlayerSetupSound nba_player_setup_update(NbaPlayerSetup *screen,
                                 NBA_TEAM_SIDE_LEFT : NBA_TEAM_SIDE_RIGHT;
         if (requested != screen->player_one_side) {
             screen->player_one_side = requested;
+            screen->session->player_one_side = (uint8_t)requested;
             return NBA_PLAYER_SETUP_SOUND_MOVE;
         }
     }

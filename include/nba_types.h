@@ -28,11 +28,12 @@
 #define NBA_BTN_DEBUG_F11  (1 << 13)
 #define NBA_BTN_DEBUG_F12  (1 << 14)
 #define NBA_BTN_DEBUG_F9   (1 << 15)
+#define NBA_BTN_DEBUG_F8   (1u << 16)
 
 typedef struct {
-    uint16_t held;
-    uint16_t pressed;
-    uint16_t released;
+    uint32_t held;
+    uint32_t pressed;
+    uint32_t released;
 } NbaInput;
 
 static inline uint32_t nba_bgr555_to_argb8888(uint16_t bgr555) {

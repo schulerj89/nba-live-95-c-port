@@ -65,10 +65,16 @@ left/right team cycling, and focused SPC700/S-DSP vectors.
 | **Start** | Enter |
 | **Select** | Space / Shift |
 
-F10 toggles the live state HUD, F11 opens the audio debugger, and F12 opens the ROM
+F8 opens the gameplay telemetry lab after tip-off, F10 toggles the live state
+HUD, F11 opens the audio debugger, and F12 opens the ROM
 asset browser for pack metadata, CGRAM palettes, paged SNES VRAM tiles, and
 screen-positioned OAM/OBJ reconstruction.
 Team logo assets also render directly in F12 as their decoded ROM OBJ pixels.
+
+Gameplay Lab marks all ten actor slots and exposes actor/ball physics,
+controller ownership, camera, collision, possession, animation, and raw CPU/AI
+state. It supports pause and single-frame stepping; see
+[`docs/gameplay-debugging.md`](docs/gameplay-debugging.md).
 
 F10 cycles through off, a compact scene/timing/input/audio overview, and a
 compact scene-detail page. Together they report Setup page/row/transition and
