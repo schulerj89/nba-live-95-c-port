@@ -10,7 +10,7 @@ from pathlib import Path
 
 from extract_assets import load_verified_rom
 
-PACK_VERSION = 16
+PACK_VERSION = 17
 
 def pack_entry(asset_id, offset, size, width=0, height=0, flags=0):
     return struct.pack("<6I", asset_id, offset, size, width, height, flags)
@@ -81,7 +81,7 @@ def check_asset_loader(exe, directory):
         "duplicate_id.pak": duplicate,
         "directory_overlap.pak": b"NBA95PAK" + struct.pack("<II", PACK_VERSION, 1) + pack_entry(1, 16, 1) + b"\0",
         "wrapped_range.pak": b"NBA95PAK" + struct.pack("<II", PACK_VERSION, 1) + pack_entry(1, 0xFFFFFFF0, 64) + b"\0",
-        "bad_id.pak": b"NBA95PAK" + struct.pack("<II", PACK_VERSION, 1) + pack_entry(260, 40, 1) + b"\0",
+        "bad_id.pak": b"NBA95PAK" + struct.pack("<II", PACK_VERSION, 1) + pack_entry(264, 40, 1) + b"\0",
         "short_license.pak": b"NBA95PAK" + struct.pack("<II", PACK_VERSION, 1) +
             pack_entry(1, 40, 1, 128, 11) + b"\0",
         "short_legal.pak": b"NBA95PAK" + struct.pack("<II", PACK_VERSION, 1) +

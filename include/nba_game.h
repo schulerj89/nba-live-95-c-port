@@ -16,6 +16,7 @@
 #include "nba_team_select.h"
 #include "nba_player_setup.h"
 #include "nba_player_intro.h"
+#include "nba_tipoff.h"
 
 /* SNES Subroutine Addresses (LoROM Bank $80 and Bank $82) */
 #define SNES_ADDR_RESET_BOOT            0x808020  /* $80:8020 - Cold boot reset handler */
@@ -35,7 +36,8 @@ typedef enum {
     NBA_STATE_GAME_SETUP,
     NBA_STATE_TEAM_SELECT,
     NBA_STATE_PLAYER_SETUP,
-    NBA_STATE_PLAYER_INTRO
+    NBA_STATE_PLAYER_INTRO,
+    NBA_STATE_TIPOFF
 } NbaGameState;
 
 typedef struct {
@@ -59,6 +61,7 @@ typedef struct {
         NbaTeamSelect team_select;
         NbaPlayerSetup player_setup;
         NbaPlayerIntro player_intro;
+        NbaTipoff tipoff;
     } scene;
     NbaSetupAction last_setup_action;
     uint8_t debug_hud_page; /* F10: 0 off, 1 overview, 2 scene detail */

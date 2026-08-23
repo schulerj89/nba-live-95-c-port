@@ -82,6 +82,7 @@ int main(int argc, char *argv[]) {
     bool start_at_setup = false;
     bool start_at_team = false;
     bool start_at_player_setup = false;
+    bool start_at_tipoff = false;
     bool spc_self_test = false;
     int step_frames = 30;
     double tick_rate = 60.0;
@@ -174,6 +175,8 @@ int main(int argc, char *argv[]) {
             start_at_team = true;
         } else if (strcmp(argv[i], "--player-setup-only") == 0) {
             start_at_player_setup = true;
+        } else if (strcmp(argv[i], "--tipoff-only") == 0) {
+            start_at_tipoff = true;
         } else if (strcmp(argv[i], "--team-confirm") == 0) {
             team_confirm = true;
         } else if (strcmp(argv[i], "--player-setup-left") == 0) {
@@ -273,6 +276,7 @@ int main(int argc, char *argv[]) {
             printf("  --setup-only          Start at the $80:E600 -> $80:A2BF handoff\n");
             printf("  --team-only           Start at the $80:DBF6 -> $82:809A Team Select handoff\n");
             printf("  --player-setup-only   Start at the Team Select -> Player Setup handoff\n");
+            printf("  --tipoff-only         Start at the ROM-matched center-court jump ball\n");
             printf("  --team-confirm        Press Start after Team Select settles\n");
             printf("  --player-setup-left   Assign Player 1 to the visitor/left team\n");
             printf("  --player-setup-confirm Press Start after Player Setup settles\n");
@@ -460,6 +464,12 @@ int main(int argc, char *argv[]) {
                 return 1;
             }
         }
+        if (start_at_tipoff) {
+            if (!nba_game_enter_state(&game, NBA_STATE_TIPOFF)) {
+                nba_game_shutdown(&game);
+                return 1;
+            }
+        }
 
         if (audio_debug_test) {
             game.audio_debugger.is_active = true;
@@ -479,6 +489,7 @@ int main(int argc, char *argv[]) {
         int player_direction_right_done = 0;
         bool team_confirm_done = false;
         bool player_setup_left_done = false;
+        bool player_intro_confirm_done = false;
 
         /* Step frames to reach desired screen */
         for (int frame = 0; frame < step_frames; frame++) {
@@ -630,6 +641,14 @@ int main(int argc, char *argv[]) {
                            !game.scene.player_setup.confirm_requested) {
                     game.input.pressed = NBA_BTN_START;
                 }
+            }
+            if (player_setup_confirm && !player_intro_confirm_done &&
+                game.state == NBA_STATE_PLAYER_INTRO &&
+                game.scene.player_intro.phase == NBA_PLAYER_INTRO_LINEUPS &&
+                game.scene.player_intro.lineup_card == 9 &&
+                game.scene.player_intro.phase_frame >= NBA_PLAYER_INTRO_CARD_FRAMES) {
+                game.input.pressed = NBA_BTN_START;
+                player_intro_confirm_done = true;
             }
             NbaSetupTransitionRoute route_before =
                 game.state == NBA_STATE_GAME_SETUP ?

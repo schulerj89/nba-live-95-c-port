@@ -1294,6 +1294,23 @@ def create_asset_pack(rom_path, output_path):
     player_intro_court, player_intro_portraits = build_player_introduction_assets(
         player_intro_capture_dir, player_intro_away_portrait_dir,
         player_intro_portrait_dir)
+    # OBJ tile $EA has one byte-for-byte match in the ROM. Colors 5..10 are
+    # the hardware palette entries selected by the tile during the jump ball.
+    tipoff_ball = struct.pack(
+        "<8sI32s6H", b"NBBALL1", 1,
+        rom_data[0x0D9C27:0x0D9C27 + 32],
+        0x32BF, 0x0DDE, 0x019B, 0x0177, 0x00F1, 0x00AC)
+    tipoff_capture_dir = os.environ.get("NBA95_TIPOFF_CAPTURE_DIR") or os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "..", ".analysis",
+        "tipoff-actor-probe-20260823")
+    with open(os.path.join(tipoff_capture_dir, "tipoff_0140_vram.bin"), "rb") as f:
+        gameplay_vram = f.read()
+    with open(os.path.join(tipoff_capture_dir, "tipoff_0140_cgram.bin"), "rb") as f:
+        gameplay_cgram = f.read()
+    if len(gameplay_vram) != 0x10000 or len(gameplay_cgram) != 0x200:
+        raise RuntimeError("Invalid settled tip-off PPU state")
+    gameplay_court = decode_bg_layer(gameplay_vram, gameplay_cgram,
+                                     0x1000, 0x4000, 4, True, False, 6, 6)
 
     assets = [
         (1, 128, 11, 0, nintendo_license_bytes),               # ASSET_NINTENDO_LICENSE
@@ -1352,6 +1369,8 @@ def create_asset_pack(rom_path, output_path):
         (259, 0, 0, 0, player_setup_payloads[2]),
         (260, 256, 224, 0, player_intro_court),
         (261, 72, 72, 290, player_intro_portraits),
+        (262, 8, 8, 0x0D9C27, tipoff_ball),
+        (263, 256, 224, 0, gameplay_court),
     ])
     assets.extend([
         (124, 0, 0, 0, rules_vram_bytes),
@@ -1411,7 +1430,7 @@ def create_asset_pack(rom_path, output_path):
                     extra_audio_id += 1
 
     header_magic = b"NBA95PAK"
-    version = 16
+    version = 17
     asset_count = len(assets)
     entry_size = 24 # 6 * 4 bytes
 

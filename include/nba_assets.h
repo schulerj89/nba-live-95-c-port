@@ -106,7 +106,9 @@ typedef enum {
     NBA_ASSET_PLAYER_SETUP_OAM               = 259,
     NBA_ASSET_PLAYER_INTRO_COURT              = 260,
     NBA_ASSET_PLAYER_INTRO_PORTRAITS          = 261,
-    NBA_ASSET_MAX                   = 262
+    NBA_ASSET_TIPOFF_BALL                      = 262,
+    NBA_ASSET_GAMEPLAY_COURT                   = 263,
+    NBA_ASSET_MAX                   = 264
 } NbaAssetId;
 
 typedef struct {

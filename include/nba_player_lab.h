@@ -31,4 +31,13 @@ void nba_player_lab_render(const NbaPlayerLab *lab, const NbaAssetPack *assets,
                            NbaRenderer *renderer);
 void nba_player_lab_print(const NbaPlayerLab *lab, const NbaAssetPack *assets);
 
+/* Shared ROM-sprite compositor used by Player Lab and live court scenes.
+ * origin_x/origin_y are the ROM's lower-body attachment point; scale 1 is
+ * native SNES size and scale 2 is the enlarged laboratory view. */
+bool nba_player_sprite_render(NbaRenderer *renderer, const NbaAssetPack *assets,
+                              uint8_t team, uint8_t roster_slot, uint8_t side,
+                              uint8_t upper_state, uint8_t direction,
+                              uint32_t animation_tick, int origin_x,
+                              int origin_y, int scale);
+
 #endif

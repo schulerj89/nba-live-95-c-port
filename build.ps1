@@ -113,6 +113,16 @@ if ($Test) {
     if ($LASTEXITCODE -ne 0) {
         throw "Player Lab regression tests failed with exit code $LASTEXITCODE"
     }
+    & python (Join-Path $Root "tools\test_player_intro.py") `
+        --pack $AssetPack --exe $ConsoleExePath --rom $RomPath
+    if ($LASTEXITCODE -ne 0) {
+        throw "Player Introduction regression tests failed with exit code $LASTEXITCODE"
+    }
+    & python (Join-Path $Root "tools\test_tipoff.py") `
+        --pack $AssetPack --exe $ConsoleExePath --rom $RomPath
+    if ($LASTEXITCODE -ne 0) {
+        throw "Tip-off regression tests failed with exit code $LASTEXITCODE"
+    }
     & python (Join-Path $Root "tools\test_intro_sequence.py") `
         --pack $AssetPack --exe $ConsoleExePath --rom $RomPath
     if ($LASTEXITCODE -ne 0) {

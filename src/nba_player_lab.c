@@ -341,7 +341,7 @@ static const uint8_t *resource_tile(const uint8_t *resource, uint32_t size,
 static void draw_animation_resource(NbaRenderer *ren, const NbaAssetPack *assets,
                                     uint16_t resource_id, const uint8_t *palette,
                                     int origin_x, int origin_y, bool flip,
-                                    const uint8_t *tile_override) {
+                                    const uint8_t *tile_override, int scale) {
     uint32_t resource_size;
     const uint8_t *resource = animation_resource(assets, resource_id, &resource_size);
     if (!resource || resource_size < 10u) return;
@@ -370,14 +370,13 @@ static void draw_animation_resource(NbaRenderer *ren, const NbaAssetPack *assets
             uint8_t color_index = tile_pixel(tile, sx & 7, sy & 7);
             if (!color_index) continue;
             uint32_t color = bgr555_to_argb(read_u16(palette + color_index * 2u));
-            int dx = origin_x + (part_x + px) * 2;
-            int dy = origin_y + (y + py) * 2;
-            if (dx < 0 || dx + 1 >= NBA_SNES_WIDTH ||
-                dy < 0 || dy + 1 >= NBA_SNES_HEIGHT) continue;
-            ren->pixels[dy * NBA_SNES_WIDTH + dx] = color;
-            ren->pixels[dy * NBA_SNES_WIDTH + dx + 1] = color;
-            ren->pixels[(dy + 1) * NBA_SNES_WIDTH + dx] = color;
-            ren->pixels[(dy + 1) * NBA_SNES_WIDTH + dx + 1] = color;
+            int dx = origin_x + (part_x + px) * scale;
+            int dy = origin_y + (y + py) * scale;
+            for (int oy = 0; oy < scale; ++oy) for (int ox = 0; ox < scale; ++ox) {
+                int tx = dx + ox, ty = dy + oy;
+                if (tx >= 0 && tx < NBA_SNES_WIDTH && ty >= 0 && ty < NBA_SNES_HEIGHT)
+                    ren->pixels[ty * NBA_SNES_WIDTH + tx] = color;
+            }
         }
     }
 }
@@ -434,65 +433,66 @@ static bool compose_jersey_tile(const NbaAssetPack *assets, uint8_t jersey,
     return true;
 }
 
-static bool draw_player_animation(NbaRenderer *ren, const NbaAssetPack *assets,
-                                  const PlayerLabRecord *player,
-                                  const NbaPlayerLab *lab) {
+static bool draw_player_animation_at(NbaRenderer *ren, const NbaAssetPack *assets,
+                                     const PlayerLabRecord *player, uint8_t team,
+                                     uint8_t side, uint8_t upper_state,
+                                     uint8_t direction, uint32_t animation_tick,
+                                     int lower_x, int lower_y, int scale) {
     const uint8_t *bank = animation_bank84(assets, NULL);
     const uint8_t *upper = animation_descriptor(
-        assets, PLAYER_UPPER_STATE_TABLE, lab->animation_state);
+        assets, PLAYER_UPPER_STATE_TABLE, upper_state);
     const uint8_t *lower = animation_descriptor(
         assets, PLAYER_LOWER_STATE_TABLE,
-        animation_lower_state(lab->animation_state));
+        animation_lower_state(upper_state));
     if (!bank || !upper) return false;
     if (!lower) lower = animation_descriptor(assets, PLAYER_LOWER_STATE_TABLE, 0);
     if (!lower) return false;
-    const uint8_t *palette = player_palette(assets, lab->team, 0,
+    const uint8_t *palette = player_palette(assets, team, side,
                                             player->palette_variant);
     if (!palette) return false;
 
-    uint8_t lower_frame = animation_frame_index(lower, bank, lab->animation_tick);
+    uint8_t lower_frame = animation_frame_index(lower, bank, animation_tick);
     uint8_t upper_frame = (int16_t)read_u16(upper) < 0
         ? (uint8_t)(lower_frame % read_u16(upper + 6))
-        : animation_frame_index(upper, bank, lab->animation_tick);
+        : animation_frame_index(upper, bank, animation_tick);
     uint16_t lower_resource = animation_frame_resource(
-        lower, bank, lab->direction, lower_frame);
+        lower, bank, direction, lower_frame);
     uint16_t upper_resource = animation_frame_resource(
-        upper, bank, lab->direction, upper_frame);
+        upper, bank, direction, upper_frame);
     uint16_t head_resource = (uint16_t)(player->head_resource_base +
-        read_u16(bank + 0x436eu + (lab->direction & 7u) * 2u));
-    bool flip = (lab->direction & 7u) < 3u;
+        read_u16(bank + 0x436eu + (direction & 7u) * 2u));
+    bool flip = (direction & 7u) < 3u;
 
-    const int lower_x = 210, lower_y = 174;
     int lower_attach_x = animation_attachment(assets, lower_resource, false);
-    int upper_x = lower_x + (flip ? -lower_attach_x : lower_attach_x) * 2;
-    int upper_y = lower_y + animation_attachment(assets, lower_resource, true) * 2;
+    int upper_x = lower_x + (flip ? -lower_attach_x : lower_attach_x) * scale;
+    int upper_y = lower_y + animation_attachment(assets, lower_resource, true) * scale;
     int upper_attach_x = animation_attachment(assets, upper_resource, false);
-    int head_x = upper_x + (flip ? -upper_attach_x : upper_attach_x) * 2;
-    int head_y = upper_y + animation_attachment(assets, upper_resource, true) * 2;
+    int head_x = upper_x + (flip ? -upper_attach_x : upper_attach_x) * scale;
+    int head_y = upper_y + animation_attachment(assets, upper_resource, true) * scale;
     draw_animation_resource(ren, assets, lower_resource, palette, lower_x, lower_y,
-                            flip, NULL);
+                            flip, NULL, scale);
     draw_animation_resource(ren, assets, upper_resource, palette, upper_x, upper_y,
-                            flip, NULL);
+                            flip, NULL, scale);
     uint8_t number_tile[32];
     if (number_allowed_for_upper(assets, upper_resource) &&
-        compose_jersey_tile(assets, player->jersey, lab->direction, number_tile)) {
+        compose_jersey_tile(assets, player->jersey, direction, number_tile)) {
         static const uint16_t number_resources[8] = {
             0x0593, 0xffff, 0x0591, 0x0592, 0x0593, 0xffff, 0x0591, 0x0592
         };
         int number_attach_x = number_attachment(assets, upper_resource, false);
-        int number_x = upper_x + (flip ? -number_attach_x : number_attach_x) * 2;
-        int number_y = upper_y + number_attachment(assets, upper_resource, true) * 2;
+        int number_x = upper_x + (flip ? -number_attach_x : number_attach_x) * scale;
+        int number_y = upper_y + number_attachment(assets, upper_resource, true) * scale;
         uint8_t number_palette[32];
-        if (!jersey_palette(assets, lab->team, 0, number_palette)) return false;
-        uint16_t number_resource = number_resources[lab->direction & 7u];
+        if (!jersey_palette(assets, team, side, number_palette)) return false;
+        uint16_t number_resource = number_resources[direction & 7u];
         /* $80:AE78-$80:AE86 applies X flip only to overlay $0591. The
            direction-specific number resources must not inherit the body flip. */
         bool number_flip = number_resource == 0x0591u;
         draw_animation_resource(ren, assets, number_resource, number_palette,
-                                number_x, number_y, number_flip, number_tile);
+                                number_x, number_y, number_flip, number_tile, scale);
     }
     draw_animation_resource(ren, assets, head_resource, palette, head_x, head_y,
-                            flip, NULL);
+                            flip, NULL, scale);
     return true;
 }
 
@@ -519,6 +519,19 @@ static bool player_record(const NbaAssetPack *assets, int team, int player,
     out->head_resource_front = read_u16(p + 18);
     memcpy(out->name, p + 32, 32); out->name[32] = '\0';
     return true;
+}
+
+bool nba_player_sprite_render(NbaRenderer *renderer, const NbaAssetPack *assets,
+                              uint8_t team, uint8_t roster_slot, uint8_t side,
+                              uint8_t upper_state, uint8_t direction,
+                              uint32_t animation_tick, int origin_x,
+                              int origin_y, int scale) {
+    PlayerLabRecord player;
+    if (!renderer || !assets || side > 1u || scale < 1 ||
+        !player_record(assets, team, roster_slot, &player)) return false;
+    return draw_player_animation_at(renderer, assets, &player, team, side,
+                                    upper_state, direction, animation_tick,
+                                    origin_x, origin_y, scale);
 }
 
 static void fill(NbaRenderer *ren, int x, int y, int w, int h, uint32_t color) {
@@ -665,7 +678,9 @@ void nba_player_lab_render(const NbaPlayerLab *lab, const NbaAssetPack *assets,
     text(ren, 12, 93, line, 0xFF9FB2C8u);
 
     fill(ren, 176, 40, 68, 156, 0xFF091522u);
-    if (!draw_player_animation(ren, assets, &p, lab))
+    if (!draw_player_animation_at(ren, assets, &p, lab->team, 0,
+                                  lab->animation_state, lab->direction,
+                                  lab->animation_tick, 210, 174, 2))
         draw_player_pose(ren, assets, &p, lab->team);
     snprintf(line, sizeof(line), "ANIM U$%02X L$%02X D%u %s", lab->animation_state,
              animation_lower_state(lab->animation_state), lab->direction,

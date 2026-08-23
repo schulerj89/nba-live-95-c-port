@@ -5,7 +5,7 @@
 
 #define NBA_ASSET_MAGIC "NBA95PAK"
 
-#define NBA_ASSET_PACK_VERSION 16u
+#define NBA_ASSET_PACK_VERSION 17u
 #define NBA_ASSET_HEADER_SIZE 16u
 #define NBA_ASSET_ENTRY_SIZE 24u
 
@@ -49,6 +49,11 @@ static bool asset_metadata_valid(uint32_t id, uint32_t size, uint32_t width,
                width == 256u && height == 224u && flags == 0u;
     if (id == NBA_ASSET_PLAYER_INTRO_PORTRAITS)
         return size == 6015784u && width == 72u && height == 72u && flags == 290u;
+    if (id == NBA_ASSET_TIPOFF_BALL)
+        return size == 56u && width == 8u && height == 8u && flags == 0x0D9C27u;
+    if (id == NBA_ASSET_GAMEPLAY_COURT)
+        return size == 256u * 224u * sizeof(uint32_t) &&
+               width == 256u && height == 224u && flags == 0u;
     if (id == NBA_ASSET_EA_A_FIXED_SEQUENCE) {
         uint32_t x = flags >> 16;
         uint32_t y = flags & 0xFFFFu;

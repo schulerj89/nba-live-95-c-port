@@ -20,7 +20,8 @@ static void nba_debug_add_line(NbaDebugLines *out, const char *text) {
 const char *nba_game_state_name(NbaGameState state) {
     static const char *const names[] = {
         "BOOT_RESET", "NINTENDO_LICENSE", "NBA_LEGAL", "EA_INTRO",
-        "TITLE", "GAME_SETUP", "TEAM_SELECT", "PLAYER_SETUP", "PLAYER_INTRO"
+        "TITLE", "GAME_SETUP", "TEAM_SELECT", "PLAYER_SETUP", "PLAYER_INTRO",
+        "TIPOFF"
     };
     return (unsigned)state < sizeof(names) / sizeof(names[0]) ?
            names[state] : "UNKNOWN";
@@ -155,6 +156,21 @@ static void nba_game_debug_lines(const NbaGame *game, NbaDebugLines *out) {
         snprintf(out->line[out->count++], NBA_DEBUG_LINE_SIZE,
                  "TEAM L:%02u R:%02u ASSET:COURT+PORTRAIT",
                  s->session->left_team, s->session->right_team);
+    } else if (game->state == NBA_STATE_TIPOFF &&
+               game->scene.tipoff.is_initialized) {
+        const NbaTipoff *s = &game->scene.tipoff;
+        static const char *const phases[] = {
+            "FORMATION", "JUMP BALL", "POSSESSION", "LIVE"
+        };
+        snprintf(out->line[out->count++], NBA_DEBUG_LINE_SIZE,
+                 "TIP PH:%s F:%03d TOSS:%d CONTACT:%d",
+                 (unsigned)s->phase < 4u ? phases[s->phase] : "?", s->frame,
+                 NBA_TIPOFF_TOSS_FRAME, NBA_TIPOFF_CONTACT_FRAME);
+        snprintf(out->line[out->count++], NBA_DEBUG_LINE_SIZE,
+                 "ROM FORM:$86:DDA7 BALL:$86:E054 JUMP:$86:ECF4");
+        snprintf(out->line[out->count++], NBA_DEBUG_LINE_SIZE,
+                 "TEAM L:%02u R:%02u ACT:10 VIS:8 PACK:ROM",
+                 s->session->left_team, s->session->right_team);
     }
 
     if (out->count < NBA_DEBUG_MAX_LINES) {
@@ -287,6 +303,11 @@ bool nba_game_enter_state(NbaGame *game, NbaGameState state) {
         if (!nba_player_intro_init(&game->scene.player_intro, &game->assets,
                                    &game->session, game->renderer.pixels)) {
             fprintf(stderr, "[GAME] Player Introduction asset initialization failed.\n");
+            return false;
+        }
+    } else if (state == NBA_STATE_TIPOFF) {
+        if (!nba_tipoff_init(&game->scene.tipoff, &game->assets, &game->session)) {
+            fprintf(stderr, "[GAME] Tip-off asset initialization failed.\n");
             return false;
         }
     }
@@ -601,6 +622,13 @@ void nba_game_tick(NbaGame *game, float delta_time) {
 
         case NBA_STATE_PLAYER_INTRO:
             nba_player_intro_update(&game->scene.player_intro, &game->input);
+            if (game->scene.player_intro.phase == NBA_PLAYER_INTRO_COMPLETE &&
+                !nba_game_enter_state(game, NBA_STATE_TIPOFF))
+                fprintf(stderr, "[GAME] Could not enter Tip-off.\n");
+            break;
+
+        case NBA_STATE_TIPOFF:
+            nba_tipoff_update(&game->scene.tipoff, &game->input);
             break;
 
         default:
@@ -747,6 +775,10 @@ void nba_game_render(NbaGame *game) {
 
         case NBA_STATE_PLAYER_INTRO:
             nba_player_intro_render(&game->scene.player_intro, ren);
+            break;
+
+        case NBA_STATE_TIPOFF:
+            nba_tipoff_render(&game->scene.tipoff, ren);
             break;
     }
 
