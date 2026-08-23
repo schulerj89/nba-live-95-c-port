@@ -39,6 +39,8 @@ reports success.
 - `test_player_intro.py`: 290-key visitor/home portrait catalog, Player Setup handoff, card cadence, and non-default Golden State/San Antonio frame hashes
 - `test_tipoff.py`: gameplay court/ball assets, shared ten-player compositor, ROM cadence, and formation/jump/contact frame hashes
 - `test_cpu_gameplay.py`: CPU-vs-CPU post-tip movement, assignment, camera, possession/pass, telemetry, and proof-frame regression
+- `analyze_cpu_gameplay_trace.py`: reports recurring plays, offense/ball-mode changes, movement cadence, stationary windows, and owned-ball attachment distance
+- `ghidra/Run-CpuGameplayAnalysis.ps1`: correlates the extended live trace with the player integrator, CPU dispatch, and ball attachment/free-physics routines
 
 ## Investigation utilities
 

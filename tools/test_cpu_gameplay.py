@@ -1,9 +1,11 @@
-"""Regression checks for the post-tip CPU-versus-CPU gameplay state."""
+"""Long-running regression checks for ROM-derived CPU-versus-CPU gameplay."""
 
 import argparse
 import hashlib
 import json
+import math
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -15,8 +17,8 @@ FORMATION = [
     (-8, -3), (16, 83), (24, -80), (-104, 56), (-96, -59),
 ]
 EXPECTED_RGB = {
-    240: "cea41b8085ab1bb7ec125af9f69b9732115ad5fc17c6385269705546e0f25557",
-    450: "ef3785340ba7b91ef9cdf7f7e04cc6bdf81d534fc3ef79be492f45b8ba164fc9",
+    600: "a5578009afedc8081ca576bc60ae827adc974524d7e1899401ab63b8143c4eb6",
+    1300: "60458990c9f808f250467d2c4ec3f39e8e1e1708c7ce824c1df7e6ca6dd77d64",
 }
 
 
@@ -32,25 +34,22 @@ def main():
         trace = root / "cpu_gameplay.jsonl"
         command = [
             args.exe, "--headless", "--rom", args.rom, "--assets", args.pack,
-            "--tipoff-only", "--frames", "520", "--gameplay-trace", str(trace),
+            "--tipoff-only", "--frames", "2000", "--gameplay-trace", str(trace),
             "--debug-state",
         ]
         result = subprocess.run(command, capture_output=True, text=True, check=False)
-        if result.returncode or "CPU:CPU" not in result.stdout:
+        if result.returncode or "INT:$85:9700" not in result.stdout or \
+                "BALL M:" not in result.stdout:
             raise AssertionError(result.stdout + result.stderr)
         rows = [json.loads(line) for line in trace.read_text().splitlines()]
-        if len(rows) != 520:
-            raise AssertionError(f"expected 520 CPU frames, got {len(rows)}")
+        if len(rows) != 2000:
+            raise AssertionError(f"expected 2000 CPU frames, got {len(rows)}")
 
         def frame(number):
             return rows[number - 1]
 
-        before = frame(219)
         live = frame(240)
-        late = frame(500)
-        if before["possession"]["play_code_raw"] != 0x35:
-            raise AssertionError("ROM play $35 was not selected after the tip")
-        if any(actor["control"] != 0 for actor in late["actors"]):
+        if any(actor["control"] != 0 for actor in frame(1900)["actors"]):
             raise AssertionError("CPU-versus-CPU mode assigned a human actor")
         moved = sum((actor["x"], actor["y"]) != FORMATION[index]
                     for index, actor in enumerate(live["actors"]))
@@ -58,17 +57,50 @@ def main():
             raise AssertionError(f"only {moved}/10 CPU actors broke formation")
         if (live["actors"][0]["x"], live["actors"][0]["y"]) != FORMATION[0]:
             raise AssertionError("center reaction delay no longer matches the ROM trace")
-        if live["actors"][8]["raw"]["assignment_current"] != 4:
-            raise AssertionError("ballhandler assignment did not change to traced target 4")
-        if live["actors"][8]["animation"] == 0:
-            raise AssertionError("CPU ballhandler did not enter a movement animation")
-        if frame(350)["camera"] == frame(220)["camera"]:
-            raise AssertionError("camera did not follow live CPU play")
-        owners = {frame(number)["ball"]["owner"] for number in (420, 450, 480, 500)}
-        if not {8, 9}.issubset(owners):
-            raise AssertionError(f"CPU pass did not transfer ball ownership: {owners}")
-        if late["actors"][8]["x"] == live["actors"][8]["x"]:
-            raise AssertionError("ballhandler stopped after the post-tip break")
+
+        play_codes = {row["possession"]["play_code_raw"] for row in rows[219:]}
+        if not {0x35, 0x01, 0x0F, 0x26}.issubset(play_codes):
+            raise AssertionError(f"recurring ROM play codes missing: {play_codes}")
+        teams = {row["possession"]["team"] for row in rows[219:]}
+        if not {0, 1}.issubset(teams):
+            raise AssertionError(f"CPU offense did not change sides: {teams}")
+        modes = {row["ball"]["state"] for row in rows[219:]}
+        if not {3, 4, 5, 6}.issubset(modes):
+            raise AssertionError(f"ball physics modes missing: {modes}")
+        owners = {row["ball"]["owner"] for row in rows[219:]}
+        if len(owners - {-1}) < 4:
+            raise AssertionError(f"ballhandler did not rotate: {owners}")
+
+        attached = []
+        for row in rows[219:]:
+            owner = row["ball"]["owner"]
+            if row["ball"]["state"] == 4 and owner >= 0:
+                actor = row["actors"][owner]
+                attached.append(math.hypot(row["ball"]["x"] - actor["x"],
+                                           row["ball"]["y"] - actor["y"]))
+        if not attached or max(attached) > 20.0:
+            raise AssertionError("ball is not attached at the actor hand offset")
+
+        for first in range(220, 1900, 240):
+            last = min(first + 239, len(rows) - 1)
+            counts = []
+            for actor in range(10):
+                counts.append(sum(
+                    (rows[index]["actors"][actor]["x"],
+                     rows[index]["actors"][actor]["y"]) !=
+                    (rows[index - 1]["actors"][actor]["x"],
+                     rows[index - 1]["actors"][actor]["y"])
+                    for index in range(first + 1, last + 1)))
+            if min(sum(counts[:5]), sum(counts[5:])) < 60:
+                raise AssertionError(
+                    f"CPU team became stationary in frames {first}-{last}: {counts}")
+
+        analyzer = Path(__file__).with_name("analyze_cpu_gameplay_trace.py")
+        analyzed = subprocess.run(
+            [sys.executable, str(analyzer), str(trace), "--require-sustained"],
+            capture_output=True, text=True, check=False)
+        if analyzed.returncode or "PASS" not in analyzed.stdout:
+            raise AssertionError(analyzed.stdout + analyzed.stderr)
 
         for number, expected in EXPECTED_RGB.items():
             output = root / f"cpu_{number}.bmp"
@@ -82,13 +114,18 @@ def main():
             if digest != expected:
                 raise AssertionError(f"CPU gameplay frame {number} changed: {digest}")
 
-    source = Path(__file__).parents[1] / "src" / "nba_tipoff.c"
-    text = source.read_text()
-    for marker in ("$85:F34F", "$85:BC43-$BC81", "$85:B95C",
-                   "$87:B832", "$85:8EE6", "cpu_set_targets",
-                   "cpu_move_actor", "cpu_update_ball", "cpu_update_camera"):
-        if marker not in text:
+    source = Path(__file__).parents[1]
+    implementation = (source / "src" / "nba_tipoff.c").read_text()
+    for marker in ("$85:9700-$985F", "$85:BC43-$BC81", "$85:B95C",
+                   "$87:B832", "$87:B649", "$87:B66A", "$85:8EE6",
+                   "cpu_begin_possession", "cpu_update_possession",
+                   "ball_attach_to_actor", "ball_launch"):
+        if marker not in implementation:
             raise AssertionError(f"CPU gameplay implementation lost {marker}")
+    for relative in ("tools/ghidra/DumpCpuGameplay.java",
+                     "tools/ghidra/Run-CpuGameplayAnalysis.ps1"):
+        if not (source / relative).is_file():
+            raise AssertionError(f"CPU Ghidra evidence tool missing: {relative}")
     print("CPU-versus-CPU gameplay regression checks passed")
 
 

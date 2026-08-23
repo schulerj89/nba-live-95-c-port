@@ -27,6 +27,25 @@ typedef enum {
     NBA_TIPOFF_LIVE
 } NbaTipoffPhase;
 
+typedef enum {
+    NBA_CPU_PLAY_BREAK = 0,
+    NBA_CPU_PLAY_DRIVE,
+    NBA_CPU_PLAY_PASS,
+    NBA_CPU_PLAY_ATTACK,
+    NBA_CPU_PLAY_SHOT,
+    NBA_CPU_PLAY_REBOUND
+} NbaCpuPlayState;
+
+typedef enum {
+    NBA_BALL_HIDDEN = 0,
+    NBA_BALL_TOSS,
+    NBA_BALL_LOOSE,
+    NBA_BALL_PASS,
+    NBA_BALL_ATTACHED,
+    NBA_BALL_SHOT,
+    NBA_BALL_BOUNCE
+} NbaBallMode;
+
 typedef struct {
     int32_t x_fp, y_fp, z_fp;
     int16_t velocity_x, velocity_y, velocity_z;
@@ -59,6 +78,12 @@ typedef struct {
     int8_t possession_team;
     uint16_t play_code;
     uint32_t simulation_tick;
+    uint16_t possession_frame;
+    uint16_t possession_number;
+    uint8_t offense_side;
+    uint8_t handler_actor;
+    uint8_t receiver_actor;
+    uint8_t cpu_play_state;
     bool cpu_vs_cpu;
     bool is_initialized;
 } NbaTipoff;

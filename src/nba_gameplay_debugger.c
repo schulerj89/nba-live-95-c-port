@@ -98,21 +98,23 @@ void nba_gameplay_debugger_render(const NbaGameplayDebugger *debugger,
                  actor->velocity_y, actor->velocity_z, actor->direction,
                  actor->animation_state);
         text(renderer, 6, 180, line, 0xFFFFFFFFu);
-        snprintf(line, sizeof(line), "BALL W:%d,%d,%d S:%d,%d OWN:%d ST:%02X",
+        snprintf(line, sizeof(line), "BALL:%d,%d,%d V:%d,%d,%d O:%d M:%02X",
                  telemetry->ball.world_x, telemetry->ball.world_y,
-                 telemetry->ball.world_z, telemetry->ball.screen_x,
-                 telemetry->ball.screen_y, telemetry->ball.owner_actor,
+                 telemetry->ball.world_z, telemetry->ball.velocity_x,
+                 telemetry->ball.velocity_y, telemetry->ball.velocity_z,
+                 telemetry->ball.owner_actor,
                  telemetry->ball.state);
         text(renderer, 6, 192, line, 0xFF9EF7A9u);
     } else if (debugger->page == 1u) {
-        snprintf(line, sizeof(line), "AI:%02X TARGET:%d ROUT:$%06X ACT:$%06X",
-                 actor->ai_state, actor->ai_target_actor, actor->ai_routine,
-                 actor->actor_routine);
+        snprintf(line, sizeof(line), "AI:%02X MODE:%02X TGT:%d D:%u V:%d,%d",
+                 actor->ai_state, actor->control_mode_raw,
+                 actor->ai_target_actor, actor->assignment_direction_raw,
+                 actor->velocity_x, actor->velocity_y);
         text(renderer, 6, 180, line, 0xFFFFFFFFu);
-        snprintf(line, sizeof(line), "CTRL:%u POS:%d TEAM:%d COLL:%d/%d",
+        snprintf(line, sizeof(line), "H:%u POS:%d TEAM:%d ASG:%u REACT:%u",
                  telemetry->controlled_actor, telemetry->possession_actor,
-                 telemetry->possession_team, telemetry->collision_actor_a,
-                 telemetry->collision_actor_b);
+                 telemetry->possession_team, actor->assignment_current_raw,
+                 actor->reaction_threshold_raw);
         text(renderer, 6, 192, line, 0xFF9EF7A9u);
     } else {
         snprintf(line, sizeof(line), "CAM:%d,%d R:$%06X COLL:$%06X POS:$%06X",

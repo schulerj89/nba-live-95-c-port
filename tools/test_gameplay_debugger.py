@@ -11,7 +11,7 @@ from pathlib import Path
 from PIL import Image
 
 
-EXPECTED_LAB_RGB = "99f55e6f9ea981a377ddd05df22bd771958262069c1e3abfe3a82470dd1e535c"
+EXPECTED_LAB_RGB = "68eb2c89adc54cd2a7c3f76a0dffb5601a5d6494051f8c149494a08f455228f9"
 
 
 def run(command, label):

@@ -162,16 +162,25 @@ static void nba_game_debug_lines(const NbaGame *game, NbaDebugLines *out) {
         static const char *const phases[] = {
             "FORMATION", "JUMP BALL", "POSSESSION", "LIVE"
         };
+        static const char *const cpu_phases[] = {
+            "BREAK", "DRIVE", "PASS", "ATTACK", "SHOT", "REBOUND"
+        };
         snprintf(out->line[out->count++], NBA_DEBUG_LINE_SIZE,
                  "TIP PH:%s F:%03d TOSS:%d CONTACT:%d",
                  (unsigned)s->phase < 4u ? phases[s->phase] : "?", s->frame,
                  NBA_TIPOFF_TOSS_FRAME, NBA_TIPOFF_CONTACT_FRAME);
         snprintf(out->line[out->count++], NBA_DEBUG_LINE_SIZE,
-                 "ROM FORM:$86:DDA7 BALL:$86:E054 JUMP:$86:ECF4");
+                 "CPU %s P:%u PF:%u H:%u R:%u INT:$85:9700",
+                 s->cpu_play_state < 6u ? cpu_phases[s->cpu_play_state] : "?",
+                 s->possession_number, s->possession_frame,
+                 s->handler_actor, s->receiver_actor);
         snprintf(out->line[out->count++], NBA_DEBUG_LINE_SIZE,
-                 "CPU:CPU POS:%d BALL:%d PLAY:$%02X CAM:%d,%d",
-                 s->possession_actor, s->ball.owner_actor, s->play_code,
-                 s->camera_x, s->camera_y);
+                 "BALL M:%u O:%d W:%d,%d,%d V:%d,%d,%d PLAY:$%02X",
+                 s->ball.state, s->ball.owner_actor,
+                 (int)(s->ball.x_fp / 256), (int)(s->ball.y_fp / 256),
+                 (int)(s->ball.z_fp / 256), s->ball.velocity_x / 256,
+                 s->ball.velocity_y / 256, s->ball.velocity_z / 256,
+                 s->play_code);
     }
 
     if (out->count < NBA_DEBUG_MAX_LINES) {

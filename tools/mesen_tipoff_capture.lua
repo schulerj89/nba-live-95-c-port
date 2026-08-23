@@ -16,9 +16,9 @@ local segments = {
     { name="formation", first=0, last=139 },
     { name="jump_ball", first=140, last=219 },
     { name="possession", first=220, last=399 },
-    { name="live", first=400, last=900 },
+    { name="live", first=400, last=LAST_GAMEPLAY_FRAME },
 }
-local exec_seen, wram_summary = {}, {}
+local exec_seen, wram_summary, actor_write_sites, state_write_sites = {}, {}, {}, {}
 local routine_log = assert(io.open(out .. "/routine_hits.txt", "wb"))
 local actor_log = assert(io.open(out .. "/actor_states.txt", "wb"))
 local placement_log = assert(io.open(out .. "/placement_writes.txt", "wb"))
@@ -26,6 +26,7 @@ local draw_log = assert(io.open(out .. "/draw_origins.txt", "wb"))
 local gameplay_jsonl = assert(io.open(out .. "/gameplay_rom.jsonl", "wb"))
 local current_draw_actor = 0xffff
 local draw_screen, previous_pad, routine_hits_frame = {}, {}, {}
+local previous_actor_world, previous_ball_world = {}, nil
 for pad = 0, 4 do previous_pad[pad] = 0 end
 for _, segment in ipairs(segments) do exec_seen[segment.name] = {} end
 
@@ -233,6 +234,14 @@ local function dump_gameplay_jsonl(frame)
         word(0x086c), word(0x086e), word(0x0874), word(0x0876),
         word(0x0878), word(0x087a)))
     local ball = 0x3eeb
+    local ball_x, ball_y, ball_z = signed_word(ball + 4),
+        signed_word(ball + 8), signed_word(ball + 12)
+    local ball_vx, ball_vy, ball_vz = 0, 0, 0
+    if previous_ball_world then
+        ball_vx = ball_x - previous_ball_world.x
+        ball_vy = ball_y - previous_ball_world.y
+        ball_vz = ball_z - previous_ball_world.z
+    end
     gameplay_jsonl:write(string.format(
         "\"collision\":{\"a\":-1,\"b\":-1,\"routine\":0}," ..
         "\"ball\":{\"x\":%d,\"y\":%d,\"z\":%d," ..
@@ -241,9 +250,8 @@ local function dump_gameplay_jsonl(frame)
         "\"state\":%u,\"flags_raw\":%u,\"routine\":%u}," ..
         "\"routines\":{\"controller\":%u,\"selection\":%u," ..
         "\"possession\":%u},\"routine_hits\":[",
-        signed_word(ball + 4), signed_word(ball + 8), signed_word(ball + 12),
-        signed_word(ball + 0x38), signed_word(ball + 0x3a),
-        signed_word(ball + 0x3c), signed_word(0x0946), word(ball + 0x18),
+        ball_x, ball_y, ball_z, ball_vx, ball_vy, ball_vz,
+        signed_word(0x0946), word(ball + 0x18),
         word(ball + 0x28), 0x86e054, 0x80cb8f, 0x85c37d,
         frame >= 200 and 0x86d3f9 or 0))
     local hit_addresses = {}
@@ -256,12 +264,20 @@ local function dump_gameplay_jsonl(frame)
     for actor = 0, 9 do
         local base = 0x34eb + actor * 0x100
         local screen = draw_screen[actor]
+        local actor_x, actor_y, actor_z = signed_word(base + 4),
+            signed_word(base + 8), signed_word(base + 12)
+        local actor_vx, actor_vy, actor_vz = 0, 0, 0
+        if previous_actor_world[actor] then
+            actor_vx = actor_x - previous_actor_world[actor].x
+            actor_vy = actor_y - previous_actor_world[actor].y
+            actor_vz = actor_z - previous_actor_world[actor].z
+        end
         gameplay_jsonl:write(string.format(
             "%s{\"id\":%d,\"team\":%d,\"roster\":%d," ..
             "\"control\":%d,\"visible\":%s," ..
             "\"x\":%d,\"y\":%d,\"z\":%d," ..
             "\"screen_x\":%d,\"screen_y\":%d," ..
-            "\"vx\":0,\"vy\":0,\"vz\":0," ..
+            "\"vx\":%d,\"vy\":%d,\"vz\":%d," ..
             "\"direction\":%u,\"animation\":%u," ..
             "\"lower_animation\":%u,\"ai_state\":%u," ..
             "\"ai_target\":255,\"actor_routine\":%u," ..
@@ -281,9 +297,9 @@ local function dump_gameplay_jsonl(frame)
             "\"palette\":%u}}",
             actor > 0 and "," or "", actor, actor >= 5 and 1 or 0,
             actor % 5, signed_word(0x093e) == actor and 1 or 0,
-            screen and "true" or "false", signed_word(base + 4),
-            signed_word(base + 8), signed_word(base + 12),
+            screen and "true" or "false", actor_x, actor_y, actor_z,
             screen and screen.x or -32768, screen and screen.y or -32768,
+            actor_vx, actor_vy, actor_vz,
             word(base + 0x4e), word(base + 0x30), word(base + 0x32),
             word(base + 0x5e), 0x80ad92, 0x87a160, base, word(base),
             word(base + 0x18), word(base + 0x28), word(base + 0x2a),
@@ -295,9 +311,11 @@ local function dump_gameplay_jsonl(frame)
             word(base + 0x86), word(base + 0x8a), word(base + 0x60),
             word(base + 0x46), word(base + 0x48), word(base + 0x3a),
             word(base + 0x44), word(base + 0x7e), word(base + 0xac)))
+        previous_actor_world[actor] = { x=actor_x, y=actor_y, z=actor_z }
     end
     gameplay_jsonl:write("]}\n")
     gameplay_jsonl:flush()
+    previous_ball_world = { x=ball_x, y=ball_y, z=ball_z }
     routine_hits_frame = {}
 end
 
@@ -316,6 +334,46 @@ for actor = 0, 10 do
         end, emu.callbackType.write, address, address,
             emu.cpuType.snes, emu.memType.snesWorkRam)
     end
+end
+
+-- Coordinate writes, rather than the actor +$38/+$3A/+$3C animation words,
+-- identify the real movement/ball integrators. Aggregate the writer PCs so a
+-- long CPU-only run remains compact enough to feed back into headless Ghidra.
+local function record_write_site(collection, key, value)
+    local state = emu.getState()
+    local pc = (state["cpu.k"] or 0) * 0x10000 + (state["cpu.pc"] or 0)
+    local full_key = string.format("%06X:%s", pc, key)
+    local item = collection[full_key]
+    if not item then
+        item = { pc=pc, key=key, first=gameplay_frame, last=gameplay_frame,
+                 count=0, first_value=value, last_value=value }
+        collection[full_key] = item
+    end
+    item.last, item.count, item.last_value = gameplay_frame, item.count + 1, value
+end
+
+for actor = 0, 10 do
+    for _, offset in ipairs({4, 5, 8, 9, 12, 13}) do
+        local address = 0x34eb + actor * 0x100 + offset
+        emu.addMemoryCallback(function(_, value)
+            if gameplay_frame >= 190 then
+                record_write_site(actor_write_sites,
+                    string.format("actor=%02d off=%02X", actor, offset), value)
+            end
+        end, emu.callbackType.write, address, address,
+            emu.cpuType.snes, emu.memType.snesWorkRam)
+    end
+end
+
+for _, address in ipairs({0x093a, 0x093b, 0x093e, 0x093f, 0x0940, 0x0941,
+                           0x0946, 0x0947, 0x0996, 0x0997}) do
+    emu.addMemoryCallback(function(_, value)
+        if gameplay_frame >= 190 then
+            record_write_site(state_write_sites,
+                string.format("wram=%04X", address), value)
+        end
+    end, emu.callbackType.write, address, address,
+        emu.cpuType.snes, emu.memType.snesWorkRam)
 end
 
 for bank = 0x80, 0x8f do
@@ -418,6 +476,23 @@ emu.addEventCallback(function()
                 address, item.first, item.last, item.count, item.min, item.max, item.value))
         end
         wram:close()
+        local function write_sites(name, collection)
+            local keys = {}
+            for key in pairs(collection) do keys[#keys + 1] = key end
+            table.sort(keys)
+            local file = assert(io.open(out .. "/" .. name, "wb"))
+            for _, key in ipairs(keys) do
+                local item = collection[key]
+                file:write(string.format(
+                    "pc=$%02X:%04X %s first=%d last=%d count=%d firstval=%02X lastval=%02X\n",
+                    math.floor(item.pc / 0x10000), item.pc & 0xffff, item.key,
+                    item.first, item.last, item.count,
+                    item.first_value, item.last_value))
+            end
+            file:close()
+        end
+        write_sites("actor_coordinate_write_sites.txt", actor_write_sites)
+        write_sites("gameplay_state_write_sites.txt", state_write_sites)
         actor_log:close(); routine_log:close(); placement_log:close(); draw_log:close()
         gameplay_jsonl:close()
         local done = assert(io.open(out .. "/capture_complete.txt", "wb"))

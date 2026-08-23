@@ -18,7 +18,7 @@ EXPECTED_ASSETS = {
 EXPECTED_FRAMES = {
     90: ("TIP PH:FORMATION", "f1864c5cab39fa8615db073565ecbf029bb8d2f601802b8cc147ca972941496b"),
     170: ("TIP PH:JUMP BALL", "e987d14e15586c4f69d49c7e130343ee88be6d91f00692b8c8a4efb1626a9673"),
-    220: ("TIP PH:LIVE", "6189f8fe3e7bb9238b65596af4d1823f8d28293e4b34725dc07d62cca1a293e1"),
+    220: ("TIP PH:LIVE", "42ae39af55deb554dcff8e4e8aef7a1dd01d4d8a5736b6e221b798a189208d16"),
 }
 
 
@@ -64,8 +64,8 @@ def main():
                 "--debug-state",
             ], capture_output=True, text=True, check=False)
             if result.returncode or phase not in result.stdout or \
-                    "ROM FORM:$86:DDA7 BALL:$86:E054 JUMP:$86:ECF4" not in result.stdout or \
-                    "CPU:CPU" not in result.stdout:
+                    "INT:$85:9700" not in result.stdout or \
+                    "BALL M:" not in result.stdout:
                 raise AssertionError(result.stdout + result.stderr)
             digest = hashlib.sha256(Image.open(output).convert("RGB").tobytes()).hexdigest()
             if digest != expected_hash:

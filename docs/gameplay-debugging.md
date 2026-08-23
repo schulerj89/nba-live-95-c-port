@@ -42,12 +42,13 @@ without changing the comparison contract.
 | `$85:B100–$B28B` | randomized initial possession/play decision |
 | `$85:8EE6–$9191` | provisional camera/court streaming state |
 
-The longer CPU-only capture now covers 651 frames. It confirms the `$35`
+The extended CPU-only capture covers 1,801 frames. It confirms the `$35`
 post-tip play, CPU reaction staggering, live matchup reassignment, the
-eight-direction movement map, ballhandler changes, and camera projection.
-Complete pass/shoot/switch policy and scoring remain later gameplay work; the
-current C state machine implements the traced first possession far enough to
-exercise ten autonomous actors and a CPU ball transfer.
+eight-direction movement map, ballhandler and offense changes, camera
+projection, and the actual coordinate writers. The C state machine therefore
+continues across possessions and uses separate attached/pass/shot/bounce ball
+modes rather than a timed first-pass script. Complete rules, scoring, and
+collision policy remain later gameplay work.
 
 `tools/mesen_tipoff_capture.lua` writes the ROM-side equivalent to
 `gameplay_rom.jsonl`. Compare it with the port trace using:
@@ -63,10 +64,24 @@ coordinates and visible sprite origins/directions/animation. `--mode all`
 reports every common non-unknown field, making unfinished controller, camera,
 ball and AI behavior visible without incorrectly passing it as implemented.
 
+For a movement-oriented summary rather than an exact-field diff, run:
+
+```powershell
+python tools/analyze_cpu_gameplay_trace.py gameplay-port.jsonl --require-sustained
+python tools/analyze_cpu_gameplay_trace.py gameplay_rom.jsonl
+```
+
+It prints every play/offense and ball-mode transition, per-actor and per-team
+movement counts for each time window, and the maximum ball-to-owner attachment
+distance. `--require-sustained` fails on stationary teams, fewer than four
+recurring play codes, missing pass/attach/shot/bounce physics, or a detached
+owned ball.
+
 ## Regression contract
 
 `tools/test_gameplay_debugger.py` locks the F8 mapping, ten actor records,
 eight-player settled-camera visibility, CPU-only mapping, controller,
 ball, camera, collision and AI raw fields, overlay pixels, JSON parsing, and
 paused single-frame stepping, and both comparator pass and intentional-failure
-paths. `tools/test_cpu_gameplay.py` separately protects the live CPU behavior.
+paths. `tools/test_cpu_gameplay.py` separately protects 2,000 frames of live
+CPU behavior.
