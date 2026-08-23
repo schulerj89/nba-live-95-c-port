@@ -29,7 +29,7 @@ EXPECTED_FRAME_HASHES = {
     "right_philadelphia": "ca4d126ef130b0e7d47636218d05c4d2357a1b2d080961bd01f5131307c4be3c",
     "east": "fe0bc64162af9c341b92fde6be732907bbbc9c30443b9b3435bac1433b997312",
     "west": "e384503f8b20c1fa2abadf0d055062c58fe6f59e0716936f5401c832dbb711a0",
-    "logo_debug": "921ecb5ec0ee781fecb17aff317789394fe9bec481047949d96d6a05a864bb7e",
+    "logo_debug": "3e15e79cc52b3bc137477e3414d9607e59939b440748abc5280d92701355e51e",
 }
 
 EXPECTED_LOGO_HASHES = {

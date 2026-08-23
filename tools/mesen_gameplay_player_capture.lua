@@ -11,9 +11,14 @@ local PRESS_TITLE_AT, PRESS_SETUP_AT = 850, 400
 local LAST_SETUP_FRAME = tonumber(os.getenv("NBA95_GAMEPLAY_LAST_FRAME")) or 6000
 local ANIMATION_TRACE = os.getenv("NBA95_PLAYER_ANIMATION_TRACE") == "1"
 local FAST_ANIMATION_TRACE = os.getenv("NBA95_PLAYER_FAST_ANIMATION") == "1"
+local PLAYER_INTRO_TRACE = os.getenv("NBA95_PLAYER_INTRO_TRACE") == "1"
 local ANIMATION_INPUT_START = tonumber(os.getenv("NBA95_PLAYER_ANIMATION_INPUT_START")) or 3180
 local advance_frames = { 650, 850, 1050, 1250, 1450, 1650, 1850, 2050, 2250 }
-if ANIMATION_TRACE then
+if PLAYER_INTRO_TRACE then
+    -- Stop advancing after entering Starting Lineup. Later Start pulses skip
+    -- the ROM's remaining player cards, which defeats introduction discovery.
+    advance_frames[#advance_frames + 1] = 2550
+elseif ANIMATION_TRACE then
     advance_frames[#advance_frames + 1] = 2550
     advance_frames[#advance_frames + 1] = 2850
 else
@@ -31,6 +36,7 @@ local trace_resources = {}
 local trace_animation = {}
 local trace_palette_calls = {}
 local trace_scene_hits = {}
+local trace_intro = {}
 local state_dumped, register_pc_frame = false, -1
 
 local function pulse(frame, at)
@@ -88,6 +94,34 @@ for _, probe in ipairs(scene_probe_addresses) do
         end
     end, emu.callbackType.exec, probe, probe,
         emu.cpuType.snes, emu.memType.snesMemory)
+end
+
+local function intro_trace_frame(frame)
+    return (frame >= 2558 and frame <= 2572) or
+           (frame >= 2996 and frame <= 3005) or
+           (frame >= 3430 and frame <= 3439) or
+           (frame >= 4734 and frame <= 4745)
+end
+
+if PLAYER_INTRO_TRACE then
+    local intro_ranges = {
+        { 0x80B300, 0x80C800 }, { 0x819700, 0x81A520 },
+        { 0x83F700, 0x83FFFF }, { 0x84B200, 0x84B400 },
+        { 0x87BD00, 0x87C200 },
+    }
+    for _, range in ipairs(intro_ranges) do
+        emu.addMemoryCallback(function(address)
+            if intro_trace_frame(setup_frame) then
+                local state = emu.getState()
+                trace_intro[#trace_intro + 1] = string.format(
+                    "%d %06X a=%04X x=%04X y=%04X d=%04X dbr=%02X\n",
+                    setup_frame, address, state["cpu.a"] or 0,
+                    state["cpu.x"] or 0, state["cpu.y"] or 0,
+                    state["cpu.d"] or 0, state["cpu.dbr"] or 0)
+            end
+        end, emu.callbackType.exec, range[1], range[2],
+            emu.cpuType.snes, emu.memType.snesMemory)
+    end
 end
 
 if not FAST_ANIMATION_TRACE then for bank = 0x80, 0xBF do
@@ -310,6 +344,10 @@ emu.addEventCallback(function()
             emu.memType.snesSpriteRam, 0x220)
         log:write(string.format("snapshot setup=%d\n", frame)); log:flush()
     end
+    if PLAYER_INTRO_TRACE and frame >= 2550 and frame <= LAST_SETUP_FRAME and
+       frame % 15 == 0 then
+        shot(string.format("lineup_%04d.png", frame))
+    end
     if frame >= SNAPSHOT_FIRST and frame <= SNAPSHOT_LAST then
         dump_mem(string.format("frame_%04d_vram.bin", frame),
             emu.memType.snesVideoRam, 0x10000)
@@ -351,6 +389,10 @@ emu.addEventCallback(function()
         palettes:write(table.concat(trace_palette_calls)); palettes:close()
         local scene_hits = assert(io.open(out .. "/player_setup_scene_hits.txt", "wb"))
         scene_hits:write(table.concat(trace_scene_hits)); scene_hits:close()
+        if PLAYER_INTRO_TRACE then
+            local intro = assert(io.open(out .. "/player_intro_exec_trace.txt", "wb"))
+            intro:write(table.concat(trace_intro)); intro:close()
+        end
         if ANIMATION_TRACE then
             local animation = assert(io.open(out .. "/player_animation_states.txt", "wb"))
             animation:write(table.concat(trace_animation)); animation:close()

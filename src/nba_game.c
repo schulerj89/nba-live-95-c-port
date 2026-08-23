@@ -20,7 +20,7 @@ static void nba_debug_add_line(NbaDebugLines *out, const char *text) {
 const char *nba_game_state_name(NbaGameState state) {
     static const char *const names[] = {
         "BOOT_RESET", "NINTENDO_LICENSE", "NBA_LEGAL", "EA_INTRO",
-        "TITLE", "GAME_SETUP", "TEAM_SELECT", "PLAYER_SETUP"
+        "TITLE", "GAME_SETUP", "TEAM_SELECT", "PLAYER_SETUP", "PLAYER_INTRO"
     };
     return (unsigned)state < sizeof(names) / sizeof(names[0]) ?
            names[state] : "UNKNOWN";
@@ -140,6 +140,21 @@ static void nba_game_debug_lines(const NbaGame *game, NbaDebugLines *out) {
         snprintf(out->line[out->count++], NBA_DEBUG_LINE_SIZE,
                  "TEAM R:%02u %-12s", s->session->right_team,
                  nba_team_records[s->session->right_team].name);
+    } else if (game->state == NBA_STATE_PLAYER_INTRO &&
+               game->scene.player_intro.is_initialized) {
+        const NbaPlayerIntro *s = &game->scene.player_intro;
+        static const char *const phases[] = {
+            "TRANSITION", "MATCHUP", "RATINGS", "LINEUPS", "COMPLETE"
+        };
+        snprintf(out->line[out->count++], NBA_DEBUG_LINE_SIZE,
+                 "INTRO PH:%s PF:%04d CARD:%02d/10",
+                 (unsigned)s->phase < 5u ? phases[s->phase] : "?",
+                 s->phase_frame, s->lineup_card + 1);
+        snprintf(out->line[out->count++], NBA_DEBUG_LINE_SIZE,
+                 "ROM LOOP:$87:BE92 DEC:$80:BD1B PAL:$81:A1E7");
+        snprintf(out->line[out->count++], NBA_DEBUG_LINE_SIZE,
+                 "TEAM L:%02u R:%02u ASSET:COURT+PORTRAIT",
+                 s->session->left_team, s->session->right_team);
     }
 
     if (out->count < NBA_DEBUG_MAX_LINES) {
@@ -223,6 +238,8 @@ bool nba_game_enter_state(NbaGame *game, NbaGameState state) {
         nba_team_select_shutdown(&game->scene.team_select);
     if (previous_state == NBA_STATE_PLAYER_SETUP)
         nba_player_setup_shutdown(&game->scene.player_setup);
+    if (previous_state == NBA_STATE_PLAYER_INTRO)
+        nba_player_intro_shutdown(&game->scene.player_intro);
     if (!keep_setup_audio && game->audio.active_track != NBA_AUDIO_TRACK_NONE)
         nba_audio_stop(&game->audio);
     memset(&game->scene, 0, sizeof(game->scene));
@@ -264,6 +281,12 @@ bool nba_game_enter_state(NbaGame *game, NbaGameState state) {
         if (!nba_player_setup_init(&game->scene.player_setup, &game->assets,
                                    &game->session, game->renderer.pixels)) {
             fprintf(stderr, "[GAME] Player Setup asset initialization failed.\n");
+            return false;
+        }
+    } else if (state == NBA_STATE_PLAYER_INTRO) {
+        if (!nba_player_intro_init(&game->scene.player_intro, &game->assets,
+                                   &game->session, game->renderer.pixels)) {
+            fprintf(stderr, "[GAME] Player Introduction asset initialization failed.\n");
             return false;
         }
     }
@@ -346,6 +369,8 @@ void nba_game_shutdown(NbaGame *game) {
         nba_team_select_shutdown(&game->scene.team_select);
     if (game->state == NBA_STATE_PLAYER_SETUP)
         nba_player_setup_shutdown(&game->scene.player_setup);
+    if (game->state == NBA_STATE_PLAYER_INTRO)
+        nba_player_intro_shutdown(&game->scene.player_intro);
     nba_audio_shutdown(&game->audio);
     if (game->assets.is_loaded) {
         nba_assets_free(&game->assets);
@@ -568,7 +593,14 @@ void nba_game_tick(NbaGame *game, float delta_time) {
                 if (sound == NBA_PLAYER_SETUP_SOUND_CONFIRM) srcn = 0x1Cu;
                 if (srcn != 0xFFu)
                     nba_audio_play_setup_sfx(&game->audio, &game->assets, srcn);
+                if (game->scene.player_setup.confirm_requested &&
+                    !nba_game_enter_state(game, NBA_STATE_PLAYER_INTRO))
+                    fprintf(stderr, "[GAME] Could not enter Player Introduction.\n");
             }
+            break;
+
+        case NBA_STATE_PLAYER_INTRO:
+            nba_player_intro_update(&game->scene.player_intro, &game->input);
             break;
 
         default:
@@ -711,6 +743,10 @@ void nba_game_render(NbaGame *game) {
 
         case NBA_STATE_PLAYER_SETUP:
             nba_player_setup_render(&game->scene.player_setup, ren);
+            break;
+
+        case NBA_STATE_PLAYER_INTRO:
+            nba_player_intro_render(&game->scene.player_intro, ren);
             break;
     }
 

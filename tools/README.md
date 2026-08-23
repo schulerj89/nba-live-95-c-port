@@ -15,6 +15,7 @@
 | `mesen_setup_main_capture.lua` | Main Game Setup Mode/Style/Level/Quarter value cycles, exact BG3 VRAM states, `$7E:16FB` working values, and executing CPU paths |
 | `mesen_team_select_capture.lua` | Start-only Exhibition Setup-to-Team-Select transition, settled PPU memories, WRAM writes, and execution ranges; asserts `$82:809A` scene entry, supports `NBA95_TEAM_NAV=1` for isolated navigation, and `NBA95_TEAM_ALIGNMENT=1` for GOLDEN STATE/PHILADELPHIA alignment and home-wallpaper evidence |
 | `mesen_gameplay_player_capture.lua` | Drives through Player Setup into gameplay, records Player Setup raw PPU state/routine hits, then records executed player-loader paths and roster/appearance/palette reads used to prove the F9 Player Lab ROM extraction |
+| `mesen_player_intro_portraits.lua` | Drives the verified Exhibition path, state-walks Team Select to a requested team, verifies it again at `$87:BE92`, and saves five raw visitor or home portrait PPU states (`NBA95_INTRO_TEAM=0..28`, `NBA95_INTRO_SIDE=away|home`) |
 
 `extract_assets.py` validates those captures and the ROM, then writes the asset
 pack. Its minimal 65816 decompressor lives in `snes65816_decompressor.py`.
@@ -34,6 +35,7 @@ reports success.
 - `test_core_safety.py`: pack/ROM validation, host-rate timing, and SPC vectors
 - `test_team_select.py`: Start-only Exhibition handoff, seven-position ROM selector, alphabetical/ranked wrap, 27 league teams plus East/West ROM teams and dash ranks, and Team Select frame hashes
 - `test_player_setup.py`: Team Select confirmation, measured 200-frame handoff, ROM PPU assets, selected-team persistence, controller-side movement, and settled frame hashes
+- `test_player_intro.py`: 290-key visitor/home portrait catalog, Player Setup handoff, card cadence, and non-default Golden State/San Antonio frame hashes
 
 ## Investigation utilities
 

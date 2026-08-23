@@ -111,6 +111,7 @@ int main(int argc, char *argv[]) {
     int team_action_gap = 1;
     bool team_confirm = false;
     bool player_setup_left = false;
+    bool player_setup_confirm = false;
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--rom") == 0 && i + 1 < argc) {
@@ -177,6 +178,8 @@ int main(int argc, char *argv[]) {
             team_confirm = true;
         } else if (strcmp(argv[i], "--player-setup-left") == 0) {
             player_setup_left = true;
+        } else if (strcmp(argv[i], "--player-setup-confirm") == 0) {
+            player_setup_confirm = true;
         } else if (strcmp(argv[i], "--team-side-toggle") == 0) {
             team_side_toggle = true;
         } else if (strcmp(argv[i], "--team-category") == 0 && i + 1 < argc) {
@@ -272,6 +275,7 @@ int main(int argc, char *argv[]) {
             printf("  --player-setup-only   Start at the Team Select -> Player Setup handoff\n");
             printf("  --team-confirm        Press Start after Team Select settles\n");
             printf("  --player-setup-left   Assign Player 1 to the visitor/left team\n");
+            printf("  --player-setup-confirm Press Start after Player Setup settles\n");
             printf("  --team-side-toggle    Toggle the active Team Select side once\n");
             printf("  --team-category N     Move from the name row to ranking category 0..4\n");
             printf("  --team-up N           Apply N raw Team Select Up presses\n");
@@ -618,10 +622,14 @@ int main(int argc, char *argv[]) {
             }
             if (game.state == NBA_STATE_PLAYER_SETUP &&
                 game.scene.player_setup.transition_frame >=
-                    NBA_PLAYER_SETUP_TRANSITION_FRAMES &&
-                player_setup_left && !player_setup_left_done) {
-                game.input.pressed = NBA_BTN_LEFT;
-                player_setup_left_done = true;
+                    NBA_PLAYER_SETUP_TRANSITION_FRAMES) {
+                if (player_setup_left && !player_setup_left_done) {
+                    game.input.pressed = NBA_BTN_LEFT;
+                    player_setup_left_done = true;
+                } else if (player_setup_confirm &&
+                           !game.scene.player_setup.confirm_requested) {
+                    game.input.pressed = NBA_BTN_START;
+                }
             }
             NbaSetupTransitionRoute route_before =
                 game.state == NBA_STATE_GAME_SETUP ?

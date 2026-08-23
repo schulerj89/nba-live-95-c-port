@@ -44,6 +44,11 @@ static bool asset_metadata_valid(uint32_t id, uint32_t size, uint32_t width,
         return size == 0x200u && width == 0u && height == 0u && flags == 0u;
     if (id == NBA_ASSET_PLAYER_SETUP_OAM)
         return size == 0x220u && width == 0u && height == 0u && flags == 0u;
+    if (id == NBA_ASSET_PLAYER_INTRO_COURT)
+        return size == 256u * 224u * sizeof(uint32_t) &&
+               width == 256u && height == 224u && flags == 0u;
+    if (id == NBA_ASSET_PLAYER_INTRO_PORTRAITS)
+        return size == 6015784u && width == 72u && height == 72u && flags == 290u;
     if (id == NBA_ASSET_EA_A_FIXED_SEQUENCE) {
         uint32_t x = flags >> 16;
         uint32_t y = flags & 0xFFFFu;

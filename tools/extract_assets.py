@@ -82,6 +82,138 @@ def decode_team_logo(vram, cgram, oam):
     return b"".join(struct.pack("<I", pixel) for pixel in pixels)
 
 
+def decode_bg_layer(vram, cgram, map_base, chr_base, bits_per_pixel,
+                    wide, tall, hscroll, vscroll):
+    """Render one raw SNES background layer to ARGB pixels.
+
+    The player-introduction court is BG2 in Mode 1.  This deliberately consumes
+    VRAM/CGRAM, not a Mesen screenshot; the PNG capture remains visual evidence
+    only.  The parameters are the live PPU state recorded during the lineup.
+    """
+    pixels = []
+    map_width, map_height = (512 if wide else 256), (512 if tall else 256)
+    bytes_per_tile = bits_per_pixel * 8
+    for y in range(224):
+        for x in range(256):
+            px = (x + hscroll) % map_width
+            py = (y + vscroll + 1) % map_height
+            tile_x, tile_y = px >> 3, py >> 3
+            quadrant = (1 if wide and tile_x >= 32 else 0)
+            if tall and tile_y >= 32:
+                quadrant += 2 if wide else 1
+            entry_offset = (map_base + quadrant * 0x800 +
+                            ((tile_y & 31) * 32 + (tile_x & 31)) * 2) & 0xffff
+            entry = vram[entry_offset] | (vram[(entry_offset + 1) & 0xffff] << 8)
+            sx = 7 - (px & 7) if entry & 0x4000 else px & 7
+            sy = 7 - (py & 7) if entry & 0x8000 else py & 7
+            tile_offset = (chr_base + (entry & 0x3ff) * bytes_per_tile) & 0xffff
+            color = 0
+            for plane in range(0, bits_per_pixel, 2):
+                low = vram[(tile_offset + sy * 2 + plane * 8) & 0xffff]
+                high = vram[(tile_offset + sy * 2 + 1 + plane * 8) & 0xffff]
+                bit = 7 - sx
+                color |= ((low >> bit) & 1) << plane
+                color |= ((high >> bit) & 1) << (plane + 1)
+            palette = (entry >> 10) & 7
+            palette_index = palette * (1 << bits_per_pixel) + color
+            word = cgram[palette_index * 2] | (cgram[palette_index * 2 + 1] << 8)
+            pixels.append(bgr555_to_argb(word))
+    return b"".join(struct.pack("<I", pixel) for pixel in pixels)
+
+
+def decode_lineup_portrait(vram, cgram, oam):
+    """Decode the ROM-built lineup portrait OBJ group from raw PPU memories."""
+    origin_x, origin_y, width, height = 8, 144, 72, 72
+    pixels = [0] * (width * height)
+    for index in range(127, -1, -1):
+        high = (oam[512 + index // 4] >> ((index & 3) * 2)) & 3
+        x = oam[index * 4] | ((high & 1) << 8)
+        if x >= 256:
+            x -= 512
+        y, tile, attr = oam[index * 4 + 1:index * 4 + 4]
+        size = 16 if high & 2 else 8
+        palette = (attr >> 1) & 7
+        # $87:BE92's portrait occupies the palette-zero object group at the
+        # lower left.  Exclude the yellow rule/text objects beginning at x=80.
+        if palette != 0 or x >= 80 or y < 140:
+            continue
+        tile += 256 if attr & 1 else 0
+        for py in range(size):
+            sy = size - 1 - py if attr & 0x80 else py
+            for px in range(size):
+                sx = size - 1 - px if attr & 0x40 else px
+                subtile = tile + (sx >> 3) + (sy >> 3) * 16
+                offset = 0xc000 + subtile * 32
+                if offset + 32 > len(vram):
+                    continue
+                color = int(decode_4bpp_tile(vram[offset:offset + 32])[sy & 7, sx & 7])
+                dx, dy = x + px - origin_x, y + py - origin_y
+                if color and 0 <= dx < width and 0 <= dy < height:
+                    palette_offset = (128 + palette * 16 + color) * 2
+                    word = cgram[palette_offset] | (cgram[palette_offset + 1] << 8)
+                    pixels[dy * width + dx] = bgr555_to_argb(word)
+    return b"".join(struct.pack("<I", pixel) for pixel in pixels)
+
+
+def build_player_introduction_assets(court_capture_dir, away_portrait_dir,
+                                     home_portrait_dir):
+    """Build court/portrait assets from raw, ROM-produced PPU state.
+
+    The portrait harness verifies the selected visitor or home team at
+    $87:BE92 before it saves five raw PPU states. Team/roster/side keys prevent
+    the C scene from ever displaying a portrait under the wrong player name or
+    uniform variant.
+    """
+    def payload(directory, frame, suffix, expected):
+        path = os.path.join(directory, f"frame_{frame:04d}_{suffix}.bin")
+        if not os.path.exists(path):
+            raise RuntimeError(f"Missing Player Introduction PPU asset: {path}")
+        data = open(path, "rb").read()
+        if len(data) != expected:
+            raise RuntimeError(f"Invalid Player Introduction PPU asset {path}: "
+                               f"expected {expected} bytes, got {len(data)}")
+        return data
+
+    court_vram = payload(court_capture_dir, 2550, "vram", 0x10000)
+    court_cgram = payload(court_capture_dir, 2550, "cgram", 0x200)
+    # Mesen reports tilemapAddress in SNES words; the raw VRAM dump is bytes.
+    court = decode_bg_layer(court_vram, court_cgram, 0x1000, 0x4000,
+                            4, True, False, 6, 6)
+    cards = [(side, team, slot) for side in range(2)
+             for team in range(29) for slot in range(5)]
+    portrait_pack = bytearray(struct.pack("<8sIIII", b"NBINTRO1", 2,
+                                           len(cards), 72, 72))
+    portrait_hashes = [set(), set()]
+    for side, team, slot in cards:
+        capture_dir = away_portrait_dir if side == 0 else home_portrait_dir
+        directory = os.path.join(capture_dir, f"team_{team:02d}")
+        def portrait_payload(suffix, expected):
+            path = os.path.join(directory, f"slot_{slot}_{suffix}.bin")
+            if not os.path.exists(path):
+                raise RuntimeError(f"Missing verified lineup portrait asset: {path}. "
+                                   "Run mesen_player_intro_portraits.lua first.")
+            data = open(path, "rb").read()
+            if len(data) != expected:
+                raise RuntimeError(f"Invalid lineup portrait PPU asset {path}: "
+                                   f"expected {expected} bytes, got {len(data)}")
+            return data
+        portrait = decode_lineup_portrait(
+            portrait_payload("vram", 0x10000),
+            portrait_payload("cgram", 0x200),
+            portrait_payload("oam", 0x220))
+        if not any(portrait[index + 3] for index in range(0, len(portrait), 4)):
+            raise RuntimeError(f"Lineup portrait team={team} slot={slot} is empty")
+        portrait_hashes[side].add(hashlib.sha256(portrait).digest())
+        portrait_pack.extend(struct.pack("<BBHI", team, slot, side, len(portrait)))
+        portrait_pack.extend(portrait)
+    if any(len(side_hashes) != 145 for side_hashes in portrait_hashes):
+        raise RuntimeError("Verified lineup portrait side contains duplicate "
+                           "decoded images; refusing a mislabeled asset pack")
+    print("[ASSET EXTRACTOR] Packed 290 ROM-built lineup portraits "
+          "(away/home x 29 teams x 5 starters)")
+    return court, bytes(portrait_pack)
+
+
 def lorom_offset(address):
     """Convert a verified 24-bit LoROM address to its headerless file offset."""
     return ((address >> 16) & 0x7f) * 0x8000 + (address & 0x7fff)
@@ -1149,6 +1281,20 @@ def create_asset_pack(rom_path, output_path):
                                f"expected {size} bytes, got {len(payload)}")
         player_setup_payloads.append(payload)
 
+    player_intro_capture_dir = os.environ.get("NBA95_PLAYER_INTRO_CAPTURE_DIR") or os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "..", ".analysis",
+        "player-intro-full-20260823")
+    player_intro_portrait_dir = os.environ.get("NBA95_PLAYER_INTRO_PORTRAIT_DIR") or os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "..", ".analysis",
+        "player_intro_portraits_verified_20260823")
+    player_intro_away_portrait_dir = os.environ.get(
+        "NBA95_PLAYER_INTRO_AWAY_PORTRAIT_DIR") or os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "..", ".analysis",
+        "player_intro_portraits_away_verified_20260823")
+    player_intro_court, player_intro_portraits = build_player_introduction_assets(
+        player_intro_capture_dir, player_intro_away_portrait_dir,
+        player_intro_portrait_dir)
+
     assets = [
         (1, 128, 11, 0, nintendo_license_bytes),               # ASSET_NINTENDO_LICENSE
         (2, 256, num_legal_rows, start_y_legal, nba_legal_bytes), # ASSET_NBA_LEGAL_NOTICE (flags = start_y)
@@ -1204,6 +1350,8 @@ def create_asset_pack(rom_path, output_path):
         (257, 0, 0, 0, player_setup_payloads[0]),
         (258, 0, 0, 0, player_setup_payloads[1]),
         (259, 0, 0, 0, player_setup_payloads[2]),
+        (260, 256, 224, 0, player_intro_court),
+        (261, 72, 72, 290, player_intro_portraits),
     ])
     assets.extend([
         (124, 0, 0, 0, rules_vram_bytes),
