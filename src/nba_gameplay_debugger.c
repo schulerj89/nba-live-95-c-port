@@ -142,12 +142,22 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
     if (!stream || !telemetry) return;
     fprintf(stream,
             "{\"frame\":%u,\"scene_frame\":%u,\"simulation_tick\":%u,"
-            "\"phase\":%u,"
-            "\"input\":{\"pressed\":%u,\"held\":%u,\"released\":%u},"
-            "\"controllers\":{\"active_raw\":%d,\"selected_raw\":%d,"
-            "\"held_raw\":[",
+            "\"phase\":%u,\"scheduler\":{\"due_raw\":%u,"
+            "\"actor_pass_dt_raw\":%u,\"actor_pass_mask_raw\":%u,"
+            "\"actor_pass_order_raw\":[",
             telemetry->global_frame, telemetry->scene_frame,
             telemetry->simulation_tick, telemetry->phase,
+            telemetry->scheduler_due_raw, telemetry->actor_pass_dt_raw,
+            telemetry->actor_pass_mask_raw);
+    unsigned scheduled_actors = telemetry->scheduler_due_raw ?
+        NBA_GAMEPLAY_ACTOR_COUNT : 0u;
+    for (unsigned actor = 0; actor < scheduled_actors; ++actor)
+        fprintf(stream, "%s%u", actor ? "," : "",
+                telemetry->actor_pass_order_raw[actor]);
+    fprintf(stream,
+            "]},\"input\":{\"pressed\":%u,\"held\":%u,\"released\":%u},"
+            "\"controllers\":{\"active_raw\":%d,\"selected_raw\":%d,"
+            "\"held_raw\":[",
             telemetry->input_pressed & 0xFFFu, telemetry->input_held & 0xFFFu,
             telemetry->input_released & 0xFFFu,
             telemetry->active_controller_raw, telemetry->selected_controller_raw);
@@ -225,7 +235,9 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
                 "\"lower_resource\":%u,\"head_resource\":%u,"
                 "\"motion_38\":%u,\"motion_3a\":%u,\"motion_3c\":%u,"
                 "\"direction_4e\":%u,\"direction_50\":%u,"
-                "\"direction_52\":%u,\"control_mode\":%u,"
+                "\"direction_52\":%u,\"target_x_56\":%d,"
+                "\"target_y_58\":%d,\"control_mode\":%u,"
+                "\"mode_saved_62\":%u,"
                 "\"control_mode_saved\":%u,\"side_group\":%u,"
                 "\"assignment_base\":%u,\"assignment_current\":%u,"
                 "\"assignment_alternate\":%u,\"assignment_distance\":%u,"
@@ -244,7 +256,8 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
                 a->upper_resource_raw, a->lower_resource_raw,
                 a->head_resource_raw, a->motion_38_raw, a->motion_3a_raw,
                 a->motion_3c_raw, a->direction_4e_raw, a->direction_50_raw,
-                a->direction_52_raw, a->control_mode_raw,
+                a->direction_52_raw, a->target_x_56_raw, a->target_y_58_raw,
+                a->control_mode_raw, a->mode_saved_62_raw,
                 a->control_mode_saved_raw, a->side_group_raw,
                 a->assignment_base_raw, a->assignment_current_raw,
                 a->assignment_alternate_raw, a->assignment_distance_raw,

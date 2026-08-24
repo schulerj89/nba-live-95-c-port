@@ -106,6 +106,50 @@ def main():
                for row in rows[219:]):
             raise AssertionError("$80:CEE7 RNG state was not retained")
 
+        # `$87:8EFB-$8F92`: one global, possession-independent 30-Hz pass,
+        # fixed `$0938=2`, strict actor records 0 through 9.
+        possession_changes = 0
+        previous_team = rows[0]["possession"]["team"]
+        for index, row in enumerate(rows):
+            scheduler = row["scheduler"]
+            due = (row["simulation_tick"] & 1) == 0
+            expected_order = list(range(10)) if due else []
+            if scheduler != {
+                    "due_raw": int(due),
+                    "actor_pass_dt_raw": 2 if due else 0,
+                    "actor_pass_mask_raw": 0x3FF if due else 0,
+                    "actor_pass_order_raw": expected_order}:
+                raise AssertionError(f"$87:8EFB scheduler mismatch: {row}")
+            team = row["possession"]["team"]
+            if team != previous_team:
+                possession_changes += 1
+                if index and row["scheduler"]["due_raw"] == \
+                        rows[index - 1]["scheduler"]["due_raw"]:
+                    raise AssertionError("possession change rephased global actor pass")
+                previous_team = team
+        if possession_changes < 4:
+            raise AssertionError("scheduler was not tested across possessions")
+
+        due_rows = [row for row in rows if row["scheduler"]["due_raw"]]
+        recovery_transitions = 0
+        for previous, current in zip(due_rows, due_rows[1:]):
+            for before, after in zip(previous["actors"], current["actors"]):
+                old_mode = before["raw"]["control_mode"]
+                new_mode = after["raw"]["control_mode"]
+                old_timer = before["raw"]["reaction_threshold"]
+                new_timer = after["raw"]["reaction_threshold"]
+                if old_mode == new_mode and old_mode in (7, 16) and \
+                        new_timer != old_timer - 2:
+                    raise AssertionError(
+                        f"mode {old_mode} +$60 cadence changed: {old_timer}->{new_timer}")
+                if old_mode == 16 and new_mode == 7:
+                    if old_timer != 0 or new_timer != 0xB4:
+                        raise AssertionError(
+                            f"$86:B10A recovery transition changed: {old_timer}->{new_timer}")
+                    recovery_transitions += 1
+        if recovery_transitions < 2:
+            raise AssertionError("post-shot mode 16->7 lifecycle was not sustained")
+
         # `$85:A079-$A345`: `$094C` is added to `$4711/$4791`, then
         # `$0936=$82` holds the dead ball until the inbound reset.
         score_changes = []
@@ -246,7 +290,8 @@ def main():
 
     source = Path(__file__).parents[1]
     implementation = "\n".join((source / relative).read_text() for relative in (
-        "src/nba_tipoff.c", "src/nba_gameplay_ball.c", "src/nba_player_lab.c"))
+        "src/nba_tipoff.c", "src/nba_gameplay_ai.c",
+        "src/nba_gameplay_ball.c", "src/nba_player_lab.c"))
     for marker in ("$85:963D-$985F", "$85:BC43-$BC81", "$85:B95C",
                    "$87:B832", "$87:B649", "$87:B66A", "$85:9192",
                    "$87:8F01-$8F8D", "nba_gameplay_camera_update",
@@ -254,6 +299,7 @@ def main():
                    "ball_attach_to_actor", "ball_launch",
                    "$85:A079-$A345", "$4711/$4791", "score_made_basket",
                    "$86:A110", "$86:A17D", "$86:BAA2/$86:BAEE",
+                   "$86:E923-$E96E", "$86:B0F7-$B153",
                    "nba_player_gameplay_shot_ratings", "cpu_commit_rebound"):
         if marker not in implementation:
             raise AssertionError(f"CPU gameplay implementation lost {marker}")

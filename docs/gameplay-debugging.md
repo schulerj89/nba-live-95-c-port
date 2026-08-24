@@ -65,6 +65,17 @@ python tools/compare_gameplay_traces.py `
   --port-trace gameplay-port.jsonl --report comparison.json
 ```
 
+For scheduler/physics comparisons, use `--logical-passes`. An SNES NMI can
+interrupt `$87:8EFB-$8F92` after any actor, so one logical 0..9 pass may appear
+as prefix/suffix slices in adjacent ROM JSON rows. The option coalesces those
+slices and compares the completed state with one atomic C simulation tick:
+
+```powershell
+python tools/compare_gameplay_traces.py `
+  --rom-trace .analysis/<capture>/gameplay_rom.jsonl `
+  --port-trace gameplay-port.jsonl --logical-passes --mode all
+```
+
 Core mode locks phase plus all ten actors' identity, visibility, world
 coordinates and visible sprite origins/directions/animation. `--mode all`
 reports every common non-unknown field, making unfinished controller, camera,

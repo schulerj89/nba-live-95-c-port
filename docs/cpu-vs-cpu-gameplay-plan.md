@@ -206,3 +206,23 @@ and multi-branch rim shell remain disabled rather than receiving guessed raw
 inputs. A 50,000-frame regression locks repeated makes, deterministic misses,
 collision-owned rebounds, both-team scoring, and both early/timeout inbound
 completion paths.
+
+Increment 4C records actor +$56/+58 targets, +$62 saved behavior mode,
+requested facing +$50, and the `$85:963D` actor order. The fresh CPU-only ROM
+capture in `.analysis/cpu-scheduler-oracle-20260824` contains 863 completed
+logical passes: 465 fit in one rendered frame and 398 cross an NMI boundary.
+Coalescing adjacent slices proves every pass is exactly actors 0..9 with no
+skip, duplicate, or reorder. This is hardware preemption, not cooperative AI
+time slicing: `$80:8156-$859B` saves/restores the interrupted CPU context and
+RTI resumes the actor loop. C therefore keeps the ten-actor pass atomic at
+30 Hz, with fixed delta 2 from `$87:9B0D-$9B2F`; the comparator's
+`--logical-passes` option performs the required ROM coalescing.
+
+The exact `$86:E923-$E96E` paired-player target primitive is now isolated in
+`nba_gameplay_target_from_pair`: target position equals paired position plus
+signed velocity arithmetic-shifted right by three plus the caller's table
+offset. Mode 16 no longer uses a fabricated 12-render-frame switch. Its
+`+$60` counts 24..0 by two at `$86:B0F7-$B108`, then `$86:B10A-$B122` installs
+mode 7 and 180; mode 7 uses the same logical-pass countdown before returning
+to the planner boundary. Mode 9 has the proven saved-mode restore at +$62,
+while its unobserved target-selection branches remain explicit future work.

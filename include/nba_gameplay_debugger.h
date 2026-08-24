@@ -43,7 +43,10 @@ typedef struct {
     uint16_t direction_4e_raw;
     uint16_t direction_50_raw;
     uint16_t direction_52_raw;
+    int16_t target_x_56_raw;
+    int16_t target_y_58_raw;
     uint16_t control_mode_raw;
+    uint16_t mode_saved_62_raw;
     uint16_t control_mode_saved_raw;
     uint16_t side_group_raw;
     uint16_t assignment_base_raw;
@@ -80,6 +83,10 @@ typedef struct {
     uint32_t input_held;
     uint32_t input_released;
     uint32_t simulation_tick;
+    uint8_t scheduler_due_raw;
+    uint8_t actor_pass_dt_raw;
+    uint16_t actor_pass_mask_raw;
+    uint8_t actor_pass_order_raw[NBA_GAMEPLAY_ACTOR_COUNT];
     uint16_t pad_held_raw[NBA_GAMEPLAY_PAD_COUNT];
     uint16_t controller_assignment_raw[NBA_GAMEPLAY_PAD_COUNT];
     uint16_t controller_repeat_raw[NBA_GAMEPLAY_PAD_COUNT];

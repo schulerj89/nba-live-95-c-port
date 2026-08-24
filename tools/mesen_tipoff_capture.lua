@@ -41,6 +41,7 @@ local draw_log = assert(io.open(out .. "/draw_origins.txt", "wb"))
 local gameplay_jsonl = assert(io.open(out .. "/gameplay_rom.jsonl", "wb"))
 local current_draw_actor = 0xffff
 local draw_screen, previous_pad, routine_hits_frame = {}, {}, {}
+local actor_pass_mask, actor_pass_order = 0, {}
 local previous_actor_world, previous_ball_world = {}, nil
 for pad = 0, 4 do previous_pad[pad] = 0 end
 for _, segment in ipairs(segments) do exec_seen[segment.name] = {} end
@@ -147,6 +148,22 @@ local function signed_word(address)
     return value >= 0x8000 and value - 0x10000 or value
 end
 
+-- `$87:8EFB-$8F92` visits all ten records in order per logical pass, but NMI
+-- may split that pass across rendered frames before RTI resumes it. Capture
+-- each visible slice from live DP `$96` at the `$85:963D` physics entry;
+-- compare_gameplay_traces.py --logical-passes coalesces 0..9 before parity.
+emu.addMemoryCallback(function()
+    local state = emu.getState()
+    local direct = state["cpu.d"] or 0
+    local pointer = word((direct + 0x96) & 0xffff)
+    local slot = pointer >= 0x34eb and math.floor((pointer - 0x34eb) / 0x100) or -1
+    if slot >= 0 and slot < 10 then
+        actor_pass_mask = actor_pass_mask | (1 << slot)
+        actor_pass_order[#actor_pass_order + 1] = slot
+    end
+end, emu.callbackType.exec, 0x85963d, 0x85963d,
+    emu.cpuType.snes, emu.memType.snesMemory)
+
 local function trace_draw_frame()
     return (gameplay_frame >= 89 and gameplay_frame <= 92) or
            (gameplay_frame >= 218 and gameplay_frame <= 222)
@@ -226,12 +243,17 @@ local function dump_gameplay_jsonl(frame)
     gameplay_jsonl:write(string.format(
         "{\"source\":\"rom\",\"frame\":%d,\"scene_frame\":%d," ..
         "\"simulation_tick\":%d,\"phase\":%d," ..
+        "\"scheduler\":{\"due_raw\":%d,\"actor_pass_dt_raw\":%u," ..
+        "\"actor_pass_mask_raw\":%u,\"actor_pass_order_raw\":[%s]}," ..
         "\"input\":{\"pressed\":%u,\"held\":%u,\"released\":%u}," ..
         "\"controllers\":{\"active_raw\":%d,\"selected_raw\":%d," ..
         "\"held_raw\":[%u,%u,%u,%u,%u]," ..
         "\"assignment_raw\":[%u,%u,%u,%u,%u]," ..
         "\"repeat_raw\":[%u,%u,%u,%u,%u]},",
-        frame, frame, frame, phase, pressed[0], held[0], released[0],
+        frame, frame, frame, phase, actor_pass_mask ~= 0 and 1 or 0,
+        actor_pass_mask ~= 0 and word(0x0938) or 0, actor_pass_mask,
+        table.concat(actor_pass_order, ","),
+        pressed[0], held[0], released[0],
         signed_word(0x1615), signed_word(0x095e),
         held[0], held[1], held[2], held[3], held[4],
         word(0x08d4), word(0x08d6), word(0x08d8), word(0x08da), word(0x08dc),
@@ -315,7 +337,9 @@ local function dump_gameplay_jsonl(frame)
             "\"lower_resource\":%u,\"head_resource\":%u," ..
             "\"motion_38\":%u,\"motion_3a\":%u,\"motion_3c\":%u," ..
             "\"direction_4e\":%u,\"direction_50\":%u," ..
-            "\"direction_52\":%u,\"control_mode\":%u," ..
+            "\"direction_52\":%u,\"target_x_56\":%d," ..
+            "\"target_y_58\":%d,\"control_mode\":%u," ..
+            "\"mode_saved_62\":%u," ..
             "\"control_mode_saved\":%u,\"side_group\":%u," ..
             "\"assignment_base\":%u,\"assignment_current\":%u," ..
             "\"assignment_alternate\":%u,\"assignment_distance\":%u," ..
@@ -336,7 +360,8 @@ local function dump_gameplay_jsonl(frame)
             word(base + 0x18), word(base + 0x28), word(base + 0x2a),
             word(base + 0x2c), word(base + 0x2e), word(base + 0x38),
             word(base + 0x3a), word(base + 0x3c), word(base + 0x4e),
-            word(base + 0x50), word(base + 0x52), word(base + 0x5e),
+            word(base + 0x50), word(base + 0x52), signed_word(base + 0x56),
+            signed_word(base + 0x58), word(base + 0x5e), word(base + 0x62),
             word(base + 0x84), word(base + 0x6e), word(base + 0x76),
             word(base + 0x74), word(base + 0x78), word(base + 0x8e),
             word(base + 0x86), word(base + 0x8a), word(base + 0x60),
@@ -348,6 +373,7 @@ local function dump_gameplay_jsonl(frame)
     gameplay_jsonl:flush()
     previous_ball_world = { x=ball_x, y=ball_y, z=ball_z }
     routine_hits_frame = {}
+    actor_pass_mask, actor_pass_order = 0, {}
 end
 
 for actor = 0, 10 do

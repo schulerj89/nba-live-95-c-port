@@ -1,6 +1,11 @@
 #include "nba_gameplay_ai.h"
 #include <stdlib.h>
 
+static int16_t arithmetic_shift_right_3(int16_t value) {
+    if (value >= 0) return (int16_t)(value >> 3);
+    return (int16_t)(-(((-(int)value) + 7) >> 3));
+}
+
 void nba_gameplay_rng_seed(NbaGameplayRng *rng, uint16_t seed) {
     rng->state = seed;
 }
@@ -53,4 +58,28 @@ uint32_t nba_gameplay_behavior_routine(uint8_t mode) {
         0x86A6B3u, 0x86B0F7u, 0x86B979u
     };
     return mode < 18u ? targets[mode] : 0u;
+}
+
+/* `$86:E923-$E96E`: predict the paired actor by one eighth of signed
+ * velocity, then add the caller-selected formation-table displacement.
+ * The 65816 stores the wrapped 16-bit results in actor +$56/+$58. */
+void nba_gameplay_target_from_pair(int16_t paired_x, int16_t paired_y,
+                                   int16_t paired_velocity_x,
+                                   int16_t paired_velocity_y,
+                                   int16_t offset_x, int16_t offset_y,
+                                   int16_t *target_x, int16_t *target_y) {
+    if (target_x)
+        *target_x = (int16_t)(paired_x +
+            arithmetic_shift_right_3(paired_velocity_x) + offset_x);
+    if (target_y)
+        *target_y = (int16_t)(paired_y +
+            arithmetic_shift_right_3(paired_velocity_y) + offset_y);
+}
+
+bool nba_gameplay_ai_self_test(void) {
+    int16_t x = 0, y = 0;
+    nba_gameplay_target_from_pair(100, -50, 31, -31, -20, 12, &x, &y);
+    if (x != 83 || y != -42) return false;
+    nba_gameplay_target_from_pair(32760, -32760, 64, -64, 16, -16, &x, &y);
+    return x == -32752 && y == 32752;
 }

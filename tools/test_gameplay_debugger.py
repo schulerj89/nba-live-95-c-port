@@ -55,6 +55,7 @@ def main():
         if any(actor["control"] != 0 for actor in sample["actors"]):
             raise AssertionError("tip-off introduced a human-controlled actor")
         required = {"base", "action", "flags", "control_mode", "side_group",
+                    "target_x_56", "target_y_58", "mode_saved_62",
                     "assignment_current", "reaction_threshold", "upper_restart",
                     "lower_restart", "behavior_flags"}
         if not required.issubset(sample["actors"][0]["raw"]):
@@ -62,6 +63,10 @@ def main():
         if len(sample["controllers"]["held_raw"]) != 5 or \
                 "raw_087a" not in sample["camera"] or "flags_raw" not in sample["ball"]:
             raise AssertionError("controller/camera/ball telemetry schema is incomplete")
+        scheduler = sample["scheduler"]
+        if set(scheduler) != {"due_raw", "actor_pass_dt_raw",
+                             "actor_pass_mask_raw", "actor_pass_order_raw"}:
+            raise AssertionError(f"scheduler telemetry schema is incomplete: {scheduler}")
         digest = hashlib.sha256(Image.open(frame).convert("RGB").tobytes()).hexdigest()
         if digest != EXPECTED_LAB_RGB:
             raise AssertionError(f"Gameplay Lab pixels changed: {digest}")
@@ -94,6 +99,30 @@ def main():
         if failed.returncode == 0 or "actors.0.x" not in failed.stdout:
             raise AssertionError("trace comparator did not reject an actor-position mismatch")
 
+        # The ROM's strict 0..9 pass can cross an NMI/render boundary. Verify
+        # the comparator coalesces prefix/suffix slices before C comparison.
+        due_rows = [row for row in rows
+                    if row["scheduler"]["actor_pass_order_raw"] == list(range(10))][:2]
+        split_rows = []
+        for index, row in enumerate(due_rows):
+            for half, order in enumerate((list(range(5)), list(range(5, 10)))):
+                copied = json.loads(json.dumps(row))
+                copied["source"] = "rom"
+                copied["scene_frame"] = index * 2 + half
+                copied["frame"] = copied["scene_frame"]
+                copied["scheduler"]["actor_pass_order_raw"] = order
+                copied["scheduler"]["actor_pass_mask_raw"] = \
+                    sum(1 << actor for actor in order)
+                split_rows.append(copied)
+        split_proxy = root / "rom_split_proxy.jsonl"
+        split_proxy.write_text("".join(json.dumps(row) + "\n" for row in split_rows))
+        logical = run([sys.executable, str(comparator),
+                       "--rom-trace", str(split_proxy),
+                       "--port-trace", str(trace), "--logical-passes"],
+                      "logical actor-pass comparison")
+        if "PASS" not in logical.stdout or "frames=2" not in logical.stdout:
+            raise AssertionError("NMI-split actor pass did not coalesce")
+
     source = Path(__file__).parents[1]
     win32 = (source / "src" / "win32_game_main.c").read_text()
     debugger = (source / "src" / "nba_gameplay_debugger.c").read_text()
@@ -105,7 +134,7 @@ def main():
         if marker not in debugger:
             raise AssertionError(f"Gameplay Lab implementation lost {marker}")
     mesen = (source / "tools" / "mesen_tipoff_capture.lua").read_text()
-    for marker in ("gameplay_rom.jsonl", "0x80cb8f", "0x879244",
+    for marker in ("gameplay_rom.jsonl", "0x80cb8f", "0x879244", "0x85963d",
                    "assignment_current", "raw_087a"):
         if marker not in mesen:
             raise AssertionError(f"Mesen gameplay oracle lost {marker}")

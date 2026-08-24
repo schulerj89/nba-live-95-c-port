@@ -61,6 +61,8 @@ typedef struct {
     uint16_t upper_animation_tick;
     uint16_t lower_animation_tick;
     uint8_t control_mode;
+    uint8_t saved_control_mode;
+    uint8_t requested_direction;
     uint8_t assignment_actor;
     uint8_t assignment_direction;
     uint16_t assignment_base_raw;
