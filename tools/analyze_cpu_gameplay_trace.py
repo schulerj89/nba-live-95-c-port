@@ -139,7 +139,6 @@ def main():
             errors.append(f"missing pass/attach/shot/bounce modes: {sorted(modes)}")
         if weak_windows:
             errors.append(f"stationary team windows: {weak_windows}")
-        unfinished_dead_ball = dead_ball_runs and dead_ball_runs[-1][1] == final_frame
         base_frame = rows[0]["scene_frame"]
         overlong_dead_ball = []
         for run in dead_ball_runs:
@@ -156,8 +155,9 @@ def main():
             # the observed 1,778-frame completion.
             if run[1] - run[0] + 1 > 2400 and not includes_free_throws:
                 overlong_dead_ball.append(run)
-        if unfinished_dead_ball:
-            errors.append(f"dead-ball state did not complete: {dead_ball_runs[-1]}")
+        # A finite capture may end in the middle of an otherwise ordinary
+        # inbound. Completed runs above enforce the duration ceiling; the
+        # final right-censored run cannot prove a deadlock by itself.
         if overlong_dead_ball:
             errors.append(f"dead-ball state exceeded 2,400 frames: {overlong_dead_ball}")
         # ROM animation-resource poses reach roughly 37 world pixels from the

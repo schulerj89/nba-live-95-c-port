@@ -1,5 +1,37 @@
 # CPU-versus-CPU gameplay implementation plan
 
+## Recomp ball-physics checkpoint (2026-08-24)
+
+The portable `$85:9A24-$A7B5` ownerless-ball driver now follows the verified
+recomp control flow instead of advancing host PASS/SHOT/BOUNCE labels through
+different approximations:
+
+- `$85:9A2C-$9A34` advances `$094A` by the scheduler quantum once, then
+  `$85:9A6A/$A7A1` executes two complete physics substeps per 30-Hz pass.
+- Every detached ball shares rim classification, `VZ -= $18`, 24.8 position
+  integration, court clamp/`$86:A613`, ground restitution, planar damping and
+  settle handling. Passes no longer use the retired post-integration `-48`
+  shortcut.
+- `$85:9A78-$9AC3`, `$85:9C42-$9C5B`, `$85:A009-$A036`, and
+  `$85:A7A8-$A7B5` preserve the preliminary latch clears, scripted `$0972`
+  trajectory, low-rim live-state clear and final `$0962` clear.
+- `$85:9D53` consumes represented `$1866` for the alternate 68-unit make
+  threshold. `$85:9B8C-$9B97` raises event bit `$13E7.3` only when it first
+  arms `$096E`.
+- `$85:A079-$A345` scores inline in the detecting substep, before a possible
+  second substep. It preserves made-ball fractional position bytes, applies
+  the shooting-foul made latch, exact nonzero effect-selector RNG loop,
+  `$094C` clear, lead-change counters, inbound seed and event/RNG cadence.
+- `$86:CCCD-$CCF3` contact eligibility reads actor control mode `+$5E`, not
+  animation resource IDs. `$0946` is authoritative for pass receivers, and
+  loose/inbound contacts run only on the native 30-Hz collision sweep.
+
+Deterministic C self-tests cover a make detected only on substep two, a floor
+impact detected only on substep two, low-rim latch clearing, scripted `$0972`
+motion, final `$0962` clearing, outer-event gating, control-mode exclusions,
+raw receiver authority and collision cadence. The 63,800-frame CPU trace and
+visual goldens at frames 600/1300 were regenerated after visual inspection.
+
 ## Goal and fidelity rule
 
 The first playable gameplay milestone is a complete CPU-versus-CPU possession
