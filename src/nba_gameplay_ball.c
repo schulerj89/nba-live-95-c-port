@@ -62,6 +62,16 @@ static void reflect_y_to_matching_sign(NbaGameplayRimState *state) {
         state->velocity_y = negate16(state->velocity_y);
 }
 
+static int16_t signed_magnitude_with_sign(int16_t value, bool negative) {
+    uint16_t magnitude = magnitude16(value);
+    return negative ? (int16_t)(uint16_t)(0u - magnitude) :
+                      (int16_t)magnitude;
+}
+
+static int16_t double16(int16_t value) {
+    return (int16_t)(uint16_t)((uint16_t)value << 1u);
+}
+
 /* `$85:9ACB-$A081`: exact signed-16-bit rim/backboard shell. Inner edge and
  * miss impulses consume unrelated WRAM/RNG inputs later in the ROM routine,
  * so this deterministic split classifies those paths without inventing them. */
@@ -177,6 +187,84 @@ NbaGameplayRimResult nba_gameplay_rim_world_step(
     state->x = (int16_t)(hoop_x + state->x - shell_center);
     state->y = (int16_t)(hoop_y + state->y);
     return result;
+}
+
+/* `$85:9DAC-$9EFE` (distance 7) and `$85:9F01-$A006` (distance 8..10 or
+ * `$09F8` veto). Both paths mutate the ball before tail-jumping to `$A3B7`
+ * gravity. `$87:A9E3(A=3)` is represented by effect_raw_401b=3; its graphics
+ * dispatcher remains outside this pure physics component. */
+void nba_gameplay_rim_apply_inner_response(
+    NbaGameplayRimState *state, NbaGameplayRimResult result,
+    NbaGameplayRimContext *context, NbaGameplayRng *rng) {
+    if (!state || !context ||
+        (result != NBA_GAMEPLAY_RIM_EDGE_CONTACT &&
+         result != NBA_GAMEPLAY_RIM_MISS)) return;
+
+    if (context->raw_0978 == 0u) context->raw_09f8 = 0u;
+    context->raw_0920 = (uint16_t)(context->raw_0920 + 1u);
+    state->raw_092c = 0x05A0u;
+    state->raw_097c = 0x05A0u;
+    context->raw_0948 = 0u;
+    context->raw_094a = 0u;
+    state->raw_096a = 0u;
+
+    if (result == NBA_GAMEPLAY_RIM_EDGE_CONTACT) {
+        state->velocity_z = (int16_t)magnitude16(state->velocity_z);
+        state->velocity_y = signed_magnitude_with_sign(
+            state->velocity_y, state->y >= 0);
+        state->velocity_y = halve_if_magnitude_at_least(
+            state->velocity_y, 80u);
+        state->velocity_y = halve_if_magnitude_at_least(
+            state->velocity_y, 80u);
+        bool outside_x = state->x >= 336 || state->x < -336;
+        state->velocity_x = signed_magnitude_with_sign(
+            state->velocity_x, outside_x);
+        state->velocity_x = halve_if_magnitude_at_least(
+            state->velocity_x, 80u);
+        state->velocity_x = halve_if_magnitude_at_least(
+            state->velocity_x, 80u);
+    } else {
+        if (context->raw_1866 != 0u) {
+            state->velocity_x = double16(state->velocity_x);
+            state->velocity_y = double16(state->velocity_y);
+            state->velocity_z = -960;
+        }
+        state->velocity_x = halve_if_magnitude_at_least(
+            state->velocity_x, 60u);
+        state->velocity_y = halve_if_magnitude_at_least(
+            state->velocity_y, 60u);
+        state->velocity_x = signed_magnitude_with_sign(
+            state->velocity_x, state->x >= 0);
+        state->velocity_y = signed_magnitude_with_sign(
+            state->velocity_y, state->y >= 0);
+        if (state->velocity_x == 0 && state->velocity_y == 0) {
+            if (state->y >= 0) {
+                state->y = (int16_t)(uint16_t)((uint16_t)state->y + 2u);
+                state->velocity_y = 100;
+            } else {
+                state->y = (int16_t)(uint16_t)((uint16_t)state->y - 2u);
+                state->velocity_y = -100;
+            }
+        } else {
+            state->velocity_z = negate16(state->velocity_z);
+            state->velocity_z = halve_if_magnitude_at_least(
+                state->velocity_z, 60u);
+        }
+        context->raw_0936 = 0u;
+        context->effect_raw_401b = 3u;
+    }
+
+    if (context->raw_0970 == 0u) {
+        context->raw_0970 = 0x000Fu;
+        state->raw_13e7 |= 0x0002u;
+    }
+    if (magnitude16(state->velocity_x) < 10u)
+        state->velocity_x = (int16_t)((context->raw_07f6 & 0x001Fu) + 15u);
+    if (magnitude16(state->velocity_z) < 193u) {
+        uint16_t random_word = rng ? nba_gameplay_rng_next(rng) : 0u;
+        state->velocity_x = (int16_t)((random_word & 0x001Fu) +
+            (result == NBA_GAMEPLAY_RIM_EDGE_CONTACT ? 31u : 60u));
+    }
 }
 
 /* Final made-basket predicate, expressed through the complete ROM shell. The
@@ -407,8 +495,50 @@ bool nba_gameplay_ball_self_test(void) {
         !nba_gameplay_ball_pose_contact(points, 116, 100, 80, 16u) &&
         nba_gameplay_ball_pose_contact(points, 107, 107, 87, 8u) &&
         !nba_gameplay_ball_pose_contact(points, 108, 100, 80, 8u);
+    NbaGameplayRng edge_rng = {0x9146u};
+    NbaGameplayRimContext edge_context = {
+        5u, 1u, 4u, 5u, 0u, 0u, 1u, 0u, 0x0012u, 0u
+    };
+    rim = (NbaGameplayRimState){343, -4, 74, -160, -161, -100};
+    nba_gameplay_rim_apply_inner_response(
+        &rim, NBA_GAMEPLAY_RIM_EDGE_CONTACT, &edge_context, &edge_rng);
+    bool edge_response =
+        rim.velocity_x == 42 && rim.velocity_y == 40 &&
+        rim.velocity_z == 100 && rim.raw_092c == 0x05A0u &&
+        rim.raw_097c == 0x05A0u && rim.raw_096a == 0u &&
+        (rim.raw_13e7 & 0x0002u) != 0u &&
+        edge_context.raw_0920 == 6u && edge_context.raw_0948 == 0u &&
+        edge_context.raw_094a == 0u && edge_context.raw_0970 == 0x000Fu &&
+        edge_context.raw_09f8 == 0u && edge_context.effect_raw_401b == 0u &&
+        edge_rng.state == 0x3F0Bu;
+    NbaGameplayRng miss_rng = {0x9146u};
+    NbaGameplayRimContext miss_context = {
+        9u, 1u, 7u, 8u, 0u, 0u, 1u, 0u, 0x0012u, 0u
+    };
+    rim = (NbaGameplayRimState){336, 8, 74, 100, -61, -200};
+    nba_gameplay_rim_apply_inner_response(
+        &rim, NBA_GAMEPLAY_RIM_MISS, &miss_context, &miss_rng);
+    bool miss_response =
+        rim.velocity_x == 71 && rim.velocity_y == -31 &&
+        rim.velocity_z == 100 && miss_context.raw_0920 == 10u &&
+        miss_context.raw_0936 == 0u && miss_context.raw_0948 == 0u &&
+        miss_context.raw_094a == 0u && miss_context.raw_0970 == 0x000Fu &&
+        miss_context.raw_09f8 == 0u && miss_context.effect_raw_401b == 3u &&
+        miss_rng.state == 0x3F0Bu;
+    bool inner_distance_vectors = true;
+    for (int side = -1; side <= 1; side += 2) {
+        for (int distance = 8; distance <= 10; ++distance) {
+            NbaGameplayRimState vector = {
+                (int16_t)(side * 336), (int16_t)distance, 74,
+                0, 0, -200
+            };
+            if (nba_gameplay_rim_step(&vector, 1u, false, false, true) !=
+                NBA_GAMEPLAY_RIM_MISS) inner_distance_vectors = false;
+        }
+    }
     return launch_ok && shell_gates && outer_generic && outer_y &&
-           acquisition_gates &&
+           acquisition_gates && edge_response && miss_response &&
+           inner_distance_vectors &&
            right_world_bridge && left_world_bridge &&
            outer_negative_y_edge &&
            outer_low && outer_high &&

@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "nba_gameplay_ai.h"
 
 typedef enum NbaGameplayRimResult {
     NBA_GAMEPLAY_RIM_FLIGHT = 0,
@@ -31,6 +32,23 @@ typedef struct NbaGameplayPosePoint {
     int16_t x, y, z;
 } NbaGameplayPosePoint;
 
+/* Globals consumed by the inner-cylinder responses at `$85:9DAC-$A006`.
+ * They remain explicit until surrounding writers give them stable semantic
+ * names; this prevents a host collision shortcut from silently replacing a
+ * gameplay state transition. */
+typedef struct NbaGameplayRimContext {
+    uint16_t raw_0920;
+    uint16_t raw_0936;
+    uint16_t raw_0948;
+    uint16_t raw_094a;
+    uint16_t raw_0970;
+    uint16_t raw_0978;
+    uint16_t raw_09f8;
+    uint16_t raw_1866;
+    uint16_t raw_07f6;
+    uint16_t effect_raw_401b;
+} NbaGameplayRimContext;
+
 uint16_t nba_gameplay_hoop_distance(int16_t dx, int16_t dy);
 NbaGameplayRimResult nba_gameplay_rim_step(NbaGameplayRimState *state,
                                            uint16_t live_state,
@@ -41,6 +59,9 @@ NbaGameplayRimResult nba_gameplay_rim_world_step(
     NbaGameplayRimState *state, int16_t hoop_x, int16_t hoop_y,
     bool right_basket, uint16_t live_state, bool alternate_height,
     bool inner_veto, bool correct_basket_side);
+void nba_gameplay_rim_apply_inner_response(
+    NbaGameplayRimState *state, NbaGameplayRimResult result,
+    NbaGameplayRimContext *context, NbaGameplayRng *rng);
 bool nba_gameplay_ball_is_make(uint16_t live_state, bool alternate_height,
                                bool inner_veto, bool correct_basket_side,
                                int16_t dx, int16_t dy, int16_t z);

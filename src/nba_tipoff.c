@@ -1125,6 +1125,10 @@ static NbaGameplayRimResult cpu_update_live_ball(NbaTipoff *tipoff) {
      * collision/integration. Flight-table durations count these due passes. */
     if ((tipoff->simulation_tick & 1u) != 0u)
         return NBA_GAMEPLAY_RIM_FLIGHT;
+    /* Oracle frames 1652..1683 write `$0970` 15..0 once per 30-Hz ball
+     * pass. Decrement before contact so a newly installed response remains
+     * at 15 for its complete first interval. */
+    if (tipoff->rim_raw_0970 != 0u) --tipoff->rim_raw_0970;
     NbaTipoffBall *ball = &tipoff->ball;
     int32_t old_x = ball->x_fp, old_y = ball->y_fp, old_z = ball->z_fp;
     bool attached = ball->state == NBA_BALL_ATTACHED;
@@ -1159,13 +1163,36 @@ static NbaGameplayRimResult cpu_update_live_ball(NbaTipoff *tipoff) {
                 &rim, (int16_t)hoop_x, (int16_t)hoop_y,
                 tipoff->offense_side != 0u, tipoff->live_state_raw, false,
                 tipoff->shot_inner_veto_raw, correct_side);
+            NbaGameplayRimContext rim_context = {
+                tipoff->rim_raw_0920,
+                tipoff->live_state_raw,
+                tipoff->ball_activity_raw,
+                tipoff->rim_raw_094a,
+                tipoff->rim_raw_0970,
+                tipoff->fouls.free_throw_state_raw_0978,
+                tipoff->shot_inner_veto_raw ? 1u : 0u,
+                tipoff->rim_force_raw_1866,
+                tipoff->rng.state,
+                tipoff->rim_effect_raw_401b
+            };
+            nba_gameplay_rim_apply_inner_response(
+                &rim, result, &rim_context, &tipoff->rng);
             tipoff->rim_raw_092c = rim.raw_092c;
             tipoff->rim_raw_0962 = rim.raw_0962;
             tipoff->rim_raw_096a = rim.raw_096a;
             tipoff->rim_raw_097c = rim.raw_097c;
             tipoff->rim_raw_096e = rim.raw_096e;
             tipoff->rim_raw_13e7 = rim.raw_13e7;
-            if (result == NBA_GAMEPLAY_RIM_OUTER_CONTACT) {
+            tipoff->rim_raw_0920 = rim_context.raw_0920;
+            tipoff->live_state_raw = rim_context.raw_0936;
+            tipoff->ball_activity_raw = rim_context.raw_0948;
+            tipoff->rim_raw_094a = rim_context.raw_094a;
+            tipoff->rim_raw_0970 = rim_context.raw_0970;
+            tipoff->shot_inner_veto_raw = rim_context.raw_09f8 != 0u;
+            tipoff->rim_effect_raw_401b = rim_context.effect_raw_401b;
+            if (result == NBA_GAMEPLAY_RIM_OUTER_CONTACT ||
+                result == NBA_GAMEPLAY_RIM_EDGE_CONTACT ||
+                result == NBA_GAMEPLAY_RIM_MISS) {
                 /* The ROM writes only axes touched by the collision branch;
                  * retain each independent fractional byte. */
                 if (rim.x != before_x)
@@ -1243,6 +1270,7 @@ static bool cpu_rim_contact_tick_self_test(void) {
     state.handler_actor = 5u;
     state.live_state_raw = 1u;
     state.rim_raw_096e = 7u;
+    state.rim_raw_0970 = 4u;
     state.ball.state = NBA_BALL_SHOT;
     state.ball.x_fp = 344 * 256 + 128;
     state.ball.y_fp = -24 * 256 + 64;
@@ -1259,6 +1287,7 @@ static bool cpu_rim_contact_tick_self_test(void) {
            state.ball.velocity_y == -15 &&
            state.ball.velocity_z == 126 &&
            state.rim_raw_096e == 7u &&
+           state.rim_raw_0970 == 3u &&
            (state.rim_raw_13e7 & 0x0008u) != 0u;
 }
 
@@ -1845,9 +1874,9 @@ static void cpu_update_possession(NbaTipoff *tipoff) {
             } else if (!tipoff->shot_result_resolved &&
                        (rim_result == NBA_GAMEPLAY_RIM_EDGE_CONTACT ||
                         rim_result == NBA_GAMEPLAY_RIM_MISS)) {
-                /* The classifier is exact. Later edge/miss impulses still
-                 * depend on unresolved WRAM/RNG, so enter the proven loose
-                 * ball recovery path without inventing a second contact. */
+                /* `$85:9DAC-$A006` has already applied the distinct edge or
+                 * miss impulse and continued through same-tick integration;
+                 * mode changes here only hand the result to loose-ball play. */
                 tipoff->shot_result_resolved = true;
                 tipoff->ball.state = NBA_BALL_BOUNCE;
                 cpu_enter_play_state(tipoff, NBA_CPU_PLAY_REBOUND);
@@ -2111,6 +2140,9 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
     telemetry->inbound_ready_raw = tipoff->inbound_ready_raw;
     telemetry->inbound_transfer_raw = tipoff->inbound_transfer_raw;
     telemetry->rim_context_raw_097c = tipoff->rim_raw_097c;
+    telemetry->rim_contact_count_raw_0920 = tipoff->rim_raw_0920;
+    telemetry->rim_response_raw_0970 = tipoff->rim_raw_0970;
+    telemetry->rim_effect_raw_401b = tipoff->rim_effect_raw_401b;
     telemetry->event_bits_raw_13e7 = tipoff->rim_raw_13e7;
     telemetry->foul_event_raw = tipoff->fouls.foul_event_raw_0964;
     telemetry->shooting_foul_raw = tipoff->fouls.shooting_foul_raw_09bc;

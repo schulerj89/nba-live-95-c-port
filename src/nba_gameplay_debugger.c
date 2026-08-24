@@ -205,7 +205,10 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
             "\"inbound_layout_raw\":%d,\"inbound_target_x_raw\":%d,"
             "\"inbound_target_y_raw\":%d,\"inbound_direction_raw\":%u,"
             "\"inbound_ready_raw\":%u,\"inbound_transfer_raw\":%u,"
-            "\"rim_context_raw_097c\":%u,\"event_bits_raw_13e7\":%u},"
+            "\"rim_context_raw_097c\":%u,"
+            "\"rim_contact_count_raw_0920\":%u,"
+            "\"rim_response_raw_0970\":%u,\"rim_effect_raw_401b\":%u,"
+            "\"event_bits_raw_13e7\":%u},"
             "\"fouls\":{\"event_raw\":%u,\"shooting_raw\":%u,"
             "\"offender_raw\":%d,\"victim_raw\":%d,"
             "\"team_raw\":[%u,%u],\"personal_raw\":["
@@ -252,6 +255,9 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
             telemetry->inbound_direction_raw, telemetry->inbound_ready_raw,
             telemetry->inbound_transfer_raw,
             telemetry->rim_context_raw_097c,
+            telemetry->rim_contact_count_raw_0920,
+            telemetry->rim_response_raw_0970,
+            telemetry->rim_effect_raw_401b,
             telemetry->event_bits_raw_13e7,
             telemetry->foul_event_raw, telemetry->shooting_foul_raw,
             telemetry->foul_offender_raw, telemetry->foul_victim_raw,

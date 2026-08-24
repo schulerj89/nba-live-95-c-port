@@ -660,3 +660,25 @@ distance-7 and distance-8..10 velocity responses are now decoded, but remain
 the next checkpoint because their `$0920/$0948/$094A/$0970/$0978/$09F8/`
 `$1866/$07F6` inputs and forced-state oracle vectors must be represented
 together. This checkpoint does not relabel those branches as generic bounce.
+
+Increment 4W ports those two inner responses from the focused recomp output
+and continuous Ghidra control flow. `$85:9F01-$A006` now performs the
+distance-8..10 and `$09F8`-vetoed miss transition: common activity/timer
+resets, optional `$1866` force, signed planar halving and reflection, the
+zero-planar Y escape, reversed/damped VZ, live-state clear, response effect 3,
+`$0970/$13E7` arming, and the conditional `$07F6/$80:CEE7` low-speed kicks.
+`$85:9DAC-$9EFE` remains distinct and derives its twice-thresholded X/Y
+impulses from rim geometry before applying its own low-speed kick constants.
+Both paths tail into same-tick gravity/integration rather than becoming a
+host-authored generic bounce.
+
+The component API explicitly carries `$0920/$0936/$0948/$094A/$0970/$0978/`
+`$09F8/$1866/$07F6` so no hidden host defaults can choose a branch. Forced
+golden vectors cover distances 8, 9, and 10 at both baskets, signed damping,
+event/global writes, and exact LFSR advancement. The existing ROM oracle also
+proves `$85:9F01` executes in live play and records `$0970` counting 15 down to
+0 across frames 1652..1683; the native 30-Hz pass now mirrors that countdown.
+Gameplay JSON exposes `$0920`, `$0970`, and the `$87:A9E3` effect selection for
+future differential traces. The effect's asset/animation dispatch is retained
+as explicit state and remains part of the animation-dispatch work, not silently
+discarded as emulation plumbing.

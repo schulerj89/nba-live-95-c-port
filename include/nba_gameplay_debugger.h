@@ -140,6 +140,9 @@ typedef struct {
     uint16_t inbound_ready_raw;
     uint16_t inbound_transfer_raw;
     uint16_t rim_context_raw_097c;
+    uint16_t rim_contact_count_raw_0920;
+    uint16_t rim_response_raw_0970;
+    uint16_t rim_effect_raw_401b;
     uint16_t event_bits_raw_13e7;
     uint16_t foul_event_raw;
     uint16_t shooting_foul_raw;

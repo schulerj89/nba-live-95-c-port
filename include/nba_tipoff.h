@@ -149,6 +149,11 @@ typedef struct {
     uint16_t rim_raw_097c;
     uint16_t rim_raw_096e;
     uint16_t rim_raw_13e7;
+    uint16_t rim_raw_0920;
+    uint16_t rim_raw_094a;
+    uint16_t rim_raw_0970;
+    uint16_t rim_force_raw_1866;
+    uint16_t rim_effect_raw_401b;
     int16_t shot_origin_x, shot_origin_y;
     uint8_t shot_chance_raw;
     uint8_t shot_miss_index_raw;
