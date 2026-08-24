@@ -17,7 +17,7 @@ FORMATION = [
 ]
 EXPECTED_RGB = {
     600: "6c103ff0fe22b29384806281dd9a04f61e0ed867eb732f36bb32c168b4eda900",
-    1300: "fc080f038afb70fe10a543ea360f2714d4e400a6a6b8d44570beb122fa7c89bb",
+    1300: "82262f0757290dd70dc1128814b1502025f7170f5b7313ecab605d120a2243d3",
 }
 
 
@@ -507,12 +507,33 @@ def main():
         shot_starts = 0
         shot_releases = 0
         mode11_fallbacks = 0
+        mode13_carried_frames = 0
+        mode13_finishes = 0
         for previous, current in zip(due_rows, due_rows[1:]):
             for before, after in zip(previous["actors"], current["actors"]):
                 old_mode = before["raw"]["control_mode"]
                 new_mode = after["raw"]["control_mode"]
                 actor_id = after["id"]
                 ball = current["ball"]
+                if new_mode == 13:
+                    if after["animation"] not in (
+                            0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E) or \
+                            after["lower_animation"] != 0x1F or \
+                            ball["state"] != 4 or ball["owner"] != actor_id or \
+                            not 0 < after["raw"]["mode13_timer_60"] <= 0x28 or \
+                            after["raw"]["mode13_selector_56"] not in range(-1, 7) or \
+                            after["raw"]["mode13_variant_58"] not in (0, 2, 4, 6) or \
+                            (after["raw"]["mode13_baseline_vx_ba"] == 0 and
+                             after["raw"]["mode13_baseline_vy_bc"] == 0):
+                        raise AssertionError(
+                            f"$86:B34F/A7DA carried finish changed: {after} {ball}")
+                    mode13_carried_frames += 1
+                if old_mode == 13 and new_mode == 1:
+                    if ball["state"] != 5 or ball["owner"] != -1 or \
+                            current["match"]["shot_value_raw"] != 2:
+                        raise AssertionError(
+                            f"$86:A9D0 close-finish release changed: {after} {ball}")
+                    mode13_finishes += 1
                 if old_mode == 11 and new_mode == 12:
                     if after["animation"] != 0x16 or \
                             after["lower_animation"] != 0x32 or \
@@ -549,6 +570,10 @@ def main():
                 "mode 11->12->11->1 shot lifecycle was not sustained: "
                 f"starts={shot_starts} releases={shot_releases} "
                 f"fallbacks={mode11_fallbacks}")
+        if mode13_carried_frames < 8 or mode13_finishes < 1:
+            raise AssertionError(
+                "$86:B34F->$86:A7DA mode-13 lifecycle not exercised: "
+                f"carried={mode13_carried_frames} finishes={mode13_finishes}")
 
         # `$85:A079-$A345`: `$094C` is added to `$4711/$4791`, then
         # `$0936=$82` holds the dead ball until the inbound reset.
@@ -677,7 +702,9 @@ def main():
                               "veto": match["shot_inner_veto_raw"],
                               "index": match["shot_miss_index_raw"],
                               "rebound": None})
-            if state == 4 and last_state == 6 and shots:
+            # `$86:CCFC-$D1D6` may acquire a descending miss directly from
+            # shot mode 5, while floor/rim misses first become bounce mode 6.
+            if state == 4 and last_state in (5, 6) and shots:
                 shots[-1]["rebound"] = (row["ball"]["owner"],
                                         row["possession"]["team"])
             last_state = state

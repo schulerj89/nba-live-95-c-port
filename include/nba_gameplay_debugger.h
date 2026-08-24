@@ -68,6 +68,11 @@ typedef struct {
     uint16_t movement_boost_raw;
     int16_t controller_assignment_16_raw;
     uint16_t movement_magnitude_4c_raw;
+    uint16_t mode13_timer_60_raw;
+    int16_t mode13_selector_56_raw;
+    uint16_t mode13_variant_58_raw;
+    int16_t mode13_baseline_vx_ba_raw;
+    int16_t mode13_baseline_vy_bc_raw;
     uint16_t contact_inhibit_5a_raw;
     uint16_t contact_height_aa_raw;
     uint16_t recovery_inhibit_7a_raw;

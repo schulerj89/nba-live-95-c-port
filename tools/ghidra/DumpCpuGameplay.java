@@ -61,7 +61,7 @@ public class DumpCpuGameplay extends GhidraScript {
         if (bank.equals("86")) return new long[] {
             0x9846, 0x99c4, 0x9c45, 0x9cdb, 0x9d6e, 0x9ed8, 0xa110,
             0xa17d, 0xa1bd, 0xa561, 0xa5b0, 0xa613, 0xa6b3, 0xa7a8, 0xab2d,
-            0xb00b, 0xb625, 0xb769, 0xb8ca, 0xbaa2, 0xbaee, 0xbf0b,
+            0xb00b, 0xb34f, 0xb625, 0xb769, 0xb8ca, 0xbaa2, 0xbaee, 0xbf0b,
             0xc302, 0xc34c, 0xc493, 0xc4fe, 0xcccd, 0xccfc, 0xd12d,
             0xd1d9, 0xd43e, 0xd549, 0xd5db, 0xd652, 0xdd1e,
             0xe39a, 0xe3cb, 0xe3e1, 0xe4a7, 0xe5ab,
@@ -202,6 +202,24 @@ public class DumpCpuGameplay extends GhidraScript {
                 }
             }
             if (bank.equals("86")) {
+                out.println("\n--- Complete CPU clear-lane layup/dunk initializer ---");
+                addEntryPoint(toAddr(0xb34f)); disassemble(toAddr(0xb34f));
+                addEntryPoint(toAddr(0xb424)); disassemble(toAddr(0xb424));
+                addEntryPoint(toAddr(0xb468)); disassemble(toAddr(0xb468));
+                for (long address = 0xb34f; address <= 0xb624; ++address) {
+                    Instruction instruction = listing.getInstructionAt(toAddr(address));
+                    if (instruction != null)
+                        out.printf("$86:%04X  %s%n", address, instruction.toString());
+                }
+                out.println("\n--- Complete mode-13 layup/dunk executor ---");
+                addEntryPoint(toAddr(0xa7da)); disassemble(toAddr(0xa7da));
+                addEntryPoint(toAddr(0xa82b)); disassemble(toAddr(0xa82b));
+                addEntryPoint(toAddr(0xa9d0)); disassemble(toAddr(0xa9d0));
+                for (long address = 0xa7da; address <= 0xaa69; ++address) {
+                    Instruction instruction = listing.getInstructionAt(toAddr(address));
+                    if (instruction != null)
+                        out.printf("$86:%04X  %s%n", address, instruction.toString());
+                }
                 out.println("\n--- Complete boundary-state cancellation helper ---");
                 addEntryPoint(toAddr(0xa613)); disassemble(toAddr(0xa613));
                 for (long address = 0xa613; address <= 0xa628; ++address) {

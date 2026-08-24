@@ -391,6 +391,10 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
                 "\"reaction_threshold\":%u,\"movement_boost_72\":%u,"
                 "\"controller_assignment_16\":%d,"
                 "\"movement_magnitude_4c\":%u,"
+                "\"mode13_timer_60\":%u,\"mode13_selector_56\":%d,"
+                "\"mode13_variant_58\":%u,"
+                "\"mode13_baseline_vx_ba\":%d,"
+                "\"mode13_baseline_vy_bc\":%d,"
                 "\"contact_inhibit_5a\":%u,\"contact_height_aa\":%u,"
                 "\"recovery_inhibit_7a\":%u,"
                 "\"upper_restart\":%u,"
@@ -420,7 +424,10 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
                 a->anchor_distance_raw_8c,
                 a->reaction_threshold_raw, a->movement_boost_raw,
                 a->controller_assignment_16_raw,
-                a->movement_magnitude_4c_raw, a->contact_inhibit_5a_raw,
+                a->movement_magnitude_4c_raw, a->mode13_timer_60_raw,
+                a->mode13_selector_56_raw, a->mode13_variant_58_raw,
+                a->mode13_baseline_vx_ba_raw,
+                a->mode13_baseline_vy_bc_raw, a->contact_inhibit_5a_raw,
                 a->contact_height_aa_raw, a->recovery_inhibit_7a_raw,
                 a->upper_restart_raw,
                 a->lower_restart_raw, a->upper_phase_raw, a->lower_phase_raw,

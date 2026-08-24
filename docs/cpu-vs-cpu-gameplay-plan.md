@@ -1161,3 +1161,28 @@ The surrounding `$85:B678-$B8CA` audit also identifies the next portable
 slice: clock-urgency dispatch consumption and the `$85:F5E4 -> $86:B34F`
 corridor/drive/dunk branch. Those paths are not replaced with a host shortcut
 in this increment.
+
+### Increment 5N: mode-11 corridor dispatch and carried-ball finishes
+
+The native mode-11 wrapper is now represented as three outcomes rather than a
+boolean: normal return, consumed action, and shot started. This preserves the
+non-local `$85:B837` unwind, so urgency formation and clear-lane actions no
+longer fall through into `$85:B50E` pass selection. Both `$092C < 120` and
+`$0928 < 120` urgency gates consume exactly one `$80:CEFD` result.
+
+`$85:F5E4-$F727` supplies the strict opponent-center corridor predicate.
+Blocked lanes alone reach the existing `$85:B734-$B820` rating/range tail;
+clear lanes with actor `+$8C >= $70` steer toward formation and consume the
+decision. Closer clear lanes execute the grounded/speed/profile/facing gates
+from `$86:B34F`, including its conditional roster `+$39` RNG and selector
+rerolls.
+
+Successful close finishes now use dedicated mode 13, dispatched by
+`$87:9BD3[13] -> $87:9C49 -> $86:A7DA`. The ROM tables at `$86:B430-$B467`
+select upper/lower animation resources from the asset pack. The actor carries
+the pose-attached ball for the `$28`-tick trajectory, launches vertically at
+the `$24` gate, preserves baseline planar velocity for the interruption test,
+and either converts to the common `$86:9D6E` shot release or finishes through
+`$86:A9D0-$AA69`. The uninterrupted path detaches a two-point ball into the
+shared rim physics; it does not award points directly. The CPU regression now
+requires multiple carried mode-13 frames and a verified mode-13-to-rim release.

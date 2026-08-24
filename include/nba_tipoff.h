@@ -69,6 +69,7 @@ typedef struct {
     uint16_t pass_band_raw;             /* actor `+$62`: 0,6,...,30 */
     uint16_t pass_direction_raw;        /* actor `+$66` */
     int16_t special_contact_raw_56;     /* actor `+$56`, `$86:C943-$C951` */
+    uint8_t mode13_variant_raw_58;      /* actor `+$58`, `$86:B468` */
     int16_t pass_family_raw;            /* actor `+$C0` */
     uint8_t pass_release_threshold_raw;
     bool pass_released_raw;
@@ -89,6 +90,8 @@ typedef struct {
     uint16_t movement_boost_timer; /* actor `+$72`, consumed by `$85:A82C` */
     int8_t controller_assignment_raw; /* signed actor `+$16` */
     uint16_t movement_magnitude_raw;  /* actor `+$4C` */
+    int16_t mode13_baseline_velocity_x; /* actor `+$BA`, `$86:B59D` */
+    int16_t mode13_baseline_velocity_y; /* actor `+$BC`, `$86:B5A5` */
     uint16_t contact_inhibit_raw_5a;  /* actor `+$5A`, `$86:CD03/D460` */
     uint16_t contact_action_timer_raw_60; /* actor `+$60`, `$86:C0DF/C12F` */
     uint16_t contact_height_raw_aa;   /* actor `+$AA`, `$87:A6A9-A6B2` */
