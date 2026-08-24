@@ -81,5 +81,33 @@ bool nba_gameplay_ai_self_test(void) {
     nba_gameplay_target_from_pair(100, -50, 31, -31, -20, 12, &x, &y);
     if (x != 83 || y != -42) return false;
     nba_gameplay_target_from_pair(32760, -32760, 64, -64, 16, -16, &x, &y);
-    return x == -32752 && y == 32752;
+    if (x != -32752 || y != 32752) return false;
+    uint16_t timer = 49u;
+    if (nba_gameplay_decision_timer_step(&timer, 15u, 0x40u, false) ||
+        timer != 17u) return false;
+    if (!nba_gameplay_decision_timer_step(&timer, 15u, 0x40u, false) ||
+        timer != 64u) return false;
+    timer = 20u;
+    if (!nba_gameplay_decision_timer_step(&timer, 11u, 0x20u, true) ||
+        timer != 63u) return false;
+    timer = 20u;
+    return nba_gameplay_decision_timer_step(&timer, 11u, 0x30u, false) &&
+           timer == 47u;
+}
+
+/* Modes 1-6 at `$86:F1CF/$F25E/$F6EE/$F7AA/$F8D8` subtract DP `$C8`.
+ * Live dispatch proves `$C8=$20`; signed values <=0 reload from the mode's
+ * exact base, its ROM profile byte, and an optional same-half `$20`. */
+bool nba_gameplay_decision_timer_step(uint16_t *timer, uint8_t profile_byte,
+                                      uint16_t reload_base,
+                                      bool add_half_court_delay) {
+    if (!timer) return false;
+    int16_t remaining = (int16_t)(*timer - 0x20u);
+    if (remaining > 0) {
+        *timer = (uint16_t)remaining;
+        return false;
+    }
+    *timer = (uint16_t)(remaining + (int)reload_base + profile_byte +
+                        (add_half_court_delay ? 0x20 : 0));
+    return true;
 }

@@ -55,5 +55,9 @@ bool nba_player_animation_resources(const NbaAssetPack *assets,
 bool nba_player_gameplay_shot_ratings(const NbaAssetPack *assets,
                                       uint8_t team, uint8_t roster_slot,
                                       uint8_t *two_point, uint8_t *three_point);
+bool nba_player_gameplay_decision_profiles(const NbaAssetPack *assets,
+                                           uint8_t team, uint8_t roster_slot,
+                                           uint8_t *profile_3f,
+                                           uint8_t *profile_40);
 
 #endif

@@ -27,7 +27,7 @@ def pack_assets(path):
     if raw[:8] != b"NBA95PAK":
         raise AssertionError("invalid pack magic")
     version, count = struct.unpack_from("<II", raw, 8)
-    if version != 23 or 16 + count * 24 > len(raw):
+    if version != 24 or 16 + count * 24 > len(raw):
         raise AssertionError("invalid tip-off pack version/directory")
     assets = {}
     for index in range(count):
@@ -113,11 +113,16 @@ def main():
             "--player-setup-confirm", "--frames", "5900",
             "--dump-frame", selected_home, "--debug-state",
         ], capture_output=True, text=True, check=False)
+        # Lock an unobstructed strip of the selected court rather than the
+        # complete frame. CPU actors legitimately move as ROM AI handlers are
+        # ported, while the lower hardwood/wall strip proves the home panorama
+        # selected by the Team Select -> Player Setup handoff is unchanged.
         digest = hashlib.sha256(
-            Image.open(selected_home).convert("RGB").tobytes()).hexdigest() \
+            Image.open(selected_home).convert("RGB").crop(
+                (0, 180, 256, 224)).tobytes()).hexdigest() \
             if selected_home.exists() else ""
         if result.returncode or "SCN:TIPOFF" not in result.stdout or \
-                digest != "96332dbe1ca51b4cd240f3a85daaa6d72eb5f3d8c0ef24c203338b31e2351382":
+                digest != "71fd10cd6ee28764bfc0f95ce0d6e5711f8be92af22b1643ab4d63b59facb022":
             raise AssertionError("selected home court did not persist into tip-off\n" +
                                  result.stdout + result.stderr)
 

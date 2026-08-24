@@ -256,32 +256,62 @@ static bool cpu_apply_passive_mode(NbaTipoffActor *actor) {
     return false;
 }
 
+static bool cpu_active_decision_due(NbaTipoff *tipoff, unsigned slot) {
+    NbaTipoffActor *actor = &tipoff->actors[slot];
+    uint8_t mode = actor->control_mode;
+    if (mode < 1u || mode > 6u) return true;
+    uint8_t team = slot >= 5u ? tipoff->session->right_team :
+                               tipoff->session->left_team;
+    uint8_t profile_3f = 0u, profile_40 = 0u;
+    (void)nba_player_gameplay_decision_profiles(
+        tipoff->assets, team, (uint8_t)(slot % 5u),
+        &profile_3f, &profile_40);
+    int16_t actor_x = fp_round(actor->x_fp);
+    int16_t ball_x = fp_round(tipoff->ball.x_fp);
+    bool same_half = (int16_t)((uint16_t)actor_x ^ (uint16_t)ball_x) >= 0;
+    if (mode == 1u || mode == 3u || mode == 5u)
+        return nba_gameplay_decision_timer_step(
+            &actor->reaction_threshold, profile_3f, 0x40u, false);
+    /* Mode 2 reloads `$30 + profile[$40]`; modes 4/6 use `$20`.
+     * All three add another `$20` when actor/related X signs match. */
+    return nba_gameplay_decision_timer_step(
+        &actor->reaction_threshold, profile_40,
+        mode == 2u ? 0x30u : 0x20u, same_half);
+}
+
 static void cpu_move_actor(NbaTipoff *tipoff, unsigned slot) {
     NbaTipoffActor *actor = &tipoff->actors[slot];
     if (cpu_apply_passive_mode(actor)) return;
-    /* `$85:B95C` gates the response by ball distance/RNG. `$85:963D-$985F`
-     * then integrates signed +$0E/+$10 motion into the 32-bit +$02/+$04 and
-     * +$06/+$08 world positions on every active tick. */
-    static const uint16_t first_move_start[10] = {
-        100, 7, 2, 4, 2, 14, 5, 7, 2, 12
-    };
-    unsigned delay = tipoff->possession_number == 0u ? first_move_start[slot] :
-                     (unsigned)(actor->reaction_threshold % 18u);
-    if (tipoff->possession_frame < delay) {
-        actor->velocity_x = (int16_t)approach(actor->velocity_x, 0, 16);
-        actor->velocity_y = (int16_t)approach(actor->velocity_y, 0, 16);
-        return;
-    }
-    /* `$85:97CA-$985F` integrates fractional words every scheduled actor
+    /* `$85:B95C` seeds actor +$60; the mode-specific `$C8=$20` cadence above
+     * replaces the former handcrafted per-slot/possession-frame delay. */
+    /* `$85:963D-$985F` dispatches and integrates fractional words every
+     * scheduled actor; the coordinate write slice is `$85:97CA-$985F`.
      * update. Integer coordinates change irregularly from subpixel carry;
      * there is no ROM evidence for the former odd/even slot shortcut. */
     int x = fp_round(actor->x_fp), y = fp_round(actor->y_fp);
     int dx = actor->target_x - x, dy = actor->target_y - y;
-    uint8_t direction = cpu_direction(dx, dy);
-    if (direction < 8u) actor->requested_direction = direction;
+    bool decision_due = cpu_active_decision_due(tipoff, slot);
+    /* Temporary parity guard until the live-covered mode-2 E7 target and
+     * `$85:A82C` velocity resolver replace the remaining host target shape. */
+    static const uint16_t first_move_start[10] = {
+        100, 7, 2, 4, 2, 14, 5, 7, 2, 12
+    };
+    if (tipoff->possession_number == 0u &&
+        tipoff->possession_frame < first_move_start[slot]) {
+        actor->velocity_x = actor->velocity_y = 0;
+        return;
+    }
+    uint8_t direction = actor->movement_direction;
+    if (decision_due) {
+        direction = cpu_direction(dx, dy);
+        actor->movement_direction = direction;
+        if (direction < 8u) actor->requested_direction = direction;
+    }
     if (direction >= 8u) {
-        actor->velocity_x = (int16_t)approach(actor->velocity_x, 0, 16);
-        actor->velocity_y = (int16_t)approach(actor->velocity_y, 0, 16);
+        if (decision_due) {
+            actor->velocity_x = (int16_t)approach(actor->velocity_x, 0, 16);
+            actor->velocity_y = (int16_t)approach(actor->velocity_y, 0, 16);
+        }
         actor->x_fp += (int32_t)actor->velocity_x * 2;
         actor->y_fp += (int32_t)actor->velocity_y * 2;
         actor_set_animation(actor, 0u, 0u);
@@ -293,8 +323,10 @@ static void cpu_move_actor(NbaTipoff *tipoff, unsigned slot) {
              direction == 5u || direction == 6u || direction == 7u ? -1 : 0;
     int sy = direction == 7u || direction == 0u || direction == 1u ? 1 :
              direction == 3u || direction == 4u || direction == 5u ? -1 : 0;
-    actor->velocity_x = (int16_t)approach(actor->velocity_x, sx * speed, 20);
-    actor->velocity_y = (int16_t)approach(actor->velocity_y, sy * speed, 20);
+    if (decision_due) {
+        actor->velocity_x = (int16_t)approach(actor->velocity_x, sx * speed, 20);
+        actor->velocity_y = (int16_t)approach(actor->velocity_y, sy * speed, 20);
+    }
     /* `$8E86-$8E9C` turns `$0938=2` into fixed multiplier `$0200` before
      * `$85:AB17`; in the host 24.8 bridge this is velocity8.8 * dt. */
     actor->x_fp += (int32_t)actor->velocity_x * 2;
@@ -305,7 +337,7 @@ static void cpu_move_actor(NbaTipoff *tipoff, unsigned slot) {
     if ((sy > 0 && fp_round(actor->y_fp) > actor->target_y) ||
         (sy < 0 && fp_round(actor->y_fp) < actor->target_y))
         actor->y_fp = (int32_t)actor->target_y * 256;
-    actor->direction = direction;
+    actor->direction = actor->requested_direction;
     actor_set_animation(actor, slot == tipoff->handler_actor ? 11u : 3u, 3u);
     actor->action_state = tipoff->cpu_play_state;
 }
@@ -754,6 +786,7 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
         state->y_fp = (int32_t)formation[actor].world_y * 256;
         state->direction = formation[actor].direction;
         state->requested_direction = formation[actor].direction;
+        state->movement_direction = formation[actor].direction;
         state->saved_control_mode = 0u;
         state->lower_animation_state = 0u;
         state->assignment_actor = (uint8_t)((actor + 5u) % 10u);

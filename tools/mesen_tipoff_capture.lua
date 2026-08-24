@@ -42,6 +42,7 @@ local gameplay_jsonl = assert(io.open(out .. "/gameplay_rom.jsonl", "wb"))
 local current_draw_actor = 0xffff
 local draw_screen, previous_pad, routine_hits_frame = {}, {}, {}
 local actor_pass_mask, actor_pass_order = 0, {}
+local actor_dispatch_c6, actor_dispatch_c8 = {}, {}
 local previous_actor_world, previous_ball_world = {}, nil
 for pad = 0, 4 do previous_pad[pad] = 0 end
 for _, segment in ipairs(segments) do exec_seen[segment.name] = {} end
@@ -147,6 +148,20 @@ local function signed_word(address)
     local value = word(address)
     return value >= 0x8000 and value - 0x10000 or value
 end
+
+-- Active modes 1-6 subtract DP `$C8` from actor +$60, while physics and
+-- recovery modes use `$C6`. Record both at the exact `$87:9244` dispatch.
+emu.addMemoryCallback(function()
+    local state = emu.getState()
+    local direct = state["cpu.d"] or 0
+    local pointer = word((direct + 0x96) & 0xffff)
+    local slot = pointer >= 0x34eb and math.floor((pointer - 0x34eb) / 0x100) or -1
+    if slot >= 0 and slot < 10 then
+        actor_dispatch_c6[slot] = word((direct + 0xc6) & 0xffff)
+        actor_dispatch_c8[slot] = word((direct + 0xc8) & 0xffff)
+    end
+end, emu.callbackType.exec, 0x879244, 0x879244,
+    emu.cpuType.snes, emu.memType.snesMemory)
 
 -- `$87:8EFB-$8F92` visits all ten records in order per logical pass, but NMI
 -- may split that pass across rendered frames before RTI resumes it. Capture
@@ -258,6 +273,16 @@ local function dump_gameplay_jsonl(frame)
         held[0], held[1], held[2], held[3], held[4],
         word(0x08d4), word(0x08d6), word(0x08d8), word(0x08da), word(0x08dc),
         word(0x15f7), word(0x15f9), word(0x15fb), word(0x15fd), word(0x15ff)))
+    -- `$85:A1E9-$A268` score/dead-ball fields. Shot chance/miss-table index
+    -- are transient CPU values, so keep those explicit unknowns.
+    gameplay_jsonl:write(string.format(
+        "\"match\":{\"score_left_raw\":%u,\"score_right_raw\":%u," ..
+        "\"shot_value_raw\":%u,\"shot_chance_raw\":65535," ..
+        "\"shot_miss_index_raw\":65535,\"shot_inner_veto_raw\":%u," ..
+        "\"live_state_raw\":%u,\"inbound_state_raw\":%u," ..
+        "\"inbound_actor_raw\":%u,\"inbound_timer_raw\":%u},",
+        word(0x4711), word(0x4791), word(0x094c), word(0x09f8),
+        word(0x0936), word(0x0952), word(0x0954), word(0x092e)))
     gameplay_jsonl:write(string.format(
         "\"control\":{\"actor\":%d,\"side_raw\":%d," ..
         "\"initial_slot_raw\":%d,\"selected_slot_raw\":%d," ..
@@ -339,7 +364,8 @@ local function dump_gameplay_jsonl(frame)
             "\"direction_4e\":%u,\"direction_50\":%u," ..
             "\"direction_52\":%u,\"target_x_56\":%d," ..
             "\"target_y_58\":%d,\"control_mode\":%u," ..
-            "\"mode_saved_62\":%u," ..
+            "\"mode_saved_62\":%u,\"dispatch_dt_c6\":%u," ..
+            "\"think_dt_c8\":%u," ..
             "\"control_mode_saved\":%u,\"side_group\":%u," ..
             "\"assignment_base\":%u,\"assignment_current\":%u," ..
             "\"assignment_alternate\":%u,\"assignment_distance\":%u," ..
@@ -362,6 +388,8 @@ local function dump_gameplay_jsonl(frame)
             word(base + 0x3a), word(base + 0x3c), word(base + 0x4e),
             word(base + 0x50), word(base + 0x52), signed_word(base + 0x56),
             signed_word(base + 0x58), word(base + 0x5e), word(base + 0x62),
+            actor_dispatch_c6[actor] or 0xffff,
+            actor_dispatch_c8[actor] or 0xffff,
             word(base + 0x84), word(base + 0x6e), word(base + 0x76),
             word(base + 0x74), word(base + 0x78), word(base + 0x8e),
             word(base + 0x86), word(base + 0x8a), word(base + 0x60),
@@ -374,6 +402,7 @@ local function dump_gameplay_jsonl(frame)
     previous_ball_world = { x=ball_x, y=ball_y, z=ball_z }
     routine_hits_frame = {}
     actor_pass_mask, actor_pass_order = 0, {}
+    actor_dispatch_c6, actor_dispatch_c8 = {}, {}
 end
 
 for actor = 0, 10 do

@@ -63,6 +63,7 @@ typedef struct {
     uint8_t control_mode;
     uint8_t saved_control_mode;
     uint8_t requested_direction;
+    uint8_t movement_direction;
     uint8_t assignment_actor;
     uint8_t assignment_direction;
     uint16_t assignment_base_raw;

@@ -124,7 +124,9 @@ typedef enum {
     NBA_ASSET_GAMEPLAY_HOME_COURTS               = 272,
     /* NBCOURT2: complete ROM $A0:8006 114x52-tile gameplay panoramas. */
     NBA_ASSET_GAMEPLAY_COURT_PANORAMAS            = 273,
-    NBA_ASSET_MAX                   = 274
+    /* NBFORM1: exact `$85:AD6B` 61-play x five-role coordinate graph. */
+    NBA_ASSET_GAMEPLAY_FORMATIONS                  = 274,
+    NBA_ASSET_MAX                   = 275
 } NbaAssetId;
 
 typedef struct {
@@ -153,5 +155,10 @@ const uint32_t *nba_assets_gameplay_home_court(const NbaAssetPack *pack,
                                                 uint8_t home_team);
 const uint32_t *nba_assets_gameplay_court_panorama(const NbaAssetPack *pack,
                                                     uint8_t home_team);
+bool nba_assets_gameplay_formation_offset(const NbaAssetPack *pack,
+                                          uint8_t play, uint8_t role,
+                                          uint8_t index, bool mirror_y,
+                                          int16_t ball_x, int16_t *x,
+                                          int16_t *y);
 
 #endif /* NBA_ASSETS_H */

@@ -5,13 +5,52 @@
 
 #define NBA_ASSET_MAGIC "NBA95PAK"
 
-#define NBA_ASSET_PACK_VERSION 23u
+#define NBA_ASSET_PACK_VERSION 24u
 #define NBA_ASSET_HEADER_SIZE 16u
 #define NBA_ASSET_ENTRY_SIZE 24u
 
 static uint32_t asset_u32(const uint8_t *p) {
     return (uint32_t)p[0] | ((uint32_t)p[1] << 8) |
            ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
+}
+
+static uint16_t asset_u16(const uint8_t *p) {
+    return (uint16_t)p[0] | (uint16_t)((uint16_t)p[1] << 8);
+}
+
+static bool formation_payload_valid(const uint8_t *data, size_t size) {
+    static const uint8_t counts[61] = {
+        3,3,3,3,3,3,5,5,5,5,5,4,4,3,4,4,4,4,5,5,5,5,5,5,5,6,6,8,7,5,
+        6,6,4,4,8,5,5,5,5,8,7,8,8,7,6,6,7,7,6,9,8,5,4,6,5,5,4,4,5,5,4
+    };
+    static const uint16_t roots[5] = {
+        0xC745u, 0xC7BFu, 0xC839u, 0xC8B3u, 0xC92Du
+    };
+    if (!data || size != 8868u || memcmp(data, "NBFORM1", 8) ||
+        asset_u32(data + 8) != 1u || asset_u32(data + 12) != 61u ||
+        asset_u32(data + 16) != 5u || asset_u32(data + 20) != 1595u ||
+        asset_u32(data + 24) != 48u || asset_u32(data + 28) != 2488u ||
+        asset_u32(data + 32) != 6380u) return false;
+    for (unsigned role = 0; role < 5u; ++role)
+        if (asset_u16(data + 36u + role * 2u) != roots[role]) return false;
+    size_t expected_offset = 2488u;
+    for (unsigned play = 0; play < 61u; ++play) {
+        uint16_t previous_pointer = 0u;
+        for (unsigned role = 0; role < 5u; ++role) {
+            const uint8_t *entry = data + 48u + (play * 5u + role) * 8u;
+            uint16_t pointer = asset_u16(entry);
+            if (asset_u16(entry + 2u) != counts[play] ||
+                asset_u32(entry + 4u) != expected_offset) return false;
+            if (role > 0u) {
+                unsigned span = pointer > previous_pointer ?
+                    pointer - previous_pointer : previous_pointer - pointer;
+                if (span != (unsigned)counts[play] * 4u) return false;
+            }
+            previous_pointer = pointer;
+            expected_offset += (size_t)counts[play] * 4u;
+        }
+    }
+    return expected_offset == size;
 }
 
 static bool asset_load_error(NbaAssetPack *pack, const char *message) {
@@ -60,6 +99,8 @@ static bool asset_metadata_valid(uint32_t id, uint32_t size, uint32_t width,
     if (id == NBA_ASSET_GAMEPLAY_COURT_PANORAMAS)
         return size == 24u + 29u * 912u * 416u * sizeof(uint32_t) &&
                width == 912u && height == 416u && flags == 29u;
+    if (id == NBA_ASSET_GAMEPLAY_FORMATIONS)
+        return size == 8868u && width == 61u && height == 5u && flags == 1595u;
     if (id == NBA_ASSET_EA_A_FIXED_SEQUENCE) {
         uint32_t x = flags >> 16;
         uint32_t y = flags & 0xFFFFu;
@@ -250,6 +291,21 @@ bool nba_assets_load(NbaAssetPack *pack, const char *asset_path) {
     pack->item_count = asset_count;
 
     pack->is_loaded = true;
+    const NbaAssetItem *formations = nba_assets_get(
+        pack, NBA_ASSET_GAMEPLAY_FORMATIONS);
+    if (formations && !formation_payload_valid(
+            (const uint8_t *)formations->data, formations->size))
+        return asset_load_error(pack, "Gameplay formation graph is invalid");
+    if (formations) {
+        int16_t x = 0, y = 0;
+        if (!nba_assets_gameplay_formation_offset(
+                pack, 0x01u, 0u, 0u, false, 0, &x, &y) || x != 80 || y != 0 ||
+            !nba_assets_gameplay_formation_offset(
+                pack, 0x10u, 0u, 0u, true, -1, &x, &y) ||
+            x != -320 || y != -120)
+            return asset_load_error(pack,
+                "Gameplay formation accessor vectors are invalid");
+    }
     printf("[ASSETS] Loaded asset pack: '%s' (%zu bytes, %u assets)\n",
            asset_path, pack->raw_size, pack->item_count);
     return true;
@@ -320,4 +376,35 @@ const uint32_t *nba_assets_gameplay_court_panorama(const NbaAssetPack *pack,
         asset_u32(data + 20) != 416u)
         return NULL;
     return (const uint32_t *)(data + 24u + (size_t)home_team * frame_size);
+}
+
+bool nba_assets_gameplay_formation_offset(const NbaAssetPack *pack,
+                                          uint8_t play, uint8_t role,
+                                          uint8_t index, bool mirror_y,
+                                          int16_t ball_x, int16_t *x,
+                                          int16_t *y) {
+    const NbaAssetItem *item = nba_assets_get(pack,
+        NBA_ASSET_GAMEPLAY_FORMATIONS);
+    if (!item || !item->data || !x || !y || play >= 61u || role >= 5u ||
+        item->size != 8868u) return false;
+    const uint8_t *data = (const uint8_t *)item->data;
+    if (memcmp(data, "NBFORM1", 8) || asset_u32(data + 8) != 1u ||
+        asset_u32(data + 24) != 48u || asset_u32(data + 28) != 2488u)
+        return false;
+    const uint8_t *entry = data + 48u + ((size_t)play * 5u + role) * 8u;
+    uint16_t count = asset_u16(entry + 2u);
+    uint32_t offset = asset_u32(entry + 4u);
+    if (index >= count || offset < 2488u ||
+        (size_t)offset + (size_t)count * 4u > item->size) return false;
+    const uint8_t *pair = data + offset + (size_t)index * 4u;
+    uint16_t raw_x = asset_u16(pair);
+    uint16_t raw_y = asset_u16(pair + 2u);
+    if (mirror_y) raw_y = (uint16_t)(0u - raw_y);
+    if (ball_x < 0) {
+        raw_x = (uint16_t)(0u - raw_x);
+        if (play >= 0x0Eu) raw_y = (uint16_t)(0u - raw_y);
+    }
+    *x = (int16_t)raw_x;
+    *y = (int16_t)raw_y;
+    return true;
 }

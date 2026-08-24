@@ -226,3 +226,29 @@ offset. Mode 16 no longer uses a fabricated 12-render-frame switch. Its
 mode 7 and 180; mode 7 uses the same logical-pass countdown before returning
 to the planner boundary. Mode 9 has the proven saved-mode restore at +$62,
 while its unobserved target-selection branches remain explicit future work.
+
+Increment 4D traces the active-mode decision cadence and movement data rather
+than inferring them from rendered motion. At the `$87:9244` dispatcher, live
+CPU-only play has DP `$C6=2` for physics and DP `$C8=$20` for modes 1-6. Those
+modes subtract `$20` from actor `+$60`; modes 1/3/5 reload from
+`$40 + roster[$3F]`, mode 2 from `$30 + roster[$40]`, and modes 4/6 from
+`$20 + roster[$40]`. The latter group conditionally adds another `$20` for
+the same court half. Asset roster schema `NBPROST2` preserves these two raw
+ROM bytes per player so decision frequency remains roster-driven.
+
+The movement target source is the five-root pointer graph at `$85:C6A5` used
+by `$85:AD6B-$ADE3`: 61 play codes select one of 1,595 signed coordinate pairs
+by team-relative slot and play-step index. `$099C` mirrors Y; possession side
+mirrors X and, for play codes `$0E+`, Y as well. The extracted records have
+SHA-256 `e6c71d3e45e12c1f5bf691a23f7d952e6f989798d78024d77518ac7f7437941c`.
+These are initial formation targets; the later `$85:AE35+` overrides and
+mode-specific helpers still apply before velocity resolution.
+
+The exact velocity boundary is `$85:A82C-$AB16`, fed by `$85:F34F`, `$B3AA`,
+`$B3C9`, and `$B402`. It uses eight ROM direction vectors, a 16-entry profile
+scale selected from roster `+$42`, two integer damping iterations in observed
+play, and a 16-entry squared-speed cap. Direction 8 decelerates by
+`lowbyte(dt)*25`; it is not a floating-point seek. This resolver and the
+formation graph are the next active-mode integration checkpoint. Until both
+are connected, any remaining first-possession movement guard is explicitly
+temporary and cannot satisfy the final parity gate.

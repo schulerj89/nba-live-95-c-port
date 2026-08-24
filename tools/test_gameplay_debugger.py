@@ -135,6 +135,7 @@ def main():
             raise AssertionError(f"Gameplay Lab implementation lost {marker}")
     mesen = (source / "tools" / "mesen_tipoff_capture.lua").read_text()
     for marker in ("gameplay_rom.jsonl", "0x80cb8f", "0x879244", "0x85963d",
+                   "0x0936", "score_left_raw",
                    "assignment_current", "raw_087a"):
         if marker not in mesen:
             raise AssertionError(f"Mesen gameplay oracle lost {marker}")

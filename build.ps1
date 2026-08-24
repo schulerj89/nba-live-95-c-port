@@ -113,6 +113,11 @@ if ($Test) {
     if ($LASTEXITCODE -ne 0) {
         throw "Player Lab regression tests failed with exit code $LASTEXITCODE"
     }
+    & python (Join-Path $Root "tools\test_formation_assets.py") `
+        --pack $AssetPack --exe $ConsoleExePath --rom $RomPath
+    if ($LASTEXITCODE -ne 0) {
+        throw "Gameplay formation asset tests failed with exit code $LASTEXITCODE"
+    }
     & python (Join-Path $Root "tools\test_player_intro.py") `
         --pack $AssetPack --exe $ConsoleExePath --rom $RomPath
     if ($LASTEXITCODE -ne 0) {

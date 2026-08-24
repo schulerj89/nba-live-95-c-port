@@ -409,7 +409,7 @@ def build_player_roster_asset(rom_data):
     head resource family, +$36/+$37 form the appearance key, and names begin
     at +$4A.
     """
-    payload = bytearray(struct.pack("<8sIIII", b"NBPROST1", 1, 29, 12, 64))
+    payload = bytearray(struct.pack("<8sIIII", b"NBPROST2", 2, 29, 12, 64))
     table = lorom_offset(0x84E640)
     for team in range(29):
         entry = table + team * 4
@@ -442,8 +442,72 @@ def build_player_roster_asset(rom_data):
             struct.pack_into("<BBBBHH", packed, 12, min(record[6], 2),
                              head_raw, head_style, record[8], head_base,
                              head_base + 2)
+            # Active actor modes 1/2/3/5 read profile +$3F; modes 4/6 read
+            # +$40 when reloading their +$60 decision cadence.
+            packed[20] = record[0x3f]
+            packed[21] = record[0x40]
             packed[32:64] = fixed_name
             payload.extend(packed)
+    return bytes(payload)
+
+
+def build_gameplay_formation_asset(rom_data):
+    """Pack the exact five-role formation graph consumed by `$85:AD6B`.
+
+    `$85:C6A5` contains five roots, one per actor-relative role. Each root is
+    a 61-entry table of bank-$85 coordinate-list pointers. Lists contain
+    signed little-endian X/Y pairs. Adjacent role pointers independently
+    prove each play's list length, so no captured gameplay state or art enters
+    this asset.
+    """
+    counts = (
+        3, 3, 3, 3, 3, 3, 5, 5, 5, 5, 5, 4, 4, 3, 4, 4, 4, 4, 5, 5,
+        5, 5, 5, 5, 5, 6, 6, 8, 7, 5, 6, 6, 4, 4, 8, 5, 5, 5, 5, 8,
+        7, 8, 8, 7, 6, 6, 7, 7, 6, 9, 8, 5, 4, 6, 5, 5, 4, 4, 5, 5, 4,
+    )
+    root_table = lorom_offset(0x85C6A5)
+    roots = tuple(struct.unpack_from("<5H", rom_data, root_table))
+    expected_roots = (0xC745, 0xC7BF, 0xC839, 0xC8B3, 0xC92D)
+    if roots != expected_roots:
+        raise RuntimeError(f"Gameplay formation roots changed: {roots!r}")
+
+    pointers = [[struct.unpack_from(
+        "<H", rom_data, lorom_offset(0x850000 | root) + play * 2)[0]
+        for root in roots] for play in range(len(counts))]
+    for play, (row, count) in enumerate(zip(pointers, counts)):
+        for slot in range(4):
+            span = abs(row[slot + 1] - row[slot])
+            if span % 4 or span // 4 != count:
+                raise RuntimeError(
+                    f"Formation pointer span changed play={play} slot={slot}: "
+                    f"${row[slot]:04X}->${row[slot + 1]:04X}, count={count}")
+
+    header_size = struct.calcsize("<8sIIIIIII5H2x")
+    entry_size = struct.calcsize("<HHI")
+    entry_offset = header_size
+    data_offset = entry_offset + len(counts) * len(roots) * entry_size
+    pair_count = sum(counts) * len(roots)
+    data_size = pair_count * 4
+    payload = bytearray(struct.pack(
+        "<8sIIIIIII5H2x", b"NBFORM1", 1, len(counts), len(roots), pair_count,
+        entry_offset, data_offset, data_size, *roots))
+    records = bytearray()
+    for play, count in enumerate(counts):
+        for slot, pointer in enumerate(pointers[play]):
+            record_offset = data_offset + len(records)
+            payload.extend(struct.pack("<HHI", pointer, count, record_offset))
+            source = lorom_offset(0x850000 | pointer)
+            coordinates = rom_data[source:source + count * 4]
+            if len(coordinates) != count * 4:
+                raise RuntimeError(
+                    f"Truncated formation list play={play} slot={slot}")
+            records.extend(coordinates)
+    payload.extend(records)
+    digest = hashlib.sha256(records).hexdigest()
+    expected = "e6c71d3e45e12c1f5bf691a23f7d952e6f989798d78024d77518ac7f7437941c"
+    if len(records) != 6380 or digest != expected:
+        raise RuntimeError(
+            f"Gameplay formation graph changed: bytes={len(records)} sha256={digest}")
     return bytes(payload)
 
 
@@ -1452,6 +1516,7 @@ def create_asset_pack(rom_path, output_path):
         raise RuntimeError("Team Select selected-plate palette table is truncated")
 
     player_rosters = build_player_roster_asset(rom_data)
+    gameplay_formations = build_gameplay_formation_asset(rom_data)
     (player_default_pose, player_tile_sources, player_palette_tables,
      player_pose_layout) = build_player_front_pose(rom_data)
     player_animations = build_player_animation_asset(rom_data)
@@ -1654,6 +1719,7 @@ def create_asset_pack(rom_path, output_path):
         (271, 256, 224, 29, home_courts),
         (272, 256, 224, 29, gameplay_home_courts),
         (273, 912, 416, 29, gameplay_court_panoramas),
+        (274, 61, 5, 1595, gameplay_formations),
     ])
     assets.extend([
         (124, 0, 0, 0, rules_vram_bytes),
@@ -1713,7 +1779,7 @@ def create_asset_pack(rom_path, output_path):
                     extra_audio_id += 1
 
     header_magic = b"NBA95PAK"
-    version = 23
+    version = 24
     asset_count = len(assets)
     entry_size = 24 # 6 * 4 bytes
 

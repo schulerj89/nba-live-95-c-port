@@ -28,7 +28,7 @@ static bool intro_player(const NbaAssetPack *assets, uint8_t team, uint8_t slot,
                          IntroPlayer *out) {
     const NbaAssetItem *item = nba_assets_get(assets, NBA_ASSET_PLAYER_ROSTERS);
     if (!item || !item->data || item->size < ROSTER_HEADER_SIZE ||
-        team >= NBA_TEAM_COUNT || slot >= 12 || memcmp(item->data, "NBPROST1", 8))
+        team >= NBA_TEAM_COUNT || slot >= 12 || memcmp(item->data, "NBPROST2", 8))
         return false;
     size_t offset = ROSTER_HEADER_SIZE +
         ((size_t)team * 12u + slot) * ROSTER_RECORD_SIZE;

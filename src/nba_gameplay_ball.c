@@ -28,15 +28,148 @@ uint16_t nba_gameplay_hoop_distance(int16_t dx, int16_t dy) {
                              (low * 3u) / 8u));
 }
 
-/* Final `$85:9D40-$A079` inner-cylinder make classifier. The caller supplies
- * the already-proven collision-path/basket-side context. */
+static uint16_t magnitude16(int16_t value) {
+    uint16_t raw = (uint16_t)value;
+    return value < 0 ? (uint16_t)(0u - raw) : raw;
+}
+
+static int16_t negate16(int16_t value) {
+    return (int16_t)(uint16_t)(0u - (uint16_t)value);
+}
+
+static int16_t halve_if_magnitude_at_least(int16_t value,
+                                           uint16_t threshold) {
+    return magnitude16(value) >= threshold ?
+           nba_gameplay_arithmetic_shift_right(value, 1u) : value;
+}
+
+static void snap_outer_x(NbaGameplayRimState *state) {
+    if (state->velocity_x >= 0)
+        state->x = state->x < 0 ? (int16_t)-349 : (int16_t)343;
+    else
+        state->x = state->x < 0 ? (int16_t)-343 : (int16_t)349;
+}
+
+static void reflect_x_from_current_side(NbaGameplayRimState *state) {
+    if ((state->x >= 0 && state->velocity_x >= 0) ||
+        (state->x < 0 && state->velocity_x < 0))
+        state->velocity_x = negate16(state->velocity_x);
+}
+
+static void reflect_y_to_matching_sign(NbaGameplayRimState *state) {
+    if ((state->y >= 0 && state->velocity_y < 0) ||
+        (state->y < 0 && state->velocity_y >= 0))
+        state->velocity_y = negate16(state->velocity_y);
+}
+
+/* `$85:9ACB-$A081`: exact signed-16-bit rim/backboard shell. Inner edge and
+ * miss impulses consume unrelated WRAM/RNG inputs later in the ROM routine,
+ * so this deterministic split classifies those paths without inventing them. */
+NbaGameplayRimResult nba_gameplay_rim_step(NbaGameplayRimState *state,
+                                           uint16_t live_state,
+                                           bool alternate_height,
+                                           bool inner_veto,
+                                           bool correct_basket_side) {
+    uint16_t abs_x;
+    if (!state || state->z < 73 || state->z >= 123 ||
+        state->y < -27 || state->y >= 27)
+        return NBA_GAMEPLAY_RIM_FLIGHT;
+    abs_x = magnitude16(state->x);
+    if (abs_x < 327u || abs_x >= 349u)
+        return NBA_GAMEPLAY_RIM_FLIGHT;
+
+    if (abs_x <= 343u) {
+        int16_t dx;
+        uint16_t distance;
+        if (live_state != 1u || state->z >= 83 ||
+            (!alternate_height && state->z < 74) ||
+            !correct_basket_side)
+            return NBA_GAMEPLAY_RIM_FLIGHT;
+        dx = (int16_t)(abs_x - 336u);
+        distance = nba_gameplay_hoop_distance(dx, state->y);
+        if (distance >= 11u) return NBA_GAMEPLAY_RIM_FLIGHT;
+        if (distance >= 8u) return NBA_GAMEPLAY_RIM_MISS;
+        if (distance == 7u) return NBA_GAMEPLAY_RIM_EDGE_CONTACT;
+        return inner_veto ? NBA_GAMEPLAY_RIM_MISS : NBA_GAMEPLAY_RIM_MAKE;
+    }
+
+    state->raw_092c = 0x05A0u;
+    state->raw_0962 = 0x05A0u;
+    state->raw_096a = 0u;
+    state->raw_097c = 0x05A0u;
+    if (state->velocity_x < -300) state->velocity_x = -300;
+    if (state->velocity_x > 300) state->velocity_x = 300;
+
+    if (magnitude16(state->velocity_x) < 20u &&
+        magnitude16(state->velocity_y) < 20u &&
+        magnitude16(state->velocity_z) < 150u) {
+        if (state->x >= 0) {
+            state->x = (int16_t)(uint16_t)((uint16_t)state->x - 1u);
+            state->velocity_x = -30;
+        } else {
+            state->x = (int16_t)(uint16_t)((uint16_t)state->x + 1u);
+            state->velocity_x = 30;
+        }
+        return NBA_GAMEPLAY_RIM_OUTER_CONTACT;
+    }
+
+    /* `$85:9B90-$9BA0` is deliberately asymmetric: +24 contacts, while
+     * the negative side must be strictly below -24. */
+    state->raw_096e = 0x000Fu;
+    state->raw_13e7 |= 0x0008u;
+    if (state->y >= 24 || state->y < -24) {
+        state->y = state->y < 0 ? (int16_t)-27 : (int16_t)27;
+        state->velocity_y = halve_if_magnitude_at_least(state->velocity_y, 30u);
+        reflect_y_to_matching_sign(state);
+        return NBA_GAMEPLAY_RIM_OUTER_CONTACT;
+    }
+
+    if (state->z <= 76) {
+        snap_outer_x(state);
+        if (state->velocity_z >= 0)
+            state->velocity_z = negate16(state->velocity_z);
+        state->velocity_x = halve_if_magnitude_at_least(state->velocity_x, 30u);
+        state->velocity_x = negate16(state->velocity_x);
+        return NBA_GAMEPLAY_RIM_OUTER_CONTACT;
+    }
+
+    if (state->z >= 120) {
+        state->velocity_z = halve_if_magnitude_at_least(state->velocity_z, 30u);
+        if (state->velocity_z < 0)
+            state->velocity_z = negate16(state->velocity_z);
+        return NBA_GAMEPLAY_RIM_OUTER_CONTACT;
+    }
+
+    if (state->x >= 346) {
+        state->x = 349;
+        state->velocity_x = halve_if_magnitude_at_least(state->velocity_x, 60u);
+        if (state->velocity_x < 0)
+            state->velocity_x = negate16(state->velocity_x);
+    } else if (state->x < -346) {
+        state->x = -349;
+        state->velocity_x = halve_if_magnitude_at_least(state->velocity_x, 60u);
+        if (state->velocity_x >= 0)
+            state->velocity_x = negate16(state->velocity_x);
+    } else {
+        snap_outer_x(state);
+        state->velocity_x = halve_if_magnitude_at_least(state->velocity_x, 30u);
+        reflect_x_from_current_side(state);
+    }
+    return NBA_GAMEPLAY_RIM_OUTER_CONTACT;
+}
+
+/* Final made-basket predicate, expressed through the complete ROM shell. The
+ * caller's dx/dy are hoop-relative, so +336 reconstructs the right-rim raw X. */
 bool nba_gameplay_ball_is_make(uint16_t live_state, bool alternate_height,
                                bool inner_veto, bool correct_basket_side,
                                int16_t dx, int16_t dy, int16_t z) {
-    int minimum_z = alternate_height ? 68 : 74;
-    return live_state == 1u && correct_basket_side && !inner_veto &&
-           z >= minimum_z && z < 83 &&
-           nba_gameplay_hoop_distance(dx, dy) < 7u;
+    NbaGameplayRimState state = {0};
+    state.x = (int16_t)(uint16_t)(336u + (uint16_t)dx);
+    state.y = dy;
+    state.z = z;
+    return nba_gameplay_rim_step(&state, live_state, alternate_height,
+                                  inner_veto, correct_basket_side) ==
+           NBA_GAMEPLAY_RIM_MAKE;
 }
 
 /* `$86:9DED-$9DFF` chooses 1/2, then `$86:A561-$A5AF` upgrades to three
@@ -135,17 +268,92 @@ int16_t nba_gameplay_arithmetic_shift_right(int16_t value, unsigned amount) {
 
 bool nba_gameplay_ball_self_test(void) {
     int16_t vx = 0, vy = 0, vz = 0;
+    NbaGameplayRimState rim = {0};
     nba_gameplay_shot_launch(0, 0, 20 * 256, 63, 0, &vx, &vy, &vz);
     bool launch_ok = vx == 403 && vy == 0 && vz == 888;
-    return launch_ok &&
+    rim.x = 344; rim.y = 0; rim.z = 77;
+    rim.velocity_x = 301; rim.velocity_y = 20; rim.velocity_z = 150;
+    bool outer_generic = nba_gameplay_rim_step(&rim, 1u, false, false, true) ==
+                         NBA_GAMEPLAY_RIM_OUTER_CONTACT &&
+                         rim.x == 343 && rim.velocity_x == -150 &&
+                         rim.raw_092c == 0x05A0u && rim.raw_0962 == 0x05A0u &&
+                         rim.raw_096a == 0u && rim.raw_097c == 0x05A0u;
+    rim = (NbaGameplayRimState){-344, -25, 80, -20, -31, 150, 0, 0, 1, 0};
+    bool outer_y = nba_gameplay_rim_step(&rim, 1u, false, false, true) ==
+                   NBA_GAMEPLAY_RIM_OUTER_CONTACT &&
+                   rim.y == -27 && rim.velocity_y == -16 &&
+                   rim.raw_096e == 0x000Fu && rim.raw_13e7 == 0x0008u;
+    rim = (NbaGameplayRimState){348, 0, 76, 45, 20, 31, 0, 0, 0, 0};
+    bool outer_low = nba_gameplay_rim_step(&rim, 1u, false, false, true) ==
+                     NBA_GAMEPLAY_RIM_OUTER_CONTACT &&
+                     rim.x == 343 && rim.velocity_x == -22 &&
+                     rim.velocity_z == -31;
+    rim = (NbaGameplayRimState){-348, 0, 120, -20, 20, -31, 0, 0, 0, 0};
+    bool outer_high = nba_gameplay_rim_step(&rim, 1u, false, false, true) ==
+                      NBA_GAMEPLAY_RIM_OUTER_CONTACT && rim.x == -348 &&
+                      rim.velocity_z == 16;
+    rim = (NbaGameplayRimState){344, -24, 80, 20, 31, 150, 0, 0, 0, 0};
+    bool outer_negative_y_edge =
+        nba_gameplay_rim_step(&rim, 1u, false, false, true) ==
+            NBA_GAMEPLAY_RIM_OUTER_CONTACT &&
+        rim.y == -24 && rim.velocity_y == 31;
+    bool shell_gates =
+        nba_gameplay_rim_step(&(NbaGameplayRimState){326,0,80,0,0,150,0,0,0,0},
+                               1u, false, false, true) == NBA_GAMEPLAY_RIM_FLIGHT &&
+        nba_gameplay_rim_step(&(NbaGameplayRimState){327,0,80,0,0,150,0,0,0,0},
+                               1u, false, false, true) == NBA_GAMEPLAY_RIM_MISS &&
+        nba_gameplay_rim_step(&(NbaGameplayRimState){348,0,80,20,20,150,0,0,0,0},
+                               1u, false, false, true) ==
+            NBA_GAMEPLAY_RIM_OUTER_CONTACT &&
+        nba_gameplay_rim_step(&(NbaGameplayRimState){349,0,80,20,20,150,0,0,0,0},
+                               1u, false, false, true) == NBA_GAMEPLAY_RIM_FLIGHT &&
+        nba_gameplay_rim_step(&(NbaGameplayRimState){344,-28,80,20,20,150,0,0,0,0},
+                               1u, false, false, true) == NBA_GAMEPLAY_RIM_FLIGHT &&
+        nba_gameplay_rim_step(&(NbaGameplayRimState){344,-27,80,20,20,150,0,0,0,0},
+                               1u, false, false, true) ==
+            NBA_GAMEPLAY_RIM_OUTER_CONTACT &&
+        nba_gameplay_rim_step(&(NbaGameplayRimState){344,-24,80,20,20,150,0,0,0,0},
+                               1u, false, false, true) ==
+            NBA_GAMEPLAY_RIM_OUTER_CONTACT &&
+        nba_gameplay_rim_step(&(NbaGameplayRimState){344,26,80,20,20,150,0,0,0,0},
+                               1u, false, false, true) ==
+            NBA_GAMEPLAY_RIM_OUTER_CONTACT &&
+        nba_gameplay_rim_step(&(NbaGameplayRimState){344,27,80,20,20,150,0,0,0,0},
+                               1u, false, false, true) == NBA_GAMEPLAY_RIM_FLIGHT &&
+        nba_gameplay_rim_step(&(NbaGameplayRimState){344,0,72,20,20,150,0,0,0,0},
+                               1u, false, false, true) == NBA_GAMEPLAY_RIM_FLIGHT &&
+        nba_gameplay_rim_step(&(NbaGameplayRimState){344,0,73,20,20,150,0,0,0,0},
+                               1u, false, false, true) ==
+            NBA_GAMEPLAY_RIM_OUTER_CONTACT &&
+        nba_gameplay_rim_step(&(NbaGameplayRimState){344,0,122,20,20,150,0,0,0,0},
+                               1u, false, false, true) ==
+            NBA_GAMEPLAY_RIM_OUTER_CONTACT &&
+        nba_gameplay_rim_step(&(NbaGameplayRimState){344,0,123,20,20,150,0,0,0,0},
+                               1u, false, false, true) == NBA_GAMEPLAY_RIM_FLIGHT;
+    return launch_ok && shell_gates && outer_generic && outer_y &&
+           outer_negative_y_edge &&
+           outer_low && outer_high &&
+           nba_gameplay_rim_step(&(NbaGameplayRimState){343,0,74,0,0,0,0,0,0,0},
+                                  1u, false, false, true) ==
+               NBA_GAMEPLAY_RIM_EDGE_CONTACT &&
+           nba_gameplay_rim_step(&(NbaGameplayRimState){343,4,74,0,0,0,0,0,0,0},
+                                  1u, false, false, true) == NBA_GAMEPLAY_RIM_MISS &&
+           nba_gameplay_rim_step(&(NbaGameplayRimState){343,8,74,0,0,0,0,0,0,0},
+                                  1u, false, false, true) == NBA_GAMEPLAY_RIM_MISS &&
+           nba_gameplay_rim_step(&(NbaGameplayRimState){343,9,74,0,0,0,0,0,0,0},
+                                  1u, false, false, true) == NBA_GAMEPLAY_RIM_FLIGHT &&
+           nba_gameplay_rim_step(&(NbaGameplayRimState){336,0,74,0,0,0,0,0,0,0},
+                                  1u, false, false, true) == NBA_GAMEPLAY_RIM_MAKE &&
+           nba_gameplay_rim_step(&(NbaGameplayRimState){342,0,74,0,0,0,0,0,0,0},
+                                  1u, false, true, true) == NBA_GAMEPLAY_RIM_MISS &&
            nba_gameplay_ball_is_make(1, false, false, true, 0, 0, 74) &&
            nba_gameplay_ball_is_make(1, false, false, true, 6, 0, 82) &&
            !nba_gameplay_ball_is_make(1, false, false, true, 7, 0, 82) &&
            !nba_gameplay_ball_is_make(1, false, false, true, 0, 0, 73) &&
            !nba_gameplay_ball_is_make(1, false, true, true, 0, 0, 81) &&
            !nba_gameplay_ball_is_make(1, false, false, false, 0, 0, 81) &&
-           nba_gameplay_ball_is_make(1, true, false, true, 0, 0, 68) &&
-           !nba_gameplay_ball_is_make(1, true, false, true, 0, 0, 67) &&
+           nba_gameplay_ball_is_make(1, true, false, true, 0, 0, 73) &&
+           !nba_gameplay_ball_is_make(1, true, false, true, 0, 0, 72) &&
            nba_gameplay_shot_value(false, 117, 0, true) == 2u &&
            nba_gameplay_shot_value(false, 116, 0, true) == 3u &&
            nba_gameplay_shot_value(false, -116, 0, false) == 2u &&

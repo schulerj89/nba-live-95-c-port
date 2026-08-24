@@ -11,7 +11,7 @@ def read_pack(path):
     if raw[:8] != b"NBA95PAK":
         raise AssertionError("invalid asset-pack magic")
     version, count = struct.unpack_from("<II", raw, 8)
-    if version != 23:
+    if version != 24:
         raise AssertionError(f"Player Lab requires pack v18, got {version}")
     assets = {}
     for index in range(count):
@@ -39,10 +39,10 @@ def main():
             raise AssertionError(f"missing Player Lab asset {asset_id}")
 
     roster, width, height, record_size = assets[251]
-    if roster[:8] != b"NBPROST1" or (width, height, record_size) != (29, 12, 64):
+    if roster[:8] != b"NBPROST2" or (width, height, record_size) != (29, 12, 64):
         raise AssertionError("invalid Player Lab roster schema")
     version, teams, players, packed_size = struct.unpack_from("<IIII", roster, 8)
-    if (version, teams, players, packed_size) != (1, 29, 12, 64):
+    if (version, teams, players, packed_size) != (2, 29, 12, 64):
         raise AssertionError("invalid Player Lab roster header")
     if len(roster) != 24 + 29 * 12 * 64:
         raise AssertionError("Player Lab roster asset is truncated")
@@ -56,9 +56,15 @@ def main():
     chicago = record(3, 2)
     if chicago != (0xADA074, 24, 0, 85, 145, 0x99, 0x80, 0x19, 2, "Cartwright"):
         raise AssertionError(f"Chicago ROM record changed: {chicago}")
+    chicago_offset = 24 + (3 * 12 + 2) * 64
+    if roster[chicago_offset + 20:chicago_offset + 22] != bytes((15, 11)):
+        raise AssertionError("Chicago +$3F/+$40 AI profiles changed")
     west = record(28, 10)
     if west[-1] != "D. Robinson" or west[5:8] != (0xF5, 0x99, 0x8E):
         raise AssertionError(f"West ROM record changed: {west}")
+    west_offset = 24 + (28 * 12 + 10) * 64
+    if roster[west_offset + 20:west_offset + 22] != bytes((1, 2)):
+        raise AssertionError("West +$3F/+$40 AI profiles changed")
 
     pose, pose_w, pose_h, _ = assets[252]
     if (pose_w, pose_h, len(pose)) != (24, 64, 24 * 64 * 4):

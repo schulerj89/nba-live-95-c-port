@@ -19,6 +19,7 @@ typedef struct {
     uint8_t appearance_a, appearance_b, appearance_key, slot;
     uint8_t palette_variant, head_raw, head_style, appearance_modifier;
     uint16_t head_resource_base, head_resource_front;
+    uint8_t decision_profile_3f, decision_profile_40;
     char name[33];
 } PlayerLabRecord;
 
@@ -501,7 +502,7 @@ static bool player_record(const NbaAssetPack *assets, int team, int player,
     const NbaAssetItem *item = nba_assets_get(assets, NBA_ASSET_PLAYER_ROSTERS);
     if (!item || !item->data || item->size < PLAYER_HEADER_SIZE ||
         team < 0 || team >= NBA_TEAM_COUNT || player < 0 ||
-        player >= NBA_PLAYER_ROSTER_SIZE || memcmp(item->data, "NBPROST1", 8) != 0)
+        player >= NBA_PLAYER_ROSTER_SIZE || memcmp(item->data, "NBPROST2", 8) != 0)
         return false;
     const uint8_t *base = (const uint8_t *)item->data;
     size_t offset = PLAYER_HEADER_SIZE +
@@ -517,6 +518,8 @@ static bool player_record(const NbaAssetPack *assets, int team, int player,
     out->head_style = p[14]; out->appearance_modifier = p[15];
     out->head_resource_base = read_u16(p + 16);
     out->head_resource_front = read_u16(p + 18);
+    out->decision_profile_3f = p[20];
+    out->decision_profile_40 = p[21];
     memcpy(out->name, p + 32, 32); out->name[32] = '\0';
     return true;
 }
@@ -530,6 +533,18 @@ bool nba_player_gameplay_shot_ratings(const NbaAssetPack *assets,
     /* Roster profile `+$36/+$37`, selected by `$86:A4A5` for 2/3 points. */
     *two_point = player.appearance_a;
     *three_point = player.appearance_b;
+    return true;
+}
+
+bool nba_player_gameplay_decision_profiles(const NbaAssetPack *assets,
+                                           uint8_t team, uint8_t roster_slot,
+                                           uint8_t *profile_3f,
+                                           uint8_t *profile_40) {
+    PlayerLabRecord player;
+    if (!profile_3f || !profile_40 ||
+        !player_record(assets, team, roster_slot, &player)) return false;
+    *profile_3f = player.decision_profile_3f;
+    *profile_40 = player.decision_profile_40;
     return true;
 }
 

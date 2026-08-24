@@ -4,7 +4,35 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+typedef enum NbaGameplayRimResult {
+    NBA_GAMEPLAY_RIM_FLIGHT = 0,
+    NBA_GAMEPLAY_RIM_OUTER_CONTACT,
+    NBA_GAMEPLAY_RIM_EDGE_CONTACT,
+    NBA_GAMEPLAY_RIM_MISS,
+    NBA_GAMEPLAY_RIM_MAKE
+} NbaGameplayRimResult;
+
+typedef struct NbaGameplayRimState {
+    int16_t x;
+    int16_t y;
+    int16_t z;
+    int16_t velocity_x;
+    int16_t velocity_y;
+    int16_t velocity_z;
+    uint16_t raw_092c;
+    uint16_t raw_0962;
+    uint16_t raw_096a;
+    uint16_t raw_097c;
+    uint16_t raw_096e;
+    uint16_t raw_13e7;
+} NbaGameplayRimState;
+
 uint16_t nba_gameplay_hoop_distance(int16_t dx, int16_t dy);
+NbaGameplayRimResult nba_gameplay_rim_step(NbaGameplayRimState *state,
+                                           uint16_t live_state,
+                                           bool alternate_height,
+                                           bool inner_veto,
+                                           bool correct_basket_side);
 bool nba_gameplay_ball_is_make(uint16_t live_state, bool alternate_height,
                                bool inner_veto, bool correct_basket_side,
                                int16_t dx, int16_t dy, int16_t z);
