@@ -21,8 +21,11 @@ single-frame stepping in headless runs.
 F8 page 3 and the normal CLI debug state expose `PLAY:code/step T:count W:wait`.
 JSON adds raw `$0998/$099A/$099C/$099E/$09A4/$09D0` values plus the three
 side-relative `$09AA/$09AC/$09AE` selectors. Positive countdown records advance
-once per completed 30-Hz actor pass; event records deliberately hold until the
-ROM teammate/event scan that clears `$099E` is ported.
+once per completed 30-Hz actor pass. Negative event records preserve signed
+underflow while `$85:B24C` scans the active five actors; signed actor `+$16`
+or `+$7E & $40` releases each actor, and all five clear `$099E` and advance.
+Each actor's JSON `raw` object also exposes `controller_assignment_16`,
+`movement_magnitude_4c`, `recovery_inhibit_7a`, and `behavior_flags`.
 
 ## Confirmed ROM map
 

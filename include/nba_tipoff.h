@@ -74,6 +74,10 @@ typedef struct {
     uint16_t pair_distance;
     uint16_t reaction_threshold;
     uint16_t movement_boost_timer; /* actor `+$72`, consumed by `$85:A82C` */
+    int8_t controller_assignment_raw; /* signed actor `+$16` */
+    uint16_t movement_magnitude_raw;  /* actor `+$4C` */
+    uint16_t recovery_inhibit_raw;    /* actor `+$7A` */
+    uint16_t behavior_flags_raw;      /* actor `+$7E` */
     uint16_t behavior_timer;
     uint16_t action_state;
     bool visible;

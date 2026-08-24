@@ -86,11 +86,21 @@ def main():
             raise AssertionError(f"recurring ROM play codes missing: {play_codes}")
         play_35 = frame(220)["possession"]
         expected_35 = {
-            "play_step_raw": 0, "play_countdown_raw": 0,
+            "play_step_raw": 0, "play_countdown_raw": -2,
             "play_event_wait_raw": 1, "play_selector_raw": [9, 7, -1],
         }
         if any(play_35[key] != value for key, value in expected_35.items()):
             raise AssertionError(f"$85:B377/$B2DC play $35 load changed: {play_35}")
+        play_35_next = frame(222)["possession"]
+        if play_35_next["play_step_raw"] != 0 or \
+                play_35_next["play_countdown_raw"] != -4 or \
+                play_35_next["play_event_wait_raw"] != 1:
+            raise AssertionError(
+                f"$85:B24C event barrier did not retain signed underflow: {play_35_next}")
+        assignments = [actor["raw"]["controller_assignment_16"]
+                       for actor in frame(220)["actors"]]
+        if assignments != [-1, -1, -1, -1, -1, -1, -1, -1, 0, -1]:
+            raise AssertionError(f"actor +$16 ownership mapping changed: {assignments}")
         play_01_rows = [row["possession"] for row in rows
                         if row["possession"]["play_code_raw"] == 0x01]
         if not play_01_rows or play_01_rows[0]["play_step_raw"] != 0 or \
@@ -127,6 +137,20 @@ def main():
             changed_timers = 0
             previous = rows[row["frame"] - 2] if row["frame"] > 220 else None
             for actor in row["actors"]:
+                raw = actor["raw"]
+                for field in ("controller_assignment_16",
+                              "movement_magnitude_4c", "recovery_inhibit_7a"):
+                    if field not in raw:
+                        raise AssertionError(f"missing actor raw field {field}")
+                expected_magnitude = max(abs(actor["vx"]), abs(actor["vy"])) + \
+                    min(abs(actor["vx"]), abs(actor["vy"])) // 4
+                # `+$4C` is written by the velocity resolver and remains
+                # latched if a later branch zeros/skips velocity that frame.
+                if (actor["vx"] or actor["vy"]) and \
+                        raw["movement_magnitude_4c"] != expected_magnitude:
+                    raise AssertionError(
+                        f"actor +$4C magnitude changed: {raw['movement_magnitude_4c']} "
+                        f"!= {expected_magnitude}")
                 mode = actor["raw"]["control_mode"]
                 if mode >= len(behavior_targets) or \
                         actor["ai_routine"] != behavior_targets[mode]:

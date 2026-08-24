@@ -418,7 +418,7 @@ const uint32_t *nba_assets_gameplay_court_panorama(const NbaAssetPack *pack,
 bool nba_assets_gameplay_formation_offset(const NbaAssetPack *pack,
                                           uint8_t play, uint8_t role,
                                           uint8_t index, bool mirror_y,
-                                          int16_t ball_x, int16_t *x,
+                                          int16_t side_anchor_x, int16_t *x,
                                           int16_t *y) {
     const NbaAssetItem *item = nba_assets_get(pack,
         NBA_ASSET_GAMEPLAY_FORMATIONS);
@@ -437,7 +437,9 @@ bool nba_assets_gameplay_formation_offset(const NbaAssetPack *pack,
     uint16_t raw_x = asset_u16(pair);
     uint16_t raw_y = asset_u16(pair + 2u);
     if (mirror_y) raw_y = (uint16_t)(0u - raw_y);
-    if (ball_x < 0) {
+    /* `$85:ADF5-$AE03`: mirror from DP `$9E` team context `+$0A`
+     * (-80 left/+80 right), never from the moving ball X coordinate. */
+    if (side_anchor_x < 0) {
         raw_x = (uint16_t)(0u - raw_x);
         if (play >= 0x0Eu) raw_y = (uint16_t)(0u - raw_y);
     }

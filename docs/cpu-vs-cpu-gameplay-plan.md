@@ -334,3 +334,22 @@ when `$09D0` is set. Negative countdown records set `$099E` and intentionally
 hold: the prerequisite teammate/event scan is not yet ported, so no host phase
 is allowed to impersonate it. F8, CLI, JSON, and the 50,000-frame regression
 now expose and lock these boundaries before formation indices consume them.
+
+Increment 4I ports the event barrier at `$87:8FA1 -> $85:AF5C/$B24C`.
+After each completed ten-actor pass, `$099A` subtracts `C6=2`; a negative
+event record scans exactly the five actors selected by DP `$9E`. An actor is
+complete when signed byte `+$16 >= 0` or behavior flag `+$7E & $40` is set.
+The first incomplete actor preserves the signed underflow and retries without
+changing `$0998/$099E`; all five complete clears `$099E`, consumes bits
+`$08/$40` for that side, and advances through `$85:B28B-$B326`. The runtime,
+F8/CLI/JSON, and the 50,000-frame regression now retain actor `+$16`, movement
+magnitude `+$4C`, recovery inhibit `+$7A`, and behavior flags `+$7E` so this
+boundary is directly comparable with a ROM trace.
+
+The same audit corrects the formation mirror contract: `$85:AD6B` tests the
+team-context anchor at DP `$9E + $0A` (`-80` left, `+80` right), not ball X.
+Modes 1/3/5 refresh persistent `+$56/+58` only after their signed timer and
+`+$16/+$7A/+$7E` gates; `$85:AE35+` then distinguishes persistent targets
+from local midcourt steering. This checkpoint fixes the asset API naming and
+locks the transform, but intentionally leaves live target installation until
+the mode gates, `$85:B402` arrival writer, and `$0994` reselect path are ported.

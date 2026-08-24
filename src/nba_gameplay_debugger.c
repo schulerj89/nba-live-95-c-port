@@ -257,6 +257,9 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
                 "\"assignment_alternate\":%u,\"assignment_distance\":%u,"
                 "\"assignment_direction\":%u,\"pair_distance\":%u,"
                 "\"reaction_threshold\":%u,\"movement_boost_72\":%u,"
+                "\"controller_assignment_16\":%d,"
+                "\"movement_magnitude_4c\":%u,"
+                "\"recovery_inhibit_7a\":%u,"
                 "\"upper_restart\":%u,"
                 "\"lower_restart\":%u,\"upper_phase\":%u,"
                 "\"lower_phase\":%u,\"behavior_flags\":%u,"
@@ -278,6 +281,8 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
                 a->assignment_alternate_raw, a->assignment_distance_raw,
                 a->assignment_direction_raw, a->pair_distance_raw,
                 a->reaction_threshold_raw, a->movement_boost_raw,
+                a->controller_assignment_16_raw,
+                a->movement_magnitude_4c_raw, a->recovery_inhibit_7a_raw,
                 a->upper_restart_raw,
                 a->lower_restart_raw, a->upper_phase_raw, a->lower_phase_raw,
                 a->behavior_flags_raw, a->palette_raw);

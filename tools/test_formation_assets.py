@@ -34,11 +34,11 @@ def coordinates(payload, play, role):
                      for index in range(count)]
 
 
-def transformed(pair, play, mirror_y=False, ball_x=0):
+def transformed(pair, play, mirror_y=False, side_anchor_x=80):
     x, y = pair
     if mirror_y:
         y = -y
-    if ball_x < 0:
+    if side_anchor_x < 0:
         x = -x
         if play >= 0x0E:
             y = -y
@@ -124,6 +124,9 @@ def main():
     if transformed(play_01[0][0], 0x01, True, -1) != (-80, 0) or \
        transformed(play_10[0][0], 0x10, True, -1) != (-320, -120):
         raise AssertionError("$85:AD6B mirror transform changed")
+    if transformed(play_10[0][0], 0x10, False, 80) != (320, -120) or \
+       transformed(play_10[0][0], 0x10, False, -80) != (-320, 120):
+        raise AssertionError("formation mirror no longer follows team-context anchor")
 
     control, control_metadata = pack_asset(args.pack, 275)
     if control_metadata != (61, 320, 0x85C6AF) or len(control) != 3084:

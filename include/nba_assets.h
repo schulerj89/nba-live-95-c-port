@@ -160,7 +160,7 @@ const uint32_t *nba_assets_gameplay_court_panorama(const NbaAssetPack *pack,
 bool nba_assets_gameplay_formation_offset(const NbaAssetPack *pack,
                                           uint8_t play, uint8_t role,
                                           uint8_t index, bool mirror_y,
-                                          int16_t ball_x, int16_t *x,
+                                          int16_t side_anchor_x, int16_t *x,
                                           int16_t *y);
 
 typedef struct {

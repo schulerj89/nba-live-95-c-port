@@ -57,7 +57,8 @@ def main():
         required = {"base", "action", "flags", "control_mode", "side_group",
                     "target_x_56", "target_y_58", "mode_saved_62",
                     "assignment_current", "reaction_threshold",
-                    "movement_boost_72", "upper_restart",
+                    "movement_boost_72", "controller_assignment_16",
+                    "movement_magnitude_4c", "recovery_inhibit_7a", "upper_restart",
                     "lower_restart", "behavior_flags"}
         if not required.issubset(sample["actors"][0]["raw"]):
             raise AssertionError("AI/actor raw telemetry schema is incomplete")

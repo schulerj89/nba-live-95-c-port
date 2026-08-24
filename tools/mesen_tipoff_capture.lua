@@ -149,6 +149,11 @@ local function signed_word(address)
     return value >= 0x8000 and value - 0x10000 or value
 end
 
+local function signed_byte(address)
+    local value = emu.read(address, emu.memType.snesWorkRam, false) or 0
+    return value >= 0x80 and value - 0x100 or value
+end
+
 -- Active modes 1-6 subtract DP `$C8` from actor +$60, while physics and
 -- recovery modes use `$C6`. Record both at the exact `$87:9244` dispatch.
 emu.addMemoryCallback(function()
@@ -379,7 +384,11 @@ local function dump_gameplay_jsonl(frame)
             "\"assignment_base\":%u,\"assignment_current\":%u," ..
             "\"assignment_alternate\":%u,\"assignment_distance\":%u," ..
             "\"assignment_direction\":%u,\"pair_distance\":%u," ..
-            "\"reaction_threshold\":%u,\"upper_restart\":%u," ..
+            "\"reaction_threshold\":%u," ..
+            "\"controller_assignment_16\":%d," ..
+            "\"movement_magnitude_4c\":%u," ..
+            "\"recovery_inhibit_7a\":%u," ..
+            "\"upper_restart\":%u," ..
             "\"lower_restart\":%u,\"upper_phase\":%u," ..
             "\"lower_phase\":%u,\"behavior_flags\":%u," ..
             "\"palette\":%u}}",
@@ -402,6 +411,7 @@ local function dump_gameplay_jsonl(frame)
             word(base + 0x84), word(base + 0x6e), word(base + 0x76),
             word(base + 0x74), word(base + 0x78), word(base + 0x8e),
             word(base + 0x86), word(base + 0x8a), word(base + 0x60),
+            signed_byte(base + 0x16), word(base + 0x4c), word(base + 0x7a),
             word(base + 0x46), word(base + 0x48), word(base + 0x3a),
             word(base + 0x44), word(base + 0x7e), word(base + 0xac)))
         previous_actor_world[actor] = { x=actor_x, y=actor_y, z=actor_z }
