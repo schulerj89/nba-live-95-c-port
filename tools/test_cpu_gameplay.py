@@ -81,14 +81,22 @@ def main():
         if activated_foul:
             foul = activated_foul["fouls"]
             collision = activated_foul["collision"]
-            if collision["routine"] != 0x86D12D or foul["event_raw"] != 1 or \
+            owned_foul = collision["routine"] == 0x86D12D and \
+                foul["offender_raw"] == collision["a"] and \
+                foul["victim_raw"] == collision["b"]
+            body_foul = collision["player_routine"] in \
+                (0x86BFBA, 0x86C91E) and \
+                foul["offender_raw"] == collision["player_b"] and \
+                foul["victim_raw"] == collision["player_a"]
+            event_one = foul["event_raw"] == 1 or \
+                (foul["latched_event_raw_08f0"] == 1 and
+                 foul["whistle_active_raw_09b6"] == 1)
+            if not (owned_foul or body_foul) or not event_one or \
                     foul["shooting_raw"] != 0 or \
-                    foul["offender_raw"] != collision["a"] or \
-                    foul["victim_raw"] != collision["b"] or \
                     sum(foul["team_raw"]) != 1 or \
                     sum(foul["personal_raw"]) != 1:
                 raise AssertionError(
-                    "$86:D12D defensive-foul bookkeeping diverged: "
+                    "$86:C4FE/$86:D12D defensive-foul bookkeeping diverged: "
                     f"{activated_foul}")
         for row in rows[219:]:
             collision = row["collision"]
@@ -319,6 +327,7 @@ def main():
                     f"$85:B128 did not consume $0994 on the next actor pass: "
                     f"{requested} -> {next_due}")
             if requested["match"]["live_state_raw"] == 0x82 and \
+                    requested["match"]["inbound_layout_raw"] == 0 and \
                     (next_due["possession"]["play_code_raw"] != 0x01 or
                      next_due["possession"]["play_countdown_raw"] != 120):
                 raise AssertionError(
@@ -376,7 +385,9 @@ def main():
                 any(row["actors"][row["ball"]["owner"]]["raw"]["control_mode"] != 12
                     for row in mode12_attached) or \
                 any(row["ball"]["state"] == 4 and
-                    row["ball"]["activity_raw"] not in (0, 0xFFFF)
+                    row["ball"]["activity_raw"] not in (0, 0xFFFF) and
+                    not (row["ball"]["activity_raw"] == 1 and
+                         row["fouls"]["free_throw_state_raw"] != 0)
                     for row in rows):
             raise AssertionError("$0948 canonical shot/attach lifecycle changed")
         detached_shots = [row for row in rows
@@ -431,14 +442,16 @@ def main():
                 if (actor["vx"] or actor["vy"]) and \
                         raw["movement_magnitude_4c"] != expected_magnitude and \
                         not on_rectangular_edge and not on_isometric_edge and \
-                        stable_movement_mode and not post_resolver_contact:
+                        stable_movement_mode and not post_resolver_contact and \
+                        row["fouls"]["free_throw_state_raw"] == 0:
                     raise AssertionError(
                         f"actor +$4C magnitude changed at frame {row['frame']} "
                         f"actor {actor['id']}: {raw['movement_magnitude_4c']} "
                         f"!= {expected_magnitude}; collision={row['collision']}")
                 mode = actor["raw"]["control_mode"]
-                if mode >= len(behavior_targets) or \
-                        actor["ai_routine"] != behavior_targets[mode]:
+                if row["fouls"]["free_throw_state_raw"] == 0 and \
+                        (mode >= len(behavior_targets) or
+                         actor["ai_routine"] != behavior_targets[mode]):
                     raise AssertionError(f"$87:9244 mode dispatch changed: {actor}")
                 if actor["actor_routine"] != 0x85963D:
                     raise AssertionError("actor integration lost $85:963D")
@@ -559,7 +572,8 @@ def main():
         dead_runs = []
         run = []
         for row in rows:
-            if row["match"]["live_state_raw"] == 0x82:
+            if row["match"]["live_state_raw"] == 0x82 and \
+                    row["fouls"]["free_throw_state_raw"] == 0:
                 run.append(row)
             elif run:
                 dead_runs.append(run)
@@ -571,7 +585,28 @@ def main():
             first = inbound[0]
             match = first["match"]
             provisional_actor = match["inbound_actor_raw"]
-            expected_target = (394, -64, 6) if provisional_actor == 2 else (-394, 64, 2)
+            layout = match["inbound_layout_raw"]
+            if layout == 0:
+                expected_target = (394, -64, 6) if provisional_actor == 2 \
+                    else (-394, 64, 2)
+            elif layout in (3, 4):
+                # `$85:C37D` consumes the rounded live ball record; `$09B0/B2`
+                # separately preserve its signed integer-word floor.
+                source_x = first["ball"]["x"]
+                source_y = first["ball"]["y"]
+                side_anchor = -336 if provisional_actor == 2 else 336
+                if layout == 4:
+                    target_x = (-40 if side_anchor < 0 else 40) if \
+                        (side_anchor ^ source_x) < 0 else source_x
+                else:
+                    target_x = max(-332, min(337, source_x))
+                target_y = -224 if source_y < 0 else 224
+                target_x = max(target_x, -556 - target_y) if target_y < 0 \
+                    else min(target_x, 561 - target_y)
+                expected_target = (
+                    target_x, target_y, 0 if source_y < 0 else 4)
+            else:
+                raise AssertionError(f"unexpected dead-ball layout: {first}")
             actual_target = (match["inbound_target_x_raw"],
                              match["inbound_target_y_raw"],
                              match["inbound_direction_raw"])
@@ -594,6 +629,9 @@ def main():
             if not ready:
                 raise AssertionError("$86:F4F2 inbound never reached raw target box")
             first_ready = ready[0]
+            if first_ready["match"]["dead_ball_raw_0968"] != 2:
+                raise AssertionError(
+                    "$86:F54F inbound arrival did not write $0968=2")
             actor_id = first_ready["match"]["inbound_actor_raw"]
             actor = first_ready["actors"][actor_id]
             dx = first_ready["match"]["inbound_target_x_raw"] - actor["x"]
@@ -716,7 +754,8 @@ def main():
         attached = []
         for row in rows[219:]:
             owner = row["ball"]["owner"]
-            if row["ball"]["state"] == 4 and owner >= 0:
+            if row["ball"]["state"] == 4 and owner >= 0 and \
+                    row["fouls"]["free_throw_state_raw"] == 0:
                 actor = row["actors"][owner]
                 actual = (row["ball"]["x"] - actor["x"],
                           row["ball"]["y"] - actor["y"],
@@ -841,7 +880,7 @@ def main():
     implementation = "\n".join((source / relative).read_text() for relative in (
         "src/nba_tipoff.c", "src/nba_gameplay_ai.c",
         "src/nba_gameplay_ball.c", "src/nba_gameplay_effect.c",
-        "src/nba_player_lab.c"))
+        "src/nba_gameplay_foul.c", "src/nba_player_lab.c"))
     for marker in ("$85:963D-$985F", "$85:BC52-$BC81", "$85:B95C",
                    "$87:B832", "$87:B649", "$87:B66A", "$85:9192",
                    "$87:8F01-$8F8D", "nba_gameplay_camera_update",
@@ -875,6 +914,8 @@ def main():
                    "$86:BF0B-$C475", "$86:C88F-$C91D",
                    "$86:BFBA-$C238", "$86:C91E-$CB83",
                    "cpu_try_player_knockdown_contact",
+                   "$86:C4FE-$C6AC", "nba_gameplay_foul_classify_contact",
+                   "cpu_classify_player_contact",
                    "$87:9C67", "$86:C6AD-$C74D",
                    "cpu_update_knockdown_actor",
                    "cpu_update_player_contacts",

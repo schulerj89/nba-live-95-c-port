@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "nba_gameplay_ai.h"
 
 #define NBA_GAMEPLAY_FOUL_DEFENSIVE 1u
 #define NBA_GAMEPLAY_FOUL_CHARGING  2u
@@ -30,6 +31,29 @@ typedef struct {
     uint16_t side_event_bits_raw_13e9;
 } NbaGameplayFoulState;
 
+/* Portable inputs consumed by the primary player/player contact classifier
+ * at `$86:C4FE-$C6AC`. Register Y is the offender/hitter and register X is
+ * the victim. Team group is the actor-record +$6E value (0 or 5); team index
+ * is the +$70 bookkeeping context represented by the port as 0 or 1. */
+typedef struct {
+    uint8_t offender_actor;
+    uint8_t victim_actor;
+    uint8_t offender_team;
+    uint8_t offender_group;
+    uint8_t offender_mode;
+    uint16_t offender_movement_magnitude;
+    uint16_t offender_boost_raw_72;
+    int8_t ball_owner_actor;
+    int8_t last_shooter_actor;
+    uint8_t offense_group_raw_093a;
+    uint16_t live_state_raw_0936;
+    uint16_t ball_activity_raw_0948;
+    uint16_t period_raw_0926;
+    uint16_t context_tag; /* 0 or $87 */
+    uint16_t defensive_rule_raw_17d1;
+    uint16_t offensive_rule_raw_17d3;
+} NbaGameplayContactFoulInput;
+
 void nba_gameplay_foul_init(NbaGameplayFoulState *state);
 bool nba_gameplay_foul_record_contact(NbaGameplayFoulState *state,
                                       uint8_t event_code,
@@ -38,6 +62,10 @@ bool nba_gameplay_foul_record_contact(NbaGameplayFoulState *state,
                                       uint8_t offender_team,
                                       bool shot_detached,
                                       uint16_t period_raw_0926);
+bool nba_gameplay_foul_classify_contact(
+    NbaGameplayFoulState *state, NbaGameplayRng *rng,
+    const NbaGameplayContactFoulInput *input,
+    uint16_t *event_bits_raw_13e7);
 bool nba_gameplay_foul_record_made_basket(NbaGameplayFoulState *state);
 bool nba_gameplay_foul_record_violation(NbaGameplayFoulState *state,
                                         uint8_t event_code,

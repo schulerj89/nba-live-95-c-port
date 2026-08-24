@@ -1028,6 +1028,16 @@ asset pack; no emulator capture art or host hitbox is substituted. Forced
 self-test vectors lock horizontal and vertical opponent results, teammate
 strength, `+$7E` restoration, metric boundaries, and inbound exclusion.
 
+The full `$38` outcome is now translated as well. The standard `$86:CB84`
+vectors install action `$35`, timer 30, and `+$56=-1`; the alternate
+`$86:CBA4` vectors install action `$36`, timer 174, `+$56=0`, and vertical
+launch 600. Both branches use attacker facing `+$4E`, preserve the exact
+RNG gates and context-`$87` classifier positions, enter mode 8 with flags 6,
+and use half of the selected base vector for the probabilistic owner drop.
+The drop clears `$093E`, enters ownerless-ball pursuit, and sets the portable
+`$0A02` phase. Deterministic vectors cover both vector tables, impulse-only
+returns, action installation, and owner release.
+
 The CLI now exposes per-frame body-contact count, last pair, and source
 routine separately from ball/foul collision telemetry. The 60,000-frame test
 uses that evidence to permit `+$4C` to remain the pre-contact movement
@@ -1041,10 +1051,9 @@ uses the original one-in-eight RNG gate and independent signed-byte jitters,
 transfers five-eighths of each hitter velocity to the victim, stops the
 hitter, and installs action `$35` or the boosted `$36`. Mode-10/14 receiver
 cancellation, recovery/contact timers, mode 8, direction reversal, and
-ball-owner detachment are all portable and translated. The call to `$86:C4FE`
-is isolated: its later foul-adjudication side effects remain part of the
-unfinished classifier, but they do not gate or alter the translated
-knockdown physics and presentation writes.
+ball-owner detachment are all portable and translated. The following
+classifier increment connects `$86:C4FE` without changing the fact that its
+return value never gates the knockdown physics or presentation writes.
 
 The matching mode-8 executor is `$87:9C67 -> $86:C6AD-$C74D`. The global
 `$87:9090` scheduler saturates `+$5A` toward zero while C6AD wraps `+$60` by
@@ -1054,3 +1063,68 @@ when the signed timer expires (mode 11 if that actor has regained possession).
 Action `$36` additionally uses `+$56/+$66` to produce the original landing
 hop, halve planar velocity, and stop on its next landing. This recovery path
 prevents entry-only knockdowns from becoming permanent mode-8 actors.
+
+### Increment 5L: primary body-contact foul classification
+
+The recomp execution flow and the maintained Ghidra dump agree that
+`$86:C4FE-$C6AC` is a fire-and-forget classifier, not a collision predicate.
+The high-speed path calls it with context 0 at `$86:BFF2`, consumes its
+normal jitter/action rolls, and calls it again with context `$87` at
+`$86:C0BF/$C10C`. Animation `$38` calls context 0 at `$86:C99D` before its
+impulse. Collision physics continues whether classification accepts or
+rejects.
+
+The port now preserves the classifier's early live/free-throw/pending/
+whistle gates, the normal-context offender speed boundary `$02F4`, and the
+detached-shot requirement that the pair contain `$093E` or the last shooter
+`$09C8`. Most importantly, classification masks the existing RNG state to
+its low byte and can shift it in place; it never calls `$80:CEE7`. Those
+writes affect subsequent knockdown jitter even when a rules probability
+rejects the foul, so the native call positions are retained exactly.
+
+Actor Y is the offender and X the victim. A ball owner committing contact is
+charging code 2. A nonowner on persistent offense group `$093A` is offensive
+code 13; all other accepted contacts are defensive code 1. The rule test
+uses the 65816 signed-BPL result of `(rule*4)-roll`, rather than a host-only
+probability shortcut. Context `$87` halves the roll again and rejects values
+below five only on the nonowner branch.
+
+`$86:C62A-$C692` also corrected an older bookkeeping assumption. Charging
+and offensive codes increment only the offender's personal count. Only
+defensive code 1 increments the team count and checks the period-dependent
+bonus threshold (five before period four, four afterward). Only a detached
+defensive foul moves to `$09BC`, clears `$0964`, and raises `$13E7 bit $2000`.
+The alternate owned-ball classifier `$86:D12D` now also performs its proven
+low-byte `$07F6` writeback, includes `$09B6` in the busy gate, and forwards
+the real `$0948` detached state.
+
+Component vectors lock defensive, charging, offensive, detached-shot,
+context-`$87`, speed-boundary, busy-state, signed-threshold, and personal-cap
+behavior. An end-to-end `$86:BFBA-$C10C` vector proves the exact sequence:
+one-in-eight gate `$20`, rejected context-0 speed test, jitter rolls
+`$40/$80`, then context-`$87` mutation to `$40` and defensive foul commit.
+
+The first long-run body foul exposed a separate dead-ball ordering error.
+Ghidra `$85:C5AD-$C5BD` proves that target selection writes `$0958/$095A`
+both globally and into provisional `$0954`; `$85:AD86-$AD95` then preserves
+that boundary target by skipping the later formation overwrite while
+`$0936=$82`. Scheduler traces put the complete ten-player `$85:963D` pass
+before `$86:D5DB/D652/CCFC`, so the port retains player integration before
+the sorted contact sweep. `$87:9B41-$9BC8` also preserves an already
+ownerless pass/shot/bounce object's routine and velocity; only an owned ball
+is stopped before `$093E` clears.
+
+The same trace exposed a real global expiry edge: `$87:9AA6` consumes
+expired `$092E` even if `$093E` has not yet acquired an inbounder. The port
+no longer requires a host possession actor before applying that side/layout
+restart. In the updated deterministic 60,000-frame trace every `$82` run
+completes (11 sequences, longest 1,136 frames). Sustained movement analysis
+measures only ordinary live-play pairs (excluding `$82` and free-throw
+dispatch) and independently fails an unfinished or over-1,200-frame
+dead-ball sequence, so a legitimate inbound/free-throw pause cannot mask a
+lifecycle stall.
+
+At boundary arrival, `$86:F54F-$F577` writes `$0968=2` (and `$09F6=2`, whose
+independent consumer is not yet represented), freezes the inbounder, clears
+`$09B6` then `$0964`, and finally raises `$09BA`. The represented `$0968`
+write and its ordering are regression-tested through the gameplay trace.

@@ -33,7 +33,7 @@ public class DumpCpuGameplay extends GhidraScript {
             {0xce00, 0xd2ff}, {0xeb00, 0xefff}
         };
         if (bank.equals("85")) return new long[][] {
-            {0x8d00, 0xa7ff}, {0xaf00, 0xc6ff}, {0xf100, 0xf8ff}
+            {0x8d00, 0xaeff}, {0xaf00, 0xc6ff}, {0xf100, 0xf8ff}
         };
         if (bank.equals("86")) return new long[][] {
             {0x9800, 0xbaff}, {0xc400, 0xddff}, {0xe300, 0xf8ff}
@@ -52,7 +52,7 @@ public class DumpCpuGameplay extends GhidraScript {
             0x8d19, 0x8ee6, 0x9192, 0x963d, 0x9700, 0x9a24,
             0x9d40, 0x9f01, 0xa079, 0xa1e9, 0xa21f, 0xa357, 0xa518, 0xa5cc,
             0xa3b7, 0xa5f4, 0xa656, 0xa755,
-            0xab17, 0xaf5c, 0xb402, 0xb50e, 0xb60b, 0xb678, 0xb9d2,
+            0xab17, 0xae3b, 0xaf5c, 0xb402, 0xb50e, 0xb60b, 0xb678, 0xb9d2,
             0xba1d, 0xbab7, 0xbae4, 0xbc07, 0x93f5,
             0x9530, 0xc37d, 0xc5fb, 0xef3a, 0xf02d,
             0xf1c1, 0xf34f, 0xf3c3, 0xf5e4, 0xf78b, 0xf7c9, 0xf867, 0xf8d9
@@ -135,6 +135,14 @@ public class DumpCpuGameplay extends GhidraScript {
                 addEntryPoint(toAddr(0xa5f4)); disassemble(toAddr(0xa5f4));
                 addEntryPoint(toAddr(0xa656)); disassemble(toAddr(0xa656));
                 for (long address = 0xa3b7; address <= 0xa755; ++address) {
+                    Instruction instruction = listing.getInstructionAt(toAddr(address));
+                    if (instruction != null)
+                        out.printf("$85:%04X  %s%n", address, instruction.toString());
+                }
+                out.println("\n--- Complete dead-ball formation override ---");
+                addEntryPoint(toAddr(0xad6b)); disassemble(toAddr(0xad6b));
+                addEntryPoint(toAddr(0xae3b)); disassemble(toAddr(0xae3b));
+                for (long address = 0xad6b; address <= 0xaebb; ++address) {
                     Instruction instruction = listing.getInstructionAt(toAddr(address));
                     if (instruction != null)
                         out.printf("$85:%04X  %s%n", address, instruction.toString());

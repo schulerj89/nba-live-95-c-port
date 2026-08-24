@@ -24,9 +24,25 @@ def transitions(rows, getter, start):
     return result
 
 
+def is_live_play(row):
+    """Movement cadence applies outside dead-ball and free-throw scenes."""
+    return (row["match"]["live_state_raw"] < 0x80 and
+            row["fouls"]["free_throw_state_raw"] == 0)
+
+
+def is_dead_ball(row):
+    """The ROM uses bit 7 of $0936 for dead-ball/inbound sequencing."""
+    return row["match"]["live_state_raw"] >= 0x80
+
+
 def movement_count(rows, actor, first, last):
     count = 0
-    for index in range(max(first + 1, 1), min(last + 1, len(rows))):
+    base_frame = rows[0]["scene_frame"]
+    first_index = max(1, first - base_frame + 1)
+    stop_index = min(len(rows), last - base_frame + 1)
+    for index in range(first_index, stop_index):
+        if not is_live_play(rows[index]) or not is_live_play(rows[index - 1]):
+            continue
         current, previous = rows[index]["actors"][actor], rows[index - 1]["actors"][actor]
         count += (current["x"], current["y"]) != (previous["x"], previous["y"])
     return count
@@ -56,16 +72,43 @@ def main():
         f"f{frame}:mode{value[0]}/owner{value[1]}" for frame, value in ball_changes[:24]))
 
     weak_windows = []
+    skipped_dead_ball_windows = []
     final_frame = rows[-1]["scene_frame"]
     for first in range(args.start, final_frame + 1, args.window):
         last = min(first + args.window - 1, final_frame)
+        base_frame = rows[0]["scene_frame"]
+        first_index = max(1, first - base_frame + 1)
+        stop_index = min(len(rows), last - base_frame + 1)
+        live_pairs = sum(
+            is_live_play(rows[index]) and is_live_play(rows[index - 1])
+            for index in range(first_index, stop_index))
         counts = [movement_count(rows, actor, first, last) for actor in range(10)]
         team_counts = (sum(counts[:5]), sum(counts[5:]))
         print(f"[CPU TRACE] movement f{first}-{last} teams={team_counts[0]}/{team_counts[1]} "
-              f"actors={'/'.join(map(str, counts))}")
-        span = last - first + 1
-        if min(team_counts) < max(4, span // 4):
+              f"live_pairs={live_pairs} actors={'/'.join(map(str, counts))}")
+        if not live_pairs:
+            skipped_dead_ball_windows.append((first, last))
+        elif min(team_counts) < max(4, live_pairs // 4):
             weak_windows.append((first, last, team_counts))
+
+    dead_ball_runs = []
+    run_start = None
+    for row in rows:
+        if is_dead_ball(row) and run_start is None:
+            run_start = row["scene_frame"]
+        elif not is_dead_ball(row) and run_start is not None:
+            dead_ball_runs.append((run_start, row["scene_frame"] - 1))
+            run_start = None
+    if run_start is not None:
+        dead_ball_runs.append((run_start, final_frame))
+    if dead_ball_runs:
+        print("[CPU TRACE] dead-ball=" + ", ".join(
+            f"f{first}-{last}({last - first + 1})"
+            for first, last in dead_ball_runs))
+    if skipped_dead_ball_windows:
+        print("[CPU TRACE] movement windows outside ordinary live play=" +
+              ", ".join(f"f{first}-{last}"
+                        for first, last in skipped_dead_ball_windows))
 
     attached_distances = []
     for row in rows:
@@ -91,6 +134,13 @@ def main():
             errors.append(f"missing pass/attach/shot/bounce modes: {sorted(modes)}")
         if weak_windows:
             errors.append(f"stationary team windows: {weak_windows}")
+        unfinished_dead_ball = dead_ball_runs and dead_ball_runs[-1][1] == final_frame
+        overlong_dead_ball = [run for run in dead_ball_runs
+                              if run[1] - run[0] + 1 > 1200]
+        if unfinished_dead_ball:
+            errors.append(f"dead-ball state did not complete: {dead_ball_runs[-1]}")
+        if overlong_dead_ball:
+            errors.append(f"dead-ball state exceeded 1,200 frames: {overlong_dead_ball}")
         # ROM animation-resource poses reach roughly 37 world pixels from the
         # actor origin; the exact per-frame table contract is checked by
         # test_cpu_gameplay.py. This summary only rejects true detachment.

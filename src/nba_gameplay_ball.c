@@ -529,7 +529,11 @@ NbaGameplayOwnedContactResult nba_gameplay_owned_contact_attempt(
         return NBA_GAMEPLAY_OWNED_CONTACT_NONE;
     if (foul_state_clear && foul_rule_raw_17d1 != 0u) {
         uint8_t foul_roll = (uint8_t)nba_gameplay_rng_next(rng);
-        if (foul_roll <= (uint8_t)(foul_rule_raw_17d1 >> 1))
+        /* `$86:D151-$D167` is another destructive low-byte use of `$07F6`.
+         * Preserve both the writeback and the signed BPL comparison. */
+        rng->state = foul_roll;
+        uint16_t delta = (uint16_t)((foul_rule_raw_17d1 >> 1) - foul_roll);
+        if ((int16_t)delta >= 0)
             return NBA_GAMEPLAY_OWNED_CONTACT_FOUL;
     }
     return (uint8_t)nba_gameplay_rng_next(rng) < contact_rating_3a ?
@@ -666,12 +670,12 @@ bool nba_gameplay_ball_self_test(void) {
     nba_gameplay_rng_seed(&owned_rng, 64u);
     bool owned_contact_vectors = nba_gameplay_owned_contact_attempt(
         &owned_rng, 0u, 1u, 128u, 0u, 45u, true) ==
-            NBA_GAMEPLAY_OWNED_CONTACT_FOUL && owned_rng.state == 0x0200u;
+            NBA_GAMEPLAY_OWNED_CONTACT_FOUL && owned_rng.state == 0x0000u;
     nba_gameplay_rng_seed(&owned_rng, 8192u);
     owned_contact_vectors = owned_contact_vectors &&
         nba_gameplay_owned_contact_attempt(
             &owned_rng, 0u, 1u, 128u, 0u, 45u, true) ==
-            NBA_GAMEPLAY_OWNED_CONTACT_STRIP && owned_rng.state == 0x3B0Eu;
+            NBA_GAMEPLAY_OWNED_CONTACT_STRIP && owned_rng.state == 0x010Eu;
     nba_gameplay_rng_seed(&owned_rng, 8192u);
     owned_contact_vectors = owned_contact_vectors &&
         nba_gameplay_owned_contact_attempt(

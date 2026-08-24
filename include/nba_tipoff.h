@@ -119,6 +119,7 @@ typedef struct {
     NbaGameplayCamera camera;
     NbaGameplayRng rng;
     NbaGameplayFoulState fouls;
+    uint16_t team_pose_contact_count_raw[2]; /* team context +$50 */
     uint16_t deferred_shot_foul_phase_raw_0a02;
     uint16_t free_throw_start_tick_raw_09be;
     uint16_t free_throw_aim_x_raw_0980;
