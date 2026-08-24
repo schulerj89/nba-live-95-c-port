@@ -470,13 +470,12 @@ static bool cpu_active_decision_due(NbaTipoff *tipoff, unsigned slot) {
         tipoff->assets, team, actor->roster_slot,
         &profile_3f, &profile_40);
     int16_t actor_x = fp_round(actor->x_fp);
-    /* Modes 2/4/6 compare signed byte actor +$04 against side context +$0A.
+    /* Modes 2/4/6 compare signed-word actor +$04 against side context +$0A.
      * `$87:8EFE/$8F11` keeps DP $9E at $46EB for slots 0..4 and $476B for
      * slots 5..9; live values are stable anchors $B0 (-80) and $50 (+80).
      * This is deliberately not a ball-position or matchup comparison. */
-    int8_t actor_x_low = (int8_t)(uint8_t)actor_x;
-    int8_t side_anchor = slot < 5u ? -80 : 80;
-    bool same_half = (int8_t)(actor_x_low ^ side_anchor) >= 0;
+    int16_t side_anchor = slot < 5u ? -80 : 80;
+    bool same_half = nba_gameplay_same_x_half(actor_x, side_anchor);
     if (mode == 1u || mode == 3u || mode == 5u || mode == 11u)
         return nba_gameplay_decision_timer_step(
             &actor->reaction_threshold, profile_3f, 0x40u, false);

@@ -16,8 +16,8 @@ FORMATION = [
     (-8, -3), (16, 83), (24, -80), (-104, 56), (-96, -59),
 ]
 EXPECTED_RGB = {
-    600: "40dbdf3634307b63e0f1e0407617c00ff5c5cce845a6a2e961050441e593ccf8",
-    1300: "8cef9da7b960488d615fc9924cb58a131f67040895e04c4cab99b1905ffc55a8",
+    600: "ba9705028162ad134fcb76f5c0dce8adadf248f0c59a59e68333ae7d372fb707",
+    1300: "0be740272c80086da448906aacefcffaa6b9a8f483ea823f604bf9f523b5462a",
 }
 
 
@@ -717,6 +717,7 @@ def main():
                    "nba_gameplay_ball_pose_contact",
                     "$86:E923-$E96E", "$86:B0F7-$B153",
                    "$85:A82C-$AB16", "nba_gameplay_velocity_step",
+                   "nba_gameplay_same_x_half",
                    "$85:A5F4-$A655", "nba_gameplay_ball_apply_settle",
                    "$85:A43A-$A44B",
                    "nba_gameplay_ball_apply_ground_impact",

@@ -41,6 +41,7 @@ void nba_gameplay_target_from_pair(int16_t paired_x, int16_t paired_y,
 bool nba_gameplay_decision_timer_step(uint16_t *timer, uint8_t profile_byte,
                                       uint16_t reload_base,
                                       bool add_half_court_delay);
+bool nba_gameplay_same_x_half(int16_t actor_x, int16_t context_anchor_x);
 uint8_t nba_gameplay_target_direction(int16_t dx, int16_t dy,
                                       uint16_t *distance);
 uint8_t nba_gameplay_pass_direction(int16_t dx, int16_t dy,

@@ -499,6 +499,10 @@ bool nba_gameplay_ai_self_test(void) {
     timer = 20u;
     if (!nba_gameplay_decision_timer_step(&timer, 11u, 0x30u, false) ||
         timer != 47u) return false;
+    if (nba_gameplay_same_x_half(200, -80) ||
+        !nba_gameplay_same_x_half(-200, -80) ||
+        !nba_gameplay_same_x_half(200, 80) ||
+        nba_gameplay_same_x_half(-200, 80)) return false;
     static const struct { int16_t x, y, z; bool expected; } shot_edges[] = {
         {-338, 0, 0, true}, {-226, -64, 0, true}, {-225, 0, 0, false},
         {225, 0, 0, false}, {226, 63, 0, true}, {337, 0, 0, true},
@@ -689,4 +693,11 @@ bool nba_gameplay_decision_timer_step(uint16_t *timer, uint8_t profile_byte,
     *timer = (uint16_t)(remaining + (int)reload_base + profile_byte +
                         (add_half_court_delay ? 0x20 : 0));
     return true;
+}
+
+/* `$86:F6EF-$F703/$86:F7BC-$F7D0/$86:F8EA-$F8FE`: M=0 makes both
+ * operands signed 16-bit words. Truncating them to bytes changes the sign
+ * for ordinary court X values such as +200. */
+bool nba_gameplay_same_x_half(int16_t actor_x, int16_t context_anchor_x) {
+    return (int16_t)((uint16_t)actor_x ^ (uint16_t)context_anchor_x) >= 0;
 }

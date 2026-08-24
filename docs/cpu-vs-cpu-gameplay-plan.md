@@ -742,3 +742,13 @@ at least `$0048`. The previous port used the correct velocities but discarded
 both gameplay-visible writes. A shared component now owns the complete impact
 response, telemetry exposes `$13E5`, and boundary vectors distinguish rebound
 71 from 72 while protecting signed planar damping.
+
+Increment 5B fixes a width error found by translating the native mode-2/4/6
+countdown entries `$86:F6CD/$F794/$F8CD`. Their half-court delay test executes
+with M=0 and XORs the full signed 16-bit actor X (`+$04`) with the full context
+anchor (`+$0A`). The port had cast both to signed bytes, so actor X `+200`
+against anchor `-80` incorrectly looked same-half and added `$20` to its next
+decision interval. The shared predicate now preserves the native word XOR;
+four sign combinations and the reproducing `+200/-80` case are locked by the
+AI component self-test. The deeper target-table dispatch remains gated until
+its context `+$30/+$32` owners are represented explicitly.
