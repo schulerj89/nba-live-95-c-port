@@ -796,3 +796,30 @@ still pending; mode 6's target geometry itself is translated and unit-tested.
 Gameplay JSON exposes team contexts, `$09D6`, `+$88/$8C`, and roster `+$92`.
 Visually reviewed frame goldens 220/600/1300 and the Gameplay Lab were updated
 after the 50,000-frame sustained CPU trace passed.
+
+Increment 5F ports the complete portable team-defense coordinator rather than
+leaving the mode 2/4/6 executors behind a host-authored matchup shortcut. A
+focused native recomp oracle for `$85:BE06-$C0F5`, checked against the Ghidra
+listing and the existing Mesen CPU trace, establishes the dependency boundary.
+`$87:9090-$90A0` first snapshots all ten current modes into actor `+$84`;
+`$85:BC07` then refreshes basket (`+$88/+$8C`), focal (`+$8E`), and assigned
+pair (`+$86/+$8A`) geometry before applying the planner.
+
+The C runtime now preserves the ROM's live-state and mode-9 bypasses, dynamic
+assignment release tests, `+$72=$1E/$14` movement boosts, primary mode-4 repair
+through `$85:BAE4/$BA1D`, and mode-6 help selection through `$85:BB6C/$BBBF`.
+Help assignments remain deliberately one-way, last-candidate tie behavior is
+retained where the ROM uses it, and the next pass recognizes the old helper
+through saved mode 6 before rebuilding coverage. The no-owner `$85:C052`
+fallback and final context-ordered `$85:C0B4-$C0F5` pairing pass are also
+represented. Context `+$4E` is initialized to `$00A0`, confirmed in ROM WRAM
+at frames 220, 400, and 1800; context `+$49..+$4D` uses the exact five actor
+offsets from the same snapshots.
+
+Forced native self-test vectors protect alternate help selection, last-tie
+fallback selection, and one-way old-helper release. The sustained integration
+test now treats immutable `+$76` lineup assignments separately from mutable
+`+$74` current assignments and runs 60,000 frames so the corrected deterministic
+movement covers a complete miss and rebound. Frames 600 and 1300 were visually
+reviewed before their RGB hashes were updated. This checkpoint ports no PPU,
+OAM, DMA, bank-dispatch, or CPU-flag machinery from the recomp.

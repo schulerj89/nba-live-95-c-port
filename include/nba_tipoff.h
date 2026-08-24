@@ -81,6 +81,7 @@ typedef struct {
     uint16_t assignment_alternate_raw;
     uint16_t assignment_distance;
     uint16_t anchor_distance_raw;       /* actor `+$8C` */
+    uint16_t focal_distance_raw_8e;     /* actor `+$8E`, `$85:BC84` */
     uint16_t pair_distance;
     uint16_t reaction_threshold;
     uint16_t movement_boost_timer; /* actor `+$72`, consumed by `$85:A82C` */
@@ -88,6 +89,7 @@ typedef struct {
     uint16_t movement_magnitude_raw;  /* actor `+$4C` */
     uint16_t recovery_inhibit_raw;    /* actor `+$7A` */
     uint16_t behavior_flags_raw;      /* actor `+$7E` */
+    uint16_t help_request_raw_80;     /* actor `+$80`, `$85:C006` */
     uint16_t behavior_timer;          /* actor `+$64` */
     uint16_t action_state;
     bool visible;

@@ -16,8 +16,8 @@ FORMATION = [
     (-8, -3), (16, 83), (24, -80), (-104, 56), (-96, -59),
 ]
 EXPECTED_RGB = {
-    600: "1ecd88f7be25e13da24cb472beecc5ad400157002511f56e9f1d1cf7a594ec30",
-    1300: "b71e71d066c0247ae8985582285b5d77305bd18ba03fdc6f6074452b98b94f85",
+    600: "d8664c25702ed2ed6d0ee72bf9c7f6db2e1febfc8824222c5714c2ecb4e3d383",
+    1300: "cebfcef8836b1b2756c28ba0ee97930a218ecfbf1afaf3e2f1c43f110dcac3e0",
 }
 
 
@@ -33,7 +33,7 @@ def main():
         trace = root / "cpu_gameplay.jsonl"
         command = [
             args.exe, "--headless", "--rom", args.rom, "--assets", args.pack,
-            "--tipoff-only", "--frames", "50000", "--gameplay-trace", str(trace),
+            "--tipoff-only", "--frames", "60000", "--gameplay-trace", str(trace),
             "--debug-state",
         ]
         result = subprocess.run(command, capture_output=True, text=True, check=False)
@@ -41,8 +41,8 @@ def main():
                 "BALL M:" not in result.stdout:
             raise AssertionError(result.stdout + result.stderr)
         rows = [json.loads(line) for line in trace.read_text().splitlines()]
-        if len(rows) != 50000:
-            raise AssertionError(f"expected 50000 CPU frames, got {len(rows)}")
+        if len(rows) != 60000:
+            raise AssertionError(f"expected 60000 CPU frames, got {len(rows)}")
         expected_dormant_fouls = {
             "event_raw": 0, "shooting_raw": 0,
             "offender_raw": -1, "victim_raw": -1,
@@ -92,10 +92,20 @@ def main():
             raise AssertionError(f"only {moved}/10 CPU actors broke formation")
         expected_assignments = [14, 10, 12, 16, 18, 4, 0, 2, 6, 8]
         if [actor["raw"]["assignment_base"] for actor in live["actors"]] != \
-                expected_assignments or \
-                [actor["raw"]["assignment_current"] for actor in live["actors"]] != \
                 expected_assignments:
             raise AssertionError("lineup-permuted `$86:D86C` assignments changed")
+        current_assignments = [
+            actor["raw"]["assignment_current"] for actor in live["actors"]]
+        if current_assignments == expected_assignments:
+            raise AssertionError("`$85:BE06-$C0F5` never replanned assignments")
+        if any(value != 0xFFFF and
+               (value & 1 or value > 18) for value in current_assignments):
+            raise AssertionError("defensive planner emitted an invalid actor offset")
+        if 4 not in [actor["raw"]["control_mode"] for actor in live["actors"]]:
+            raise AssertionError("`$85:BF81-$BFDC` did not promote a primary defender")
+        if not any(any(actor["raw"]["control_mode"] == 6
+                       for actor in row["actors"]) for row in rows[219:]):
+            raise AssertionError("`$85:C018-$C036` never selected a help defender")
         match = live["match"]
         if match["team_context_mode_raw_30"] != [4, 4] or \
                 match["team_context_flags_raw_32"] != [1, 1] or \

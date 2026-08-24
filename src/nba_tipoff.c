@@ -1672,6 +1672,214 @@ static void cpu_enter_play_state(NbaTipoff *tipoff, NbaCpuPlayState state) {
     tipoff->play_state_frame = 0u;
 }
 
+static uint16_t cpu_rom_distance(int16_t dx, int16_t dy) {
+    uint16_t ax = dx < 0 ? (uint16_t)(0u - (uint16_t)dx) : (uint16_t)dx;
+    uint16_t ay = dy < 0 ? (uint16_t)(0u - (uint16_t)dy) : (uint16_t)dy;
+    uint16_t major = ax >= ay ? ax : ay;
+    uint16_t minor = ax >= ay ? ay : ax;
+    return (uint16_t)(major + (minor >> 2));
+}
+
+static void cpu_refresh_pair_geometry(NbaTipoff *tipoff, unsigned actor) {
+    NbaTipoffActor *state = &tipoff->actors[actor];
+    unsigned paired = state->assignment_current_raw >> 1;
+    if (paired >= NBA_GAMEPLAY_ACTOR_COUNT) return;
+    NbaTipoffActor *other = &tipoff->actors[paired];
+    uint16_t distance = 0u;
+    uint8_t direction = nba_gameplay_target_direction(
+        (int16_t)(fp_round(other->x_fp) - fp_round(state->x_fp)),
+        (int16_t)(fp_round(other->y_fp) - fp_round(state->y_fp)),
+        &distance);
+    state->assignment_actor = (uint8_t)paired;
+    /* `$85:BC6B-$BC7A`: coincident actors (direction 8) retain both prior
+     * +$86 direction words while still receiving the zero +$8A distance. */
+    if (direction != 8u) state->assignment_direction = direction;
+    state->assignment_distance = distance;
+    state->pair_distance = distance;
+    if (direction != 8u)
+        other->assignment_direction = (uint8_t)(direction ^ 4u);
+    other->pair_distance = distance;
+}
+
+static int cpu_select_help_defender(NbaTipoff *tipoff, unsigned owner,
+                                    unsigned defense, int16_t anchor,
+                                    const uint16_t focal_distance[5]) {
+    /* `$85:BB6C-$BB98`: first try owner's +$78 candidate. It must be
+     * unassigned and below mode 4; a candidate across the context half is
+     * accepted only within $30 of the owner/focal point. */
+    unsigned alternate =
+        tipoff->actors[owner].assignment_alternate_raw >> 1;
+    if (alternate < NBA_GAMEPLAY_ACTOR_COUNT && alternate / 5u == defense) {
+        NbaTipoffActor *candidate = &tipoff->actors[alternate];
+        bool same_half =
+            (int16_t)(anchor ^ fp_round(tipoff->actors[owner].x_fp)) >= 0;
+        if ((int16_t)candidate->assignment_current_raw < 0 &&
+            candidate->control_mode < 4u &&
+            (same_half || focal_distance[alternate % 5u] < 0x30u))
+            return (int)alternate;
+    }
+
+    /* `$85:BBBF-$BC06`: fallback scans all five defenders and replaces on
+     * equality, so the last actor wins a distance tie. */
+    int selected = -1;
+    uint16_t best = 0x7FFFu;
+    for (unsigned i = 0; i < 5u; ++i) {
+        unsigned candidate = defense * 5u + i;
+        if (tipoff->actors[candidate].control_mode >= 4u) continue;
+        if (focal_distance[i] <= best) {
+            best = focal_distance[i];
+            selected = (int)candidate;
+        }
+    }
+    return selected;
+}
+
+static void cpu_install_help_assignment(NbaTipoff *tipoff, unsigned helper,
+                                        unsigned owner) {
+    /* `$85:BB99-$BBBE` is deliberately one-way. If the helper was assigned,
+     * its former offense actor is unbound; the owner's +$74 stays attached
+     * to the primary defender. */
+    NbaTipoffActor *state = &tipoff->actors[helper];
+    unsigned old = state->assignment_current_raw >> 1;
+    if (old < NBA_GAMEPLAY_ACTOR_COUNT)
+        tipoff->actors[old].assignment_current_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
+    state->assignment_current_raw = (uint16_t)(owner * 2u);
+    state->assignment_actor = (uint8_t)owner;
+    state->control_mode = 6u;
+}
+
+static void cpu_symmetric_bind(NbaTipoff *tipoff, unsigned candidate,
+                               unsigned target) {
+    unsigned old = tipoff->actors[candidate].assignment_current_raw >> 1;
+    if (old < NBA_GAMEPLAY_ACTOR_COUNT)
+        tipoff->actors[old].assignment_current_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
+    tipoff->actors[candidate].assignment_current_raw = (uint16_t)(target * 2u);
+    tipoff->actors[target].assignment_current_raw = (uint16_t)(candidate * 2u);
+    tipoff->actors[candidate].assignment_actor = (uint8_t)target;
+    tipoff->actors[target].assignment_actor = (uint8_t)candidate;
+}
+
+static bool cpu_try_base_defender(NbaTipoff *tipoff, unsigned target,
+                                  unsigned defense, int16_t anchor) {
+    /* `$85:BAE4-$BB6B`: prefer target +$78, with the extra opposite-half
+     * basket/separation gates preserved exactly. */
+    unsigned candidate = tipoff->actors[target].assignment_alternate_raw >> 1;
+    if (candidate >= NBA_GAMEPLAY_ACTOR_COUNT || candidate / 5u != defense)
+        return false;
+    NbaTipoffActor *c = &tipoff->actors[candidate];
+    NbaTipoffActor *t = &tipoff->actors[target];
+    if ((int16_t)c->assignment_current_raw >= 0 || c->control_mode >= 7u)
+        return false;
+    bool bind = (int16_t)(anchor ^ fp_round(t->x_fp)) >= 0;
+    if (!bind && c->anchor_distance_raw < 0x38u) bind = true;
+    if (!bind && c->anchor_distance_raw < t->anchor_distance_raw) {
+        uint16_t separation = cpu_rom_distance(
+            (int16_t)(fp_round(t->x_fp) - fp_round(c->x_fp)),
+            (int16_t)(fp_round(t->y_fp) - fp_round(c->y_fp)));
+        bind = (uint16_t)(separation << 1) < t->anchor_distance_raw;
+    }
+    if (!bind) return false;
+    cpu_symmetric_bind(tipoff, candidate, target);
+    return true;
+}
+
+static bool cpu_fallback_primary_defender(NbaTipoff *tipoff, unsigned target,
+                                          unsigned defense) {
+    /* `$85:BA1D-$BAB6`: pass one minimizes +$8E among candidates no farther
+     * from the basket than target; pass two minimizes +$8C. Equality replaces,
+     * so the last defender wins ties in both passes. */
+    int selected = -1;
+    uint16_t best = 0x7FFFu;
+    for (unsigned i = 0; i < 5u; ++i) {
+        unsigned actor = defense * 5u + i;
+        NbaTipoffActor *state = &tipoff->actors[actor];
+        if (state->control_mode >= 7u ||
+            state->anchor_distance_raw > tipoff->actors[target].anchor_distance_raw)
+            continue;
+        if (state->focal_distance_raw_8e <= best) {
+            best = state->focal_distance_raw_8e;
+            selected = (int)actor;
+        }
+    }
+    if (selected < 0) {
+        best = 0x7FFFu;
+        for (unsigned i = 0; i < 5u; ++i) {
+            unsigned actor = defense * 5u + i;
+            NbaTipoffActor *state = &tipoff->actors[actor];
+            if (state->control_mode >= 7u) continue;
+            if (state->anchor_distance_raw <= best) {
+                best = state->anchor_distance_raw;
+                selected = (int)actor;
+            }
+        }
+    }
+    if (selected < 0) return false;
+    cpu_symmetric_bind(tipoff, (unsigned)selected, target);
+    return true;
+}
+
+static bool cpu_bind_nearest_unassigned(NbaTipoff *tipoff, unsigned target,
+                                        unsigned defense) {
+    /* `$85:B9D2-$BA1C`: unassigned mode<7, minimum +$8C, first tie wins. */
+    int selected = -1;
+    uint16_t best = 0x7FFFu;
+    for (unsigned i = 0; i < 5u; ++i) {
+        unsigned actor = defense * 5u + i;
+        NbaTipoffActor *state = &tipoff->actors[actor];
+        if ((int16_t)state->assignment_current_raw >= 0 ||
+            state->control_mode >= 7u || state->anchor_distance_raw >= best)
+            continue;
+        best = state->anchor_distance_raw;
+        selected = (int)actor;
+    }
+    if (selected < 0) return false;
+    cpu_symmetric_bind(tipoff, (unsigned)selected, target);
+    return true;
+}
+
+static void cpu_release_defense_assignment(NbaTipoff *tipoff,
+                                           unsigned defender) {
+    NbaTipoffActor *state = &tipoff->actors[defender];
+    unsigned paired = state->assignment_current_raw >> 1;
+    state->assignment_current_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
+    state->assignment_actor = 0xFFu;
+    if (state->saved_control_mode == 6u ||
+        paired >= NBA_GAMEPLAY_ACTOR_COUNT) return;
+    tipoff->actors[paired].assignment_current_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
+    tipoff->actors[paired].pair_distance = 0x0140u;
+    state->movement_boost_timer = 0x14u;
+}
+
+static bool cpu_defensive_planner_self_test(void) {
+    NbaTipoff t;
+    memset(&t, 0, sizeof(t));
+    uint16_t distances[5] = {0x40u, 0x20u, 0x20u, 0x60u, 0x70u};
+    for (unsigned i = 0; i < NBA_GAMEPLAY_ACTOR_COUNT; ++i) {
+        t.actors[i].assignment_current_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
+        t.actors[i].assignment_alternate_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
+        t.actors[i].control_mode = 7u;
+    }
+    t.actors[7].control_mode = 2u;
+    t.actors[7].assignment_current_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
+    t.actors[2].assignment_alternate_raw = 14u;
+    t.actors[2].x_fp = 40 * 256;
+    if (cpu_select_help_defender(&t, 2u, 1u, 336, distances) != 7)
+        return false;
+    t.actors[2].assignment_alternate_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
+    t.actors[6].control_mode = 2u;
+    t.actors[7].control_mode = 2u;
+    if (cpu_select_help_defender(&t, 2u, 1u, 336, distances) != 7)
+        return false; /* fallback equal distance: last candidate */
+    t.actors[7].saved_control_mode = 6u;
+    t.actors[7].assignment_current_raw = 4u;
+    t.actors[2].assignment_current_raw = 14u;
+    cpu_release_defense_assignment(&t, 7u);
+    if (t.actors[7].assignment_current_raw != NBA_GAMEPLAY_UNKNOWN_WORD ||
+        t.actors[2].assignment_current_raw != 14u)
+        return false; /* old mode-6 release is one-way */
+    return true;
+}
+
 static void cpu_refresh_team_roles_end_frame(NbaTipoff *tipoff) {
     /* `$87:8FA1-$8FA9` calls `$85:AF5C`, then `$85:BC07`, once after all
      * ten actor dispatches. AF5C normalizes only modes below 7 on offense;
@@ -1679,26 +1887,190 @@ static void cpu_refresh_team_roles_end_frame(NbaTipoff *tipoff) {
      * primary defender to mode 4. Modes 7+ remain owned by their executors. */
     unsigned offense = tipoff->offense_side != 0u ? 1u : 0u;
     unsigned defense = offense ^ 1u;
+    uint16_t focal_distance[5] = {0};
+    unsigned nearest_focal = defense * 5u;
+    unsigned nearest_anchor = defense * 5u;
+    unsigned nearest_offense_anchor = offense * 5u;
+    uint16_t nearest_focal_distance = 0x7FFFu;
+    uint16_t nearest_anchor_distance = 0x7FFFu;
+    uint16_t nearest_offense_distance = 0x7FFFu;
+    int16_t focal_x = fp_round(tipoff->ball.x_fp);
+    int16_t focal_y = fp_round(tipoff->ball.y_fp);
+    if (tipoff->possession_actor >= 0 &&
+        tipoff->possession_actor < NBA_GAMEPLAY_ACTOR_COUNT) {
+        focal_x = fp_round(tipoff->actors[(unsigned)tipoff->possession_actor].x_fp);
+        focal_y = fp_round(tipoff->actors[(unsigned)tipoff->possession_actor].y_fp);
+    }
     for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
         NbaTipoffActor *state = &tipoff->actors[actor];
         unsigned side = actor / 5u;
-        if (state->control_mode < 7u)
-            state->control_mode = side == offense ? 1u : 2u;
+        if (side == offense && state->control_mode < 7u)
+            state->control_mode = 1u;
         int16_t anchor = side == 0u ? -336 : 336;
         state->anchor_direction_raw = nba_gameplay_pass_direction(
             (int16_t)(anchor - fp_round(state->x_fp)),
             (int16_t)-fp_round(state->y_fp),
             &state->anchor_distance_raw);
+        if (side == offense && state->anchor_distance_raw < nearest_offense_distance) {
+            nearest_offense_distance = state->anchor_distance_raw;
+            nearest_offense_anchor = actor;
+        }
+        if (side == defense) {
+            focal_distance[actor % 5u] = cpu_rom_distance(
+                (int16_t)(fp_round(state->x_fp) - focal_x),
+                (int16_t)(fp_round(state->y_fp) - focal_y));
+            state->focal_distance_raw_8e = focal_distance[actor % 5u];
+            if (state->focal_distance_raw_8e < nearest_focal_distance) {
+                nearest_focal_distance = state->focal_distance_raw_8e;
+                nearest_focal = actor;
+            }
+            if (state->anchor_distance_raw < nearest_anchor_distance) {
+                nearest_anchor_distance = state->anchor_distance_raw;
+                nearest_anchor = actor;
+            }
+            cpu_refresh_pair_geometry(tipoff, actor);
+
+            /* `$85:BE70-$BF2B`: dead/inbound states and mode 9 bypass both
+             * normalization and assignment cleanup. */
+            if (tipoff->live_state_raw >= 0x80u || state->control_mode == 9u)
+                continue;
+            if (state->control_mode < 7u) state->control_mode = 2u;
+            else {
+                cpu_release_defense_assignment(tipoff, actor);
+                continue;
+            }
+            if ((int16_t)state->assignment_current_raw < 0) continue;
+            if (state->saved_control_mode == 6u) {
+                cpu_release_defense_assignment(tipoff, actor);
+                continue;
+            }
+            unsigned paired = state->assignment_current_raw >> 1;
+            if (paired >= NBA_GAMEPLAY_ACTOR_COUNT) continue;
+            NbaTipoffActor *other = &tipoff->actors[paired];
+            /* Opposite anchor sign keeps the pairing immediately. */
+            if ((int16_t)(fp_round(other->x_fp) ^ anchor) < 0 ||
+                state->anchor_distance_raw < 0x30u)
+                continue;
+            if (state->anchor_distance_raw >= other->anchor_distance_raw) {
+                cpu_release_defense_assignment(tipoff, actor);
+                continue;
+            }
+            uint16_t delta = (uint16_t)(other->anchor_distance_raw -
+                                        state->anchor_distance_raw);
+            if (delta < 0x0Cu) state->movement_boost_timer = 0x1Eu;
+            if (state->anchor_distance_raw >= 0xA0u) continue;
+            uint16_t relative = (uint16_t)(
+                (uint16_t)(((state->assignment_direction << 1) ^ 8u) -
+                           other->anchor_direction_raw + 3u));
+            if ((int16_t)(uint16_t)(relative - 7u) >= 0)
+                cpu_release_defense_assignment(tipoff, actor);
+        }
     }
     if (tipoff->possession_actor >= 0 &&
         tipoff->possession_actor < NBA_GAMEPLAY_ACTOR_COUNT) {
         NbaTipoffActor *owner =
             &tipoff->actors[(unsigned)tipoff->possession_actor];
         unsigned primary = owner->assignment_current_raw >> 1;
+        int16_t anchor = defense == 0u ? -336 : 336;
+        /* `$85:BF3F-$BF7F`: a ball owner far from its basket first repairs
+         * the nearest offense actor's missing matchup. */
+        if (owner->anchor_distance_raw >= 0xF0u &&
+            (int16_t)tipoff->actors[nearest_offense_anchor].assignment_current_raw < 0) {
+            if (!cpu_try_base_defender(
+                    tipoff, nearest_offense_anchor, defense, anchor) &&
+                tipoff->actors[nearest_anchor].control_mode < 3u)
+                cpu_symmetric_bind(tipoff, nearest_anchor,
+                                   nearest_offense_anchor);
+        }
+        if (primary >= NBA_GAMEPLAY_ACTOR_COUNT || primary / 5u != defense) {
+            if (!cpu_try_base_defender(
+                    tipoff, (unsigned)tipoff->possession_actor, defense, anchor) &&
+                !cpu_fallback_primary_defender(
+                    tipoff, (unsigned)tipoff->possession_actor, defense))
+                return; /* `$85:C051`: both primary searches failed. */
+            primary = owner->assignment_current_raw >> 1;
+        }
         if (primary < NBA_GAMEPLAY_ACTOR_COUNT &&
-            primary / 5u == defense &&
-            tipoff->actors[primary].control_mode < 7u)
-            tipoff->actors[primary].control_mode = 4u;
+            primary / 5u == defense) {
+            NbaTipoffActor *primary_state = &tipoff->actors[primary];
+            if (primary_state->control_mode < 7u)
+                primary_state->control_mode = 4u;
+            /* `$85:BFC1-$BFDC`: the primary receives +$72=$14 when no
+             * closer to its basket than the owner, or while live and the
+             * pair distance has reached $10. */
+            if (primary_state->anchor_distance_raw >=
+                    owner->anchor_distance_raw ||
+                (tipoff->live_state_raw < 0x80u &&
+                 primary_state->pair_distance >= 0x10u))
+                primary_state->movement_boost_timer = 0x14u;
+
+            /* `$85:BFEA-$C04C`: preserve the primary assignment and install
+             * a one-way mode-6 help defender only when the team/owner gates
+             * request it. Context +$4E is $00A0 in all three ROM gameplay
+             * WRAM snapshots (frames 220, 400, and 1800). */
+            NbaGameplayTeamContext *context = &tipoff->team_context[defense];
+            bool help_due = false;
+            if (tipoff->live_state_raw < 0x80u) {
+                if (owner->anchor_distance_raw < context->help_distance_raw_4e)
+                    help_due = true;
+                else if (context->mode_raw_30 == 2u &&
+                         (int16_t)(anchor ^ fp_round(owner->x_fp)) < 0)
+                    help_due = true;
+                else if (owner->help_request_raw_80 != 0u &&
+                         (owner->anchor_distance_raw < 0xA0u ||
+                          context->mode_raw_30 == 0u))
+                    help_due = true;
+            }
+            if (help_due) {
+                int helper = cpu_select_help_defender(
+                    tipoff, (unsigned)tipoff->possession_actor, defense,
+                    anchor, focal_distance);
+                if (helper >= 0) {
+                    cpu_install_help_assignment(
+                        tipoff, (unsigned)helper,
+                        (unsigned)tipoff->possession_actor);
+                    NbaTipoffActor *helper_state = &tipoff->actors[helper];
+                    if (helper_state->anchor_distance_raw >=
+                            owner->anchor_distance_raw ||
+                        helper_state->pair_distance >= 0x10u)
+                        helper_state->movement_boost_timer = 0x14u;
+                }
+            }
+        }
+    } else if (tipoff->pass_receiver_raw < 0) {
+        /* `$85:C052-$C0B1`: without an owner, promote the focal-nearest
+         * eligible defender; if `$09DA` is busy, fallback is last-tie +$8E. */
+        unsigned selected = nearest_focal;
+        if (tipoff->actors[selected].control_mode >= 7u) {
+            int fallback = -1;
+            uint16_t best = 0x7FFFu;
+            for (unsigned i = 0; i < 5u; ++i) {
+                unsigned actor = defense * 5u + i;
+                if (tipoff->actors[actor].control_mode < 7u &&
+                    tipoff->actors[actor].focal_distance_raw_8e <= best) {
+                    best = tipoff->actors[actor].focal_distance_raw_8e;
+                    fallback = (int)actor;
+                }
+            }
+            if (fallback < 0) return;
+            selected = (unsigned)fallback;
+        }
+        if (tipoff->actors[selected].control_mode < 7u)
+            tipoff->actors[selected].control_mode = 4u;
+    }
+
+    /* `$85:C0B4-$C0F5`: complete missing defense assignments in the
+     * context's five-byte actor order. Each target tries its reciprocal base
+     * candidate, then the first anchor-nearest unassigned defender. */
+    int16_t defense_anchor = defense == 0u ? -336 : 336;
+    for (unsigned i = 0; i < 5u; ++i) {
+        unsigned target = tipoff->team_context[defense].actor_order_raw_49[i] >> 1;
+        if (target >= NBA_GAMEPLAY_ACTOR_COUNT ||
+            (int16_t)tipoff->actors[target].assignment_current_raw >= 0)
+            continue;
+        if (!cpu_try_base_defender(tipoff, target, defense, defense_anchor) &&
+            !cpu_bind_nearest_unassigned(tipoff, target, defense))
+            return;
     }
     tipoff->role_rebuild_raw_09d6 = 0u;
 }
@@ -1710,6 +2082,12 @@ static void cpu_update_all_actors(NbaTipoff *tipoff) {
      * Possession and inbound changes do not rephase it. */
     if ((tipoff->simulation_tick & 1u) != 0u) return;
     ++tipoff->actor_update_tick;
+    /* `$87:9090-$90A0` snapshots all ten +$5E modes into +$84 before any
+     * actor dispatch. BC07 relies on this to recognize last frame's mode-6
+     * helper after the normalizer has changed +$5E back to mode 2. */
+    for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor)
+        tipoff->actors[actor].saved_control_mode =
+            tipoff->actors[actor].control_mode;
     for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
         NbaTipoffActor *state = &tipoff->actors[actor];
         if (state->recovery_inhibit_raw != 0u)
@@ -2071,6 +2449,7 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
         !nba_gameplay_ball_self_test() || !nba_gameplay_effect_self_test() ||
         !nba_gameplay_foul_self_test() ||
         !cpu_rim_contact_tick_self_test() ||
+        !cpu_defensive_planner_self_test() ||
         !cpu_expired_inbound_self_test() ||
         !ball_attachment_assets_valid(assets) ||
         !nba_assets_gameplay_court_panorama(assets, session->right_team) ||
@@ -2086,10 +2465,18 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
     nba_gameplay_camera_init(&tipoff->camera, -128, -124);
     nba_gameplay_rng_seed(&tipoff->rng, 0x9146u);
     nba_gameplay_foul_init(&tipoff->fouls);
+    static const uint8_t context_actor_order[2][5] = {
+        {0x10u, 0x0Eu, 0x0Au, 0x12u, 0x0Cu},
+        {0x04u, 0x06u, 0x08u, 0x00u, 0x02u}
+    };
     for (unsigned side = 0; side < 2u; ++side) {
         tipoff->team_context[side].mode_raw_30 = 4u;
         tipoff->team_context[side].flags_raw_32 = 1u;
         tipoff->team_context[side].activity_raw_39 = 1u;
+        tipoff->team_context[side].help_distance_raw_4e = 0x00A0u;
+        for (unsigned i = 0; i < 5u; ++i)
+            tipoff->team_context[side].actor_order_raw_49[i] =
+                context_actor_order[side][i];
     }
     tipoff->period_raw_0926 = 0u;
     tipoff->possession_actor = -1;

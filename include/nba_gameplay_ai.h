@@ -12,6 +12,8 @@ typedef struct {
     uint16_t mode_raw_30;
     uint16_t flags_raw_32;
     uint16_t activity_raw_39;
+    uint16_t help_distance_raw_4e;
+    uint8_t actor_order_raw_49[5];
 } NbaGameplayTeamContext;
 
 /* Actor fields consumed by `$85:B60B-$B677`. `travel_direction` and
