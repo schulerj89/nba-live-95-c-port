@@ -10,7 +10,7 @@ from pathlib import Path
 
 from extract_assets import load_verified_rom
 
-PACK_VERSION = 27
+PACK_VERSION = 28
 
 def pack_entry(asset_id, offset, size, width=0, height=0, flags=0):
     return struct.pack("<6I", asset_id, offset, size, width, height, flags)

@@ -444,3 +444,13 @@ explicit provisional behavior. The safe next pass increment must add those
 raw fields and helper first, then enable only live-covered states
 `$2D/$2E/$2F/$30/$31`; aligned `$2A-$2C`, catch pre-init, and airborne
 specials remain gated until their own inputs exist.
+
+Increment 4N establishes the exact pass-direction foundation before changing
+live behavior. The repeatable headless Ghidra dump now emits complete
+`$85:F3C3-$F472` and `$86:A6B3-$A7D9/$AB2D-$B04A` listings. The C helper
+reproduces `$F3C3`'s 16-direction `$B2` and weighted-distance `$AA` outputs,
+including its `$10` zero sentinel, wrapped-subtraction N-flag comparisons,
+and the 16-bit overflow before the `3*x/2` slope test. Boundary and overflow
+vectors lock those non-obvious 65816 semantics. Asset pack v28 also preserves
+roster bytes `+$39/+$3E` in `NBPROST2` and exposes a typed accessor, so the
+next mode-15 initializer can read the same per-player inputs as the ROM.

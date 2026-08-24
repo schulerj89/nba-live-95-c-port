@@ -30,7 +30,7 @@ public class DumpCpuGameplay extends GhidraScript {
 
     private long[][] focusRanges(String bank) {
         if (bank.equals("85")) return new long[][] {
-            {0x8d00, 0xa7ff}, {0xaf00, 0xc6ff}, {0xf100, 0xf2ff}
+            {0x8d00, 0xa7ff}, {0xaf00, 0xc6ff}, {0xf100, 0xf8ff}
         };
         if (bank.equals("86")) return new long[][] {
             {0x9800, 0xbaff}, {0xd300, 0xd6ff}, {0xe300, 0xf8ff}
@@ -47,7 +47,7 @@ public class DumpCpuGameplay extends GhidraScript {
             0x9d40, 0x9f01, 0xa079, 0xa1e9, 0xa21f, 0xa357, 0xa518, 0xa5cc,
             0xab17, 0xaf5c, 0xb402, 0xb50e, 0xb60b, 0xb678, 0xb9d2,
             0xba1d, 0xbab7, 0xbae4, 0xbc07, 0xc37d, 0xc5fb, 0xef3a, 0xf02d,
-            0xf1c1, 0xf34f, 0xf5e4, 0xf78b, 0xf7c9, 0xf867, 0xf8d9
+            0xf1c1, 0xf34f, 0xf3c3, 0xf5e4, 0xf78b, 0xf7c9, 0xf867, 0xf8d9
         };
         if (bank.equals("86")) return new long[] {
             0x9846, 0x99c4, 0x9c45, 0x9cdb, 0x9d6e, 0x9ed8, 0xa110,
@@ -110,6 +110,28 @@ public class DumpCpuGameplay extends GhidraScript {
                     Instruction instruction = listing.getInstructionAt(toAddr(address));
                     if (instruction != null)
                         out.printf("$85:%04X  %s%n", address, instruction.toString());
+                }
+                out.println("\n--- Complete fine-direction/distance helper ---");
+                addEntryPoint(toAddr(0xf3c3)); disassemble(toAddr(0xf3c3));
+                for (long address = 0xf3c3; address <= 0xf472; ++address) {
+                    Instruction instruction = listing.getInstructionAt(toAddr(address));
+                    if (instruction != null)
+                        out.printf("$85:%04X  %s%n", address, instruction.toString());
+                }
+            }
+            if (bank.equals("86")) {
+                out.println("\n--- Complete CPU pass initialization and release ---");
+                addEntryPoint(toAddr(0xa6b3)); disassemble(toAddr(0xa6b3));
+                addEntryPoint(toAddr(0xab2d)); disassemble(toAddr(0xab2d));
+                for (long address = 0xa6b3; address <= 0xa7d9; ++address) {
+                    Instruction instruction = listing.getInstructionAt(toAddr(address));
+                    if (instruction != null)
+                        out.printf("$86:%04X  %s%n", address, instruction.toString());
+                }
+                for (long address = 0xab2d; address <= 0xb04a; ++address) {
+                    Instruction instruction = listing.getInstructionAt(toAddr(address));
+                    if (instruction != null)
+                        out.printf("$86:%04X  %s%n", address, instruction.toString());
                 }
             }
         }

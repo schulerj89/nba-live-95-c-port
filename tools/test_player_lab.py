@@ -11,8 +11,8 @@ def read_pack(path):
     if raw[:8] != b"NBA95PAK":
         raise AssertionError("invalid asset-pack magic")
     version, count = struct.unpack_from("<II", raw, 8)
-    if version != 27:
-        raise AssertionError(f"Player Lab requires pack v27, got {version}")
+    if version != 28:
+        raise AssertionError(f"Player Lab requires pack v28, got {version}")
     assets = {}
     for index in range(count):
         entry = struct.unpack_from("<IIIIII", raw, 16 + index * 24)
@@ -59,12 +59,16 @@ def main():
     chicago_offset = 24 + (3 * 12 + 2) * 64
     if roster[chicago_offset + 20:chicago_offset + 23] != bytes((15, 11, 78)):
         raise AssertionError("Chicago +$3F/+$40/+$42 AI profiles changed")
+    if roster[chicago_offset + 23:chicago_offset + 25] != bytes((65, 66)):
+        raise AssertionError("Chicago +$39/+$3E pass profiles changed")
     west = record(28, 10)
     if west[-1] != "D. Robinson" or west[5:8] != (0xF5, 0x99, 0x8E):
         raise AssertionError(f"West ROM record changed: {west}")
     west_offset = 24 + (28 * 12 + 10) * 64
     if roster[west_offset + 20:west_offset + 23] != bytes((1, 2, 89)):
         raise AssertionError("West +$3F/+$40/+$42 AI profiles changed")
+    if roster[west_offset + 23:west_offset + 25] != bytes((97, 90)):
+        raise AssertionError("West +$39/+$3E pass profiles changed")
 
     pose, pose_w, pose_h, _ = assets[252]
     if (pose_w, pose_h, len(pose)) != (24, 64, 24 * 64 * 4):

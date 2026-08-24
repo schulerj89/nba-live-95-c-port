@@ -33,7 +33,7 @@ def load_pack(path):
     if raw[:8] != b"NBA95PAK":
         raise AssertionError("invalid pack magic")
     version, count = struct.unpack_from("<II", raw, 8)
-    if version != 27 or 16 + count * 24 > len(raw):
+    if version != 28 or 16 + count * 24 > len(raw):
         raise AssertionError("invalid Player Setup pack directory")
     assets = {}
     for index in range(count):

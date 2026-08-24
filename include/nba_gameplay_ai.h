@@ -26,6 +26,8 @@ bool nba_gameplay_decision_timer_step(uint16_t *timer, uint8_t profile_byte,
                                       bool add_half_court_delay);
 uint8_t nba_gameplay_target_direction(int16_t dx, int16_t dy,
                                       uint16_t *distance);
+uint8_t nba_gameplay_pass_direction(int16_t dx, int16_t dy,
+                                    uint16_t *distance);
 bool nba_gameplay_predictive_arrival(int16_t actor_x, int16_t actor_y,
                                      int16_t velocity_x, int16_t velocity_y,
                                      int16_t target_x, int16_t target_y,

@@ -21,6 +21,10 @@ static uint16_t magnitude16(int16_t value) {
     return value < 0 ? (uint16_t)(0u - (uint16_t)value) : (uint16_t)value;
 }
 
+static bool subtract16_is_negative(uint16_t left, uint16_t right) {
+    return ((uint16_t)(left - right) & 0x8000u) != 0u;
+}
+
 /* `$85:F34F-$F3B7`: exact direction key consumed by `$87:B832`, plus the
  * major+minor/4 distance. The
  * y<=x+1 swap and diagonal boundary intentionally differ from a conventional
@@ -44,6 +48,38 @@ uint8_t nba_gameplay_target_direction(int16_t dx, int16_t dy,
     uint16_t doubled_x = (uint16_t)(x << 1);
     if ((int16_t)(uint16_t)(y - 1u) < (int16_t)doubled_x) key |= 1u;
     if (distance) *distance = (uint16_t)(y + (doubled_x >> 3));
+    return direction_map[key];
+}
+
+/* `$85:F3C3-$F472`: the pass/catch initializer's 16-direction quantizer.
+ * `$B2` returns the fine direction and `$AA` returns major+minor/4. The
+ * instruction stream deliberately uses three slope bands and a 32-byte ROM
+ * octant/sign map; it is not interchangeable with `$85:F34F`. */
+uint8_t nba_gameplay_pass_direction(int16_t dx, int16_t dy,
+                                    uint16_t *distance) {
+    static const uint8_t direction_map[32] = {
+        0,1,2,0xFF, 4,3,2,0xFF, 8,7,6,0xFF, 4,5,6,0xFF,
+        0,15,14,0xFF, 12,13,14,0xFF, 8,9,10,0xFF, 12,11,10,0xFF
+    };
+    if (dx == 0 && dy == 0) {
+        if (distance) *distance = 0u;
+        return 0x10u; /* `$85:F3BB-$F3C2`, unlike `$85:F34F`'s 8. */
+    }
+    uint16_t key = 0u;
+    uint16_t low = (uint16_t)dx, high = (uint16_t)dy;
+    if (dx < 0) { low = (uint16_t)(0u - low); key |= 0x10u; }
+    if (dy < 0) { high = (uint16_t)(0u - high); key |= 0x08u; }
+    if (subtract16_is_negative((uint16_t)(high - 1u), low)) {
+        uint16_t swap = low; low = high; high = swap; key |= 0x04u;
+    }
+    uint16_t five_low = (uint16_t)(low * 5u);
+    if (subtract16_is_negative((uint16_t)(high - 1u), five_low)) {
+        uint16_t three_half_low = (uint16_t)(low * 3u);
+        three_half_low >>= 1;
+        key |= subtract16_is_negative((uint16_t)(high - 1u), three_half_low) ?
+               0x02u : 0x01u;
+    }
+    if (distance) *distance = (uint16_t)(high + (low >> 2));
     return direction_map[key];
 }
 
@@ -243,6 +279,21 @@ bool nba_gameplay_ai_self_test(void) {
         uint16_t distance = 0u;
         if (nba_gameplay_target_direction(cases[i].x, cases[i].y, &distance) !=
                 cases[i].direction || distance != cases[i].distance) return false;
+    }
+    static const struct { int16_t x, y; uint8_t direction; uint16_t distance; }
+        pass_cases[] = {
+            {0,0,0x10,0}, {10,0,4,10}, {0,10,0,10}, {-10,-10,10,12},
+            {10,20,1,22}, {10,21,1,23}, {10,11,2,13},
+            {20,10,3,22}, {-20,10,13,22}, {-20,-10,11,22},
+            {6576,6556,2,8215}, {20000,30000,2,35000},
+            {-32768,-32768,11,0xA000}, {10,15,2,17}, {10,16,1,18},
+            {10,50,1,52}, {10,51,0,53}
+        };
+    for (unsigned i = 0; i < sizeof(pass_cases) / sizeof(pass_cases[0]); ++i) {
+        uint16_t distance = 0u;
+        if (nba_gameplay_pass_direction(pass_cases[i].x, pass_cases[i].y,
+                &distance) != pass_cases[i].direction ||
+            distance != pass_cases[i].distance) return false;
     }
     uint8_t steering = 0u;
     uint16_t predicted = 0u;

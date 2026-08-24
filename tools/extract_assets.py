@@ -449,6 +449,10 @@ def build_player_roster_asset(rom_data):
             # `$85:A87F-$A88C` selects movement acceleration/cap profile from
             # the high nibble of roster/config byte +$42.
             packed[22] = record[0x42]
+            # Mode-15 pass setup reads roster +$39 and +$3E before choosing
+            # its grounded special/normal animation family.
+            packed[23] = record[0x39]
+            packed[24] = record[0x3e]
             packed[32:64] = fixed_name
             payload.extend(packed)
     return bytes(payload)
@@ -1873,7 +1877,7 @@ def create_asset_pack(rom_path, output_path):
                     extra_audio_id += 1
 
     header_magic = b"NBA95PAK"
-    version = 27
+    version = 28
     asset_count = len(assets)
     entry_size = 24 # 6 * 4 bytes
 
