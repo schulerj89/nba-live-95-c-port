@@ -100,9 +100,10 @@ static void cpu_cancel_boundary_activity(NbaTipoff *tipoff) {
     tipoff->ball_activity_raw = 0u;
 }
 
-/* Complete represented `$86:A613-$A628` mutation. Keep this scoped to call
- * sites whose following recovery is ported; the generic court-clamp caller
- * still lacks the ROM's companion dead-ball recovery path. */
+/* Complete `$86:A613-$A628` mutation. The helper deliberately leaves
+ * `$093E`, `$09C4`, the ball record and its velocities intact: mode 15 and
+ * `$86:CCFC-$D3C5` decide whether a canceled pass aborts before release or
+ * becomes a generic loose-ball acquisition after release. */
 static void cpu_cancel_rom_pass_activity(NbaTipoff *tipoff) {
     cpu_cancel_boundary_activity(tipoff);
     tipoff->pass_aux_raw = -1;
@@ -122,13 +123,26 @@ static void cpu_restore_normal_mode(NbaTipoff *tipoff, unsigned slot) {
     actor->actor_status_raw_28 = 0u;
 }
 
-static void cpu_clamp_record_to_court(NbaTipoff *tipoff,
-                                      int32_t *x_fp, int32_t *y_fp,
-                                      int16_t *velocity_x,
-                                      int16_t *velocity_y) {
+/* Player movement has its own court restriction contract. Reusing the ball
+ * integrator's `$86:A613` side effect here made a baseline player cancel an
+ * unrelated pass every 30-Hz sweep. */
+static void cpu_clamp_actor_to_court(int32_t *x_fp, int32_t *y_fp,
+                                     int16_t *velocity_x,
+                                     int16_t *velocity_y) {
+    (void)nba_gameplay_court_clamp(
+        x_fp, y_fp, velocity_x, velocity_y);
+}
+
+/* `$85:A3B7-$A813` is the ownerless-ball physics chain. Its four rectangular
+ * edge branches call `$86:A613` before clamping the ball axis; the later
+ * diagonal/isometric correction does not. */
+static void cpu_clamp_ball_to_court(NbaTipoff *tipoff,
+                                    int32_t *x_fp, int32_t *y_fp,
+                                    int16_t *velocity_x,
+                                    int16_t *velocity_y) {
     if (nba_gameplay_court_clamp(
             x_fp, y_fp, velocity_x, velocity_y))
-        cpu_cancel_boundary_activity(tipoff);
+        cpu_cancel_rom_pass_activity(tipoff);
 }
 
 static int cpu_select_rom_receiver(const NbaTipoff *tipoff,
@@ -1968,6 +1982,17 @@ static int cpu_first_loose_ball_contact(const NbaTipoff *tipoff) {
     return -1;
 }
 
+static int cpu_first_receiverless_pass_contact(const NbaTipoff *tipoff) {
+    uint8_t order[NBA_GAMEPLAY_ACTOR_COUNT];
+    cpu_actor_contact_order(tipoff, order);
+    for (unsigned i = 0; i < NBA_GAMEPLAY_ACTOR_COUNT; ++i) {
+        unsigned actor = order[i];
+        if (cpu_actor_contacts_ball(tipoff, actor, false, 16u))
+            return (int)actor;
+    }
+    return -1;
+}
+
 /* During live state `$82`, only the inbound side may recover the dead ball.
  * The collision winner replaces the provisional team-slot-2 `$0954`, as the
  * CPU oracle does when side-0 actor 3 becomes the actual inbounder. */
@@ -1991,8 +2016,12 @@ static int cpu_first_inbound_ball_contact(const NbaTipoff *tipoff) {
  * point 0 can never win and point 1 wins only for RNG byte zero. */
 static int cpu_first_pass_contact(NbaTipoff *tipoff) {
     if ((tipoff->simulation_tick & 1u) != 0u ||
-        tipoff->ball.state != NBA_BALL_PASS ||
-        tipoff->pass_receiver_raw < 0) return -1;
+        tipoff->ball.state != NBA_BALL_PASS) return -1;
+    /* `$86:CEE2-$CF01`: once `$86:A613` has cleared `$0946`, the detached
+     * pass is no longer receiver/opponent classified. Every actor instead
+     * uses the deterministic generic 16-unit pose/body contact branch. */
+    if (tipoff->pass_receiver_raw < 0)
+        return cpu_first_receiverless_pass_contact(tipoff);
     uint8_t order[NBA_GAMEPLAY_ACTOR_COUNT];
     cpu_actor_contact_order(tipoff, order);
     for (unsigned i = 0; i < NBA_GAMEPLAY_ACTOR_COUNT; ++i) {
@@ -2674,10 +2703,9 @@ static bool cpu_update_rom_shooter(NbaTipoff *tipoff, unsigned slot) {
  * dispatches `$86:99C4` with family selected by signed actor +$C0. */
 static bool cpu_update_rom_passer(NbaTipoff *tipoff, unsigned slot) {
     NbaTipoffActor *passer = &tipoff->actors[slot];
-    /* `$86:A6B3` keys ownership from `$093E` and retains the receiver in the
-     * actor/pass executor state. `$86:A613` may clear `$0942/$0946` when any
-     * integrated record touches a rectangular court edge, so those telemetry
-     * mirrors cannot be used to abort an already-installed mode 15. */
+    /* `$86:A6B3` keys ownership from `$093E`; the release gate at `$A749`
+     * rereads raw `$0946`. Cached host identities may drive attachment while
+     * waiting, but cannot authorize a launch after `$86:A613` canceled it. */
     if (tipoff->handler_actor != slot ||
         tipoff->receiver_actor >= NBA_GAMEPLAY_ACTOR_COUNT)
         return true;
@@ -2688,6 +2716,21 @@ static bool cpu_update_rom_passer(NbaTipoff *tipoff, unsigned slot) {
         ball_attach_to_actor(tipoff, slot);
         return true;
     }
+    if (tipoff->pass_receiver_raw < 0) {
+        /* `$86:A777-$A78F`: normalize the installed pass executor back to
+         * mode 11 and retain `$09C4`; no ball launch occurs. A later mode-11
+         * decision may install a fresh receiver and overwrite the metadata. */
+        passer->control_mode = 11u;
+        passer->reaction_threshold = 0u;
+        passer->behavior_flags_raw = 0u;
+        passer->actor_status_raw_28 = 0u;
+        tipoff->pass_actor_raw = -1;
+        tipoff->pass_receiver_raw = -1;
+        tipoff->pass_aux_raw = -1;
+        if (tipoff->live_state_raw < 0x80u)
+            cpu_enter_play_state(tipoff, NBA_CPU_PLAY_ATTACK);
+        return true;
+    }
     unsigned family = passer->pass_family_raw < 0 ? 0u : 1u;
     unsigned band = passer->pass_band_raw / 6u;
     int16_t duration = 0, vertical = 0, opaque = 0;
@@ -2696,12 +2739,16 @@ static bool cpu_update_rom_passer(NbaTipoff *tipoff, unsigned slot) {
             &duration, &vertical, &opaque) || duration <= 0)
         return true;
     (void)opaque; /* `$86:99C4` does not consume the third record word. */
-    const NbaTipoffActor *receiver =
-        &tipoff->actors[tipoff->receiver_actor];
+    uint8_t receiver_slot = (uint8_t)tipoff->pass_receiver_raw;
+    const NbaTipoffActor *receiver = &tipoff->actors[receiver_slot];
+    tipoff->receiver_actor = receiver_slot;
     int target_x = fp_round(receiver->x_fp) +
         (int)pass_lead_component(receiver->velocity_x, (uint16_t)duration);
     int target_y = fp_round(receiver->y_fp) +
         (int)pass_lead_component(receiver->velocity_y, (uint16_t)duration);
+    /* `$86:A74E` clears `$09C4` immediately before `$86:99C4` detaches the
+     * ball. `$09B8` remains the independent inbound-transfer witness. */
+    tipoff->pass_active_raw = 0u;
     ball_launch(tipoff, target_x, target_y, (unsigned)duration,
                 vertical, NBA_BALL_PASS);
     /* `$86:9B84-$9B8F`: `$99C4` closes the temporary pass-init state 2
@@ -2710,6 +2757,78 @@ static bool cpu_update_rom_passer(NbaTipoff *tipoff, unsigned slot) {
     if (tipoff->live_state_raw < 0x81u) tipoff->live_state_raw = 0u;
     tipoff->possession_actor = -1;
     passer->pass_released_raw = true;
+    return true;
+}
+
+static bool cpu_boundary_pass_recovery_self_test(void) {
+    NbaTipoff state;
+    memset(&state, 0, sizeof(state));
+    state.pass_actor_raw = 3;
+    state.pass_aux_raw = 5;
+    state.pass_receiver_raw = 4;
+    state.rim_raw_094a = 7u;
+    state.ball_activity_raw = 9u;
+    state.inbound_transfer_raw = 1u;
+    state.pass_active_raw = 1u;
+    state.possession_actor = 3;
+    state.ball.owner_actor = 3;
+    state.ball.state = NBA_BALL_PASS;
+    state.ball.velocity_x = 71;
+    state.ball.velocity_y = -37;
+    int32_t x_fp = 395 * 256;
+    int32_t y_fp = 12 * 256;
+    int16_t velocity_x = 64;
+    int16_t velocity_y = -11;
+    cpu_clamp_ball_to_court(
+        &state, &x_fp, &y_fp, &velocity_x, &velocity_y);
+    if (x_fp != 394 * 256 || velocity_x != 0 || velocity_y != -11 ||
+        state.pass_actor_raw != -1 || state.pass_aux_raw != -1 ||
+        state.pass_receiver_raw != -1 || state.rim_raw_094a != 0u ||
+        state.ball_activity_raw != 0u || state.inbound_transfer_raw != 0u ||
+        state.pass_active_raw != 1u || state.possession_actor != 3 ||
+        state.ball.owner_actor != 3 || state.ball.state != NBA_BALL_PASS ||
+        state.ball.velocity_x != 71 || state.ball.velocity_y != -37)
+        return false;
+
+    /* A player at the same rectangle must not execute the ball-global clear. */
+    state.pass_actor_raw = 3;
+    state.pass_aux_raw = 5;
+    state.pass_receiver_raw = 4;
+    state.inbound_transfer_raw = 1u;
+    y_fp = -225 * 256;
+    velocity_y = -64;
+    cpu_clamp_actor_to_court(&x_fp, &y_fp, &velocity_x, &velocity_y);
+    if (y_fp != -224 * 256 || velocity_y != 0 ||
+        state.pass_actor_raw != 3 || state.pass_aux_raw != 5 ||
+        state.pass_receiver_raw != 4 || state.inbound_transfer_raw != 1u)
+        return false;
+
+    /* `$86:A749-$A78F`: a prior ball-edge clear makes the release abort
+     * without RNG, detachment, or a host-cached receiver launch. */
+    memset(&state, 0, sizeof(state));
+    state.handler_actor = 3u;
+    state.receiver_actor = 4u;
+    state.possession_actor = 3;
+    state.pass_actor_raw = -1;
+    state.pass_aux_raw = -1;
+    state.pass_receiver_raw = -1;
+    state.pass_active_raw = 1u;
+    state.ball.owner_actor = 3;
+    state.ball.state = NBA_BALL_ATTACHED;
+    state.actors[3].control_mode = 15u;
+    state.actors[3].reaction_threshold = 9u;
+    state.actors[3].behavior_flags_raw = 0xFFFFu;
+    state.actors[3].actor_status_raw_28 = 0xFFFFu;
+    state.actors[3].upper_animation_phase_raw = 2u;
+    state.actors[3].pass_release_threshold_raw = 1u;
+    if (!cpu_update_rom_passer(&state, 3u) ||
+        state.actors[3].control_mode != 11u ||
+        state.actors[3].reaction_threshold != 0u ||
+        state.actors[3].behavior_flags_raw != 0u ||
+        state.actors[3].actor_status_raw_28 != 0u ||
+        state.pass_active_raw != 1u || state.ball.owner_actor != 3 ||
+        state.ball.state != NBA_BALL_ATTACHED)
+        return false;
     return true;
 }
 
@@ -2820,7 +2939,7 @@ static void cpu_begin_dead_ball(NbaTipoff *tipoff, uint8_t selected_actor,
         tipoff->ball.velocity_x = 0;
         tipoff->ball.velocity_y = 0;
     }
-    cpu_cancel_boundary_activity(tipoff);
+    cpu_cancel_rom_pass_activity(tipoff);
     tipoff->ball.owner_actor = -1;
     tipoff->possession_actor = -1;
     tipoff->pass_active_raw = 0u;
@@ -3172,8 +3291,8 @@ static NbaGameplayRimResult cpu_update_live_ball(NbaTipoff *tipoff) {
         ball->x_fp += ball->velocity_x;
         ball->y_fp += ball->velocity_y;
         ball->z_fp += ball->velocity_z;
-        cpu_clamp_record_to_court(tipoff, &ball->x_fp, &ball->y_fp,
-                                  &ball->velocity_x, &ball->velocity_y);
+        cpu_clamp_ball_to_court(tipoff, &ball->x_fp, &ball->y_fp,
+                                &ball->velocity_x, &ball->velocity_y);
         if (!rom_free_flight && !made_response)
             ball->velocity_z = (int16_t)(ball->velocity_z - 48);
         if (ball->z_fp < 0) {
@@ -3508,12 +3627,36 @@ static void cpu_begin_possession(NbaTipoff *tipoff, uint8_t offense_side) {
     tipoff->actors[tipoff->handler_actor].reaction_threshold = 0u;
 }
 
+static bool cpu_inbound_completion_witness(const NbaTipoff *tipoff) {
+    return tipoff->live_state_raw == 0x82u &&
+        (tipoff->inbound_transfer_raw != 0u ||
+         tipoff->pass_receiver_raw >= 0);
+}
+
+static bool cpu_inbound_completion_witness_self_test(void) {
+    NbaTipoff state;
+    memset(&state, 0, sizeof(state));
+    state.live_state_raw = 0x82u;
+    state.pass_receiver_raw = -1;
+    if (cpu_inbound_completion_witness(&state)) return false;
+    state.inbound_transfer_raw = 1u;
+    if (!cpu_inbound_completion_witness(&state)) return false;
+    state.inbound_transfer_raw = 0u;
+    state.pass_receiver_raw = 4;
+    if (!cpu_inbound_completion_witness(&state)) return false;
+    state.live_state_raw = 0u;
+    return !cpu_inbound_completion_witness(&state);
+}
+
 static void cpu_commit_ball_acquisition(NbaTipoff *tipoff, uint8_t catcher) {
     /* `$86:BAA2-$BC99` is shared by pass catches and loose rebounds. It
      * installs the collision winner without mass-resetting the other nine
      * actor modes, clears the old play opportunities, and requests the next
      * ROM strategy through `$0994`. */
-    bool inbound_completion = tipoff->live_state_raw == 0x82u;
+    /* `$86:D365-$D39D`: state `$82` alone does not prove a completed inbound.
+     * A post-release `$86:A613` clears both witnesses; acquiring that loose
+     * pass keeps `$82` and makes the catcher the dead-ball carrier for retry. */
+    bool inbound_completion = cpu_inbound_completion_witness(tipoff);
     unsigned previous_side = tipoff->offense_side;
     unsigned side = catcher / 5u;
     NbaTipoffActor *catcher_state = &tipoff->actors[catcher];
@@ -3584,7 +3727,8 @@ static void cpu_commit_ball_acquisition(NbaTipoff *tipoff, uint8_t catcher) {
     tipoff->rim_raw_097c = 0u;
     tipoff->rim_raw_0962 = 0u;
     tipoff->rim_raw_13e7 |= 0x0010u;
-    tipoff->live_state_raw = 0u;
+    if (tipoff->live_state_raw != 0x82u || inbound_completion)
+        tipoff->live_state_raw = 0u;
     tipoff->inbound_transfer_raw = 0u;
     if (inbound_completion) {
         tipoff->inbound_state_raw = 0u;
@@ -4026,8 +4170,8 @@ static void cpu_update_all_actors(NbaTipoff *tipoff) {
             state->recovery_inhibit_raw = state->recovery_inhibit_raw > 2u ?
                 (uint16_t)(state->recovery_inhibit_raw - 2u) : 0u;
         cpu_move_actor(tipoff, actor);
-        cpu_clamp_record_to_court(tipoff, &state->x_fp, &state->y_fp,
-                                  &state->velocity_x, &state->velocity_y);
+        cpu_clamp_actor_to_court(&state->x_fp, &state->y_fp,
+                                 &state->velocity_x, &state->velocity_y);
         ++state->upper_animation_tick;
         ++state->upper_animation_phase_raw;
         ++state->lower_animation_tick;
@@ -4754,6 +4898,8 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
         !cpu_deferred_shooting_foul_self_test() ||
         !cpu_free_throw_scene_self_test() ||
         !cpu_special_receiver_self_test() ||
+        !cpu_boundary_pass_recovery_self_test() ||
+        !cpu_inbound_completion_witness_self_test() ||
         !cpu_dead_ball_dispatch_self_test() ||
         !cpu_contact_orchestration_self_test() ||
         !cpu_player_contact_self_test() ||

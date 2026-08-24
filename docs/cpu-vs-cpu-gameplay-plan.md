@@ -1152,7 +1152,7 @@ but left its decision field stale.
 Forced vectors cover the one-in-16 distant shot, the play-cycle one-in-32
 rating gate, `+$49` equality and side selection, the `$0968` fallback cadence,
 hold-step acceptance, nonzero-Z rejection, and exact LFSR end states. The
-public endurance horizon is 61,990 frames so the deterministic run ends after
+public endurance horizon is 63,800 frames so the deterministic run ends after
 a completed inbound rather than truncating the next valid `$82` sequence.
 Movement windows with fewer than 16 ordinary-live frame pairs are reported as
 transition windows instead of being mislabeled as a stationary team.
@@ -1218,3 +1218,34 @@ Forced component vectors cover timer expiry, direct normal/special finish
 velocities, both grounded launches, the disturbance boundary, ownerless and
 mode-15-passer retention, full cancellation, and zero-RNG paths. The Ghidra
 generator now emits the complete `$86:B0F7-$B34E` receiver/action region.
+
+### Increment 5P: ball-edge pass cancellation and recovery
+
+The focused recomp trace resolves the companion behavior that previously made
+the full `$86:A613-$A628` clear unsafe. The four rectangular callers are the
+ownerless-ball integrator branches `$85:A7C8/$A7E1/$A7FA/$A813`, not player
+movement callbacks. Player geometry may reuse the same rectangle/isometric
+clamp, but it must never clear the unrelated ball/pass globals merely because a
+player is standing on a baseline. The diagonal correction still has no A613
+side effect.
+
+At the mode-15 release gate, `$86:A749` rereads raw `$0946`. A ball-edge clear
+before release therefore takes `$86:A777-$A78F`: clear actor `+$60/+$7E/+$28`,
+return to mode 11, retain the attached owned ball and `$09C4`, and do not
+consume RNG or launch toward a cached receiver. A valid receiver instead
+clears `$09C4` at `$A74E` immediately before `$86:99C4` detaches the pass.
+
+If the edge clear occurs after detachment, `$86:CEE2-$CF01` changes the pass
+from receiver/opponent classification to the deterministic generic 16-unit
+pose/body contact path. `$86:D365-$D39D` then distinguishes a legal inbound
+completion from a recovered canceled pass using the preserved witnesses:
+state `$82` completes only when `$09B8!=0` or `$0946>=0`. With both cleared,
+the catcher remains the mode-11 dead-ball carrier in state `$82` and may retry
+through `$86:AB2D`, which reseeds `$0942/$0946/$09C4/$09B8`.
+
+Forced startup vectors lock the six A613 writes while preserving owner,
+`$09C4`, ball routine and velocity; prove actor-edge clamping has no global
+side effect; prove the pre-launch A777 abort; and cover both inbound witness
+outcomes. The endurance trace separately requires valid launches to expose
+`$09C4=0`, sustained scoring and movement, and no completed dead-ball sequence
+over 2,400 frames.

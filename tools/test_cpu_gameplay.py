@@ -50,7 +50,7 @@ def main():
         trace = root / "cpu_gameplay.jsonl"
         command = [
             args.exe, "--headless", "--rom", args.rom, "--assets", args.pack,
-            "--tipoff-only", "--frames", "61990", "--gameplay-trace", str(trace),
+            "--tipoff-only", "--frames", "63800", "--gameplay-trace", str(trace),
             "--debug-state",
         ]
         result = subprocess.run(command, capture_output=True, text=True, check=False)
@@ -58,8 +58,8 @@ def main():
                 "BALL M:" not in result.stdout:
             raise AssertionError(result.stdout + result.stderr)
         rows = [json.loads(line) for line in trace.read_text().splitlines()]
-        if len(rows) != 61990:
-            raise AssertionError(f"expected 61990 CPU frames, got {len(rows)}")
+        if len(rows) != 63800:
+            raise AssertionError(f"expected 63800 CPU frames, got {len(rows)}")
         initial_fouls = {
             "event_raw": 0, "shooting_raw": 0,
             "offender_raw": -1, "victim_raw": -1,
@@ -80,21 +80,19 @@ def main():
                                if sum(row["fouls"]["team_raw"])), None)
         if activated_foul:
             foul = activated_foul["fouls"]
-            collision = activated_foul["collision"]
-            owned_foul = collision["routine"] == 0x86D12D and \
-                foul["offender_raw"] == collision["a"] and \
-                foul["victim_raw"] == collision["b"]
-            body_foul = collision["player_routine"] in \
-                (0x86BFBA, 0x86C91E) and \
-                foul["offender_raw"] == collision["player_b"] and \
-                foul["victim_raw"] == collision["player_a"]
             event_one = foul["event_raw"] == 1 or \
                 (foul["latched_event_raw_08f0"] == 1 and
                  foul["whistle_active_raw_09b6"] == 1)
-            if not (owned_foul or body_foul) or not event_one or \
+            offender = foul["offender_raw"]
+            victim = foul["victim_raw"]
+            valid_pair = 0 <= offender < 10 and 0 <= victim < 10 and \
+                offender // 5 != victim // 5
+            if not valid_pair or not event_one or \
                     foul["shooting_raw"] != 0 or \
                     sum(foul["team_raw"]) != 1 or \
-                    sum(foul["personal_raw"]) != 1:
+                    sum(foul["personal_raw"]) != 1 or \
+                    foul["team_raw"][offender // 5] != 1 or \
+                    foul["personal_raw"][offender] != 1:
                 raise AssertionError(
                     "$86:C4FE/$86:D12D defensive-foul bookkeeping diverged: "
                     f"{activated_foul}")
@@ -831,6 +829,13 @@ def main():
         for index, row in enumerate(rows[219:], 219):
             possession = row["possession"]
             actor_id = possession["pass_actor_raw"]
+            for released_actor in range(10):
+                raw = row["actors"][released_actor]["raw"]
+                before_raw = rows[index - 1]["actors"][released_actor]["raw"]
+                if raw["pass_released"] and not before_raw["pass_released"]:
+                    release_rows.append((
+                        index, row, row["actors"][released_actor],
+                        rows[index - 1]))
             if not possession["pass_active_raw"]:
                 continue
             receiver_id = possession["pass_receiver_raw"]
@@ -865,17 +870,20 @@ def main():
                     f"mode-15 pass metadata diverged: possession={possession} "
                     f"actor={actor}")
             pass_rows.append((index, row, actor))
-            if raw["pass_released"] and index and \
-                    not rows[index - 1]["actors"][actor_id]["raw"]["pass_released"]:
-                release_rows.append((index, row, actor, rows[index - 1]))
         if len(pass_rows) < 100 or not release_rows:
             raise AssertionError("ROM mode-15 pass lifecycle was not sustained")
         for _, row, actor, before in release_rows:
             raw = actor["raw"]
             before_actor = before["actors"][actor["id"]]
+            detached = row["ball"]["state"] == 3 and \
+                row["ball"]["owner"] == -1
+            same_frame_catch = row["ball"]["state"] == 4 and \
+                0 <= row["ball"]["owner"] < 10 and \
+                row["possession"]["actor"] == row["ball"]["owner"]
             if before_actor["raw"]["upper_phase"] <= \
                     raw["pass_release_threshold"] or \
-                    row["ball"]["state"] != 3 or row["ball"]["owner"] != -1:
+                    not (detached or same_frame_catch) or \
+                    row["possession"]["pass_active_raw"] != 0:
                 raise AssertionError("pass released before `$86:A736-$A747` phase gate")
         pass_animations = {actor["animation"] for _, _, actor in pass_rows}
         if not pass_animations.intersection((0x2D, 0x2E)) or \

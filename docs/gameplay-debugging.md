@@ -77,7 +77,7 @@ without changing the comparison contract.
 | `$86:F34F–$F439` | ordinary mode-11 owner cadence: `B678`, optional `AD6B`, then `B50E` |
 | `$86:F43A–$F669` | inbound `[-9,+8]` arrival, `$092E` 300/240/120/60 gates, selectors and `AB2D` |
 | `$85:A3B7–$A656` | ownerless Z/gravity, ground restitution, damping, and settle |
-| `$85:A656–$A755`, `$86:A613–$A628` | shared actor/ball rectangular and isometric court clamp plus boundary-state cancellation |
+| `$85:A656–$A813`, `$86:A613–$A628` | ownerless-ball rectangular/isometric court clamp; only the four rectangular ball-edge branches clear pass/shot/inbound metadata |
 | `$85:B50E–$B677` | persistent A2/AA/AC/AE receiver selection and candidate validation |
 | `$86:B625–$B978`, `$86:9D6E–$A45E` | pose-attached mode-12 shot jump, velocity release gate, and launch |
 | `$86:B154–$B334`, `$86:A9D0–$AA69` | mode-14 special-receiver jump, ownership validation, interrupted release, and close finish |

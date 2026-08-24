@@ -621,11 +621,13 @@ static void fixed_replace_integer(int32_t *value, int32_t integer) {
     *value = integer * 256 + fraction;
 }
 
-/* `$85:A656-$A755`: the common actor/free-ball court integrator clamps the
+/* `$85:A656-$A755`: the ownerless-ball court integrator clamps the
  * signed rectangle first, cancelling only outward velocity. It then applies
  * the asymmetric isometric edge by replacing integer X while preserving the
- * fractional word and velocity. The return value identifies the rectangular
- * `$86:A613` cancellation path; diagonal-only correction does not take it. */
+ * fractional word and velocity. The reusable geometry is also used to keep
+ * host player records on court, but only the ball caller may interpret the
+ * return value as the rectangular `$86:A613` cancellation path;
+ * diagonal-only correction does not take it. */
 bool nba_gameplay_court_clamp(int32_t *x_fp, int32_t *y_fp,
                               int16_t *velocity_x, int16_t *velocity_y) {
     if (!x_fp || !y_fp || !velocity_x || !velocity_y) return false;
