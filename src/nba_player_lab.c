@@ -20,6 +20,7 @@ typedef struct {
     uint8_t palette_variant, head_raw, head_style, appearance_modifier;
     uint16_t head_resource_base, head_resource_front;
     uint8_t decision_profile_39, decision_profile_3e;
+    uint8_t contact_rating_3a;
     uint8_t decision_profile_3f, decision_profile_40;
     uint8_t movement_profile_42;
     char name[33];
@@ -538,6 +539,7 @@ static bool player_record(const NbaAssetPack *assets, int team, int player,
     out->movement_profile_42 = p[22];
     out->decision_profile_39 = p[23];
     out->decision_profile_3e = p[24];
+    out->contact_rating_3a = p[25];
     memcpy(out->name, p + 32, 32); out->name[32] = '\0';
     return true;
 }
@@ -585,6 +587,16 @@ bool nba_player_gameplay_pass_profiles(const NbaAssetPack *assets,
         !player_record(assets, team, roster_slot, &player)) return false;
     *profile_39 = player.decision_profile_39;
     *profile_3e = player.decision_profile_3e;
+    return true;
+}
+
+bool nba_player_gameplay_contact_rating(const NbaAssetPack *assets,
+                                        uint8_t team, uint8_t roster_slot,
+                                        uint8_t *rating_3a) {
+    PlayerLabRecord player;
+    if (!rating_3a || !player_record(
+            assets, team, roster_slot, &player)) return false;
+    *rating_3a = player.contact_rating_3a;
     return true;
 }
 

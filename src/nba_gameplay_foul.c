@@ -16,8 +16,9 @@ void nba_gameplay_foul_init(NbaGameplayFoulState *state) {
  * threshold whenever `$09BC` is clear, independent of which valid code won.
  * The caller supplies the team resolved through actor `+$70`; it is not
  * inferred from the actor slot.
- * This pure hook is intentionally not called by host collision code until a
- * deterministic Mesen detector trace establishes the contact predicate. */
+ * Increment 5H connects this bookkeeping hook to the now-proven
+ * `$86:CCFC-$D1CE` owned-ball pose-contact predicate. The subsequent whistle
+ * scene/free-throw consumer remains a separate translation boundary. */
 bool nba_gameplay_foul_record_contact(NbaGameplayFoulState *state,
                                       uint8_t event_code,
                                       uint8_t offender_actor,

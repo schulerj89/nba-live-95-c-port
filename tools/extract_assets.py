@@ -453,6 +453,9 @@ def build_player_roster_asset(rom_data):
             # its grounded special/normal animation family.
             packed[23] = record[0x39]
             packed[24] = record[0x3e]
+            # `$86:D1D9-$D200` reads roster +$3A as the final owned-ball
+            # strip threshold before comparing the second `$80:CEE7` byte.
+            packed[25] = record[0x3a]
             packed[32:64] = fixed_name
             payload.extend(packed)
     return bytes(payload)

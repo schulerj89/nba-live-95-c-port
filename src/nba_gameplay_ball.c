@@ -503,6 +503,39 @@ void nba_gameplay_ball_apply_deflection(NbaGameplayRimState *state,
     else state->velocity_z = nba_gameplay_arithmetic_shift_right(vz, 1u);
 }
 
+/* `$86:D035-$D205`: owned-ball contact has two independent random stages
+ * before the final roster +$3A strip roll. Ordinary poses first pass a 1/8
+ * gate; animation $13 uses the difficulty-dependent bit gate instead. The
+ * elaborate rating accumulated in DP $AA is dead for this ROM revision:
+ * `$86:D11F-$D128` compares the next random byte with DP $00, the pose-point
+ * selector written by `$86:D549`. Point zero can never pass and point one
+ * passes only on random byte zero. `$86:D12D-$D1CE` then tests the first
+ * committed Rules word before `$86:D1D9` performs the +$3A roll. */
+NbaGameplayOwnedContactResult nba_gameplay_owned_contact_attempt(
+    NbaGameplayRng *rng, uint8_t candidate_animation,
+    uint8_t pose_point_index, uint8_t contact_rating_3a,
+    uint16_t difficulty_raw_17af, uint16_t foul_rule_raw_17d1,
+    bool foul_state_clear) {
+    if (!rng || pose_point_index > 1u) return NBA_GAMEPLAY_OWNED_CONTACT_NONE;
+    if (candidate_animation == 0x13u) {
+        if (difficulty_raw_17af != 0u &&
+            (nba_gameplay_rng_next(rng) & 1u) == 0u)
+            return NBA_GAMEPLAY_OWNED_CONTACT_NONE;
+    } else if ((nba_gameplay_rng_next(rng) & 7u) != 0u) {
+        return NBA_GAMEPLAY_OWNED_CONTACT_NONE;
+    }
+    uint8_t point_roll = (uint8_t)nba_gameplay_rng_next(rng);
+    if (point_roll >= pose_point_index)
+        return NBA_GAMEPLAY_OWNED_CONTACT_NONE;
+    if (foul_state_clear && foul_rule_raw_17d1 != 0u) {
+        uint8_t foul_roll = (uint8_t)nba_gameplay_rng_next(rng);
+        if (foul_roll <= (uint8_t)(foul_rule_raw_17d1 >> 1))
+            return NBA_GAMEPLAY_OWNED_CONTACT_FOUL;
+    }
+    return (uint8_t)nba_gameplay_rng_next(rng) < contact_rating_3a ?
+        NBA_GAMEPLAY_OWNED_CONTACT_STRIP : NBA_GAMEPLAY_OWNED_CONTACT_NONE;
+}
+
 bool nba_gameplay_ball_self_test(void) {
     int16_t vx = 0, vy = 0, vz = 0;
     NbaGameplayRimState rim = {0};
@@ -616,6 +649,21 @@ bool nba_gameplay_ball_self_test(void) {
     deflection_vectors = deflection_vectors && deflect.velocity_x == -16 &&
         deflect.velocity_y == -16 && deflect.velocity_z == 16 &&
         deflect_rng.state == 0x9146u;
+    NbaGameplayRng owned_rng;
+    nba_gameplay_rng_seed(&owned_rng, 64u);
+    bool owned_contact_vectors = nba_gameplay_owned_contact_attempt(
+        &owned_rng, 0u, 1u, 128u, 0u, 45u, true) ==
+            NBA_GAMEPLAY_OWNED_CONTACT_FOUL && owned_rng.state == 0x0200u;
+    nba_gameplay_rng_seed(&owned_rng, 8192u);
+    owned_contact_vectors = owned_contact_vectors &&
+        nba_gameplay_owned_contact_attempt(
+            &owned_rng, 0u, 1u, 128u, 0u, 45u, true) ==
+            NBA_GAMEPLAY_OWNED_CONTACT_STRIP && owned_rng.state == 0x3B0Eu;
+    nba_gameplay_rng_seed(&owned_rng, 8192u);
+    owned_contact_vectors = owned_contact_vectors &&
+        nba_gameplay_owned_contact_attempt(
+            &owned_rng, 0u, 0u, 128u, 0u, 45u, true) ==
+            NBA_GAMEPLAY_OWNED_CONTACT_NONE && owned_rng.state == 0x8000u;
     NbaGameplayRng edge_rng = {0x9146u};
     NbaGameplayRimContext edge_context = {
         .raw_0920 = 5u, .raw_0936 = 1u, .raw_0948 = 4u,
@@ -708,6 +756,7 @@ bool nba_gameplay_ball_self_test(void) {
         impact_raw == 71u && rim.raw_13e7 == 0u;
     return launch_ok && shell_gates && outer_generic && outer_y &&
            acquisition_gates && contact_selector && deflection_vectors &&
+           owned_contact_vectors &&
            edge_response && miss_response &&
            inner_distance_vectors && made_response && settle_response &&
            settle_gates && ground_impact &&

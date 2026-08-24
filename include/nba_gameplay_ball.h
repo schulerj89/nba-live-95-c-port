@@ -32,6 +32,12 @@ typedef struct NbaGameplayPosePoint {
     int16_t x, y, z;
 } NbaGameplayPosePoint;
 
+typedef enum NbaGameplayOwnedContactResult {
+    NBA_GAMEPLAY_OWNED_CONTACT_NONE = 0,
+    NBA_GAMEPLAY_OWNED_CONTACT_FOUL,
+    NBA_GAMEPLAY_OWNED_CONTACT_STRIP
+} NbaGameplayOwnedContactResult;
+
 /* Globals consumed by the inner-cylinder responses at `$85:9DAC-$A006`.
  * They remain explicit until surrounding writers give them stable semantic
  * names; this prevents a host collision shortcut from silently replacing a
@@ -109,6 +115,11 @@ int nba_gameplay_ball_pose_contact_index(
     int16_t ball_z, uint8_t threshold);
 void nba_gameplay_ball_apply_deflection(NbaGameplayRimState *state,
                                         NbaGameplayRng *rng);
+NbaGameplayOwnedContactResult nba_gameplay_owned_contact_attempt(
+    NbaGameplayRng *rng, uint8_t candidate_animation,
+    uint8_t pose_point_index, uint8_t contact_rating_3a,
+    uint16_t difficulty_raw_17af, uint16_t foul_rule_raw_17d1,
+    bool foul_state_clear);
 bool nba_gameplay_ball_self_test(void);
 
 #endif

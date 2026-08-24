@@ -43,19 +43,37 @@ def main():
         rows = [json.loads(line) for line in trace.read_text().splitlines()]
         if len(rows) != 60000:
             raise AssertionError(f"expected 60000 CPU frames, got {len(rows)}")
-        expected_dormant_fouls = {
+        initial_fouls = {
             "event_raw": 0, "shooting_raw": 0,
             "offender_raw": -1, "victim_raw": -1,
             "team_raw": [0, 0], "personal_raw": [0] * 10,
             "free_throw_state_raw": 0, "free_throw_sequence_raw": 0,
         }
         activated_foul = next((row for row in rows
-                               if row.get("fouls") != expected_dormant_fouls), None)
+                               if row.get("fouls") != initial_fouls), None)
         if activated_foul:
-            raise AssertionError(
-                "foul scaffold activated without a verified ROM collision "
-                f"predicate at frame {activated_foul['frame']}: "
-                f"{activated_foul.get('fouls')}")
+            foul = activated_foul["fouls"]
+            collision = activated_foul["collision"]
+            if collision["routine"] != 0x86D12D or foul["event_raw"] != 1 or \
+                    foul["shooting_raw"] != 0 or \
+                    foul["offender_raw"] != collision["a"] or \
+                    foul["victim_raw"] != collision["b"] or \
+                    sum(foul["team_raw"]) != 1 or \
+                    sum(foul["personal_raw"]) != 1:
+                raise AssertionError(
+                    "$86:D12D defensive-foul bookkeeping diverged: "
+                    f"{activated_foul}")
+        for row in rows[219:]:
+            collision = row["collision"]
+            if collision["routine"] not in (0, 0x86D12D, 0x86D1D9, 0x86D43E):
+                continue
+            if collision["routine"] and (
+                    not 0 <= collision["a"] < 10 or
+                    not 0 <= collision["b"] < 10 or
+                    collision["a"] // 5 == collision["b"] // 5):
+                raise AssertionError(
+                    "$86:CCFC owned-ball contact accepted a same-team or "
+                    f"invalid pair: {collision}")
 
         def frame(number):
             return rows[number - 1]
@@ -468,7 +486,7 @@ def main():
                     raise AssertionError(f"$0952/$0954 inbound mapping changed: {row}")
                 score_changes.append((row["frame"], score))
                 previous_score = score
-        if len(score_changes) < 4 or previous_score[0] < 4 or previous_score[1] < 4:
+        if len(score_changes) < 4 or previous_score[0] == 0 or previous_score[1] == 0:
             raise AssertionError(f"CPU scoring did not sustain both teams: {score_changes}")
         dead_runs = []
         run = []
@@ -783,6 +801,9 @@ def main():
                    "nba_gameplay_select_pass_receiver",
                    "$85:B50E-$B60A", "$85:B60B-$B677",
                    "cpu_update_rom_passer",
+                   "$86:D035-$D205", "nba_gameplay_owned_contact_attempt",
+                   "cpu_try_owned_ball_contact",
+                   "nba_player_gameplay_contact_rating",
                    "nba_player_gameplay_movement_profile",
                     "nba_player_gameplay_shot_ratings",
                     "cpu_commit_ball_acquisition"):

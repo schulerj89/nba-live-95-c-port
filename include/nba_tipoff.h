@@ -177,6 +177,9 @@ typedef struct {
     uint8_t handler_actor;
     uint8_t receiver_actor;
     uint8_t cpu_play_state;
+    int8_t collision_actor_a_raw; /* `$492D`, current contact candidate */
+    int8_t collision_actor_b_raw; /* `$492F`, current owner/victim */
+    uint32_t collision_routine_raw;
     bool cpu_vs_cpu;
     bool is_initialized;
 } NbaTipoff;

@@ -77,6 +77,7 @@ static bool cpu_update_rom_passer(NbaTipoff *tipoff, unsigned slot);
 static void cpu_enter_play_state(NbaTipoff *tipoff, NbaCpuPlayState state);
 static bool cpu_try_rom_mode11_shot(NbaTipoff *tipoff, unsigned slot);
 static bool cpu_update_rom_shooter(NbaTipoff *tipoff, unsigned slot);
+static void cpu_commit_ball_acquisition(NbaTipoff *tipoff, uint8_t catcher);
 
 /* `$86:A613-$A628`, reached by the shared `$85:A656-$A726` rectangular
  * actor/ball clamp. The port represents the proven globals it mutates; the
@@ -987,6 +988,103 @@ static void cpu_actor_contact_order(const NbaTipoff *tipoff,
             --at;
         }
     }
+}
+
+/* `$86:CCFC-$D548`: contact against an attached ball is opponent-only and
+ * has no body-box fallback. The current animation selects a strict 4- or
+ * 12-unit pose-point cube; `$86:D035` then consumes the ROM's random gates.
+ * A successful `+$3A` roll either installs the candidate through BAA2 or,
+ * for animations $32/$33, carries the old owner's velocity into D43E's
+ * loose-ball deflection response. */
+static bool cpu_try_owned_ball_contact(NbaTipoff *tipoff) {
+    if ((tipoff->simulation_tick & 1u) != 0u ||
+        tipoff->live_state_raw >= 0x80u ||
+        tipoff->ball.state != NBA_BALL_ATTACHED ||
+        tipoff->ball.owner_actor < 0 ||
+        tipoff->ball.owner_actor >= NBA_GAMEPLAY_ACTOR_COUNT)
+        return false;
+    uint8_t owner = (uint8_t)tipoff->ball.owner_actor;
+    uint8_t order[NBA_GAMEPLAY_ACTOR_COUNT];
+    cpu_actor_contact_order(tipoff, order);
+    for (unsigned i = 0; i < NBA_GAMEPLAY_ACTOR_COUNT; ++i) {
+        uint8_t candidate = order[i];
+        NbaTipoffActor *candidate_state = &tipoff->actors[candidate];
+        if (candidate / 5u == owner / 5u) continue;
+        uint8_t threshold = candidate_state->animation_state == 0x13u ?
+                            12u : 4u;
+        int point = cpu_actor_ball_contact_index(
+            tipoff, candidate, false, threshold);
+        if (point < 0) continue;
+        uint8_t team = candidate >= 5u ? tipoff->session->right_team :
+                                        tipoff->session->left_team;
+        uint8_t contact_rating = 0u;
+        if (!nba_player_gameplay_contact_rating(
+                tipoff->assets, team, candidate_state->roster_slot,
+                &contact_rating)) continue;
+        bool foul_state_clear =
+            tipoff->fouls.free_throw_state_raw_0978 == 0u &&
+            tipoff->fouls.shooting_foul_raw_09bc == 0u &&
+            tipoff->fouls.foul_event_raw_0964 == 0u &&
+            tipoff->inbound_transfer_raw == 0u;
+        NbaGameplayOwnedContactResult result =
+            nba_gameplay_owned_contact_attempt(
+                &tipoff->rng, candidate_state->animation_state,
+                (uint8_t)point, contact_rating,
+                tipoff->session->config.main_values[2],
+                tipoff->session->config.rules[0], foul_state_clear);
+        if (result == NBA_GAMEPLAY_OWNED_CONTACT_NONE) continue;
+        tipoff->collision_actor_a_raw = (int8_t)candidate;
+        tipoff->collision_actor_b_raw = (int8_t)owner;
+        if (result == NBA_GAMEPLAY_OWNED_CONTACT_FOUL) {
+            tipoff->collision_routine_raw = 0x86D12Du;
+            (void)nba_gameplay_foul_record_contact(
+                &tipoff->fouls, NBA_GAMEPLAY_FOUL_DEFENSIVE,
+                candidate, owner, candidate / 5u, false,
+                tipoff->period_raw_0926);
+            return true;
+        }
+
+        tipoff->collision_routine_raw = 0x86D1D9u;
+        NbaTipoffActor *owner_state = &tipoff->actors[owner];
+        owner_state->contact_inhibit_raw_5a = 15u;
+        tipoff->ball.velocity_x = owner_state->velocity_x;
+        tipoff->ball.velocity_y = owner_state->velocity_y;
+        tipoff->ball.velocity_z = owner_state->velocity_z;
+        uint8_t owner_group = owner >= 5u ? 5u : 0u;
+        owner_state->control_mode =
+            owner_group == tipoff->camera_side_group_raw ? 1u : 2u;
+        owner_state->reaction_threshold = 0u;
+        owner_state->behavior_flags_raw = 0u;
+        tipoff->ball.owner_actor = -1;
+        tipoff->possession_actor = -1;
+        tipoff->pass_actor_raw = -1;
+        tipoff->pass_receiver_raw = -1;
+        tipoff->pass_active_raw = 0u;
+        tipoff->pass_distance_raw = 0u;
+        tipoff->ball_activity_raw = 0u;
+        if (candidate_state->animation_state == 0x32u ||
+            candidate_state->animation_state == 0x33u) {
+            candidate_state->contact_inhibit_raw_5a = 15u;
+            NbaGameplayRimState deflect = {
+                fp_integer_word(tipoff->ball.x_fp),
+                fp_integer_word(tipoff->ball.y_fp),
+                fp_integer_word(tipoff->ball.z_fp),
+                tipoff->ball.velocity_x, tipoff->ball.velocity_y,
+                tipoff->ball.velocity_z
+            };
+            nba_gameplay_ball_apply_deflection(&deflect, &tipoff->rng);
+            tipoff->ball.velocity_x = deflect.velocity_x;
+            tipoff->ball.velocity_y = deflect.velocity_y;
+            tipoff->ball.velocity_z = deflect.velocity_z;
+            tipoff->ball.state = NBA_BALL_BOUNCE;
+            tipoff->collision_routine_raw = 0x86D43Eu;
+            cpu_enter_play_state(tipoff, NBA_CPU_PLAY_REBOUND);
+        } else {
+            cpu_commit_ball_acquisition(tipoff, candidate);
+        }
+        return true;
+    }
+    return false;
 }
 
 static int cpu_first_loose_ball_contact(const NbaTipoff *tipoff) {
@@ -2523,6 +2621,7 @@ static void cpu_update_possession(NbaTipoff *tipoff) {
     cpu_set_role_targets(tipoff);
     cpu_update_all_actors(tipoff);
     NbaGameplayRimResult rim_result = cpu_update_live_ball(tipoff);
+    (void)cpu_try_owned_ball_contact(tipoff);
     cpu_update_play_control(tipoff);
 
     switch ((NbaCpuPlayState)tipoff->cpu_play_state) {
@@ -2658,6 +2757,8 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
     tipoff->period_raw_0926 = 0u;
     tipoff->possession_actor = -1;
     tipoff->possession_team = -1;
+    tipoff->collision_actor_a_raw = -1;
+    tipoff->collision_actor_b_raw = -1;
     session->score[0] = session->score[1] = 0u;
     session->game_clock_ticks = 0u;
     tipoff->live_state_raw = 1u;
@@ -2742,6 +2843,9 @@ void nba_tipoff_update(NbaTipoff *tipoff, const NbaInput *input) {
     /* `$13E7` is an outer-frame event bitfield. Acquisition's bit $0010 is
      * observable for one completed frame, then the next outer pass clears it. */
     tipoff->rim_raw_13e7 &= 0xFFEFu;
+    tipoff->collision_actor_a_raw = -1;
+    tipoff->collision_actor_b_raw = -1;
+    tipoff->collision_routine_raw = 0u;
     ++tipoff->frame;
     ++tipoff->simulation_tick;
     ++tipoff->session->game_clock_ticks;
@@ -2914,14 +3018,20 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
     telemetry->pass_receiver_raw = tipoff->pass_receiver_raw;
     telemetry->pass_active_raw = tipoff->pass_active_raw;
     telemetry->pass_distance_raw = tipoff->pass_distance_raw;
-    telemetry->collision_actor_a = tipoff->frame >= NBA_TIPOFF_CONTACT_FRAME &&
-                                   tipoff->frame < 211 ? 0 : -1;
-    telemetry->collision_actor_b = tipoff->frame >= NBA_TIPOFF_CONTACT_FRAME &&
-                                   tipoff->frame < 211 ? 5 : -1;
+    telemetry->collision_actor_a = tipoff->frame < NBA_TIPOFF_BREAK_FRAME &&
+                                   tipoff->frame >= NBA_TIPOFF_CONTACT_FRAME &&
+                                   tipoff->frame < 211 ? 0 :
+                                   tipoff->collision_actor_a_raw;
+    telemetry->collision_actor_b = tipoff->frame < NBA_TIPOFF_BREAK_FRAME &&
+                                   tipoff->frame >= NBA_TIPOFF_CONTACT_FRAME &&
+                                   tipoff->frame < 211 ? 5 :
+                                   tipoff->collision_actor_b_raw;
     telemetry->controller_routine = 0x80CB8Fu;
     telemetry->selection_routine = 0x85C37Du;
-    telemetry->collision_routine = tipoff->frame >= NBA_TIPOFF_CONTACT_FRAME ?
-                                   SNES_ADDR_TIPOFF_CONTACT : 0u;
+    telemetry->collision_routine = tipoff->frame < NBA_TIPOFF_BREAK_FRAME &&
+                                   tipoff->frame >= NBA_TIPOFF_CONTACT_FRAME ?
+                                   SNES_ADDR_TIPOFF_CONTACT :
+                                   tipoff->collision_routine_raw;
     telemetry->possession_routine = tipoff->frame >= NBA_TIPOFF_POSSESSION_FRAME ?
                                     SNES_ADDR_TIPOFF_POSSESSION : 0u;
     telemetry->camera_x = tipoff->camera_x;

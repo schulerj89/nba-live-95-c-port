@@ -856,3 +856,34 @@ lifecycle is now ported, and the 60,000-frame regression fails if an invalid
 receiver remains in mode 10 beyond the two-rendered-frame 30-Hz scheduling
 latency. Updated frames 600 and 1300 were visually reviewed before their RGB
 goldens were accepted.
+
+Increment 5H connects the owned-ball half of the same contact dispatcher.
+Ghidra and the focused native recomp agree that `$86:CD16-$CD33` rejects the
+carrier's teammates, `$86:CEBE-$CF0D` selects a strict pose-point radius of 12
+for animation `$13` and 4 otherwise, and this path has no body-box fallback.
+The random stages at `$86:D035-$D128` are translated literally: ordinary
+animations first pass the 1-in-8 gate, animation `$13` uses the `$17AF`
+difficulty bit gate, and the ROM revision compares the following random byte
+to pose-point selector DP `$00` rather than the chance accumulated in DP
+`$AA`. Deterministic RNG vectors protect both point-zero rejection and the
+point-one foul/strip outcomes.
+
+The final strip threshold at `$86:D1D9-$D200` comes from the active player's
+ROM record byte `+$3A`; it is now stored in the asset-pack roster record and
+validated for ordinary and all-star players. On success, `$86:D205-$D257`
+puts contact inhibit 15 on the former owner, clears logical ownership, copies
+the owner's signed 8.8 velocities into the ball, and restores the owner's
+mode through the represented `$86:9846` boundary. Ordinary contacts commit
+the opponent through the existing `$86:BAA2` acquisition translation;
+animations `$32/$33` instead run the already-tested `$86:D43E-$D548`
+deflection and continue as a loose rebound.
+
+The proven `$86:D12D-$D1CE` branch now records defensive foul code 1 with the
+candidate/owner pair when committed Rules word `$17D1` wins its random gate.
+The downstream whistle/free-throw scene is not yet translated, so this
+checkpoint exposes but does not claim that consumer. F8/JSON collision
+telemetry no longer fabricates the jump-ball pair during live play: it emits
+the actual actors and `$86:D12D`, `$86:D1D9`, or `$86:D43E` branch that won.
+The 60,000-frame test accepts only opponent pairs and exact foul bookkeeping;
+unsuccessful ROM contact rolls deliberately advance the shared RNG and thus
+change later deterministic scoring without replacing ball or shot physics.

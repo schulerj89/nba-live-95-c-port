@@ -87,6 +87,9 @@ bool nba_player_gameplay_pass_profiles(const NbaAssetPack *assets,
                                        uint8_t team, uint8_t roster_slot,
                                        uint8_t *profile_39,
                                        uint8_t *profile_3e);
+bool nba_player_gameplay_contact_rating(const NbaAssetPack *assets,
+                                        uint8_t team, uint8_t roster_slot,
+                                        uint8_t *rating_3a);
 bool nba_player_gameplay_position(const NbaAssetPack *assets,
                                   uint8_t team, uint8_t roster_slot,
                                   uint8_t *position_raw_92);
