@@ -478,8 +478,18 @@ policy. Ghidra identifies pending event `$0964`, deferred shooting-foul
 personal counters at persistent player `+$14`, and free-throw state
 `$0978/$097A`. The isolated C state hook accepts the proven defensive,
 charging, and offensive event classes, preserves the six-foul personal cap,
-and models deferred made-shot bit 15. It is deliberately not called by live
+applies the non-deferred team threshold to all three classes, and models the
+later made-shot bit-15 transition as a separate operation. It is deliberately
+not called by live
 gameplay: the current emulator oracle does not exercise a deterministic foul
 contact, so enabling it would require a guessed predicate. C and Mesen JSONL
 now expose the common raw fields, while the 50,000-frame CPU regression locks
 the scaffold dormant until a focused contact trace supplies that predicate.
+The reproducible dump covers primary `$86:C4FE-$C6AC` and alternate
+`$86:D12D-$D1D0` classification paths. The current CPU oracle reaches the
+alternate entry but exits on `$093E<0`, and never reaches `$C4FE`; therefore
+live activation remains gated on a focused trace that observes codes 1, 2,
+13, and a detached-shot deferral through their complete latch lifecycle.
+The hook also receives the offender team explicitly, matching actor `+$70`
+rather than assuming slot/5. Literal `$86:C66E-$C684` uses threshold five
+when `$0926<4` and threshold four otherwise.

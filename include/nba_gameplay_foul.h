@@ -24,9 +24,10 @@ bool nba_gameplay_foul_record_contact(NbaGameplayFoulState *state,
                                       uint8_t event_code,
                                       uint8_t offender_actor,
                                       uint8_t victim_actor,
+                                      uint8_t offender_team,
                                       bool shot_detached,
-                                      bool shot_made,
                                       uint16_t period_raw_0926);
+bool nba_gameplay_foul_record_made_basket(NbaGameplayFoulState *state);
 bool nba_gameplay_foul_self_test(void);
 
 #endif

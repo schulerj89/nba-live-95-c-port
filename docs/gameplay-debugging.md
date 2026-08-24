@@ -71,7 +71,7 @@ without changing the comparison contract.
 | `$86:A561–$A5AF` / `$85:ABFB` | two/three-point arc classification/table |
 | `$85:A1E9–$A26E` | score write and post-make inbound initialization |
 | `$85:C37D–$C5C0`, `$86:F3D2–$F653` | inbound steering, receiver and pass path |
-| `$86:C500–$C6A9` | foul/contact event classification feeding pending `$0964` and actor IDs `$492D/$492F` |
+| `$86:C4FE–$C6AC`, `$86:D12D–$D1D0` | foul/contact classification feeding pending `$0964` and actor IDs `$492D/$492F` |
 | `$87:92AD–$95A8`, `$87:9B38` | dead-ball foul consumption, counters, bonus/free-throw state, and restart setup |
 
 The foul fields are comparison-only scaffolding for now. The port exports the

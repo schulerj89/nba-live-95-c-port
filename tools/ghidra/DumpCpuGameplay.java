@@ -33,7 +33,7 @@ public class DumpCpuGameplay extends GhidraScript {
             {0x8d00, 0xa7ff}, {0xaf00, 0xc6ff}, {0xf100, 0xf8ff}
         };
         if (bank.equals("86")) return new long[][] {
-            {0x9800, 0xbaff}, {0xd300, 0xd6ff}, {0xe300, 0xf8ff}
+            {0x9800, 0xbaff}, {0xc400, 0xd6ff}, {0xe300, 0xf8ff}
         };
         if (bank.equals("87")) return new long[][] {
             {0x9200, 0xadff}, {0xb300, 0xb9ff}
@@ -53,7 +53,8 @@ public class DumpCpuGameplay extends GhidraScript {
             0x9846, 0x99c4, 0x9c45, 0x9cdb, 0x9d6e, 0x9ed8, 0xa110,
             0xa17d, 0xa1bd, 0xa561, 0xa5b0, 0xa6b3, 0xa7a8, 0xab2d,
             0xb00b, 0xb625, 0xb769, 0xb8ca, 0xbaa2, 0xbaee, 0xbf0b,
-            0xc302, 0xc34c, 0xe39a, 0xe3cb, 0xe3e1, 0xe4a7, 0xe5ab,
+            0xc302, 0xc34c, 0xc493, 0xc4fe, 0xd12d,
+            0xe39a, 0xe3cb, 0xe3e1, 0xe4a7, 0xe5ab,
             0xe635, 0xe7b3, 0xe7dc, 0xe8f7, 0xe923, 0xe96f, 0xec32, 0xecf9,
             0xef09, 0xf0b7, 0xf0fd, 0xf1b0, 0xf23f, 0xf2ca, 0xf34f,
             0xf3d2, 0xf43a, 0xf59f, 0xf64f, 0xf6cd, 0xf794, 0xf8cd,
@@ -129,6 +130,20 @@ public class DumpCpuGameplay extends GhidraScript {
                         out.printf("$86:%04X  %s%n", address, instruction.toString());
                 }
                 for (long address = 0xab2d; address <= 0xb04a; ++address) {
+                    Instruction instruction = listing.getInstructionAt(toAddr(address));
+                    if (instruction != null)
+                        out.printf("$86:%04X  %s%n", address, instruction.toString());
+                }
+                out.println("\n--- Complete foul classification/bookkeeping boundary ---");
+                addEntryPoint(toAddr(0xc493)); disassemble(toAddr(0xc493));
+                addEntryPoint(toAddr(0xc4fe)); disassemble(toAddr(0xc4fe));
+                addEntryPoint(toAddr(0xd12d)); disassemble(toAddr(0xd12d));
+                for (long address = 0xc493; address <= 0xc6ac; ++address) {
+                    Instruction instruction = listing.getInstructionAt(toAddr(address));
+                    if (instruction != null)
+                        out.printf("$86:%04X  %s%n", address, instruction.toString());
+                }
+                for (long address = 0xd12d; address <= 0xd1d0; ++address) {
                     Instruction instruction = listing.getInstructionAt(toAddr(address));
                     if (instruction != null)
                         out.printf("$86:%04X  %s%n", address, instruction.toString());
