@@ -147,6 +147,7 @@ typedef struct {
     uint16_t rim_effect_raw_401b;
     uint16_t effect_frame_raw_4025;
     uint16_t effect_timer_raw_402d;
+    uint16_t rim_impact_raw_13e5;
     uint16_t event_bits_raw_13e7;
     uint16_t foul_event_raw;
     uint16_t shooting_foul_raw;

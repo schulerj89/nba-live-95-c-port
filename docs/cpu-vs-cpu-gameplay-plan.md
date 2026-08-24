@@ -733,3 +733,12 @@ Gameplay JSON now exposes all five raw dispatcher words for future Mesen
 differential traces. Rendering resource `$4015` still requires extracting its
 ROM graphic records; the state is intentionally not mapped to captured art or
 the existing static host ball tile.
+
+Increment 5A closes the remaining represented output of the native ground
+impact branch. `$85:A3B7-$A4DA` computes 7/8 vertical restitution (capped at
+`$0400`) and 15/16 planar damping; `$85:A43A-$A44B` also stores the rebound
+word in `$13E5` and raises bit 0 of `$13E7` only when the unsigned impulse is
+at least `$0048`. The previous port used the correct velocities but discarded
+both gameplay-visible writes. A shared component now owns the complete impact
+response, telemetry exposes `$13E5`, and boundary vectors distinguish rebound
+71 from 72 while protecting signed planar damping.

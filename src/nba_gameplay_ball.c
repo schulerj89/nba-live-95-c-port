@@ -318,6 +318,26 @@ bool nba_gameplay_ball_apply_settle(
     return true;
 }
 
+/* `$85:A3B7-$A4DA`, specifically `$85:A43A-$A44B`: ground restitution is
+ * stored in `$13E5`, and an impact of at least `$0048` raises event bit 0.
+ * The 15/16 planar damping belongs to the same impact branch. */
+void nba_gameplay_ball_apply_ground_impact(
+    NbaGameplayRimState *state, uint16_t *impact_raw_13e5) {
+    if (!state) return;
+    int16_t original_vz = state->velocity_z;
+    int rebound = -(int)original_vz +
+        nba_gameplay_arithmetic_shift_right(original_vz, 3u);
+    if (rebound > 0x0400) rebound = 0x0400;
+    state->velocity_z = (int16_t)rebound;
+    if (impact_raw_13e5) *impact_raw_13e5 = (uint16_t)state->velocity_z;
+    if ((uint16_t)state->velocity_z >= 0x0048u)
+        state->raw_13e7 |= 0x0001u;
+    state->velocity_x = (int16_t)(state->velocity_x -
+        nba_gameplay_arithmetic_shift_right(state->velocity_x, 4u));
+    state->velocity_y = (int16_t)(state->velocity_y -
+        nba_gameplay_arithmetic_shift_right(state->velocity_y, 4u));
+}
+
 /* Final made-basket predicate, expressed through the complete ROM shell. The
  * caller's dx/dy are hoop-relative, so +336 reconstructs the right-rim raw X. */
 bool nba_gameplay_ball_is_make(uint16_t live_state, bool alternate_height,
@@ -625,10 +645,21 @@ bool nba_gameplay_ball_self_test(void) {
     rim.velocity_z = 0;
     settle_gates = settle_gates && !nba_gameplay_ball_apply_settle(
         &rim, &settle_context);
+    uint16_t impact_raw = 0u;
+    rim = (NbaGameplayRimState){0, 0, 0, 160, -161, -83,
+                                0u, 0u, 0u, 0u, 0u, 8u};
+    nba_gameplay_ball_apply_ground_impact(&rim, &impact_raw);
+    bool ground_impact = rim.velocity_x == 150 &&
+        rim.velocity_y == -150 && rim.velocity_z == 72 &&
+        impact_raw == 72u && rim.raw_13e7 == 9u;
+    rim = (NbaGameplayRimState){0, 0, 0, 0, 0, -82};
+    nba_gameplay_ball_apply_ground_impact(&rim, &impact_raw);
+    ground_impact = ground_impact && rim.velocity_z == 71 &&
+        impact_raw == 71u && rim.raw_13e7 == 0u;
     return launch_ok && shell_gates && outer_generic && outer_y &&
            acquisition_gates && edge_response && miss_response &&
            inner_distance_vectors && made_response && settle_response &&
-           settle_gates &&
+           settle_gates && ground_impact &&
            right_world_bridge && left_world_bridge &&
            outer_negative_y_edge &&
            outer_low && outer_high &&

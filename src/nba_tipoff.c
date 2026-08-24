@@ -1238,15 +1238,18 @@ static NbaGameplayRimResult cpu_update_live_ball(NbaTipoff *tipoff) {
                 /* `$85:A3B7-$A4DA`: gravity precedes integration; ground
                  * impact applies 7/8 vertical restitution (cap $0400) and
                  * impact-only 15/16 lateral damping. */
-                int16_t original_vz = ball->velocity_z;
-                int rebound = -(int)original_vz +
-                    nba_gameplay_arithmetic_shift_right(original_vz, 3);
-                if (rebound > 0x0400) rebound = 0x0400;
-                ball->velocity_z = (int16_t)rebound;
-                ball->velocity_x = (int16_t)(ball->velocity_x -
-                    nba_gameplay_arithmetic_shift_right(ball->velocity_x, 4));
-                ball->velocity_y = (int16_t)(ball->velocity_y -
-                    nba_gameplay_arithmetic_shift_right(ball->velocity_y, 4));
+                NbaGameplayRimState impact = {
+                    fp_integer_word(ball->x_fp), fp_integer_word(ball->y_fp),
+                    0, ball->velocity_x, ball->velocity_y, ball->velocity_z,
+                    0u, 0u, 0u, tipoff->rim_raw_097c, 0u,
+                    tipoff->rim_raw_13e7
+                };
+                nba_gameplay_ball_apply_ground_impact(
+                    &impact, &tipoff->rim_impact_raw_13e5);
+                ball->velocity_x = impact.velocity_x;
+                ball->velocity_y = impact.velocity_y;
+                ball->velocity_z = impact.velocity_z;
+                tipoff->rim_raw_13e7 = impact.raw_13e7;
                 ball->state = NBA_BALL_BOUNCE;
                 NbaGameplayRimState settle = {
                     fp_integer_word(ball->x_fp), fp_integer_word(ball->y_fp),
@@ -2199,6 +2202,7 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
     telemetry->rim_effect_raw_401b = tipoff->rim_effect.effect_raw_401b;
     telemetry->effect_frame_raw_4025 = tipoff->rim_effect.frame_raw_4025;
     telemetry->effect_timer_raw_402d = tipoff->rim_effect.timer_raw_402d;
+    telemetry->rim_impact_raw_13e5 = tipoff->rim_impact_raw_13e5;
     telemetry->event_bits_raw_13e7 = tipoff->rim_raw_13e7;
     telemetry->foul_event_raw = tipoff->fouls.foul_event_raw_0964;
     telemetry->shooting_foul_raw = tipoff->fouls.shooting_foul_raw_09bc;

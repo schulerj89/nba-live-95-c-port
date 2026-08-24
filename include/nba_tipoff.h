@@ -150,6 +150,7 @@ typedef struct {
     uint16_t rim_raw_096a;
     uint16_t rim_raw_097c;
     uint16_t rim_raw_096e;
+    uint16_t rim_impact_raw_13e5;
     uint16_t rim_raw_13e7;
     uint16_t rim_raw_0920;
     uint16_t rim_raw_094a;

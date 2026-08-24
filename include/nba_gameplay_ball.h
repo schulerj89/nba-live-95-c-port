@@ -79,6 +79,8 @@ void nba_gameplay_rim_apply_made_response(
     NbaGameplayRimContext *context);
 bool nba_gameplay_ball_apply_settle(
     NbaGameplayRimState *state, NbaGameplaySettleContext *context);
+void nba_gameplay_ball_apply_ground_impact(
+    NbaGameplayRimState *state, uint16_t *impact_raw_13e5);
 bool nba_gameplay_ball_is_make(uint16_t live_state, bool alternate_height,
                                bool inner_veto, bool correct_basket_side,
                                int16_t dx, int16_t dy, int16_t z);

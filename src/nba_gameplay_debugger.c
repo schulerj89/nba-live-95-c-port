@@ -213,6 +213,7 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
             "\"rim_effect_raw_401b\":%u,"
             "\"effect_frame_raw_4025\":%u,"
             "\"effect_timer_raw_402d\":%u,"
+            "\"rim_impact_raw_13e5\":%u,"
             "\"event_bits_raw_13e7\":%u},"
             "\"fouls\":{\"event_raw\":%u,\"shooting_raw\":%u,"
             "\"offender_raw\":%d,\"victim_raw\":%d,"
@@ -267,6 +268,7 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
             telemetry->rim_effect_raw_401b,
             telemetry->effect_frame_raw_4025,
             telemetry->effect_timer_raw_402d,
+            telemetry->rim_impact_raw_13e5,
             telemetry->event_bits_raw_13e7,
             telemetry->foul_event_raw, telemetry->shooting_foul_raw,
             telemetry->foul_offender_raw, telemetry->foul_victim_raw,
