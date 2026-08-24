@@ -128,10 +128,11 @@ void nba_gameplay_debugger_render(const NbaGameplayDebugger *debugger,
                  telemetry->shot_value_raw, telemetry->shot_chance_raw,
                  telemetry->shot_inner_veto_raw, telemetry->shot_miss_index_raw);
         text(renderer, 6, 192, line, 0xFF9EF7A9u);
-        snprintf(line, sizeof(line), "PLAY:%02X/%d T:%d W:%u R:%u F:%u",
+        snprintf(line, sizeof(line), "PLAY:%02X/%d T:%d W:%u R:%u A:%02X F:%u",
                  telemetry->play_code_raw, telemetry->play_step_raw,
                  telemetry->play_countdown_raw,
                  telemetry->play_event_wait_raw, telemetry->play_request_raw,
+                 telemetry->special_actor_raw & 0xFFu,
                  telemetry->scene_frame);
         text(renderer, 6, 204, line, 0xFF79D7FFu);
     }
@@ -181,7 +182,7 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
             "\"play_step_raw\":%d,\"play_countdown_raw\":%d,"
             "\"play_mirror_raw\":%u,\"play_event_wait_raw\":%u,"
             "\"play_request_raw\":%u,\"play_cycle_raw\":%u,"
-            "\"play_hold_raw\":%u,"
+            "\"play_hold_raw\":%u,\"special_actor_raw\":%u,"
             "\"play_selector_raw\":[%d,%d,%d],"
             "\"rng_state_raw\":%u},\"match\":{\"score_left_raw\":%u,"
             "\"score_right_raw\":%u,\"shot_value_raw\":%u,"
@@ -199,6 +200,7 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
             "\"ball\":{\"x\":%d,\"y\":%d,\"z\":%d,"
             "\"screen_x\":%d,\"screen_y\":%d,\"vx\":%d,\"vy\":%d,"
             "\"vz\":%d,\"owner\":%d,\"state\":%u,\"flags_raw\":%u,"
+            "\"activity_raw\":%u,"
             "\"routine\":%u},"
             "\"routines\":{\"controller\":%u,\"selection\":%u,"
             "\"possession\":%u},\"actors\":[",
@@ -210,7 +212,8 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
             telemetry->play_countdown_raw, telemetry->play_mirror_raw,
             telemetry->play_event_wait_raw, telemetry->play_request_raw,
             telemetry->play_cycle_raw,
-            telemetry->play_hold_raw, telemetry->play_selector_raw[0],
+            telemetry->play_hold_raw, telemetry->special_actor_raw,
+            telemetry->play_selector_raw[0],
             telemetry->play_selector_raw[1], telemetry->play_selector_raw[2],
             telemetry->rng_state_raw,
             telemetry->score_left_raw, telemetry->score_right_raw,
@@ -234,6 +237,7 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
             telemetry->ball.velocity_x, telemetry->ball.velocity_y,
             telemetry->ball.velocity_z, telemetry->ball.owner_actor,
             telemetry->ball.state, telemetry->ball.flags_raw,
+            telemetry->ball_activity_raw,
             telemetry->ball.routine,
             telemetry->controller_routine, telemetry->selection_routine,
             telemetry->possession_routine);

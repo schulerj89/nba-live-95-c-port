@@ -20,7 +20,7 @@ single-frame stepping in headless runs.
 
 F8 page 3 and the normal CLI debug state expose
 `PLAY:code/step T:count W:wait R:request`.
-JSON adds raw `$0994/$0998/$099A/$099C/$099E/$09A4/$09D0` values plus the three
+JSON adds raw `$0994/$0998/$099A/$099C/$099E/$09A2/$09A4/$09D0` values plus the three
 side-relative `$09AA/$09AC/$09AE` selectors. Positive countdown records advance
 once per completed 30-Hz actor pass. Negative event records preserve signed
 underflow while `$85:B24C` scans the active five actors; signed actor `+$16`
@@ -55,6 +55,8 @@ without changing the comparison contract.
 | `$85:B402–$B4B8` | velocity-biased target arrival/direction with inclusive tolerance |
 | `$85:AD6B–$AE1D` | play/step/role formation install and side/mirror transform; actor `+$7E bit $08` latches it |
 | `$85:AE35–$AF5B` | crossing/edge target routes; normal arrival sets actor `+$7E bit $40` |
+| `$85:B4B9–$B50D`, `$85:F5E4–$F715` | `$09A2` clear-lane cutter cadence and blocker rectangle |
+| `$0948` | canonical detached-shot activity; ORed with `$097C` for formation edge routing |
 | `$86:9C6F–$9CDA`, `$86:A7A0–$A7A7` | pass launch records and animation release thresholds |
 | `$85:9192–$93F4` | camera subject transform and adaptive approach |
 | `$85:8EE6–$90C3` | circular court streamer sourced from `$A0:8006` |

@@ -16,8 +16,8 @@ FORMATION = [
     (-8, -3), (16, 83), (24, -80), (-104, 56), (-96, -59),
 ]
 EXPECTED_RGB = {
-    600: "ddea1165decba855e70ea8610a8de1d3feb09d44e8ceed23a4b9382c9c448c02",
-    1300: "6def631714ab80fe9291049438310111981556087d9f84c0ba49a05aaeea2174",
+    600: "08279bf43d01079c8dfc6aa6c8391d3a04881994a5dbc74759a43516566dc7a3",
+    1300: "53007a95f5865214b7e093c1520ef7328f5b09732d5017eb63ae9b762c22fc77",
 }
 
 
@@ -143,6 +143,24 @@ def main():
             raise AssertionError(
                 f"formation install/arrival lifecycle was not sustained: "
                 f"installs={installs} completions={completions}")
+        special_rows = [row for row in rows[219:]
+                        if row["possession"]["special_actor_raw"] != 0xFFFF]
+        if not special_rows or any(not 0 <= row["possession"]["special_actor_raw"] < 10
+                                   for row in special_rows):
+            raise AssertionError("$85:B4B9 did not produce bounded $09A2 cutters")
+        anchor_rows = []
+        for row in special_rows:
+            actor_id = row["possession"]["special_actor_raw"]
+            actor = row["actors"][actor_id]
+            expected = (-336 if actor_id < 5 else 336, 0)
+            actual = (actor["raw"]["target_x_56"],
+                      actor["raw"]["target_y_58"])
+            if actual == expected:
+                if actor["raw"]["behavior_flags"] & 0x08:
+                    raise AssertionError("$09A2 cutter retained formation bit $08")
+                anchor_rows.append(row)
+        if len(anchor_rows) < 100:
+            raise AssertionError("$85:AE1F cutter anchor was not sustained")
 
         play_codes = {row["possession"]["play_code_raw"] for row in rows[219:]}
         if not {0x35, 0x01, 0x0F, 0x26}.issubset(play_codes):
@@ -214,6 +232,11 @@ def main():
         owners = {row["ball"]["owner"] for row in rows[219:]}
         if len(owners - {-1}) < 4:
             raise AssertionError(f"ballhandler did not rotate: {owners}")
+        if not any(row["ball"]["state"] == 5 and
+                   row["ball"]["activity_raw"] == 1 for row in rows) or \
+                any(row["ball"]["state"] == 4 and
+                    row["ball"]["activity_raw"] != 0 for row in rows):
+            raise AssertionError("$0948 canonical shot/attach lifecycle changed")
 
         behavior_targets = [
             0x879C1B, 0x86F1B0, 0x86F6CD, 0x86F23F, 0x86F794,

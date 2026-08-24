@@ -78,7 +78,7 @@ typedef struct {
     uint16_t movement_magnitude_raw;  /* actor `+$4C` */
     uint16_t recovery_inhibit_raw;    /* actor `+$7A` */
     uint16_t behavior_flags_raw;      /* actor `+$7E` */
-    uint16_t behavior_timer;
+    uint16_t behavior_timer;          /* actor `+$64` */
     uint16_t action_state;
     bool visible;
 } NbaTipoffActor;
@@ -111,6 +111,7 @@ typedef struct {
     uint16_t play_request_raw;   /* `$0994` */
     uint16_t play_cycle_raw;     /* `$09A4` */
     uint16_t play_hold_raw;      /* `$09D0` */
+    uint16_t special_actor_raw;  /* `$09A2`, clear-lane cutter or `$FFFF` */
     int16_t play_selector_raw[3];/* `$09AA/$09AC/$09AE` */
     uint32_t simulation_tick;
     uint32_t actor_update_tick;
@@ -122,6 +123,7 @@ typedef struct {
     uint16_t live_state_raw;       /* `$0936` */
     uint16_t inbound_state_raw;    /* `$0952` */
     uint16_t inbound_actor_raw;    /* `$0954` */
+    uint16_t ball_activity_raw;    /* `$0948`, canonical shot detach */
     /* Persistent globals consumed/mutated by `$85:9ACB-$A081`. Keep their
      * raw names until the surrounding writers establish narrower labels. */
     uint16_t rim_raw_092c;

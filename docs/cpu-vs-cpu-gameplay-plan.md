@@ -417,6 +417,30 @@ coordinate and requires sustained installs and completions by both teams.
 The unobserved `$AE3B-$AE95` inbound-teammate rewrite and `$AE97-$AEBB`
 DP-`$5C` short-timer rewrite remain disabled, as does the unresolved mode-1
 pre-call `$86:E635` side effect and `$09A2` anchor-target writer. `$0948` is
-not yet represented, so the
-special activity route currently uses only proven persistent `$097C`. These
-are explicit next inputs, not host-authored substitutes.
+not yet represented at that checkpoint, so the special activity route used
+only proven persistent `$097C`. These were explicit next inputs, not
+host-authored substitutes.
+
+Increment 4M closes two live-required inputs that the first formation pass
+left explicit. `$85:B4B9-$B50D` now advances actor `+$64` with signed
+`C6=2` cadence. When `$09A4` is active, possession exists, the ROM
+actor-to-basket rectangle at `$85:F5E4-$F715` contains no opponent, and the
+actor is within 160 units of `$093E`, it writes that actor to `$09A2`.
+`$85:AE1F-$AE32` then clears formation bit `$08` and persists the exact team
+basket anchor `(-336,0)` or `(336,0)`. The 50,000-frame regression observes
+1,192 bounded selector rows and more than 800 exact anchored rows.
+
+Raw `$0948` is now represented independently from `$097C`. Canonical shot
+detach writers `$86:AA01/$B16E` set it to one; actor attachment clears it.
+The role-3/4 `$85:AEF5` route tests their OR, matching live execution where
+`$097C` remains zero but `$0948` drives the edge clamp. Both raw values and
+`$09A2` are exported by F8, CLI, port JSONL, and the Mesen capture script.
+
+The pass audit resolves why the packed `$86:9C6F` table is not yet activated.
+`$86:AB2D-$AF65` depends on the fine 16-direction helper `$85:F3C3`, distinct
+passer fields `+$62/+$66/+$84/+$C0`, independent animation phase `+$3A`, and
+roster bytes `+$39/+$3E`. The current immediate `38/704` host launch is still
+explicit provisional behavior. The safe next pass increment must add those
+raw fields and helper first, then enable only live-covered states
+`$2D/$2E/$2F/$30/$31`; aligned `$2A-$2C`, catch pre-init, and airborne
+specials remain gated until their own inputs exist.

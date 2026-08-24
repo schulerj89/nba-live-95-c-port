@@ -297,7 +297,7 @@ local function dump_gameplay_jsonl(frame)
         "\"play_step_raw\":%d,\"play_countdown_raw\":%d," ..
         "\"play_mirror_raw\":%u,\"play_event_wait_raw\":%u," ..
         "\"play_request_raw\":%u,\"play_cycle_raw\":%u," ..
-        "\"play_hold_raw\":%u," ..
+        "\"play_hold_raw\":%u,\"special_actor_raw\":%u," ..
         "\"play_selector_raw\":[%d,%d,%d]," ..
         "\"rng_state_raw\":%u}," ..
         "\"camera\":{\"x\":%d,\"y\":%d," ..
@@ -315,7 +315,8 @@ local function dump_gameplay_jsonl(frame)
         force_cpu_vs_cpu and 0 or word(0x0940), possession_actor,
         signed_word(0x093a), signed_word(0x0946), word(0x0996),
         signed_word(0x0998), signed_word(0x099a), word(0x099c), word(0x099e),
-        word(0x0994), word(0x09a4), word(0x09d0), signed_word(0x09aa),
+        word(0x0994), word(0x09a4), word(0x09d0), word(0x09a2),
+        signed_word(0x09aa),
         signed_word(0x09ac), signed_word(0x09ae), word(0x07f6),
         signed_word(0x085c), signed_word(0x0860), possession_actor,
         word(0x093a), 0x859192,
@@ -338,12 +339,13 @@ local function dump_gameplay_jsonl(frame)
         "\"ball\":{\"x\":%d,\"y\":%d,\"z\":%d," ..
         "\"screen_x\":-32768,\"screen_y\":-32768," ..
         "\"vx\":%d,\"vy\":%d,\"vz\":%d,\"owner\":%d," ..
-        "\"state\":%u,\"flags_raw\":%u,\"routine\":%u}," ..
+        "\"state\":%u,\"flags_raw\":%u,\"activity_raw\":%u," ..
+        "\"routine\":%u}," ..
         "\"routines\":{\"controller\":%u,\"selection\":%u," ..
         "\"possession\":%u},\"routine_hits\":[",
         ball_x, ball_y, ball_z, ball_vx, ball_vy, ball_vz,
         signed_word(0x0946), word(ball + 0x18),
-        word(ball + 0x28), 0x86e054, 0x80cb8f, 0x85c37d,
+        word(ball + 0x28), word(0x0948), 0x86e054, 0x80cb8f, 0x85c37d,
         frame >= 200 and 0x86d3f9 or 0))
     local hit_addresses = {}
     for address in pairs(routine_hits_frame) do hit_addresses[#hit_addresses + 1] = address end
