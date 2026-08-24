@@ -131,11 +131,14 @@ typedef struct {
     uint16_t score_left_raw;
     uint16_t score_right_raw;
     uint16_t period_raw_0926;
+    uint16_t match_clock_raw_0928;
     uint16_t team_context_mode_raw_30[2];
     uint16_t team_context_flags_raw_32[2];
     uint16_t team_context_activity_raw_39[2];
     uint16_t shot_clock_raw_092c;
     uint16_t shot_value_raw;
+    int16_t shot_actor_raw_09c8;
+    uint16_t interference_value_raw_096a;
     uint8_t shot_chance_raw;
     uint8_t shot_miss_index_raw;
     uint8_t shot_inner_veto_raw;
@@ -167,6 +170,9 @@ typedef struct {
     uint8_t personal_fouls_raw[NBA_GAMEPLAY_ACTOR_COUNT];
     uint16_t free_throw_state_raw;
     uint16_t free_throw_sequence_raw;
+    uint16_t latched_event_raw_08f0;
+    uint16_t whistle_active_raw_09b6;
+    uint16_t whistle_timer_raw_08de;
     uint16_t ball_activity_raw;
     int16_t pass_actor_raw;
     int16_t pass_receiver_raw;

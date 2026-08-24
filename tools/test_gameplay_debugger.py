@@ -76,14 +76,23 @@ def main():
         fouls = sample["fouls"]
         if set(fouls) != {"event_raw", "shooting_raw", "offender_raw",
                           "victim_raw", "team_raw", "personal_raw",
-                          "free_throw_state_raw", "free_throw_sequence_raw"}:
+                          "free_throw_state_raw", "free_throw_sequence_raw",
+                          "latched_event_raw_08f0",
+                          "whistle_active_raw_09b6",
+                          "whistle_timer_raw_08de"}:
             raise AssertionError(f"foul telemetry schema is incomplete: {fouls}")
         if fouls != {"event_raw": 0, "shooting_raw": 0,
                      "offender_raw": -1, "victim_raw": -1,
                      "team_raw": [0, 0], "personal_raw": [0] * 10,
                      "free_throw_state_raw": 0,
-                     "free_throw_sequence_raw": 0}:
+                     "free_throw_sequence_raw": 0,
+                     "latched_event_raw_08f0": 0,
+                     "whistle_active_raw_09b6": 0,
+                     "whistle_timer_raw_08de": 0}:
             raise AssertionError(f"unverified foul detector activated: {fouls}")
+        if not {"match_clock_raw_0928", "shot_actor_raw_09c8",
+                "interference_value_raw_096a"}.issubset(sample["match"]):
+            raise AssertionError("detached-shot telemetry schema is incomplete")
         scheduler = sample["scheduler"]
         if set(scheduler) != {"due_raw", "actor_pass_dt_raw",
                              "actor_pass_mask_raw", "actor_pass_order_raw"}:

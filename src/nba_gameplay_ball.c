@@ -536,6 +536,19 @@ NbaGameplayOwnedContactResult nba_gameplay_owned_contact_attempt(
         NBA_GAMEPLAY_OWNED_CONTACT_STRIP : NBA_GAMEPLAY_OWNED_CONTACT_NONE;
 }
 
+/* `$86:D078-$D128`: after a descending detached shot reaches an opponent's
+ * strict pose point, a live rim context (`$097C`) acquires immediately.
+ * Otherwise the ROM's literal DP-$00 bug compares the random low byte with
+ * the pose-point selector instead of the rating accumulated in DP $AA.
+ * Consequently point zero cannot catch and point one catches only on zero. */
+bool nba_gameplay_detached_shot_contact_attempt(
+    NbaGameplayRng *rng, uint8_t pose_point_index,
+    bool rim_context_nonzero) {
+    if (pose_point_index > 1u) return false;
+    if (rim_context_nonzero) return true;
+    return rng && (uint8_t)nba_gameplay_rng_next(rng) < pose_point_index;
+}
+
 bool nba_gameplay_ball_self_test(void) {
     int16_t vx = 0, vy = 0, vz = 0;
     NbaGameplayRimState rim = {0};
@@ -664,6 +677,18 @@ bool nba_gameplay_ball_self_test(void) {
         nba_gameplay_owned_contact_attempt(
             &owned_rng, 0u, 0u, 128u, 0u, 45u, true) ==
             NBA_GAMEPLAY_OWNED_CONTACT_NONE && owned_rng.state == 0x8000u;
+    NbaGameplayRng detached_rng;
+    nba_gameplay_rng_seed(&detached_rng, 0x0080u);
+    bool detached_contact_vectors =
+        nba_gameplay_detached_shot_contact_attempt(
+            &detached_rng, 1u, false) &&
+        detached_rng.state == 0x0100u;
+    nba_gameplay_rng_seed(&detached_rng, 0u);
+    detached_contact_vectors = detached_contact_vectors &&
+        !nba_gameplay_detached_shot_contact_attempt(
+            &detached_rng, 0u, false) &&
+        detached_rng.state == 0x9146u &&
+        nba_gameplay_detached_shot_contact_attempt(NULL, 0u, true);
     NbaGameplayRng edge_rng = {0x9146u};
     NbaGameplayRimContext edge_context = {
         .raw_0920 = 5u, .raw_0936 = 1u, .raw_0948 = 4u,
@@ -756,7 +781,7 @@ bool nba_gameplay_ball_self_test(void) {
         impact_raw == 71u && rim.raw_13e7 == 0u;
     return launch_ok && shell_gates && outer_generic && outer_y &&
            acquisition_gates && contact_selector && deflection_vectors &&
-           owned_contact_vectors &&
+           owned_contact_vectors && detached_contact_vectors &&
            edge_response && miss_response &&
            inner_distance_vectors && made_response && settle_response &&
            settle_gates && ground_impact &&

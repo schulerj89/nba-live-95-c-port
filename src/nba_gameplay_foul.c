@@ -60,6 +60,46 @@ bool nba_gameplay_foul_record_made_basket(NbaGameplayFoulState *state) {
     return true;
 }
 
+/* `$86:CE24-$CE65` emits code 6 without team/personal foul bookkeeping. */
+bool nba_gameplay_foul_record_violation(NbaGameplayFoulState *state,
+                                        uint8_t event_code,
+                                        uint8_t actor,
+                                        uint8_t shooter) {
+    if (!state || event_code != NBA_GAMEPLAY_VIOLATION_INTERFERENCE ||
+        actor >= 10u || shooter >= 10u ||
+        state->foul_event_raw_0964 != 0u) return false;
+    state->foul_event_raw_0964 = event_code;
+    state->offender_actor_raw = (int8_t)actor;
+    state->victim_actor_raw = (int8_t)shooter;
+    return true;
+}
+
+/* Exact gameplay-visible WRAM writes from `$85:93F5-$945E`. Its BACB/EBD8
+ * calls are presentation/audio dispatchers and remain orchestration hooks. */
+bool nba_gameplay_foul_consume_pending(NbaGameplayFoulState *state,
+                                       uint8_t camera_side_group,
+                                       uint16_t *event_bits_raw_13e7,
+                                       uint16_t *inbound_ready_raw_09ba,
+                                       bool short_timer) {
+    if (!state || state->whistle_active_raw_09b6 != 0u ||
+        state->foul_event_raw_0964 == 0u) return false;
+    state->latched_event_raw_08f0 = state->foul_event_raw_0964;
+    state->foul_event_raw_0964 = 0u;
+    if (inbound_ready_raw_09ba) *inbound_ready_raw_09ba = 0u;
+    state->contact_context_raw_497f = 0u;
+    state->presentation_pending_raw_4937 = 1u;
+    if (state->shooting_foul_raw_09bc == 0u && event_bits_raw_13e7)
+        *event_bits_raw_13e7 |= 0x2000u;
+    state->shooting_foul_raw_09bc = 0u;
+    if (camera_side_group == 0u)
+        state->side_event_bits_raw_13e9 |= 1u;
+    state->whistle_active_raw_09b6 = 1u;
+    state->whistle_timer_raw_08de = short_timer ? 120 : 300;
+    state->whistle_state_raw_08e6 = 17u;
+    state->whistle_state_mirror_raw_08e8 = 17u;
+    return true;
+}
+
 bool nba_gameplay_foul_self_test(void) {
     NbaGameplayFoulState state;
     nba_gameplay_foul_init(&state);
@@ -92,11 +132,35 @@ bool nba_gameplay_foul_self_test(void) {
         if (!nba_gameplay_foul_record_contact(
                 &offensive_bonus, NBA_GAMEPLAY_FOUL_OFFENSIVE, 2u, 7u,
                 0u, false, 6u)) return false;
+    NbaGameplayFoulState violation;
+    nba_gameplay_foul_init(&violation);
+    uint16_t event_bits = 0x0010u;
+    uint16_t inbound_ready = 9u;
+    violation.contact_context_raw_497f = 7u;
+    bool violation_ok = nba_gameplay_foul_record_violation(
+            &violation, NBA_GAMEPLAY_VIOLATION_INTERFERENCE, 7u, 2u) &&
+        violation.team_fouls[0] == 0u && violation.team_fouls[1] == 0u &&
+        nba_gameplay_foul_consume_pending(
+            &violation, 0u, &event_bits, &inbound_ready, false) &&
+        violation.latched_event_raw_08f0 ==
+            NBA_GAMEPLAY_VIOLATION_INTERFERENCE &&
+        violation.foul_event_raw_0964 == 0u &&
+        violation.whistle_active_raw_09b6 == 1u &&
+        violation.presentation_pending_raw_4937 == 1u &&
+        violation.contact_context_raw_497f == 0u && inbound_ready == 0u &&
+        violation.whistle_timer_raw_08de == 300 &&
+        violation.whistle_state_raw_08e6 == 17u &&
+        violation.whistle_state_mirror_raw_08e8 == 17u &&
+        violation.side_event_bits_raw_13e9 == 1u &&
+        event_bits == 0x2010u &&
+        !nba_gameplay_foul_consume_pending(
+            &violation, 0u, &event_bits, &inbound_ready, false);
     return offensive_bonus.team_fouls[0] == 4u &&
            offensive_bonus.personal_fouls[2] == 4u &&
            offensive_bonus.foul_event_raw_0964 ==
                NBA_GAMEPLAY_FOUL_OFFENSIVE &&
            offensive_bonus.shooting_foul_raw_09bc == 0u &&
            offensive_bonus.free_throw_state_raw_0978 == 1u &&
-           offensive_bonus.free_throw_sequence_raw_097a == 2u;
+           offensive_bonus.free_throw_sequence_raw_097a == 2u &&
+           violation_ok;
 }

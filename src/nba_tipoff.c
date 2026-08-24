@@ -1087,6 +1087,84 @@ static bool cpu_try_owned_ball_contact(NbaTipoff *tipoff) {
     return false;
 }
 
+static void cpu_record_interference_score(NbaTipoff *tipoff,
+                                          uint8_t candidate,
+                                          uint8_t shooter) {
+    unsigned scoring_side = shooter / 5u;
+    tipoff->rim_raw_096a = 0u;
+    if (!nba_gameplay_foul_record_violation(
+            &tipoff->fouls, NBA_GAMEPLAY_VIOLATION_INTERFERENCE,
+            candidate, shooter)) return;
+    tipoff->session->score[scoring_side] = (uint16_t)(
+        tipoff->session->score[scoring_side] + tipoff->shot_value_raw);
+    /* `$86:CE51-$CE65` updates the side-leading latch and the corresponding
+     * lead-change counter only when the new award crosses the other score. */
+    if (tipoff->leading_side_raw_1403 == 0u) {
+        if (tipoff->session->score[1] > tipoff->session->score[0]) {
+            tipoff->leading_side_raw_1403 = 1u;
+            ++tipoff->right_lead_change_count_raw_1407;
+        }
+    } else if (tipoff->session->score[0] > tipoff->session->score[1]) {
+        tipoff->leading_side_raw_1403 = 0u;
+        ++tipoff->left_lead_change_count_raw_1405;
+    }
+    tipoff->shot_result_resolved = true;
+    tipoff->collision_actor_a_raw = (int8_t)candidate;
+    tipoff->collision_actor_b_raw = (int8_t)shooter;
+    tipoff->collision_routine_raw = 0x86CE1Eu;
+}
+
+/* `$86:CD97-$D1D6`: an active detached shot on its downward path uses only
+ * the strict eight-unit pose points. An opposing actor may trigger code-6
+ * basket interference while the ball is above $50, then the same contact
+ * continues into `$D078`'s ROM catch test. There is no body-box fallback. */
+static bool cpu_try_detached_shot_contact(NbaTipoff *tipoff) {
+    if ((tipoff->simulation_tick & 1u) != 0u ||
+        tipoff->live_state_raw >= 0x80u ||
+        tipoff->ball.state != NBA_BALL_SHOT ||
+        tipoff->ball.owner_actor >= 0 ||
+        tipoff->ball_activity_raw == 0u ||
+        tipoff->ball.velocity_z >= 0 ||
+        tipoff->match_clock_raw_0928 < 5u ||
+        tipoff->match_clock_raw_0928 >= 0xFF00u ||
+        tipoff->shot_actor_raw_09c8 < 0 ||
+        tipoff->shot_actor_raw_09c8 >= NBA_GAMEPLAY_ACTOR_COUNT)
+        return false;
+
+    uint8_t shooter = (uint8_t)tipoff->shot_actor_raw_09c8;
+    uint8_t order[NBA_GAMEPLAY_ACTOR_COUNT];
+    cpu_actor_contact_order(tipoff, order);
+    for (unsigned i = 0; i < NBA_GAMEPLAY_ACTOR_COUNT; ++i) {
+        uint8_t candidate = order[i];
+        if (candidate / 5u == shooter / 5u) continue;
+        int point = cpu_actor_ball_contact_index(
+            tipoff, candidate, false, 8u);
+        if (point < 0) continue;
+
+        bool event_state_clear =
+            tipoff->fouls.free_throw_state_raw_0978 == 0u &&
+            tipoff->fouls.shooting_foul_raw_09bc == 0u &&
+            tipoff->fouls.foul_event_raw_0964 == 0u &&
+            tipoff->fouls.whistle_active_raw_09b6 == 0u;
+        if (event_state_clear &&
+            tipoff->session->config.rules[5] != 0u &&
+            tipoff->rim_raw_096a != 0u &&
+            fp_round(tipoff->ball.z_fp) >= 0x50) {
+            cpu_record_interference_score(tipoff, candidate, shooter);
+        }
+
+        if (!nba_gameplay_detached_shot_contact_attempt(
+                &tipoff->rng, (uint8_t)point,
+                tipoff->rim_raw_097c != 0u)) continue;
+        tipoff->collision_actor_a_raw = (int8_t)candidate;
+        tipoff->collision_actor_b_raw = -1;
+        tipoff->collision_routine_raw = 0x86D25Au;
+        cpu_commit_ball_acquisition(tipoff, candidate);
+        return true;
+    }
+    return false;
+}
+
 static int cpu_first_loose_ball_contact(const NbaTipoff *tipoff) {
     uint8_t order[NBA_GAMEPLAY_ACTOR_COUNT];
     cpu_actor_contact_order(tipoff, order);
@@ -1187,6 +1265,7 @@ static bool cpu_start_rom_shot(NbaTipoff *tipoff, unsigned slot) {
     tipoff->shot_origin_x = fp_round(shooter->x_fp);
     tipoff->shot_origin_y = fp_round(shooter->y_fp);
     tipoff->shot_value_raw = 0u;
+    tipoff->shot_actor_raw_09c8 = -1;
     tipoff->shot_chance_raw = 0u;
     tipoff->shot_inner_veto_raw = false;
     tipoff->shot_miss_index_raw = 0xFFu;
@@ -1269,6 +1348,10 @@ static void cpu_release_rom_shot(NbaTipoff *tipoff, unsigned slot) {
         basket_y += miss_y;
     }
     tipoff->live_state_raw = 1u; /* `$86:9DDB-$9DE4` */
+    /* `$86:9DBF/$9DFF` preserve the shooter and shot value for the later
+     * detached-contact/interference dispatcher. */
+    tipoff->shot_actor_raw_09c8 = (int16_t)slot;
+    tipoff->rim_raw_096a = tipoff->shot_value_raw;
     nba_gameplay_shot_launch(tipoff->ball.x_fp,
         tipoff->ball.y_fp, tipoff->ball.z_fp,
         (int16_t)basket_x, (int16_t)basket_y,
@@ -1920,6 +2003,7 @@ static void cpu_commit_ball_acquisition(NbaTipoff *tipoff, uint8_t catcher) {
      * clear `$0962` at the following common ball tail. */
     tipoff->ball_activity_raw = 0u;
     tipoff->shot_value_raw = 0u;
+    tipoff->shot_actor_raw_09c8 = -1;
     tipoff->rim_raw_096a = 0u;
     tipoff->rim_raw_097c = 0u;
     tipoff->rim_raw_0962 = 0u;
@@ -2621,7 +2705,8 @@ static void cpu_update_possession(NbaTipoff *tipoff) {
     cpu_set_role_targets(tipoff);
     cpu_update_all_actors(tipoff);
     NbaGameplayRimResult rim_result = cpu_update_live_ball(tipoff);
-    (void)cpu_try_owned_ball_contact(tipoff);
+    bool detached_contact = cpu_try_detached_shot_contact(tipoff);
+    if (!detached_contact) (void)cpu_try_owned_ball_contact(tipoff);
     cpu_update_play_control(tipoff);
 
     switch ((NbaCpuPlayState)tipoff->cpu_play_state) {
@@ -2755,6 +2840,7 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
                 context_actor_order[side][i];
     }
     tipoff->period_raw_0926 = 0u;
+    tipoff->match_clock_raw_0928 = 43200u;
     tipoff->possession_actor = -1;
     tipoff->possession_team = -1;
     tipoff->collision_actor_a_raw = -1;
@@ -2765,6 +2851,7 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
     tipoff->inbound_actor_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
     tipoff->pass_actor_raw = -1;
     tipoff->pass_receiver_raw = -1;
+    tipoff->shot_actor_raw_09c8 = -1;
     tipoff->ball.x_fp = 0;
     tipoff->ball.y_fp = 0;
     tipoff->ball.z_fp = 80 * 256;
@@ -2849,6 +2936,11 @@ void nba_tipoff_update(NbaTipoff *tipoff, const NbaInput *input) {
     ++tipoff->frame;
     ++tipoff->simulation_tick;
     ++tipoff->session->game_clock_ticks;
+    /* Live Mesen capture: `$0928` is 43200 at frame 220, then decrements
+     * once per outer frame (43020 at 400; 41620 at 1800). */
+    if (tipoff->frame > NBA_TIPOFF_BREAK_FRAME &&
+        tipoff->match_clock_raw_0928 != 0u)
+        --tipoff->match_clock_raw_0928;
     if (tipoff->frame < NBA_TIPOFF_BREAK_FRAME)
         cpu_update_tip_ball(tipoff);
     if (tipoff->frame == NBA_TIPOFF_POSSESSION_FRAME) {
@@ -2966,6 +3058,7 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
     telemetry->score_left_raw = tipoff->session->score[0];
     telemetry->score_right_raw = tipoff->session->score[1];
     telemetry->period_raw_0926 = tipoff->period_raw_0926;
+    telemetry->match_clock_raw_0928 = tipoff->match_clock_raw_0928;
     for (unsigned side = 0; side < 2u; ++side) {
         telemetry->team_context_mode_raw_30[side] =
             tipoff->team_context[side].mode_raw_30;
@@ -2976,6 +3069,8 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
     }
     telemetry->shot_clock_raw_092c = tipoff->rim_raw_092c;
     telemetry->shot_value_raw = tipoff->shot_value_raw;
+    telemetry->shot_actor_raw_09c8 = tipoff->shot_actor_raw_09c8;
+    telemetry->interference_value_raw_096a = tipoff->rim_raw_096a;
     telemetry->shot_chance_raw = tipoff->shot_chance_raw;
     telemetry->shot_miss_index_raw = tipoff->shot_miss_index_raw;
     telemetry->shot_inner_veto_raw = tipoff->shot_inner_veto_raw ? 1u : 0u;
@@ -3013,6 +3108,12 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
         tipoff->fouls.free_throw_state_raw_0978;
     telemetry->free_throw_sequence_raw =
         tipoff->fouls.free_throw_sequence_raw_097a;
+    telemetry->latched_event_raw_08f0 =
+        tipoff->fouls.latched_event_raw_08f0;
+    telemetry->whistle_active_raw_09b6 =
+        tipoff->fouls.whistle_active_raw_09b6;
+    telemetry->whistle_timer_raw_08de =
+        (uint16_t)tipoff->fouls.whistle_timer_raw_08de;
     telemetry->ball_activity_raw = tipoff->ball_activity_raw;
     telemetry->pass_actor_raw = tipoff->pass_actor_raw;
     telemetry->pass_receiver_raw = tipoff->pass_receiver_raw;

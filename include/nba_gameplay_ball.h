@@ -120,6 +120,9 @@ NbaGameplayOwnedContactResult nba_gameplay_owned_contact_attempt(
     uint8_t pose_point_index, uint8_t contact_rating_3a,
     uint16_t difficulty_raw_17af, uint16_t foul_rule_raw_17d1,
     bool foul_state_clear);
+bool nba_gameplay_detached_shot_contact_attempt(
+    NbaGameplayRng *rng, uint8_t pose_point_index,
+    bool rim_context_nonzero);
 bool nba_gameplay_ball_self_test(void);
 
 #endif

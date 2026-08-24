@@ -61,6 +61,8 @@ without changing the comparison contract.
 | `$85:AE35–$AF5B` | crossing/edge target routes; normal arrival sets actor `+$7E bit $40` |
 | `$85:B4B9–$B50D`, `$85:F5E4–$F715` | `$09A2` clear-lane cutter cadence and blocker rectangle |
 | `$0948` | canonical detached-shot activity; ORed with `$097C` for formation edge routing |
+| `$0928` | match clock: 43200 at live gameplay frame 220, then one decrement per outer frame |
+| `$09C8/$096A` | detached-shot shooter and retained shot value used by descending contact/interference |
 | `$86:9C6F–$9CDA`, `$86:A7A0–$A7A7` | pass launch records and animation release thresholds |
 | `$85:F3C3–$F472` | fine 16-direction and weighted-distance helper used by pass setup |
 | `$86:AB2D–$AF65`, `$86:A6B3–$A790` | mode-15 pass animation selection, attached phase gate, and release |
@@ -80,13 +82,15 @@ without changing the comparison contract.
 | `$86:B625–$B978`, `$86:9D6E–$A45E` | pose-attached mode-12 shot jump, velocity release gate, and launch |
 | `$86:BAA2–$BC99` | shared catch/rebound ownership install, `$0994` request, and final shot-context reset |
 | `$86:C4FE–$C6AC`, `$86:D12D–$D1D0` | foul/contact classification feeding pending `$0964` and actor IDs `$492D/$492F` |
-| `$87:92AD–$95A8`, `$87:9B38` | dead-ball foul consumption, counters, bonus/free-throw state, and restart setup |
+| `$86:CD97–$CE65`, `$86:D078–$D128` | descending-shot pose contact, code-6 interference award, and detached catch RNG |
+| `$85:93F5–$945E`, `$87:92A5–$95E6` | pending-event consumer and dead-ball violation/foul dispatch |
 | `$87:9AA6–$9BCA` | expired inbound: reload `$092E`, layout 5, opposite `$093A ^ 5` side, clear `$093E`, and restart |
 
-The foul fields are comparison-only scaffolding for now. The port exports the
-ROM-shaped state but does not synthesize contact calls; a focused Mesen trace
-must first prove the detector predicate and latch cadence. This prevents a
-plausible-looking random foul system from being mistaken for ROM behavior.
+Owned-ball defensive contact and descending-shot interference now originate
+from their proven `$86:CCFC-$D205` predicates. The reusable `$85:93F5`
+consumer is represented and tested, but live whistle presentation/restart is
+still gated on translating the surrounding `$87:92A5-$95E6` state machine and
+its audio calls as one unit.
 
 The extended CPU-only capture covers 1,801 frames. It confirms the `$35`
 post-tip play, CPU reaction staggering, live matchup reassignment, the

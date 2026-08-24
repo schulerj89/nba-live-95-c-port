@@ -117,6 +117,7 @@ typedef struct {
     NbaGameplayFoulState fouls;
     NbaGameplayTeamContext team_context[2]; /* `$46EB/$476B` +$30/+32/+39 */
     uint16_t period_raw_0926;
+    uint16_t match_clock_raw_0928;
     int8_t possession_actor;
     int8_t possession_team;
     uint8_t camera_side_group_raw; /* persistent `$093A`: 0 or 5 */
@@ -166,6 +167,10 @@ typedef struct {
     uint16_t rim_raw_094a;
     uint16_t rim_raw_0970;
     uint16_t rim_force_raw_1866;
+    int16_t shot_actor_raw_09c8;
+    uint16_t leading_side_raw_1403;
+    uint16_t left_lead_change_count_raw_1405;
+    uint16_t right_lead_change_count_raw_1407;
     NbaGameplayEffectState rim_effect;
     int16_t shot_origin_x, shot_origin_y;
     uint8_t shot_chance_raw;

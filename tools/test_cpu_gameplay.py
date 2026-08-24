@@ -48,9 +48,12 @@ def main():
             "offender_raw": -1, "victim_raw": -1,
             "team_raw": [0, 0], "personal_raw": [0] * 10,
             "free_throw_state_raw": 0, "free_throw_sequence_raw": 0,
+            "latched_event_raw_08f0": 0,
+            "whistle_active_raw_09b6": 0,
+            "whistle_timer_raw_08de": 0,
         }
         activated_foul = next((row for row in rows
-                               if row.get("fouls") != initial_fouls), None)
+                               if sum(row["fouls"]["team_raw"])), None)
         if activated_foul:
             foul = activated_foul["fouls"]
             collision = activated_foul["collision"]
@@ -65,7 +68,11 @@ def main():
                     f"{activated_foul}")
         for row in rows[219:]:
             collision = row["collision"]
-            if collision["routine"] not in (0, 0x86D12D, 0x86D1D9, 0x86D43E):
+            if collision["routine"] not in (
+                    0, 0x86CE1E, 0x86D12D, 0x86D1D9,
+                    0x86D25A, 0x86D43E):
+                continue
+            if collision["routine"] in (0x86CE1E, 0x86D25A):
                 continue
             if collision["routine"] and (
                     not 0 <= collision["a"] < 10 or
@@ -79,6 +86,12 @@ def main():
             return rows[number - 1]
 
         live = frame(240)
+        for number in (220, 400, 1800):
+            expected_clock = 43200 - max(0, number - 220)
+            if frame(number)["match"]["match_clock_raw_0928"] != expected_clock:
+                raise AssertionError(
+                    f"$0928 outer-frame clock changed at {number}: "
+                    f"{frame(number)['match']}")
         if [actor["roster"] for actor in live["actors"]] != \
                 [2, 0, 1, 3, 4, 2, 0, 1, 3, 4]:
             raise AssertionError("active actor-to-roster mapping changed")
@@ -328,6 +341,15 @@ def main():
                     row["ball"]["activity_raw"] not in (0, 0xFFFF)
                     for row in rows):
             raise AssertionError("$0948 canonical shot/attach lifecycle changed")
+        detached_shots = [row for row in rows
+                          if row["ball"]["state"] == 5 and
+                          row["ball"]["activity_raw"] == 0xFFFF]
+        if not detached_shots or any(
+                not 0 <= row["match"]["shot_actor_raw_09c8"] < 10 or
+                row["match"]["interference_value_raw_096a"] not in (1, 2, 3)
+                for row in detached_shots):
+            raise AssertionError(
+                "$86:9DBF/$9DFF detached-shot latches changed")
 
         behavior_targets = [
             0x879C1B, 0x86F1B0, 0x86F6CD, 0x86F23F, 0x86F794,
@@ -803,6 +825,8 @@ def main():
                    "cpu_update_rom_passer",
                    "$86:D035-$D205", "nba_gameplay_owned_contact_attempt",
                    "cpu_try_owned_ball_contact",
+                   "$86:CD97-$D1D6", "cpu_try_detached_shot_contact",
+                   "nba_gameplay_detached_shot_contact_attempt",
                    "nba_player_gameplay_contact_rating",
                    "nba_player_gameplay_movement_profile",
                     "nba_player_gameplay_shot_ratings",

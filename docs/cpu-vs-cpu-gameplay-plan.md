@@ -887,3 +887,33 @@ the actual actors and `$86:D12D`, `$86:D1D9`, or `$86:D43E` branch that won.
 The 60,000-frame test accepts only opponent pairs and exact foul bookkeeping;
 unsuccessful ROM contact rolls deliberately advance the shared RNG and thus
 change later deterministic scoring without replacing ball or shot physics.
+
+Increment 5I translates the detached descending-shot branch instead of
+treating every miss as a generic floor rebound. The recomp and refreshed
+headless Ghidra dump agree that `$86:9DBF/$9DFF` preserve the shooter in
+`$09C8` and the one/two/three-point value in `$096A`. `$86:CD97-$CDBD` then
+requires negative shot VZ and a strict eight-unit asset-derived pose point;
+there is no body fallback. The candidate must be on the opposing five-actor
+side and the real match clock `$0928` must be in the unsigned `[5,$FF00)`
+window. C now owns those latches and the captured clock cadence: 43200 at
+gameplay frame 220, 43020 at 400, and 41620 at 1800.
+
+When committed rule `$17DB` (`rules[5]`) is enabled, `$096A` is live, the ball
+is at least `$50` high, and no foul/inbound/whistle state blocks it,
+`$86:CE1E-$CE65` emits basket-interference code 6 and awards `$094C` to the
+original shooter. This event does not increment team or personal fouls. The
+port also retains `$1403/$1405/$1407` leading-side and lead-change writes.
+The same pose contact continues through `$86:D078-$D128`: nonzero `$097C`
+acquires immediately; otherwise the ROM again compares the RNG low byte with
+pose selector DP `$00`, so point zero never catches and point one catches only
+on a zero byte. Forced component vectors and the sustained 60,000-frame test
+lock the predicate, shot latches, clock, and ordinary physics lifecycle.
+
+The exact `$85:93F5-$945E` pending-event consumer is now a tested reusable C
+state transition: it moves `$0964` to `$08F0`, clears the pending/shooting
+latches, raises `$09B6/$4937`, updates `$13E7/$13E9`, and installs the
+300/120 timer plus `$08E6/$08E8=17`. It is not yet called by live gameplay:
+the surrounding `$87:92A5-$95E6` dead-ball presentation/restart and its
+`$87:BACB/$83:EBD8` audio hooks must be translated together so a whistle
+cannot freeze or immediately resume play. The maintained Ghidra script now
+dumps both complete ranges on every headless analysis run.

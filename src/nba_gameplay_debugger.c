@@ -198,11 +198,13 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
             "\"play_selector_raw\":[%d,%d,%d],"
             "\"rng_state_raw\":%u},\"match\":{\"score_left_raw\":%u,"
             "\"score_right_raw\":%u,\"period_raw_0926\":%u,"
+            "\"match_clock_raw_0928\":%u,"
             "\"team_context_mode_raw_30\":[%u,%u],"
             "\"team_context_flags_raw_32\":[%u,%u],"
             "\"team_context_activity_raw_39\":[%u,%u],"
             "\"shot_clock_raw_092c\":%u,"
-            "\"shot_value_raw\":%u,"
+            "\"shot_value_raw\":%u,\"shot_actor_raw_09c8\":%d,"
+            "\"interference_value_raw_096a\":%u,"
             "\"shot_chance_raw\":%u,\"shot_miss_index_raw\":%u,"
             "\"shot_inner_veto_raw\":%u,"
             "\"live_state_raw\":%u,\"inbound_state_raw\":%u,"
@@ -225,7 +227,10 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
             "\"team_raw\":[%u,%u],\"personal_raw\":["
             "%u,%u,%u,%u,%u,%u,%u,%u,%u,%u],"
             "\"free_throw_state_raw\":%u,"
-            "\"free_throw_sequence_raw\":%u},"
+            "\"free_throw_sequence_raw\":%u,"
+            "\"latched_event_raw_08f0\":%u,"
+            "\"whistle_active_raw_09b6\":%u,"
+            "\"whistle_timer_raw_08de\":%u},"
             "\"camera\":{\"x\":%d,\"y\":%d,"
             "\"subject_raw\":%d,\"side_group_raw\":%u,"
             "\"routine\":%u,\"raw_085c\":%u,\"raw_085e\":%u,"
@@ -257,6 +262,7 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
             telemetry->rng_state_raw,
             telemetry->score_left_raw, telemetry->score_right_raw,
             telemetry->period_raw_0926,
+            telemetry->match_clock_raw_0928,
             telemetry->team_context_mode_raw_30[0],
             telemetry->team_context_mode_raw_30[1],
             telemetry->team_context_flags_raw_32[0],
@@ -264,7 +270,9 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
             telemetry->team_context_activity_raw_39[0],
             telemetry->team_context_activity_raw_39[1],
             telemetry->shot_clock_raw_092c,
-            telemetry->shot_value_raw, telemetry->shot_chance_raw,
+            telemetry->shot_value_raw, telemetry->shot_actor_raw_09c8,
+            telemetry->interference_value_raw_096a,
+            telemetry->shot_chance_raw,
             telemetry->shot_miss_index_raw, telemetry->shot_inner_veto_raw,
             telemetry->live_state_raw,
             telemetry->inbound_state_raw, telemetry->inbound_actor_raw,
@@ -298,6 +306,9 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
             telemetry->personal_fouls_raw[9],
             telemetry->free_throw_state_raw,
             telemetry->free_throw_sequence_raw,
+            telemetry->latched_event_raw_08f0,
+            telemetry->whistle_active_raw_09b6,
+            telemetry->whistle_timer_raw_08de,
             telemetry->camera_x, telemetry->camera_y,
             telemetry->camera_subject_raw, telemetry->camera_side_group_raw,
             telemetry->camera_routine,

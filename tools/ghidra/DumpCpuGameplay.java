@@ -47,7 +47,8 @@ public class DumpCpuGameplay extends GhidraScript {
             0x9d40, 0x9f01, 0xa079, 0xa1e9, 0xa21f, 0xa357, 0xa518, 0xa5cc,
             0xa3b7, 0xa5f4, 0xa656, 0xa755,
             0xab17, 0xaf5c, 0xb402, 0xb50e, 0xb60b, 0xb678, 0xb9d2,
-            0xba1d, 0xbab7, 0xbae4, 0xbc07, 0xc37d, 0xc5fb, 0xef3a, 0xf02d,
+            0xba1d, 0xbab7, 0xbae4, 0xbc07, 0x93f5,
+            0xc37d, 0xc5fb, 0xef3a, 0xf02d,
             0xf1c1, 0xf34f, 0xf3c3, 0xf5e4, 0xf78b, 0xf7c9, 0xf867, 0xf8d9
         };
         if (bank.equals("86")) return new long[] {
@@ -65,7 +66,8 @@ public class DumpCpuGameplay extends GhidraScript {
             0x994c, 0xc6ad, 0xa7da, 0xb154, 0xb0f7, 0xb979
         };
         if (bank.equals("87")) return new long[] {
-            0x9244, 0x98ea, 0x996a, 0x9a03, 0x9a73, 0x9b0d, 0x9b30, 0x9bd0,
+            0x9244, 0x92a5, 0x98ea, 0x996a, 0x9a03, 0x9a73,
+            0x9b0d, 0x9b30, 0x9bd0,
             0xa2ce, 0xa357, 0xa846, 0xa9d0, 0xaa02, 0xaab2,
             0xad5b, 0xaec3, 0xb37c, 0xb47a, 0xb4db, 0xb538, 0xb555,
             0xb649, 0xb66a, 0xb832, 0xb953, 0xb572
@@ -152,6 +154,13 @@ public class DumpCpuGameplay extends GhidraScript {
                     if (instruction != null)
                         out.printf("$85:%04X  %s%n", address, instruction.toString());
                 }
+                out.println("\n--- Complete pending-event whistle consumer ---");
+                addEntryPoint(toAddr(0x93f5)); disassemble(toAddr(0x93f5));
+                for (long address = 0x93f5; address <= 0x945e; ++address) {
+                    Instruction instruction = listing.getInstructionAt(toAddr(address));
+                    if (instruction != null)
+                        out.printf("$85:%04X  %s%n", address, instruction.toString());
+                }
             }
             if (bank.equals("86")) {
                 out.println("\n--- Complete boundary-state cancellation helper ---");
@@ -233,6 +242,15 @@ public class DumpCpuGameplay extends GhidraScript {
                     Instruction instruction = listing.getInstructionAt(toAddr(address));
                     if (instruction != null)
                         out.printf("$86:%04X  %s%n", address, instruction.toString());
+                }
+            }
+            if (bank.equals("87")) {
+                out.println("\n--- Complete gameplay violation/event dispatch ---");
+                addEntryPoint(toAddr(0x92a5)); disassemble(toAddr(0x92a5));
+                for (long address = 0x92a5; address <= 0x95e6; ++address) {
+                    Instruction instruction = listing.getInstructionAt(toAddr(address));
+                    if (instruction != null)
+                        out.printf("$87:%04X  %s%n", address, instruction.toString());
                 }
             }
         }
