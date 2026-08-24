@@ -1044,22 +1044,20 @@ def create_asset_pack(rom_path, output_path):
         if len(states) != frame_count:
             raise RuntimeError(f"Incomplete Set {menu_name.title()} {prefix} PPU states")
         trace = bytearray(struct.pack("<8sII", b"NBSPPU2\0", 2, frame_count))
-        # The common return builder changes BG map/CHR/size registers one
-        # endFrame callback before that configuration reaches scanout.  Its
-        # VRAM clear/upload completes across the same boundary.  Preserve
-        # current scroll/brightness but latch the layer configuration, matching
-        # the clean Mesen screenshots at the $80:A2BF map switch.
-        layer_config_delay = 1 if prefix == "return" else 0
+        # endFrame exposes the PPU registers prepared for the following
+        # scanout, just as it does VRAM/CGRAM. Pack the preceding state so the
+        # shared $80:A2BF/$80:A3B8 scroll, fade, and map switch are presented
+        # on the same frame as Mesen's completed image. Frame zero is already
+        # the first transition state and therefore clamps to itself.
         for frame in range(frame_count):
-            state = states[frame]
-            layer_state = states[max(0, frame - layer_config_delay)]
+            state = states[max(0, frame - 1)]
             trace.extend(struct.pack("<BBBB", state[0], state[1], state[2], 0))
             for layer in range(3):
                 base = 3 + layer * 6
                 trace.extend(struct.pack(
                     "<HHHHBB", state[base], state[base + 1],
-                    layer_state[base + 2] * 2, layer_state[base + 3] * 2,
-                    layer_state[base + 4], layer_state[base + 5]))
+                    state[base + 2] * 2, state[base + 3] * 2,
+                    state[base + 4], state[base + 5]))
             vw, cw = events[0].get(frame, []), events[1].get(frame, [])
             trace.extend(struct.pack("<HH", len(vw), len(cw)))
             for address, value in vw:

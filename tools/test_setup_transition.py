@@ -74,24 +74,24 @@ EXPECTED_CURSOR_SHA256 = {
     6: "e3ec329dc39626391b9315e7ff60bf4c60b9a31b23d903bdcdca22ac5738fc65",
 }
 EXPECTED_MENU_RGB_SHA256 = {
-    "rules": "c3ee44ebe59969d30a8576a57dc615b8ff80025bcc7487e7bc5750d8b4c55de4",
-    "options": "640cc70c0436b1e890ff9adf3594ca12cd06ca7887ee8fc4d7fed305db457901",
+    "rules": "eef4fe78eae51de875169e8cab4d9caedfeb0125d8f2c085a463e53676a70d8f",
+    "options": "8f3e34fc6934d7313e486f6cb6e5c3793bd2e0aa6b28e2e5e0e91d3b8f30e246",
 }
 EXPECTED_MENU_ACTION_SHA256 = {
-    ("rules", 2, 1): "cd1e025cab1be48b4791add621728261e2779230e992e23c234fd9192f5a3a47",
-    ("options", 0, 1): "735468045b7dae213e3f7ea4344783614f0fe852f1a8f266bc71bdd3af813b3c",
-    ("rules", 7, 0): "46c602c777a811f13f8d65b76eca2be8677c248f458c804ece60944cff14380a",
-    ("rules", 9, 0): "b48da2d2f7e79b1bb9fe9dcfa123c3aa93831faef594ea28be7eb2e62e0980d2",
-    ("rules", 12, 0): "cd5826b44c26c88a161a507e8d2fc52c77f19b9d95d4c02761593a23cf6ba89a",
-    ("options", 2, 1): "71726d829879ee53c79141142c7689cc09f2a8139e7084c205f6faf6b8c3682f",
-    ("options", 2, 2): "3f8ae4c662bdbef750667549631c78adb122b5ef032bcd5abdca4e8de0786a10",
-    ("options", 3, 1): "58f7c8dd272b0164d4a9e2b80e88cf2619a62606e1d8c8f6ffbf4a70cfd67451",
-    ("options", 4, 1): "683b983878a8c2a1396050d0993990e0491e37022a1c92eb5a7799db182b4009",
-    ("options", 5, 1): "52c9dae9e8d9f09388842c2abbb971f4da915188e8fbff7344b99c6c9b4fdc76",
-    ("options", 6, 1): "227ca781089ab7f355971c45200a914b6b7b1ea751d585c0eb579cac55d1ff67",
+    ("rules", 2, 1): "0c3fab94548710f14ab5b1cd08f5ef1f086ef1d92add5e29ac239120512fc3e2",
+    ("options", 0, 1): "e212fcc26cc78826fafc4ba6af327f6b0f0635bffe30fc4ec8db8bffe6dac691",
+    ("rules", 7, 0): "0f2fdb67980025bca59b0d355d19c42fd9bcb85fcfeac2792afad5788d644a4a",
+    ("rules", 9, 0): "f7e0ef0464f268d418e134d03e67a698123b94b5493327eaadd7a31728c77835",
+    ("rules", 12, 0): "363dd4054d161d52fae9b2200d44e311f750eff0f81b9f0bbbdfd752851be566",
+    ("options", 2, 1): "5ed31b3266cf48ef8412392ea55515238b2a4aedd134ae24b63a784fc0909302",
+    ("options", 2, 2): "9c4be2893491cab8adcbab216f29ea6c0fb503b2192ca1373524168d6f7cce60",
+    ("options", 3, 1): "bac62d29c447641c9d0141390532dc8a1de7662cf4a02bf7c603eb62cf7183ff",
+    ("options", 4, 1): "3b4404450f9bd56de31ec5c7f8933847ffbe49ec64407952e519cc897d054ebf",
+    ("options", 5, 1): "c2fbb4088093941e70e592d107993334c7b076395a5611f0c87f3552432996d2",
+    ("options", 6, 1): "9471a8171fa543c5b570b0d5ffc85430038579908ae16f7c670d46631c9c2f26",
 }
 EXPECTED_SUBMENU_TRANSITION_SHA256 = {
-    ("open", 198): "276d77f5713e1f39eb7fbaac3cafcb198b45d3404ea168ef78781c55c750aa96",
+    ("open", 198): "6ef0efca4c6ffc9f65ef9d9b663719ab7a77614a587a9613e8204d671e3cb889",
     ("open", 219): "2cbbeef1249170a43854962fa5b19fba628470c70beb9ce23e15a0f05cb891f2",
     # $2100 forced blank is not part of Mesen's screenBrightness property.
     # These checkpoints sit inside $80:A2BF's formerly exposed VRAM build.
@@ -100,47 +100,61 @@ EXPECTED_SUBMENU_TRANSITION_SHA256 = {
     # Pixel-exact Mesen frames 549/581/589. These catch transient layer-map
     # mistakes that previously exposed partially built VRAM as garbage.
     ("open", 246): "2cbbeef1249170a43854962fa5b19fba628470c70beb9ce23e15a0f05cb891f2",
-    ("open", 259): "b1761cd4c198f25cf53f839143cc9bf8f6850ad7ee8241255c71233705185784",
+    # Pixel-exact consecutive Mesen entrance frames. These lock the endFrame
+    # register state to the following scanout instead of one frame early.
+    ("open", 258): "173954d6e9c0b1deb1336065c077478e5df1fdfa7dd6b58c438d55ec1012200e",
+    ("open", 259): "5fe120f6cd620bcc6149486dac74a39501450a0ffacc5d2c517ce95fef74b56e",
+    ("open", 262): "923709f429d1eee5dba16739b9a9353969a8f3ef7cbd80f8ac5bade00f506b61",
+    ("open", 266): "3f96e4fed79121d9caae851d45bc7c7af7b084c14f260b0660a7fcf41c829589",
+    ("open", 270): "f87c5552d39fdb603d27d6554e8ba6d01a6a0b5dd93740bc76bdf27bd4e775fd",
+    ("open", 274): "2e491d93222eb41828f1c3724390b45bcfcc5c58430d7996eca6ee51943c6b61",
     ("open", 278): "5ee642673003ccfb95b38ebad0ad11f06834a4d9a42106e7c806354d24e65b4d",
     ("open", 286): "a09b7c8333bf2f6f4a93e5a79ad0a276b840d2cdf44b911520ba66d5bd351c1a",
     ("open", 299): "d44b1b0d7f8661abc80ca824d7ee8844541778829adad255921e011979859a5c",
-    ("open", 307): "1dc35df1e80987d5a2b507694a65ae84b1eb65a7167918c96e0e6aa7d35b38e4",
+    ("open", 307): "50d8ff6af090c3da9634c71474242799c546164844cff3e9417f4a5029aaf8e5",
     ("open", 313): "dc47df3afd364178ea855980c1f9218f9e68530c2f4b3315678ab8e865b9f79b",
     ("open", 314): "6d8a554e4012faca94fc2c6ad017ee9af72305f36ad1e74d39ff68eaaac30996",
     # These early-return checkpoints straddle the map/CHR construction DMA.
     # They must remain clean outgoing-page scanout, never raw tile memory.
-    ("close", 319): "da454c5454132784160660d01cdeedb5bd3c4283bc6fe298ef76fa74007ed465",
-    ("close", 320): "da454c5454132784160660d01cdeedb5bd3c4283bc6fe298ef76fa74007ed465",
-    ("close", 329): "7833d9c7f030f56c59ca484e4cf5b1efd5e6444de1fec99b1307272ec1a579ee",
-    ("close", 345): "5e5160b0e09c9e043cfd68f4242e440551b4df1d2a9916626d21bd00c886cc50",
+    ("close", 319): "65f8b285fa51bfcdab3c3a0ddee180d3668535eea7554a4eba39f58238d18bda",
+    ("close", 320): "65f8b285fa51bfcdab3c3a0ddee180d3668535eea7554a4eba39f58238d18bda",
+    ("close", 329): "3891ebee1e014af5eda09e56d2d20bc88f42e7b5caf3b5fcde6af1c2ce6fa172",
+    ("close", 345): "68e73fd8f183420d0bf526963f300161316c78866a75e6576a9f18e806cec175",
     # Rules' return edge asserts forced blank earlier than Options.
-    ("close", 350): "2cbbeef1249170a43854962fa5b19fba628470c70beb9ce23e15a0f05cb891f2",
+    ("close", 350): "5e1fe6ffc477f6f973c9bf2b363fd0f60119227e452f977a5563844b8eacb8d5",
     ("close", 351): "2cbbeef1249170a43854962fa5b19fba628470c70beb9ce23e15a0f05cb891f2",
     ("close", 352): "2cbbeef1249170a43854962fa5b19fba628470c70beb9ce23e15a0f05cb891f2",
     ("close", 353): "2cbbeef1249170a43854962fa5b19fba628470c70beb9ce23e15a0f05cb891f2",
-    ("close", 382): "dc71c78af1811fbb00ab3dd22370734d42dd6e4709826e0ad0536407704c8dde",
-    ("close", 424): "d2141973346e0400e1c2a796070d597a9c82f3c05bbb7eb04ab536b23e6cac61",
-    ("close", 450): "412b1457f4ca5ef39f9b74fd366049ff42681439cddc024aa879df3166210561",
+    ("close", 382): "28c274a8c4d2395fcd11de185969e87c3d723aa9bce9737d572d5cfa5c542034",
+    ("close", 424): "85c0f2bf5b2e75e5ad1ec233e654f70ae13841b76a769e3e4c27e42d27d7affb",
+    ("close", 450): "c238e0e8750eaffac37606ab71bb7201ce4fc81cf1447d28940f260b98446ce6",
 }
 EXPECTED_OPTIONS_OPEN_TRANSITION_SHA256 = {
-    198: "2fd23d396d3591a981ac43b1306e7ef06223fbfdda296075ebd779be6596357e",
+    198: "c269ee7e887b7359b1510590450e6b08a52b6f2b36ac49cf80cd2ea11da016e9",
     219: "2cbbeef1249170a43854962fa5b19fba628470c70beb9ce23e15a0f05cb891f2",
-    259: "426fbd0ce36a23d2d6cff5b19dcf7259ebf0f190e84e48a44cf730b4d39f08c0",
-    299: "ec8a9690ee755fa6da43cb97574bd02419f35c2d47c97c027bbe0834a37bcfbb",
-    300: "f6f565d36e6d4d2fbea06d33170b4b755a05bc57196a46420d1f7d0dfaac7a50",
+    259: "923709f429d1eee5dba16739b9a9353969a8f3ef7cbd80f8ac5bade00f506b61",
+    263: "3f96e4fed79121d9caae851d45bc7c7af7b084c14f260b0660a7fcf41c829589",
+    267: "f87c5552d39fdb603d27d6554e8ba6d01a6a0b5dd93740bc76bdf27bd4e775fd",
+    271: "2e491d93222eb41828f1c3724390b45bcfcc5c58430d7996eca6ee51943c6b61",
+    275: "5ee642673003ccfb95b38ebad0ad11f06834a4d9a42106e7c806354d24e65b4d",
+    279: "a12c633f18c9c5cb8379d26d470b7f6d8890189ec19ea1ae7a3bcdae18d39584",
+    283: "a09b7c8333bf2f6f4a93e5a79ad0a276b840d2cdf44b911520ba66d5bd351c1a",
+    287: "e0dc1a529cbf1cd9a6bc5b7dbc8bd4eef17f7bc3b10f8fc098669057faa02169",
+    299: "65f046c92a25bfea2ad233b37c164adf2e73a4e0661e05c9a66f03e817782880",
+    300: "ec8a9690ee755fa6da43cb97574bd02419f35c2d47c97c027bbe0834a37bcfbb",
     301: "651b63bc47901714f6082cc242768160cf26ce6202ef9ab2bf1f1c67c92ac625",
 }
 EXPECTED_OPTIONS_RETURN_TRANSITION_SHA256 = {
-    315: "11899ec4ff77727a98732adacbb86431df2da72db56261c18b2ff2e78a6eabd8",
+    315: "9395524d7f94eb5b605468d0c9fe48a7817de0460bf24873b5c3ba7b6bee1fb8",
     321: "c29ac2a0ecf74a04e17d3b75872ee76519c11053a474daea8898bac85f4e76d3",
     322: "c29ac2a0ecf74a04e17d3b75872ee76519c11053a474daea8898bac85f4e76d3",
-    323: "cc267eeed6208dd3ef155933f0b6e313fed9c204b1a2e20c075a83c4f7d203cc",
+    323: "c29ac2a0ecf74a04e17d3b75872ee76519c11053a474daea8898bac85f4e76d3",
     324: "cc267eeed6208dd3ef155933f0b6e313fed9c204b1a2e20c075a83c4f7d203cc",
-    343: "7b33dbcb85e69e2ed0d0e5a888cad2357a0e6464125b5ec573532f32294ba9ad",
+    343: "7fba1877ba87210d01e19a94949947321851165d899d8e36226709b46401e66b",
     355: "2cbbeef1249170a43854962fa5b19fba628470c70beb9ce23e15a0f05cb891f2",
     367: "2cbbeef1249170a43854962fa5b19fba628470c70beb9ce23e15a0f05cb891f2",
-    423: "a0c57d2c5df2936113318e3805007bfefd4fc628ae3ecf07512c47b12ab9b94e",
-    431: "49cea44b69919a8b089d2acff78197aeed75d1b738b73b4a2f94cb9ef197b837",
+    423: "6a6d9555e98d595b096bde43038040808a49a474bf987c6f5cbcc9caea494976",
+    431: "9086981ffe8109b54c64f012bfe7666ecee9f2f310f46767953453161d7d7222",
 }
 MESEN_MENU_PRIMITIVE_SHA256 = {
     "rules_bar": "6a08a0e635e0d0ae5c24cafbaf3507fd16ce61c0f3adc0c282a8b620b36f48c8",
@@ -174,17 +188,17 @@ EXPECTED_MENU_ASSET_SHA256 = {
     142: "e01ff3a82d09d77d018ed79f2b54fd7620f975b523c680690d15efeea8b6adfa",
     143: "1e5c485b7ed12fe444588a5beebd984fa6489598fcb43064187e1617ab0238ce",
     144: "6342436ee7e704b2ad719c98b84e0685e87c2131dbf53b6230f225e40b16d490",
-    145: "b493da5be3bbc174399a86c565e1ed6567a738112e664a800468d89e1dc2ef1e",
+    145: "a445a12fd7d330d86ffc41ac2a42ec5b4b211a9c61fa2dbf23991e8a6ce6f33a",
     146: "1e5c485b7ed12fe444588a5beebd984fa6489598fcb43064187e1617ab0238ce",
     147: "8a95be0e8f109eec61af8385fc022072cffd57c13b13bf94b441a0d273ea8e65",
-    148: "606f8eabd3c89a9b4c4bdc016be8e00cdb8eba017052ae00c855857c3dc88942",
+    148: "b2485adab570e6b133bf54108160ec9423070f041eaa9663cb566fc0e5e30b4e",
     149: "906335dc6637bc01d81cad135c00a8f16580dd83e2471850f70a5b82a641a392",
     150: "c8135644bda6768020d67743a823e56eab734193a967ccddd7b570ba63d715a2",
-    151: "465d1b42010038e14430c09d96ad2a693a6427196d3db72594bb1f261a39fcb9",
+    151: "149925f90253de9d279723359ce56a4cb8c601d176b642c8366fc465409b882e",
     152: "eb893005c6d675b73d997f32fe2b479a9d1b8b71425f05e606519da09279ff68",
     153: "acc87f5139c463275742a378f966c64cc030b40f9712dc0e7329ddc57e622b31",
     154: "d3fa496f57f7bfaca0780582175b06e1c897efdb4583210f8dbb7c81d05cba65",
-    155: "162c67d4447931a515a2ad394bb2e859a020fbc34fea4f6440a7fb34561ae4ee",
+    155: "a36d0f44fa4437716a2230a7e61664a14439cdfbbd377a227bbc686fd1af7aed",
     156: "12d8c001afc6e355654d1965a1fbe7e7c405e028774449f70c3eece17919f43f",
     157: "a93724eda8d5190b1a1fd253812534aa942a68d0654c4608bf029342a111a01f",
 }
@@ -843,15 +857,15 @@ def check_frames(exe, rom, pack):
                 )
         if int(rows[1]["bg2v"]) != visible_bg2_origin:
             raise AssertionError("Rules transition reset BG2 before forced blank")
-        if [int(row["bg2v"]) for row in rows[-3:]] != [21, 22, 22]:
+        if [int(row["bg2v"]) for row in rows[-3:]] != [21, 21, 22]:
             raise AssertionError("Rules transition lost the rebuilt BG2 settle cadence")
 
         # Prove the handoff from the last packed state back to the steady
         # updater. The ROM holds/increments according to the phase established
         # by $80:A3B8; it never jumps back to the lifetime Setup frame value.
         for menu, checkpoints in {
-            "rules": {313: 22, 314: 22, 315: 23},
-            "options": {300: 19, 301: 19, 302: 19, 303: 20},
+            "rules": {313: 22, 314: 22, 315: 22, 316: 23},
+            "options": {300: 18, 301: 19, 302: 19, 303: 19, 304: 20},
         }.items():
             for frame, expected_bg2v in checkpoints.items():
                 state = subprocess.run(

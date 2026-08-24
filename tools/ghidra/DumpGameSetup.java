@@ -191,9 +191,9 @@ public class DumpGameSetup extends GhidraScript {
                 "length $0800 at $196E, and call $81:A28E. This replaces the BG3 text " +
                 "canvas; it does not paint a short value over the old one.");
             listing.setComment(toAddr(0xA28E), CodeUnit.PLATE_COMMENT,
-                "Queues the complete redrawn BG3 canvas for DMA. Independent Mesen visual " +
-                "frames show the Rules entrance scanout one 14-pixel step behind the captured " +
-                "vertical-scroll register sweep; Options and return edges have no such delay.");
+                "Queues the complete redrawn BG3 canvas for DMA. Mesen's endFrame callback " +
+                "observes this memory and the PPU registers prepared for the next scanout; " +
+                "the captured transition pack delays both presentation states one frame.");
             listing.setComment(toAddr(0x9756), CodeUnit.PLATE_COMMENT,
                 "Shared proportional menu-text renderer used by Game Setup, Rules, and " +
                 "Options. It consumes the selected ROM string and writes its complete 2bpp " +

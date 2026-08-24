@@ -113,7 +113,6 @@ typedef struct {
     int forced_blank_end;
     int construction_guard_start;
     int construction_guard_end;
-    int bg3_scanout_delay_frames;
     SetupTransitionReveal reveal;
 } SetupTransitionProfile;
 
@@ -123,16 +122,16 @@ typedef struct {
 static const SetupTransitionProfile setup_transition_profiles[] = {
     { NBA_SETUP_TRANSITION_MAIN_TO_RULES, NBA_SETUP_PAGE_MAIN,
       NBA_SETUP_PAGE_RULES, NBA_SETUP_TRANSITION_OPEN,
-      15, 21, 52, 76, 146, 51, 81, 0, 0, 1, SETUP_REVEAL_RULES },
+      15, 21, 52, 76, 146, 51, 81, 0, 0, SETUP_REVEAL_RULES },
     { NBA_SETUP_TRANSITION_MAIN_TO_OPTIONS, NBA_SETUP_PAGE_MAIN,
       NBA_SETUP_PAGE_OPTIONS, NBA_SETUP_TRANSITION_OPEN,
-      15, 21, 52, 72, 132, 51, 77, 0, 0, 0, SETUP_REVEAL_OPTIONS },
+      15, 21, 52, 72, 132, 51, 77, 0, 0, SETUP_REVEAL_OPTIONS },
     { NBA_SETUP_TRANSITION_RULES_TO_MAIN, NBA_SETUP_PAGE_RULES,
       NBA_SETUP_PAGE_MAIN, NBA_SETUP_TRANSITION_RETURN,
-      16, 22, 53, 74, 132, 36, 63, 4, 6, 0, SETUP_REVEAL_MAIN },
+      16, 22, 53, 74, 132, 36, 63, 4, 6, SETUP_REVEAL_MAIN },
     { NBA_SETUP_TRANSITION_OPTIONS_TO_MAIN, NBA_SETUP_PAGE_OPTIONS,
       NBA_SETUP_PAGE_MAIN, NBA_SETUP_TRANSITION_RETURN,
-      16, 22, 53, 74, 132, 52, 79, 20, 23, 0, SETUP_REVEAL_MAIN }
+      16, 22, 53, 74, 132, 52, 79, 20, 23, SETUP_REVEAL_MAIN }
 };
 
 static const SetupTransitionProfile *setup_transition_profile_for_route(
@@ -1284,17 +1283,6 @@ void nba_setup_screen_render(const NbaSetupScreen *s, NbaRenderer *ren) {
             if (construction_guard) bg3_designated = false;
             if (bg3_designated) {
                 int bg3_scroll = s->bg3_vscroll;
-                /* Rules' $81:A28E path queues the rebuilt BG3 DMA one frame
-                 * before its vertically staged result reaches scanout.  The
-                 * Options and return captures have no corresponding delay. */
-                if (transition_canvas && (s->main_screen & 0x10) != 0 &&
-                    ((s->main_screen | s->sub_screen) & 0x04) == 0 &&
-                    bg3_scroll > 0 && transition_profile &&
-                    transition_profile->bg3_scanout_delay_frames > 0) {
-                    bg3_scroll += transition_profile->bg3_scanout_delay_frames *
-                                  NBA_SETUP_BG3_SCROLL_STEP;
-                    if (bg3_scroll > 252) bg3_scroll = 252;
-                }
                 if (s->page == NBA_SETUP_PAGE_RULES && s->menu_scroll > 0 && y >= 70)
                     bg3_scroll += s->menu_scroll * NBA_SETUP_ROW_PITCH;
                 if (nba_snes_sample_bg(vram, layer_tilemap[2], layer_chr[2],

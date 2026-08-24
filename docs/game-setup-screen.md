@@ -227,10 +227,12 @@ the lifetime Setup frame counter.
 Mesen's `screenBrightness` field contains only the low four INIDISP bits, so
 the port separately restores bit 7 using edge-specific measured windows:
 Rules open 51–80, Options open 51–76, Rules return 36–62, and Options return
-52–78 (transition-frame numbering). The Rules `$81:A28E` visual scanout
-trails its recorded BG3 vertical-register sweep by one 14-pixel step; Options
-and both return edges do not. These differences now live in the directed
-transition profiles instead of a global transition shortcut.
+52–78 (transition-frame numbering). Mesen's end-frame callback reports the
+scroll, brightness, layer-designation, and map registers prepared for the next
+scanout. The asset pack therefore delays that complete PPU presentation state
+one frame, alongside its already delayed VRAM/CGRAM deltas. This keeps both
+submenu routes on the shared `$80:A2BF/$80:A3B8` cadence without a route-only
+renderer correction.
 
 The shared sound dispatch is `$80:9DF3`: command `$49` selects SRCN `$1A` for
 a value adjustment, `$4A` selects SRCN `$1B` for cursor movement, and `$4B`
@@ -243,15 +245,16 @@ apply slider changes immediately; the port applies Music Volume to the
 still-running Setup music stream and applies SFX Volume to the independently
 synthesized menu voice.
 
-Asset-pack version 14 retains the version 9 page-specific Rules/Options open and return snapshots
-with PPU write traces. Each transition frame now
-stores the ROM's brightness, main/sub layer designation, scroll positions,
-tilemap/CHR bases, and map dimensions. The builder temporarily repoints
-BG1/BG2/BG3 while VRAM is incomplete. Mesen's end-frame callback observes
-VRAM/CGRAM prepared for the following scanout, so the packer delays those
-deltas one frame. The return profiles also retain the outgoing page snapshot
-across their short map/CHR DMA guard. Rendering those construction bytes with
-the new addresses was the source of the transient garbage. The pack also carries exact,
+Asset-pack version 18 retains the version 9 page-specific Rules/Options open
+and return snapshots with PPU write traces. Each transition frame now stores
+the ROM's scanout-aligned brightness, main/sub layer designation, scroll
+positions, tilemap/CHR bases, and map dimensions. The builder temporarily
+repoints BG1/BG2/BG3 while VRAM is incomplete. Mesen's end-frame callback
+observes VRAM/CGRAM and registers prepared for the following scanout, so the
+packer delays both kinds of presentation state one frame. The return profiles
+also retain the outgoing page snapshot across their short map/CHR DMA guard.
+Rendering those construction bytes with the new addresses was the source of
+the transient garbage. The pack also carries exact,
 independent Music Mode, Crowd Sound, Slow Motion Dunks, Shot Control, and CPU
 Assistance BG3 states. `$82:8F9C -> $81:9FD4 -> $81:A1EE` uploads the redrawn
 `$0800`-byte BG3 canvas as a unit. The port now composes the ROM's row-local
