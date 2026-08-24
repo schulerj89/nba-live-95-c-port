@@ -96,6 +96,13 @@ typedef struct {
     int16_t possession_candidate_raw;
     uint16_t play_code_raw;
     uint16_t rng_state_raw;
+    uint16_t score_left_raw;
+    uint16_t score_right_raw;
+    uint16_t shot_value_raw;
+    uint16_t live_state_raw;
+    uint16_t inbound_state_raw;
+    uint16_t inbound_actor_raw;
+    uint16_t inbound_timer_raw;
     int8_t collision_actor_a;
     int8_t collision_actor_b;
     int16_t camera_x, camera_y;

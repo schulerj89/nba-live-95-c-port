@@ -34,7 +34,7 @@ def main():
         trace = root / "cpu_gameplay.jsonl"
         command = [
             args.exe, "--headless", "--rom", args.rom, "--assets", args.pack,
-            "--tipoff-only", "--frames", "5000", "--gameplay-trace", str(trace),
+            "--tipoff-only", "--frames", "8000", "--gameplay-trace", str(trace),
             "--debug-state",
         ]
         result = subprocess.run(command, capture_output=True, text=True, check=False)
@@ -42,8 +42,8 @@ def main():
                 "BALL M:" not in result.stdout:
             raise AssertionError(result.stdout + result.stderr)
         rows = [json.loads(line) for line in trace.read_text().splitlines()]
-        if len(rows) != 5000:
-            raise AssertionError(f"expected 5000 CPU frames, got {len(rows)}")
+        if len(rows) != 8000:
+            raise AssertionError(f"expected 8000 CPU frames, got {len(rows)}")
 
         def frame(number):
             return rows[number - 1]
@@ -67,7 +67,7 @@ def main():
         if not {0, 1}.issubset(teams):
             raise AssertionError(f"CPU offense did not change sides: {teams}")
         modes = {row["ball"]["state"] for row in rows[219:]}
-        if not {3, 4, 5, 6}.issubset(modes):
+        if not {3, 4, 5, 8}.issubset(modes):
             raise AssertionError(f"ball physics modes missing: {modes}")
         owners = {row["ball"]["owner"] for row in rows[219:]}
         if len(owners - {-1}) < 4:
@@ -105,6 +105,47 @@ def main():
         if any(row["possession"]["rng_state_raw"] in (0, 0xFFFF)
                for row in rows[219:]):
             raise AssertionError("$80:CEE7 RNG state was not retained")
+
+        # `$85:A079-$A345`: `$094C` is added to `$4711/$4791`, then
+        # `$0936=$82` holds the dead ball until the inbound reset.
+        score_changes = []
+        previous_score = (0, 0)
+        for row in rows[219:]:
+            match = row["match"]
+            score = (match["score_left_raw"], match["score_right_raw"])
+            if score != previous_score:
+                delta = (score[0] - previous_score[0],
+                         score[1] - previous_score[1])
+                if sorted(delta) not in ([0, 2], [0, 3]):
+                    raise AssertionError(f"invalid ROM score increment {delta}")
+                if match["shot_value_raw"] not in (2, 3) or \
+                        match["live_state_raw"] != 0x82 or \
+                        row["ball"]["state"] != 5 or \
+                        not 74 <= row["ball"]["z"] <= 82:
+                    raise AssertionError(f"made basket state incomplete: {row}")
+                scoring_side = 0 if delta[0] else 1
+                expected_group = (scoring_side ^ 1) * 5
+                if match["inbound_state_raw"] != expected_group or \
+                        match["inbound_actor_raw"] != expected_group + 2:
+                    raise AssertionError(f"$0952/$0954 inbound mapping changed: {row}")
+                score_changes.append((row["frame"], score))
+                previous_score = score
+        if len(score_changes) < 4 or previous_score[0] < 4 or previous_score[1] < 4:
+            raise AssertionError(f"CPU scoring did not sustain both teams: {score_changes}")
+        dead_runs = []
+        run = []
+        for row in rows:
+            if row["match"]["live_state_raw"] == 0x82:
+                run.append(row["match"]["inbound_timer_raw"])
+            elif run:
+                dead_runs.append(run)
+                run = []
+        if not dead_runs or any(values[0] != 300 or values[-1] != 0 or
+                                not {240, 120, 60, 0}.issubset(values) or
+                                any(a < b for a, b in zip(values, values[1:]))
+                                for values in dead_runs):
+            raise AssertionError("$092E inbound thresholds changed: " +
+                                 repr([(len(v), v[0], v[-1]) for v in dead_runs]))
 
         def signed16(value):
             return value - 0x10000 if value & 0x8000 else value
@@ -183,10 +224,12 @@ def main():
                    "$87:B832", "$87:B649", "$87:B66A", "$85:9192",
                    "$87:8F01-$8F8D", "nba_gameplay_camera_update",
                    "cpu_begin_possession", "cpu_update_possession",
-                   "ball_attach_to_actor", "ball_launch"):
+                   "ball_attach_to_actor", "ball_launch",
+                   "$85:A079-$A345", "$4711/$4791", "score_made_basket"):
         if marker not in implementation:
             raise AssertionError(f"CPU gameplay implementation lost {marker}")
     for relative in ("include/nba_gameplay_ai.h", "src/nba_gameplay_ai.c",
+                     "include/nba_gameplay_ball.h", "src/nba_gameplay_ball.c",
                      "tools/ghidra/DumpCpuGameplay.java",
                      "tools/ghidra/Run-CpuGameplayAnalysis.ps1"):
         if not (source / relative).is_file():

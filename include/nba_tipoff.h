@@ -7,6 +7,7 @@
 #include "nba_gameplay_debugger.h"
 #include "nba_gameplay_camera.h"
 #include "nba_gameplay_ai.h"
+#include "nba_gameplay_ball.h"
 
 /* ROM routines correlated with live Mesen execution. */
 #define SNES_ADDR_TIPOFF_PLAYER_FORMATION 0x86DDA7
@@ -45,7 +46,9 @@ typedef enum {
     NBA_BALL_PASS,
     NBA_BALL_ATTACHED,
     NBA_BALL_SHOT,
-    NBA_BALL_BOUNCE
+    NBA_BALL_BOUNCE,
+    NBA_BALL_DEAD,
+    NBA_BALL_INBOUND
 } NbaBallMode;
 
 typedef struct {
@@ -96,6 +99,14 @@ typedef struct {
     uint16_t possession_frame;
     uint16_t play_state_frame;
     uint16_t possession_number;
+    uint16_t inbound_timer_raw;    /* `$092E/$0A04` */
+    uint16_t shot_value_raw;       /* `$094C` */
+    uint16_t live_state_raw;       /* `$0936` */
+    uint16_t inbound_state_raw;    /* `$0952` */
+    uint16_t inbound_actor_raw;    /* `$0954` */
+    int16_t shot_origin_x, shot_origin_y;
+    uint8_t last_scoring_side;
+    bool shot_result_resolved;
     uint8_t offense_side;
     uint8_t handler_actor;
     uint8_t receiver_actor;

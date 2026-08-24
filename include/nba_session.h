@@ -18,6 +18,9 @@ typedef struct {
     uint8_t left_team;  /* Team Select $7E:16FB */
     uint8_t right_team; /* Team Select $7E:16FD */
     uint8_t player_one_side; /* Player Setup controller ownership, 0 left/1 right */
+    /* Gameplay team records `$46EB/$476B`; +$26 are `$4711/$4791`. */
+    uint16_t score[2];
+    uint16_t game_clock_ticks;
 } NbaSession;
 
 extern const uint16_t nba_default_main_values[NBA_SETUP_MAIN_VALUE_COUNT];

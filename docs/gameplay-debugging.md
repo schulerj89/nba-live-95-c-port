@@ -42,6 +42,11 @@ without changing the comparison contract.
 | `$85:B100–$B28B` | randomized initial possession/play decision |
 | `$85:9192–$93F4` | camera subject transform and adaptive approach |
 | `$85:8EE6–$90C3` | circular court streamer sourced from `$A0:8006` |
+| `$85:9D40–$A079` | final hoop/rim/made classification |
+| `$85:F1C1` | weighted max/min hoop-distance helper |
+| `$86:A561–$A5AF` / `$85:ABFB` | two/three-point arc classification/table |
+| `$85:A1E9–$A26E` | score write and post-make inbound initialization |
+| `$85:C37D–$C5C0`, `$86:F3D2–$F653` | inbound steering, receiver and pass path |
 
 The extended CPU-only capture covers 1,801 frames. It confirms the `$35`
 post-tip play, CPU reaction staggering, live matchup reassignment, the
@@ -75,7 +80,7 @@ python tools/analyze_cpu_gameplay_trace.py gameplay_rom.jsonl
 It prints every play/offense and ball-mode transition, per-actor and per-team
 movement counts for each time window, and the maximum ball-to-owner attachment
 distance. `--require-sustained` fails on stationary teams, fewer than four
-recurring play codes, missing pass/attach/shot/bounce physics, or a detached
+recurring play codes, missing pass/attach/shot/inbound physics, or a detached
 owned ball.
 
 ## Regression contract
@@ -84,5 +89,6 @@ owned ball.
 eight-player settled-camera visibility, CPU-only mapping, controller,
 ball, camera, collision and AI raw fields, overlay pixels, JSON parsing, and
 paused single-frame stepping, and both comparator pass and intentional-failure
-paths. `tools/test_cpu_gameplay.py` separately protects 2,000 frames of live
-CPU behavior.
+paths. `tools/test_cpu_gameplay.py` separately protects 8,000 frames of live
+CPU behavior, score monotonicity, made-ball Z, `$0952/$0954`, the 300-tick
+inbound gates, and resumed possessions for both teams.

@@ -108,6 +108,19 @@ Exit gate: a deterministic CPU game produces passes, attempts, makes/misses,
 score changes and post-basket possessions with no timed forced turnover.
 Commit and push.
 
+Implementation evidence (increment 3A): the final make classifier is
+`$85:9D40-$A079`, using live state `$0936=1`, normal Z `74..82`, the correct
+basket side, `$09F8=0`, and `$85:F1C1` weighted distance `<7`. Point value is
+initialized at `$86:9DED-$9DFF` and upgraded to three by `$86:A561-$A5AF`
+using the 179-word arc table at `$85:ABFB`. `$85:A1E9-$A1F7` adds `$094C`
+to `$4711/$4791`; the post-make path sets `$0936=$82`, opponent group/actor
+`$0952/$0954` (0/2 or 5/7), and timers `$092E/$0A04=300`. The inbound chain
+is `$85:C37D-$C5C0 -> $86:F3D2-$F653 -> $86:AB2D`. C now retains the made
+ball's downward physics, steers all ten actors during the inbound state, and
+uses the proven 240/120/60 gates plus arrival/receiver readiness instead of
+the disproven 48-frame pause. `nba_gameplay_ball` contains the ROM arc table,
+classifier, point-value routine, and golden boundary fixtures.
+
 ### 4. Proven foul hooks and endurance QA
 
 - Add foul/event enums and dispatch hooks only where original handlers and

@@ -183,6 +183,12 @@ static void nba_game_debug_lines(const NbaGame *game, NbaDebugLines *out) {
                  (int)(s->ball.z_fp / 256), s->ball.velocity_x / 256,
                  s->ball.velocity_y / 256, s->ball.velocity_z / 256,
                  s->play_code);
+        snprintf(out->line[out->count++], NBA_DEBUG_LINE_SIZE,
+                 "SCORE %u-%u VAL:%u LIVE:$%02X IN:%u/%u T:%u",
+                 s->session->score[0], s->session->score[1],
+                 s->shot_value_raw, s->live_state_raw,
+                 s->inbound_state_raw, s->inbound_actor_raw,
+                 s->inbound_timer_raw);
     }
 
     if (out->count < NBA_DEBUG_MAX_LINES) {

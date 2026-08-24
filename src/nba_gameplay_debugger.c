@@ -122,13 +122,19 @@ void nba_gameplay_debugger_render(const NbaGameplayDebugger *debugger,
                  telemetry->camera_routine, telemetry->collision_routine,
                  telemetry->possession_routine);
         text(renderer, 6, 180, line, 0xFFFFFFFFu);
+        snprintf(line, sizeof(line), "SCORE:%u-%u VAL:%u LIVE:%02X IN:%u/%u T:%u",
+                 telemetry->score_left_raw, telemetry->score_right_raw,
+                 telemetry->shot_value_raw, telemetry->live_state_raw,
+                 telemetry->inbound_state_raw, telemetry->inbound_actor_raw,
+                 telemetry->inbound_timer_raw);
+        text(renderer, 6, 192, line, 0xFF9EF7A9u);
         snprintf(line, sizeof(line), "COARSE:%u,%u SRC:$A0:%04X RNG:$%04X F:%u",
                  telemetry->camera_086c_raw, telemetry->camera_086e_raw,
                  telemetry->camera_0876_raw, telemetry->rng_state_raw,
                  telemetry->scene_frame);
-        text(renderer, 6, 192, line, 0xFF9EF7A9u);
+        text(renderer, 6, 204, line, 0xFF79D7FFu);
     }
-    text(renderer, 6, 207, "UP/DN ACTOR  LT/RT PAGE  A PAUSE  X STEP",
+    text(renderer, 6, 216, "UP/DN ACTOR LT/RT PAGE A PAUSE X STEP",
          0xFF79D7FFu);
 }
 
@@ -161,7 +167,11 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
             "\"initial_slot_raw\":%d,\"selected_slot_raw\":%d,"
             "\"actor_pointer_raw\":%u},\"possession\":{\"actor\":%d,"
             "\"team\":%d,\"candidate_raw\":%d,\"play_code_raw\":%u,"
-            "\"rng_state_raw\":%u},\"camera\":{\"x\":%d,\"y\":%d,"
+            "\"rng_state_raw\":%u},\"match\":{\"score_left_raw\":%u,"
+            "\"score_right_raw\":%u,\"shot_value_raw\":%u,"
+            "\"live_state_raw\":%u,\"inbound_state_raw\":%u,"
+            "\"inbound_actor_raw\":%u,\"inbound_timer_raw\":%u},"
+            "\"camera\":{\"x\":%d,\"y\":%d,"
             "\"routine\":%u,\"raw_085c\":%u,\"raw_085e\":%u,"
             "\"raw_0860\":%u,\"raw_0862\":%u,\"raw_086c\":%u,"
             "\"raw_086e\":%u,\"raw_0874\":%u,\"raw_0876\":%u,"
@@ -178,6 +188,10 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
             telemetry->controlled_actor_pointer_raw, telemetry->possession_actor,
             telemetry->possession_team, telemetry->possession_candidate_raw,
             telemetry->play_code_raw, telemetry->rng_state_raw,
+            telemetry->score_left_raw, telemetry->score_right_raw,
+            telemetry->shot_value_raw, telemetry->live_state_raw,
+            telemetry->inbound_state_raw, telemetry->inbound_actor_raw,
+            telemetry->inbound_timer_raw,
             telemetry->camera_x, telemetry->camera_y, telemetry->camera_routine,
             telemetry->camera_085c_raw, telemetry->camera_085e_raw,
             telemetry->camera_0860_raw, telemetry->camera_0862_raw,
