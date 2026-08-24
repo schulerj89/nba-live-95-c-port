@@ -214,6 +214,34 @@ def build_player_introduction_assets(court_capture_dir, away_portrait_dir,
     return court, bytes(portrait_pack)
 
 
+def build_player_intro_rating_balls(capture_dir):
+    """Decode $83:F901's six 16x16 basketball OBJ poses from raw PPU state."""
+    def read_capture(suffix, expected):
+        path = os.path.join(capture_dir, f"frame_2300_{suffix}.bin")
+        data = open(path, "rb").read()
+        if len(data) != expected:
+            raise RuntimeError(f"Invalid rating-ball PPU asset {path}")
+        return data
+
+    vram = read_capture("vram", 0x10000)
+    cgram = read_capture("cgram", 0x200)
+    poses = (0x60, 0x0c, 0x0e, 0x4a, 0x4c, 0x4e)
+    pixels = bytearray()
+    for tile in poses:
+        for y in range(16):
+            for x in range(16):
+                subtile = tile + (x >> 3) + (y >> 3) * 16
+                offset = 0xc000 + subtile * 32
+                color = int(decode_4bpp_tile(vram[offset:offset + 32])[y & 7, x & 7])
+                if color == 0:
+                    pixels.extend(struct.pack("<I", 0))
+                else:
+                    palette_offset = (128 + color) * 2
+                    word = cgram[palette_offset] | (cgram[palette_offset + 1] << 8)
+                    pixels.extend(struct.pack("<I", bgr555_to_argb(word)))
+    return bytes(pixels)
+
+
 def lorom_offset(address):
     """Convert a verified 24-bit LoROM address to its headerless file offset."""
     return ((address >> 16) & 0x7f) * 0x8000 + (address & 0x7fff)
@@ -1304,6 +1332,8 @@ def create_asset_pack(rom_path, output_path):
     player_intro_court, player_intro_portraits = build_player_introduction_assets(
         player_intro_capture_dir, player_intro_away_portrait_dir,
         player_intro_portrait_dir)
+    player_intro_rating_balls = build_player_intro_rating_balls(
+        player_intro_capture_dir)
     # OBJ tile $EA has one byte-for-byte match in the ROM. Colors 5..10 are
     # the hardware palette entries selected by the tile during the jump ball.
     tipoff_ball = struct.pack(
@@ -1382,6 +1412,7 @@ def create_asset_pack(rom_path, output_path):
         (261, 72, 72, 290, player_intro_portraits),
         (262, 8, 8, 0x0D9C27, tipoff_ball),
         (263, 256, 224, 0, gameplay_court),
+        (264, 16, 16, 6, player_intro_rating_balls),
     ])
     assets.extend([
         (124, 0, 0, 0, rules_vram_bytes),
@@ -1441,7 +1472,7 @@ def create_asset_pack(rom_path, output_path):
                     extra_audio_id += 1
 
     header_magic = b"NBA95PAK"
-    version = 18
+    version = 19
     asset_count = len(assets)
     entry_size = 24 # 6 * 4 bytes
 

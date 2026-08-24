@@ -28,6 +28,7 @@ typedef struct {
     const NbaAssetPack *assets;
     NbaSession *session;
     uint32_t *outgoing_pixels;
+    uint8_t *scene_vram;
     NbaTeamSide player_one_side;
     int transition_frame;
     int steady_frame;

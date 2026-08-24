@@ -23,6 +23,7 @@ Live Mesen execution and the headless Ghidra dump establish this path:
 | `$81:B62C` | synchronizes ownership and rebuilds assignment objects |
 | `$81:B719` | object-builder call site inside that rebuild |
 | `$81:B7C1` | Player Setup vertical-scroll IRQ handler |
+| `$82:863C` | rebuilds the selected home graphics through `$80:D0E2`; its twenty-five wallpaper tiles remain at VRAM `$20A0-$23BF` |
 
 The reproducible trace reaches Team Select confirmation at frame 1650, the
 Player Setup dispatcher at 1701, object construction at 1795, and the vertical
@@ -34,6 +35,9 @@ release.
 The selected gold plate uses the existing 26-byte Team Select palette-cycle
 asset. Moving Player 1 left or right moves the entire arrow/controller OAM group
 and swaps the gold/silver plate palettes; it does not retain stale object pieces.
+The grayscale wallpaper is also team-dependent. The C scene copies the exact
+twenty-five-tile block from the selected home team's raw Team Select VRAM asset,
+matching the ROM's retained-VRAM handoff instead of baking in Orlando.
 
 ## Reproduction and tests
 

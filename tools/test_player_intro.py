@@ -12,6 +12,7 @@ from PIL import Image
 EXPECTED_ASSETS = {
     260: (229376, "372c50ea64dc4180637c1666d123d3c018012a5c65b31823fc943be28358440b"),
     261: (6015784, "91120473949026d6803083ceb70bcc4e84623baa49151d10b7e6846df16ea14c"),
+    264: (6144, "7888790592673fd5e9fb1f76d7c50344fb8f6853d7d21594aad9a9c588e73d0b"),
 }
 
 
@@ -20,7 +21,7 @@ def load_pack(path):
     if raw[:8] != b"NBA95PAK":
         raise AssertionError("invalid pack magic")
     version, count = struct.unpack_from("<II", raw, 8)
-    if version != 18 or 16 + count * 24 > len(raw):
+    if version != 19 or 16 + count * 24 > len(raw):
         raise AssertionError("invalid asset directory")
     assets = {}
     for index in range(count):
@@ -53,9 +54,10 @@ def main():
 
     for asset_id, (size, digest) in EXPECTED_ASSETS.items():
         payload, width, height, flags = assets[asset_id]
-        if len(payload) != size or (width, height) != ((256, 224) if asset_id == 260 else (72, 72)):
+        expected_dimensions = {260: (256, 224), 261: (72, 72), 264: (16, 16)}[asset_id]
+        if len(payload) != size or (width, height) != expected_dimensions:
             raise AssertionError(f"Player Introduction asset {asset_id} metadata changed")
-        if flags != (0 if asset_id == 260 else 290):
+        if flags != {260: 0, 261: 290, 264: 6}[asset_id]:
             raise AssertionError(f"Player Introduction asset {asset_id} flags changed")
         if hashlib.sha256(payload).hexdigest() != digest:
             raise AssertionError(f"Player Introduction asset {asset_id} payload changed")
@@ -73,6 +75,25 @@ def main():
         raise AssertionError("lineup portrait team/slot ordering changed")
 
     with tempfile.TemporaryDirectory() as directory:
+        matchup = Path(directory) / "matchup.bmp"
+        run(exe, "--headless", "--rom", rom, "--assets", pack,
+            "--player-setup-only", "--player-setup-confirm",
+            "--frames", 500, "--dump-frame", matchup)
+        if rgb_hash(matchup) != "6a67f9baa1b4f8d350cb184371db8133ebc4cafe4e111dfcc3289c0fdd1ca1bd":
+            raise AssertionError("ROM-layout visitor/VS/home presentation changed")
+
+        ratings = Path(directory) / "ratings.bmp"
+        ratings_next = Path(directory) / "ratings_next.bmp"
+        run(exe, "--headless", "--rom", rom, "--assets", pack,
+            "--player-setup-only", "--player-setup-confirm",
+            "--frames", 800, "--dump-frame", ratings)
+        run(exe, "--headless", "--rom", rom, "--assets", pack,
+            "--player-setup-only", "--player-setup-confirm",
+            "--frames", 812, "--dump-frame", ratings_next)
+        if rgb_hash(ratings) != "98342ebcc2bc04490fc34f4b34f5e56d53f9664cc88578bf8eab9be4c8a75616" or \
+           rgb_hash(ratings_next) != "b93d5129aec0c07e42e54dcbd1eaecda4565421a64698ab2db61b22f5d8446ab":
+            raise AssertionError("rating-ball thresholds, placement, or 12-frame animation changed")
+
         frame = Path(directory) / "lineup.bmp"
         output = run(exe, "--headless", "--rom", rom, "--assets", pack,
                      "--player-setup-only", "--player-setup-confirm",

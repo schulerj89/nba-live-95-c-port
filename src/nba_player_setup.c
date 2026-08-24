@@ -9,6 +9,8 @@
 #define PLAYER_SETUP_BG2_CHR 0x2000
 #define PLAYER_SETUP_BG3_MAP 0x0000
 #define PLAYER_SETUP_BG3_CHR 0x8000
+#define PLAYER_SETUP_HOME_WALLPAPER_OFFSET 0x20a0u
+#define PLAYER_SETUP_HOME_WALLPAPER_SIZE   0x0320u
 
 static const NbaAssetItem *player_setup_asset(const NbaPlayerSetup *screen,
                                                NbaAssetId id, uint32_t size) {
@@ -35,13 +37,29 @@ bool nba_player_setup_init(NbaPlayerSetup *screen, const NbaAssetPack *assets,
                (size_t)NBA_SNES_WIDTH * NBA_SNES_HEIGHT * sizeof(uint32_t));
     }
 
-    if (!player_setup_asset(screen, NBA_ASSET_PLAYER_SETUP_VRAM, 0x10000u) ||
+    const NbaAssetItem *base_vram = player_setup_asset(
+        screen, NBA_ASSET_PLAYER_SETUP_VRAM, 0x10000u);
+    const NbaAssetItem *home_vram = player_setup_asset(screen,
+        (NbaAssetId)(NBA_ASSET_TEAM_VRAM_BASE + session->right_team), 0x10000u);
+    if (!base_vram || !home_vram ||
         !player_setup_asset(screen, NBA_ASSET_PLAYER_SETUP_CGRAM, 0x200u) ||
         !player_setup_asset(screen, NBA_ASSET_PLAYER_SETUP_OAM, 0x220u) ||
         !player_setup_asset(screen, NBA_ASSET_TEAM_SELECTED_PALETTE_CYCLE, 26u)) {
         nba_player_setup_shutdown(screen);
         return false;
     }
+    screen->scene_vram = (uint8_t *)malloc(0x10000u);
+    if (!screen->scene_vram) {
+        nba_player_setup_shutdown(screen);
+        return false;
+    }
+    memcpy(screen->scene_vram, base_vram->data, 0x10000u);
+    /* $82:863C uses the home-team pointer from $80:D0E2 to rebuild these
+     * twenty-five BG2 tiles. Team Select's raw per-team VRAM assets preserve
+     * the exact result, including each logo's grayscale/dither treatment. */
+    memcpy(screen->scene_vram + PLAYER_SETUP_HOME_WALLPAPER_OFFSET,
+           (const uint8_t *)home_vram->data + PLAYER_SETUP_HOME_WALLPAPER_OFFSET,
+           PLAYER_SETUP_HOME_WALLPAPER_SIZE);
     for (uint8_t team = 0; team < NBA_TEAM_COUNT; ++team) {
         if (!player_setup_asset(screen,
                 (NbaAssetId)(NBA_ASSET_TEAM_LOGO_BASE + team), 48u * 56u * 4u)) {
@@ -57,6 +75,8 @@ void nba_player_setup_shutdown(NbaPlayerSetup *screen) {
     if (!screen) return;
     free(screen->outgoing_pixels);
     screen->outgoing_pixels = NULL;
+    free(screen->scene_vram);
+    screen->scene_vram = NULL;
     screen->is_initialized = false;
 }
 
@@ -172,7 +192,8 @@ void nba_player_setup_render(const NbaPlayerSetup *screen, NbaRenderer *renderer
         screen, NBA_ASSET_PLAYER_SETUP_CGRAM, 0x200u);
     const NbaAssetItem *oam_asset = player_setup_asset(
         screen, NBA_ASSET_PLAYER_SETUP_OAM, 0x220u);
-    const uint8_t *vram = (const uint8_t *)vram_asset->data;
+    const uint8_t *vram = screen->scene_vram ? screen->scene_vram :
+                          (const uint8_t *)vram_asset->data;
     const uint8_t *base_cgram = (const uint8_t *)cgram_asset->data;
     const uint8_t *oam = (const uint8_t *)oam_asset->data;
     int frame = screen->transition_frame;
@@ -229,9 +250,9 @@ void nba_player_setup_render(const NbaPlayerSetup *screen, NbaRenderer *renderer
             oam, index, left_palette, 0);
 
     player_setup_draw_logo(renderer, nba_assets_get(screen->assets,
-        (NbaAssetId)(NBA_ASSET_TEAM_LOGO_BASE + screen->session->left_team)), 30, 62);
+        (NbaAssetId)(NBA_ASSET_TEAM_LOGO_BASE + screen->session->left_team)), 36, 56);
     player_setup_draw_logo(renderer, nba_assets_get(screen->assets,
-        (NbaAssetId)(NBA_ASSET_TEAM_LOGO_BASE + screen->session->right_team)), 170, 62);
+        (NbaAssetId)(NBA_ASSET_TEAM_LOGO_BASE + screen->session->right_team)), 168, 56);
 
     /* Capture group 47..51 is the arrow/controller. Move the complete group
      * together, matching the redraw path instead of leaving stale pieces. */

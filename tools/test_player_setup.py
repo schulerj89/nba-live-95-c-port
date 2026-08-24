@@ -23,8 +23,8 @@ EXPECTED_FRAME_HASHES = {
     "blank": "2cbbeef1249170a43854962fa5b19fba628470c70beb9ce23e15a0f05cb891f2",
     "background": "18e07023dae89084b28b738c7b50dddfa0ab77a6d24c41a6ec92ab6ac39432e8",
     "labels": "19673f073dbc2f2af58a3dbcf19cbe1e3b0d94f44a8600b7913a539c6e0750f8",
-    "settled": "bd6d2d7f44d2af34905b9096a07f0d046988eeff9b4bf563ed5c93e067d1622d",
-    "left": "c67124e0e7cc7125e931effadcc19744d356fb2040e6d3327a81f1846fe01fba",
+    "settled": "52d521e29d8665b63eb6e98a63af4d22480a51833ab72a40aee0eae6b022082d",
+    "left": "3dfda176c6c30f5b137f1ee2003fd1ba6a484855000794aa4025c4abefab3cbd",
 }
 
 
@@ -33,7 +33,7 @@ def load_pack(path):
     if raw[:8] != b"NBA95PAK":
         raise AssertionError("invalid pack magic")
     version, count = struct.unpack_from("<II", raw, 8)
-    if version != 18 or 16 + count * 24 > len(raw):
+    if version != 19 or 16 + count * 24 > len(raw):
         raise AssertionError("invalid Player Setup pack directory")
     assets = {}
     for index in range(count):
@@ -135,7 +135,15 @@ def main():
         if "left=8:GOLDEN STATE right=18:ORLANDO" not in output:
             raise AssertionError(f"selected teams did not persist into Player Setup:\n{output}")
 
-    print("[TEST] PASS: Team Select handoff, 200-frame transition, ROM PPU assets, selected teams, and Player 1 side")
+        home_changed = directory / "philadelphia_home.bmp"
+        output = run(exe, *base, "--team-right", 1, "--frames", 390,
+                     "--dump-frame", home_changed, "--debug-state")
+        if "left=3:CHICAGO right=19:PHILADELPHIA" not in output or \
+           frame_hash(home_changed) != \
+                "48ff66cddbbfd42ee9a884e8e064a589c932051acfb6caf4cfa6339ae9346d8a":
+            raise AssertionError("selected home logo/wallpaper did not replace Orlando")
+
+    print("[TEST] PASS: Team Select handoff, 200-frame transition, dynamic home wallpaper, selected teams, and Player 1 side")
 
 
 if __name__ == "__main__":

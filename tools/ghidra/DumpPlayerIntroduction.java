@@ -49,8 +49,12 @@ public class DumpPlayerIntroduction extends GhidraScript {
                 "Dispatcher shared by Player Setup and the following matchup presentation states.")
         };
         if (bank == 0x83) return new Range[] {
-            new Range(0xF790, 0xFA80, "intro_court_presentation_update",
-                "Court-backed matchup and lineup presentation code observed in the broad post-setup trace.")
+            new Range(0xF790, 0xF858, "intro_court_presentation_update",
+                "Court-backed matchup and lineup presentation controller observed in the broad post-setup trace."),
+            new Range(0xF891, 0xF8FD, "intro_draw_matchup_panels",
+                "Builds both team-logo objects and their gold plates for the matchup/ratings presentation."),
+            new Range(0xF901, 0xFA90, "intro_build_rating_balls",
+                "Builds the five team-comparison rows. Live OAM proves ranks 1-8 produce three basketballs, 9-18 two, and 19-27 one; the six ball tiles advance on the $F7B3/$F7BE twelve-frame divider.")
         };
         if (bank == 0x87) return new Range[] {
             new Range(0xBD7F, 0xC0AB, "run_player_introduction",

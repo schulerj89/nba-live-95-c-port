@@ -1,5 +1,6 @@
 #include "nba_player_intro.h"
 #include "nba_font.h"
+#include "nba_snes_ppu.h"
 #include "nba_team_select.h"
 #include <ctype.h>
 #include <stdio.h>
@@ -10,6 +11,8 @@
 #define ROSTER_RECORD_SIZE 64u
 #define PORTRAIT_HEADER_SIZE 24u
 #define PORTRAIT_RECORD_HEADER_SIZE 8u
+#define SETUP_PANEL_SOURCE_X 168
+#define SETUP_PANEL_SOURCE_Y 56
 
 typedef struct {
     uint8_t jersey;
@@ -161,6 +164,65 @@ static void draw_logo(const NbaPlayerIntro *screen, NbaRenderer *ren,
     }
 }
 
+static int obj_pixel(const uint8_t *tile, int x, int y) {
+    return ((tile[y * 2] >> (7 - x)) & 1) |
+           (((tile[y * 2 + 1] >> (7 - x)) & 1) << 1) |
+           (((tile[16 + y * 2] >> (7 - x)) & 1) << 2) |
+           (((tile[17 + y * 2] >> (7 - x)) & 1) << 3);
+}
+
+/* $83:F891 reuses the same 48x56 gold plate object group as Player Setup.
+ * Keeping the captured object geometry here preserves its irregular edge and
+ * lets every team logo retain the ROM's common plate-relative origin. */
+static void draw_plate_object(NbaRenderer *ren, const uint8_t *vram,
+                              const uint8_t *cgram, const uint8_t *oam,
+                              int index, int origin_x, int origin_y) {
+    int high = (oam[512 + index / 4] >> ((index & 3) * 2)) & 3;
+    int x = oam[index * 4] | ((high & 1) << 8);
+    if (x >= 256) x -= 512;
+    x += origin_x - SETUP_PANEL_SOURCE_X;
+    int y = oam[index * 4 + 1] + origin_y - SETUP_PANEL_SOURCE_Y;
+    int tile = oam[index * 4 + 2] +
+               ((oam[index * 4 + 3] & 1) ? 256 : 0);
+    int attr = oam[index * 4 + 3], size = (high & 2) ? 16 : 8;
+    for (int py = 0; py < size; ++py) for (int px = 0; px < size; ++px) {
+        int sx = (attr & 0x40) ? size - 1 - px : px;
+        int sy = (attr & 0x80) ? size - 1 - py : py;
+        int subtile = tile + (sx >> 3) + (sy >> 3) * 16;
+        size_t offset = 0xc000u + (size_t)subtile * 32u;
+        if (offset + 32u > 0x10000u) continue;
+        int color = obj_pixel(vram + offset, sx & 7, sy & 7);
+        int dx = x + px, dy = y + py;
+        if (color && dx >= 0 && dx < 256 && dy >= 0 && dy < 224)
+            ren->pixels[dy * 256 + dx] = nba_snes_cgram_color(
+                cgram, 128 + 2 * 16 + color, 15, 0, 0, 0);
+    }
+}
+
+static void draw_team_plate(const NbaPlayerIntro *screen, NbaRenderer *ren,
+                            uint8_t team, int x, int y) {
+    const NbaAssetItem *vram = nba_assets_get(
+        screen->assets, NBA_ASSET_PLAYER_SETUP_VRAM);
+    const NbaAssetItem *cgram = nba_assets_get(
+        screen->assets, NBA_ASSET_PLAYER_SETUP_CGRAM);
+    const NbaAssetItem *oam = nba_assets_get(
+        screen->assets, NBA_ASSET_PLAYER_SETUP_OAM);
+    const NbaAssetItem *cycle = nba_assets_get(
+        screen->assets, NBA_ASSET_TEAM_SELECTED_PALETTE_CYCLE);
+    if (!vram || vram->size != 0x10000u || !cgram || cgram->size != 0x200u ||
+        !oam || oam->size != 0x220u || !cycle || cycle->size < 26u) return;
+    uint8_t animated_cgram[0x200];
+    memcpy(animated_cgram, cgram->data, sizeof(animated_cgram));
+    int source_offset = ((screen->phase_frame + 1) & 0x38) >> 2;
+    if (source_offset == 14) source_offset = 0;
+    memcpy(animated_cgram + 0x142,
+           (const uint8_t *)cycle->data + source_offset, 14);
+    for (int index = 20; index >= 6; --index)
+        draw_plate_object(ren, vram->data, animated_cgram, oam->data,
+                          index, x, y);
+    draw_logo(screen, ren, team, x, y, 48, 56);
+}
+
 static void text(NbaRenderer *ren, int x, int y, const char *value) {
     nba_font_render_text(ren->pixels, 256, x, y, value,
                          0xFFFFFFFFu, 0xFF101010u, 1);
@@ -171,16 +233,84 @@ static void centered(NbaRenderer *ren, int y, const char *value) {
                                   0xFFFFFFFFu, 0xFF101010u, 1);
 }
 
+static int presentation_glyph_bounds(const uint8_t *glyph,
+                                     int *first, int *last) {
+    *first = 8; *last = -1;
+    for (int y = 0; y < 8; ++y) for (int x = 0; x < 8; ++x)
+        if (glyph[y] & (0x80 >> x)) {
+            if (x < *first) *first = x;
+            if (x > *last) *last = x;
+        }
+    return *last >= *first ? *last - *first + 1 : 3;
+}
+
+static int presentation_width(const char *value) {
+    int width = 0;
+    for (const char *p = value; *p; ++p) {
+        int first, last;
+        width += presentation_glyph_bounds(
+            nba_font_get_glyph_8x8(*p), &first, &last) + 1;
+    }
+    return width ? width - 1 : 0;
+}
+
+/* The ROM presentation font is proportionally packed. Trim the debug glyphs'
+ * blank bearings and retain their pixels; this matches the measured narrow
+ * labels without distorting or overlapping the letter shapes. */
+static void presentation_text(NbaRenderer *ren, int x, int y,
+                              const char *value) {
+    for (const char *p = value; *p; ++p) {
+        const uint8_t *glyph = nba_font_get_glyph_8x8(*p);
+        int first, last, width = presentation_glyph_bounds(glyph, &first, &last);
+        for (int dy = 0; dy < 8; ++dy) for (int sx = first; sx <= last; ++sx) {
+            int dx = sx - first;
+            if (!(glyph[dy] & (0x80 >> sx))) continue;
+            if (x + dx + 1 < 256 && y + dy + 1 < 224)
+                ren->pixels[(y + dy + 1) * 256 + x + dx + 1] = 0xff101010u;
+            if (x + dx >= 0 && x + dx < 256 && y + dy >= 0 && y + dy < 224)
+                ren->pixels[(y + dy) * 256 + x + dx] = 0xffffffffu;
+        }
+        x += width + 1;
+    }
+}
+
+static void presentation_centered(NbaRenderer *ren, int y,
+                                  const char *value) {
+    presentation_text(ren, (256 - presentation_width(value)) / 2, y, value);
+}
+
 static void draw_matchup(const NbaPlayerIntro *screen, NbaRenderer *ren) {
     const NbaTeamRecord *away = nba_team_record(screen->session->left_team);
     const NbaTeamRecord *home = nba_team_record(screen->session->right_team);
-    draw_logo(screen, ren, screen->session->left_team, 42, 44, 48, 56);
-    draw_logo(screen, ren, screen->session->right_team, 166, 44, 48, 56);
-    centered(ren, 112, "VS");
-    centered(ren, 136, home ? home->name : "HOME");
-    centered(ren, 148, "ARENA");
-    if (away) text(ren, 16, 104, away->nickname);
-    if (home) text(ren, 176, 104, home->nickname);
+    char arena[48];
+    draw_team_plate(screen, ren, screen->session->left_team, 66, 30);
+    draw_team_plate(screen, ren, screen->session->right_team, 66, 118);
+    if (away) {
+        presentation_text(ren, 120, 40, away->name);
+        presentation_text(ren, 120, 54, away->nickname);
+    }
+    presentation_centered(ren, 98, "VS");
+    if (home) {
+        presentation_text(ren, 120, 128, home->name);
+        presentation_text(ren, 120, 142, home->nickname);
+        snprintf(arena, sizeof(arena), "AT %s ARENA", home->name);
+        presentation_centered(ren, 184, arena);
+    }
+}
+
+static int rating_ball_count(uint8_t rank) {
+    if (rank <= 8) return 3;
+    if (rank <= 18) return 2;
+    return 1;
+}
+
+static void draw_rating_ball(const NbaPlayerIntro *screen, NbaRenderer *ren,
+                             int pose, int x, int y) {
+    const NbaAssetItem *asset = nba_assets_get(
+        screen->assets, NBA_ASSET_PLAYER_INTRO_RATING_BALLS);
+    if (!asset || asset->size != 6u * 16u * 16u * sizeof(uint32_t)) return;
+    draw_asset_rgba(ren, (const uint32_t *)asset->data + pose * 16 * 16,
+                    16, 16, x, y);
 }
 
 static void draw_ratings(const NbaPlayerIntro *screen, NbaRenderer *ren) {
@@ -189,14 +319,19 @@ static void draw_ratings(const NbaPlayerIntro *screen, NbaRenderer *ren) {
     };
     const NbaTeamRecord *away = nba_team_record(screen->session->left_team);
     const NbaTeamRecord *home = nba_team_record(screen->session->right_team);
-    draw_logo(screen, ren, screen->session->left_team, 41, 22, 40, 46);
-    draw_logo(screen, ren, screen->session->right_team, 175, 22, 40, 46);
+    draw_team_plate(screen, ren, screen->session->left_team, 38, 20);
+    draw_team_plate(screen, ren, screen->session->right_team, 174, 20);
     for (int row = 0; row < 5; ++row) {
-        centered(ren, 76 + row * 20, labels[row]);
-        char values[16];
-        snprintf(values, sizeof(values), "%02u        %02u",
-                 away ? away->rank[row] : 0, home ? home->rank[row] : 0);
-        centered(ren, 86 + row * 20, values);
+        int y = 80 + row * 20;
+        int pose = (screen->phase_frame / 12 + row) % 6;
+        int away_count = rating_ball_count(away ? away->rank[row] : 27);
+        int home_count = rating_ball_count(home ? home->rank[row] : 27);
+        presentation_centered(ren, y + 1, labels[row]);
+        for (int ball = 0; ball < away_count; ++ball)
+            draw_rating_ball(screen, ren, pose,
+                             68 - (away_count - 1 - ball) * 20, y);
+        for (int ball = 0; ball < home_count; ++ball)
+            draw_rating_ball(screen, ren, pose, 172 + ball * 20, y);
     }
 }
 

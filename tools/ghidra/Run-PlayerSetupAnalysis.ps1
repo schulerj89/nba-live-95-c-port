@@ -17,7 +17,7 @@ New-Item -ItemType Directory -Force -Path $analysisDirectory | Out-Null
 $env:JAVA_HOME = $JdkHome
 $romBytes = [IO.File]::ReadAllBytes((Resolve-Path -LiteralPath $RomPath))
 
-foreach ($bank in @('80', '81')) {
+foreach ($bank in @('80', '81', '82')) {
     $bankOffset = (([Convert]::ToInt32($bank, 16) -band 0x7F) * 0x8000)
     $bankPath = Join-Path $analysisDirectory ("bank_{0}.bin" -f $bank)
     $bankBytes = New-Object byte[] 0x8000

@@ -31,6 +31,12 @@ public class DumpPlayerSetup extends GhidraScript {
             new Range(0xE95B, 0xEA98, "run_menu_transition_script",
                 "Shared transition-script interpreter called with the $81:B901 script when Team Select confirms.")
         };
+        if (bank == 0x82) return new Range[] {
+            new Range(0x8553, 0x85B3, "team_select_commit_player_setup",
+                "Commits visitor/home IDs from $7E:16FB/$16FD, fades Team Select, then runs the $81:B901 Player Setup transition script."),
+            new Range(0x863C, 0x86C7, "team_select_build_home_graphics",
+                "Right/home branch indexes the $80:D0E2 team graphics pointer table and builds the home logo tiles retained at VRAM $20A0-$23BF for Player Setup wallpaper."),
+        };
         if (bank == 0x81) return new Range[] {
             new Range(0xA489, 0xA520, "player_setup_scene_dispatch",
                 "Main dispatcher calls this immediately after the $81:B901 transition script; live trace frame 1701 then reaches $81:B404."),
