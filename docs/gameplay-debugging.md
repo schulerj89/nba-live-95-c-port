@@ -71,6 +71,13 @@ without changing the comparison contract.
 | `$86:A561–$A5AF` / `$85:ABFB` | two/three-point arc classification/table |
 | `$85:A1E9–$A26E` | score write and post-make inbound initialization |
 | `$85:C37D–$C5C0`, `$86:F3D2–$F653` | inbound steering, receiver and pass path |
+| `$86:C500–$C6A9` | foul/contact event classification feeding pending `$0964` and actor IDs `$492D/$492F` |
+| `$87:92AD–$95A8`, `$87:9B38` | dead-ball foul consumption, counters, bonus/free-throw state, and restart setup |
+
+The foul fields are comparison-only scaffolding for now. The port exports the
+ROM-shaped state but does not synthesize contact calls; a focused Mesen trace
+must first prove the detector predicate and latch cadence. This prevents a
+plausible-looking random foul system from being mistaken for ROM behavior.
 
 The extended CPU-only capture covers 1,801 frames. It confirms the `$35`
 post-tip play, CPU reaction staggering, live matchup reassignment, the

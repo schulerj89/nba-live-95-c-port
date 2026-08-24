@@ -200,6 +200,12 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
             "\"shot_inner_veto_raw\":%u,"
             "\"live_state_raw\":%u,\"inbound_state_raw\":%u,"
             "\"inbound_actor_raw\":%u,\"inbound_timer_raw\":%u},"
+            "\"fouls\":{\"event_raw\":%u,\"shooting_raw\":%u,"
+            "\"offender_raw\":%d,\"victim_raw\":%d,"
+            "\"team_raw\":[%u,%u],\"personal_raw\":["
+            "%u,%u,%u,%u,%u,%u,%u,%u,%u,%u],"
+            "\"free_throw_state_raw\":%u,"
+            "\"free_throw_sequence_raw\":%u},"
             "\"camera\":{\"x\":%d,\"y\":%d,"
             "\"subject_raw\":%d,\"side_group_raw\":%u,"
             "\"routine\":%u,\"raw_085c\":%u,\"raw_085e\":%u,"
@@ -234,6 +240,21 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
             telemetry->live_state_raw,
             telemetry->inbound_state_raw, telemetry->inbound_actor_raw,
             telemetry->inbound_timer_raw,
+            telemetry->foul_event_raw, telemetry->shooting_foul_raw,
+            telemetry->foul_offender_raw, telemetry->foul_victim_raw,
+            telemetry->team_fouls_raw[0], telemetry->team_fouls_raw[1],
+            telemetry->personal_fouls_raw[0],
+            telemetry->personal_fouls_raw[1],
+            telemetry->personal_fouls_raw[2],
+            telemetry->personal_fouls_raw[3],
+            telemetry->personal_fouls_raw[4],
+            telemetry->personal_fouls_raw[5],
+            telemetry->personal_fouls_raw[6],
+            telemetry->personal_fouls_raw[7],
+            telemetry->personal_fouls_raw[8],
+            telemetry->personal_fouls_raw[9],
+            telemetry->free_throw_state_raw,
+            telemetry->free_throw_sequence_raw,
             telemetry->camera_x, telemetry->camera_y,
             telemetry->camera_subject_raw, telemetry->camera_side_group_raw,
             telemetry->camera_routine,

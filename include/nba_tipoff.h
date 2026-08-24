@@ -8,6 +8,7 @@
 #include "nba_gameplay_camera.h"
 #include "nba_gameplay_ai.h"
 #include "nba_gameplay_ball.h"
+#include "nba_gameplay_foul.h"
 
 /* ROM routines correlated with live Mesen execution. */
 #define SNES_ADDR_TIPOFF_PLAYER_FORMATION 0x86DDA7
@@ -106,6 +107,7 @@ typedef struct {
     int16_t camera_x, camera_y;
     NbaGameplayCamera camera;
     NbaGameplayRng rng;
+    NbaGameplayFoulState fouls;
     int8_t possession_actor;
     int8_t possession_team;
     uint8_t camera_side_group_raw; /* persistent `$093A`: 0 or 5 */

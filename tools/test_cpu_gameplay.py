@@ -43,6 +43,19 @@ def main():
         rows = [json.loads(line) for line in trace.read_text().splitlines()]
         if len(rows) != 50000:
             raise AssertionError(f"expected 50000 CPU frames, got {len(rows)}")
+        expected_dormant_fouls = {
+            "event_raw": 0, "shooting_raw": 0,
+            "offender_raw": -1, "victim_raw": -1,
+            "team_raw": [0, 0], "personal_raw": [0] * 10,
+            "free_throw_state_raw": 0, "free_throw_sequence_raw": 0,
+        }
+        activated_foul = next((row for row in rows
+                               if row.get("fouls") != expected_dormant_fouls), None)
+        if activated_foul:
+            raise AssertionError(
+                "foul scaffold activated without a verified ROM collision "
+                f"predicate at frame {activated_foul['frame']}: "
+                f"{activated_foul.get('fouls')}")
 
         def frame(number):
             return rows[number - 1]

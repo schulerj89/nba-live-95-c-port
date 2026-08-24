@@ -471,3 +471,15 @@ The release also restores `$0936=0` at `$86:9B84-$9B8F`; the shot initializer
 then writes `$0936=1` at `$86:9DDB-$9DE4`. This previously hidden state pair
 is regression-locked through successful rim makes, score writes, and the
 next-pass `$0994` request/consume lifecycle.
+
+Increment 4P establishes the foul-state boundary without inventing collision
+policy. Ghidra identifies pending event `$0964`, deferred shooting-foul
+`$09BC`, offender/victim `$492D/$492F`, side counters at team-context `+$28`,
+personal counters at persistent player `+$14`, and free-throw state
+`$0978/$097A`. The isolated C state hook accepts the proven defensive,
+charging, and offensive event classes, preserves the six-foul personal cap,
+and models deferred made-shot bit 15. It is deliberately not called by live
+gameplay: the current emulator oracle does not exercise a deterministic foul
+contact, so enabling it would require a guessed predicate. C and Mesen JSONL
+now expose the common raw fields, while the 50,000-frame CPU regression locks
+the scaffold dormant until a focused contact trace supplies that predicate.

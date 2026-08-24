@@ -132,6 +132,14 @@ typedef struct {
     uint16_t inbound_state_raw;
     uint16_t inbound_actor_raw;
     uint16_t inbound_timer_raw;
+    uint16_t foul_event_raw;
+    uint16_t shooting_foul_raw;
+    int16_t foul_offender_raw;
+    int16_t foul_victim_raw;
+    uint16_t team_fouls_raw[2];
+    uint8_t personal_fouls_raw[NBA_GAMEPLAY_ACTOR_COUNT];
+    uint16_t free_throw_state_raw;
+    uint16_t free_throw_sequence_raw;
     uint16_t ball_activity_raw;
     int16_t pass_actor_raw;
     int16_t pass_receiver_raw;

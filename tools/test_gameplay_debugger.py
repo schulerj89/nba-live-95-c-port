@@ -71,6 +71,17 @@ def main():
         if not {"pass_actor_raw", "pass_receiver_raw", "pass_active_raw",
                 "pass_distance_raw"}.issubset(sample["possession"]):
             raise AssertionError("mode-15 pass telemetry schema is incomplete")
+        fouls = sample["fouls"]
+        if set(fouls) != {"event_raw", "shooting_raw", "offender_raw",
+                          "victim_raw", "team_raw", "personal_raw",
+                          "free_throw_state_raw", "free_throw_sequence_raw"}:
+            raise AssertionError(f"foul telemetry schema is incomplete: {fouls}")
+        if fouls != {"event_raw": 0, "shooting_raw": 0,
+                     "offender_raw": -1, "victim_raw": -1,
+                     "team_raw": [0, 0], "personal_raw": [0] * 10,
+                     "free_throw_state_raw": 0,
+                     "free_throw_sequence_raw": 0}:
+            raise AssertionError(f"unverified foul detector activated: {fouls}")
         scheduler = sample["scheduler"]
         if set(scheduler) != {"due_raw", "actor_pass_dt_raw",
                              "actor_pass_mask_raw", "actor_pass_order_raw"}:
@@ -145,7 +156,8 @@ def main():
     for marker in ("gameplay_rom.jsonl", "0x80cb8f", "0x879244", "0x85963d",
                    "0x0936", "score_left_raw",
                    "assignment_current", "raw_087a", "0x0998",
-                   "play_step_raw", "play_selector_raw", "subject_raw"):
+                   "play_step_raw", "play_selector_raw", "subject_raw",
+                   "0x0964", "0x09bc", "0x492d", "0x492f"):
         if marker not in mesen:
             raise AssertionError(f"Mesen gameplay oracle lost {marker}")
     print("Gameplay Lab regression checks passed")

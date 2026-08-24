@@ -285,9 +285,17 @@ local function dump_gameplay_jsonl(frame)
         "\"shot_value_raw\":%u,\"shot_chance_raw\":65535," ..
         "\"shot_miss_index_raw\":65535,\"shot_inner_veto_raw\":%u," ..
         "\"live_state_raw\":%u,\"inbound_state_raw\":%u," ..
-        "\"inbound_actor_raw\":%u,\"inbound_timer_raw\":%u},",
+        "\"inbound_actor_raw\":%u,\"inbound_timer_raw\":%u}," ..
+        "\"fouls\":{\"event_raw\":%u,\"shooting_raw\":%u," ..
+        "\"offender_raw\":%d,\"victim_raw\":%d," ..
+        "\"team_raw\":[%u,%u],\"personal_raw\":[]," ..
+        "\"free_throw_state_raw\":%u," ..
+        "\"free_throw_sequence_raw\":%u},",
         word(0x4711), word(0x4791), word(0x094c), word(0x09f8),
-        word(0x0936), word(0x0952), word(0x0954), word(0x092e)))
+        word(0x0936), word(0x0952), word(0x0954), word(0x092e),
+        word(0x0964), word(0x09bc), signed_word(0x492d),
+        signed_word(0x492f), word(0x4713), word(0x4793),
+        word(0x0978), word(0x097a)))
     gameplay_jsonl:write(string.format(
         "\"control\":{\"actor\":%d,\"side_raw\":%d," ..
         "\"initial_slot_raw\":%d,\"selected_slot_raw\":%d," ..

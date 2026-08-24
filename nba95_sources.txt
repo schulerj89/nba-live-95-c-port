@@ -13,6 +13,7 @@ src/nba_gameplay_debugger.c
 src/nba_gameplay_camera.c
 src/nba_gameplay_ai.c
 src/nba_gameplay_ball.c
+src/nba_gameplay_foul.c
 src/nba_font.c
 src/nba_renderer.c
 src/nba_snes_ppu.c

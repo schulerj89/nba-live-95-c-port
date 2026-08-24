@@ -1301,7 +1301,7 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
                      NbaSession *session) {
     if (!tipoff || !assets || !session ||
         !nba_gameplay_rng_self_test() || !nba_gameplay_ai_self_test() ||
-        !nba_gameplay_ball_self_test() ||
+        !nba_gameplay_ball_self_test() || !nba_gameplay_foul_self_test() ||
         !ball_attachment_assets_valid(assets) ||
         !nba_assets_gameplay_court_panorama(assets, session->right_team) ||
         !nba_assets_get(assets, NBA_ASSET_TIPOFF_BALL)) return false;
@@ -1314,6 +1314,7 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
     tipoff->camera_y = -124;
     nba_gameplay_camera_init(&tipoff->camera, -128, -124);
     nba_gameplay_rng_seed(&tipoff->rng, 0x9146u);
+    nba_gameplay_foul_init(&tipoff->fouls);
     tipoff->possession_actor = -1;
     tipoff->possession_team = -1;
     session->score[0] = session->score[1] = 0u;
@@ -1486,6 +1487,19 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
     telemetry->inbound_state_raw = tipoff->inbound_state_raw;
     telemetry->inbound_actor_raw = tipoff->inbound_actor_raw;
     telemetry->inbound_timer_raw = tipoff->inbound_timer_raw;
+    telemetry->foul_event_raw = tipoff->fouls.foul_event_raw_0964;
+    telemetry->shooting_foul_raw = tipoff->fouls.shooting_foul_raw_09bc;
+    telemetry->foul_offender_raw = tipoff->fouls.offender_actor_raw;
+    telemetry->foul_victim_raw = tipoff->fouls.victim_actor_raw;
+    telemetry->team_fouls_raw[0] = tipoff->fouls.team_fouls[0];
+    telemetry->team_fouls_raw[1] = tipoff->fouls.team_fouls[1];
+    for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor)
+        telemetry->personal_fouls_raw[actor] =
+            tipoff->fouls.personal_fouls[actor];
+    telemetry->free_throw_state_raw =
+        tipoff->fouls.free_throw_state_raw_0978;
+    telemetry->free_throw_sequence_raw =
+        tipoff->fouls.free_throw_sequence_raw_097a;
     telemetry->ball_activity_raw = tipoff->ball_activity_raw;
     telemetry->pass_actor_raw = tipoff->pass_actor_raw;
     telemetry->pass_receiver_raw = tipoff->pass_receiver_raw;
