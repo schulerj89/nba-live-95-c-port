@@ -135,7 +135,9 @@ typedef struct {
     uint16_t team_context_mode_raw_30[2];
     uint16_t team_context_flags_raw_32[2];
     uint16_t team_context_activity_raw_39[2];
+    uint16_t team_context_dead_ball_actor_raw_3f[2];
     uint16_t shot_clock_raw_092c;
+    uint16_t shot_clock_mirror_raw_09c6;
     uint16_t shot_value_raw;
     int16_t shot_actor_raw_09c8;
     uint16_t interference_value_raw_096a;
@@ -152,6 +154,11 @@ typedef struct {
     uint16_t inbound_direction_raw;
     uint16_t inbound_ready_raw;
     uint16_t inbound_transfer_raw;
+    uint16_t dead_ball_raw_0966;
+    uint16_t dead_ball_raw_0968;
+    uint16_t dead_ball_raw_096c;
+    int16_t dead_ball_x_raw_09b0;
+    int16_t dead_ball_y_raw_09b2;
     uint16_t rim_context_raw_097c;
     uint16_t rim_contact_count_raw_0920;
     uint16_t rim_response_raw_0970;
@@ -173,6 +180,8 @@ typedef struct {
     uint16_t latched_event_raw_08f0;
     uint16_t whistle_active_raw_09b6;
     uint16_t whistle_timer_raw_08de;
+    uint16_t presentation_gate_raw_08e2;
+    uint16_t whistle_audio_queued_raw;
     uint16_t ball_activity_raw;
     int16_t pass_actor_raw;
     int16_t pass_receiver_raw;

@@ -912,8 +912,32 @@ lock the predicate, shot latches, clock, and ordinary physics lifecycle.
 The exact `$85:93F5-$945E` pending-event consumer is now a tested reusable C
 state transition: it moves `$0964` to `$08F0`, clears the pending/shooting
 latches, raises `$09B6/$4937`, updates `$13E7/$13E9`, and installs the
-300/120 timer plus `$08E6/$08E8=17`. It is not yet called by live gameplay:
-the surrounding `$87:92A5-$95E6` dead-ball presentation/restart and its
-`$87:BACB/$83:EBD8` audio hooks must be translated together so a whistle
-cannot freeze or immediately resume play. The maintained Ghidra script now
-dumps both complete ranges on every headless analysis run.
+300/120 timer plus `$08E6/$08E8=17`. Headless analysis of bank `$83` also
+proves that `$83:EBD8` is only `STZ $08E2`; `$87:BACB` queues its presentation
+resource only when the old signed `$08DE` is negative. Both outcomes are now
+represented and regression-tested independently of the eventual host SFX
+playback binding.
+
+Code-6 interference now runs through the live dispatcher. `$87:92AD-$92E9`
+selects the contact actor's side group, records the actor in team-context
+`+$3F`, clears `$0956/$096C`, sets `$0966=FFFF`, and enters the shared
+`$87:9B41-$9BC8` dead-ball initializer. The C translation sets `$0936=82`,
+`$092E/$09D6=300`, `$092C/$09C6=05A0`, saves the ball position to
+`$09B0/$09B2`, returns a prior owner to mode 2, zeroes its planar ball
+velocity, cancels pass/shot ownership, and starts the asset-driven inbound
+target flow. A refreshed whole-ROM write search found the missing lifecycle
+edge at `$86:F56E-$F577`: when the inbound actor reaches its target, the ROM
+clears `$09B6/$0964` immediately before setting `$09BA=1`. The port now does
+the same, so the whistle neither remains stuck nor releases early.
+
+### Recomp boundary
+
+The locally verified recomp is useful as an execution oracle, but its current
+generated AOT C contains only banks `$80-$82`. Gameplay in banks
+`$83/$85/$86/$87` succeeds through the bundled interpreter fallback, so there
+is not yet a high-level gameplay C routine available to copy verbatim. For
+gameplay work, use its traces/state snapshots to identify executed entry
+points, recover those exact blocks with the maintained headless Ghidra dump,
+then translate portable rules, AI, animation, ball physics, camera, scoring,
+and dead-ball state into the native model. Do not import 65816 dispatch,
+memory-bus, PPU/DMA, scheduler, or SPC-emulation machinery.

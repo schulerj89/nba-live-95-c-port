@@ -29,11 +29,14 @@ public class DumpCpuGameplay extends GhidraScript {
     }
 
     private long[][] focusRanges(String bank) {
+        if (bank.equals("83")) return new long[][] {
+            {0xce00, 0xd2ff}, {0xeb00, 0xefff}
+        };
         if (bank.equals("85")) return new long[][] {
             {0x8d00, 0xa7ff}, {0xaf00, 0xc6ff}, {0xf100, 0xf8ff}
         };
         if (bank.equals("86")) return new long[][] {
-            {0x9800, 0xbaff}, {0xc400, 0xd6ff}, {0xe300, 0xf8ff}
+            {0x9800, 0xbaff}, {0xc400, 0xddff}, {0xe300, 0xf8ff}
         };
         if (bank.equals("87")) return new long[][] {
             {0x9200, 0xadff}, {0xb300, 0xb9ff}
@@ -42,6 +45,9 @@ public class DumpCpuGameplay extends GhidraScript {
     }
 
     private long[] candidates(String bank) {
+        if (bank.equals("83")) return new long[] {
+            0xce36, 0xcfe8, 0xebd8, 0xebdb
+        };
         if (bank.equals("85")) return new long[] {
             0x8d19, 0x8ee6, 0x9192, 0x963d, 0x9700, 0x9a24,
             0x9d40, 0x9f01, 0xa079, 0xa1e9, 0xa21f, 0xa357, 0xa518, 0xa5cc,
@@ -56,18 +62,18 @@ public class DumpCpuGameplay extends GhidraScript {
             0xa17d, 0xa1bd, 0xa561, 0xa5b0, 0xa613, 0xa6b3, 0xa7a8, 0xab2d,
             0xb00b, 0xb625, 0xb769, 0xb8ca, 0xbaa2, 0xbaee, 0xbf0b,
             0xc302, 0xc34c, 0xc493, 0xc4fe, 0xcccd, 0xccfc, 0xd12d,
-            0xd1d9, 0xd43e, 0xd549, 0xd5db, 0xd652,
+            0xd1d9, 0xd43e, 0xd549, 0xd5db, 0xd652, 0xdd1e,
             0xe39a, 0xe3cb, 0xe3e1, 0xe4a7, 0xe5ab,
             0xe635, 0xe7b3, 0xe7dc, 0xe8f7, 0xe923, 0xe96f, 0xec32, 0xecf9,
             0xef09, 0xf0b7, 0xf0fd, 0xf1b0, 0xf23f, 0xf2ca, 0xf34f,
-            0xf3d2, 0xf43a, 0xf59f, 0xf64f, 0xf6cd, 0xf794, 0xf8cd,
+            0xf3d2, 0xf43a, 0xf56e, 0xf59f, 0xf64f, 0xf6cd, 0xf794, 0xf8cd,
             /* All 18 `$87:9BD0` behavior targets, including handlers outside
              * the otherwise shot/ball-oriented candidate set. */
             0x994c, 0xc6ad, 0xa7da, 0xb154, 0xb0f7, 0xb979
         };
         if (bank.equals("87")) return new long[] {
             0x9244, 0x92a5, 0x98ea, 0x996a, 0x9a03, 0x9a73,
-            0x9b0d, 0x9b30, 0x9bd0,
+            0x9b0d, 0x9b30, 0x9b41, 0x9bd0, 0x9cdb,
             0xa2ce, 0xa357, 0xa846, 0xa9d0, 0xaa02, 0xaab2,
             0xad5b, 0xaec3, 0xb37c, 0xb47a, 0xb4db, 0xb538, 0xb555,
             0xb649, 0xb66a, 0xb832, 0xb953, 0xb572
@@ -162,6 +168,16 @@ public class DumpCpuGameplay extends GhidraScript {
                         out.printf("$85:%04X  %s%n", address, instruction.toString());
                 }
             }
+            if (bank.equals("83")) {
+                out.println("\n--- Complete gameplay whistle audio control ---");
+                addEntryPoint(toAddr(0xebd8)); disassemble(toAddr(0xebd8));
+                addEntryPoint(toAddr(0xebdb)); disassemble(toAddr(0xebdb));
+                for (long address = 0xebd8; address <= 0xee4f; ++address) {
+                    Instruction instruction = listing.getInstructionAt(toAddr(address));
+                    if (instruction != null)
+                        out.printf("$83:%04X  %s%n", address, instruction.toString());
+                }
+            }
             if (bank.equals("86")) {
                 out.println("\n--- Complete boundary-state cancellation helper ---");
                 addEntryPoint(toAddr(0xa613)); disassemble(toAddr(0xa613));
@@ -243,11 +259,32 @@ public class DumpCpuGameplay extends GhidraScript {
                     if (instruction != null)
                         out.printf("$86:%04X  %s%n", address, instruction.toString());
                 }
+                out.println("\n--- Complete whistle-latch clear sites ---");
+                addEntryPoint(toAddr(0xdd1e)); disassemble(toAddr(0xdd1e));
+                addEntryPoint(toAddr(0xf56e)); disassemble(toAddr(0xf56e));
+                for (long address = 0xdcf0; address <= 0xdd50; ++address) {
+                    Instruction instruction = listing.getInstructionAt(toAddr(address));
+                    if (instruction != null)
+                        out.printf("$86:%04X  %s%n", address, instruction.toString());
+                }
+                for (long address = 0xf540; address <= 0xf5a0; ++address) {
+                    Instruction instruction = listing.getInstructionAt(toAddr(address));
+                    if (instruction != null)
+                        out.printf("$86:%04X  %s%n", address, instruction.toString());
+                }
             }
             if (bank.equals("87")) {
                 out.println("\n--- Complete gameplay violation/event dispatch ---");
                 addEntryPoint(toAddr(0x92a5)); disassemble(toAddr(0x92a5));
                 for (long address = 0x92a5; address <= 0x95e6; ++address) {
+                    Instruction instruction = listing.getInstructionAt(toAddr(address));
+                    if (instruction != null)
+                        out.printf("$87:%04X  %s%n", address, instruction.toString());
+                }
+                out.println("\n--- Complete shared dead-ball initializer and whistle clear ---");
+                addEntryPoint(toAddr(0x9b41)); disassemble(toAddr(0x9b41));
+                addEntryPoint(toAddr(0x9cdb)); disassemble(toAddr(0x9cdb));
+                for (long address = 0x9b30; address <= 0x9d20; ++address) {
                     Instruction instruction = listing.getInstructionAt(toAddr(address));
                     if (instruction != null)
                         out.printf("$87:%04X  %s%n", address, instruction.toString());

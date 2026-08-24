@@ -78,6 +78,7 @@ static void cpu_enter_play_state(NbaTipoff *tipoff, NbaCpuPlayState state);
 static bool cpu_try_rom_mode11_shot(NbaTipoff *tipoff, unsigned slot);
 static bool cpu_update_rom_shooter(NbaTipoff *tipoff, unsigned slot);
 static void cpu_commit_ball_acquisition(NbaTipoff *tipoff, uint8_t catcher);
+static void cpu_dispatch_pending_event(NbaTipoff *tipoff);
 
 /* `$86:A613-$A628`, reached by the shared `$85:A656-$A726` rectangular
  * actor/ball clamp. The port represents the proven globals it mutates; the
@@ -1494,6 +1495,130 @@ static void score_made_basket(NbaTipoff *tipoff) {
     tipoff->possession_actor = -1;
 }
 
+/* `$87:92AD-$92E9 -> $87:9B41-$9BC8`: code-6 interference selects the
+ * contact actor's five-player side, records that actor in team context +$3F,
+ * and enters the same `$82` dead-ball/inbound state used by made baskets.
+ * The ROM owner is cleared after its current actor is put back in mode 2;
+ * BOUNCE is the port's ownerless equivalent of that record state. */
+static void cpu_begin_interference_dead_ball(NbaTipoff *tipoff,
+                                             uint8_t candidate) {
+    if (!tipoff || candidate >= NBA_GAMEPLAY_ACTOR_COUNT) return;
+    unsigned side = candidate / 5u;
+    uint16_t side_group = (uint16_t)(side * 5u);
+    tipoff->camera_side_group_raw = (uint8_t)side_group;
+    tipoff->inbound_state_raw = side_group;
+    tipoff->team_context[side].dead_ball_actor_raw_3f = candidate;
+    /* `$0954` is not written by `$87:92AD`; the native port exposes the
+     * selected context actor through its unified inbound actor field. */
+    tipoff->inbound_actor_raw = candidate;
+    tipoff->inbound_layout_raw = 0;
+    tipoff->dead_ball_raw_096c = 0u;
+    tipoff->dead_ball_raw_0966 = NBA_GAMEPLAY_UNKNOWN_WORD;
+
+    tipoff->live_state_raw = 0x82u;
+    tipoff->inbound_timer_raw = 300u;
+    tipoff->role_rebuild_raw_09d6 = 300u;
+    tipoff->rim_raw_092c = 0x05A0u;
+    tipoff->shot_clock_mirror_raw_09c6 = 0x05A0u;
+    tipoff->dead_ball_raw_0968 = 0u;
+    tipoff->rim_raw_096a = 0u;
+    tipoff->dead_ball_x_raw_09b0 = fp_integer_word(tipoff->ball.x_fp);
+    tipoff->dead_ball_y_raw_09b2 = fp_integer_word(tipoff->ball.y_fp);
+
+    if (tipoff->possession_actor >= 0 &&
+        tipoff->possession_actor < NBA_GAMEPLAY_ACTOR_COUNT) {
+        NbaTipoffActor *owner = &tipoff->actors[tipoff->possession_actor];
+        if (owner->control_mode != 8u) owner->control_mode = 2u;
+        tipoff->ball.velocity_x = 0;
+        tipoff->ball.velocity_y = 0;
+    }
+    cpu_cancel_boundary_activity(tipoff);
+    tipoff->ball.owner_actor = -1;
+    tipoff->possession_actor = -1;
+    tipoff->pass_active_raw = 0u;
+    tipoff->rim_raw_097c = 0u;
+    tipoff->ball.state = NBA_BALL_BOUNCE;
+
+    tipoff->offense_side = (uint8_t)side;
+    tipoff->possession_team = (int8_t)side;
+    tipoff->handler_actor = candidate;
+    tipoff->receiver_actor = (uint8_t)(side_group + 4u);
+    NbaGameplayInboundTarget target;
+    int16_t context_anchor = side ? 336 : -336;
+    if (nba_gameplay_inbound_target(
+            tipoff->inbound_layout_raw, fp_round(tipoff->ball.x_fp),
+            fp_round(tipoff->ball.y_fp), context_anchor,
+            fp_round(tipoff->ball.x_fp), &tipoff->rng, &target)) {
+        tipoff->inbound_target_x_raw = target.x;
+        tipoff->inbound_target_y_raw = target.y;
+        tipoff->inbound_direction_raw = target.direction;
+        tipoff->actors[candidate].target_x = target.x;
+        tipoff->actors[candidate].target_y = target.y;
+    }
+    tipoff->inbound_ready_raw = 0u;
+    tipoff->inbound_transfer_raw = 0u;
+}
+
+static void cpu_dispatch_pending_event(NbaTipoff *tipoff) {
+    if (!tipoff || tipoff->fouls.whistle_active_raw_09b6 != 0u ||
+        tipoff->fouls.foul_event_raw_0964 == 0u) return;
+    uint16_t event = tipoff->fouls.foul_event_raw_0964;
+    /* Codes 1/2/13 require the separate free-throw/foul-placement branches
+     * below `$87:92ED`; do not consume them through the code-6 restart. */
+    if (event != NBA_GAMEPLAY_VIOLATION_INTERFERENCE ||
+        tipoff->session->config.rules[5] == 0u ||
+        tipoff->fouls.offender_actor_raw < 0) return;
+    cpu_begin_interference_dead_ball(
+        tipoff, (uint8_t)tipoff->fouls.offender_actor_raw);
+    (void)nba_gameplay_foul_consume_pending(
+        &tipoff->fouls, tipoff->camera_side_group_raw,
+        &tipoff->rim_raw_13e7, &tipoff->inbound_ready_raw,
+        false);
+}
+
+static bool cpu_interference_dead_ball_self_test(void) {
+    NbaTipoff state;
+    NbaSession session;
+    memset(&state, 0, sizeof(state));
+    memset(&session, 0, sizeof(session));
+    state.session = &session;
+    state.session->config.rules[5] = 1u;
+    state.ball.x_fp = 121 * 256;
+    state.ball.y_fp = -19 * 256;
+    state.ball.z_fp = 88 * 256;
+    state.ball.owner_actor = 7;
+    state.ball.state = NBA_BALL_ATTACHED;
+    state.possession_actor = 7;
+    state.actors[7].control_mode = 11u;
+    nba_gameplay_rng_seed(&state.rng, 0x9146u);
+    nba_gameplay_foul_init(&state.fouls);
+    if (!nba_gameplay_foul_record_violation(
+            &state.fouls, NBA_GAMEPLAY_VIOLATION_INTERFERENCE, 7u, 2u))
+        return false;
+    cpu_dispatch_pending_event(&state);
+    return state.live_state_raw == 0x82u &&
+           state.camera_side_group_raw == 5u &&
+           state.inbound_state_raw == 5u &&
+           state.inbound_actor_raw == 7u &&
+           state.team_context[1].dead_ball_actor_raw_3f == 7u &&
+           state.inbound_layout_raw == 0 &&
+           state.inbound_timer_raw == 300u &&
+           state.role_rebuild_raw_09d6 == 300u &&
+           state.rim_raw_092c == 0x05A0u &&
+           state.shot_clock_mirror_raw_09c6 == 0x05A0u &&
+           state.dead_ball_raw_0966 == NBA_GAMEPLAY_UNKNOWN_WORD &&
+           state.dead_ball_x_raw_09b0 == 121 &&
+           state.dead_ball_y_raw_09b2 == -19 &&
+           state.possession_actor == -1 && state.ball.owner_actor == -1 &&
+           state.ball.state == NBA_BALL_BOUNCE &&
+           state.ball.velocity_x == 0 && state.ball.velocity_y == 0 &&
+           state.actors[7].control_mode == 2u &&
+           state.fouls.foul_event_raw_0964 == 0u &&
+           state.fouls.latched_event_raw_08f0 ==
+               NBA_GAMEPLAY_VIOLATION_INTERFERENCE &&
+           state.fouls.whistle_active_raw_09b6 == 1u;
+}
+
 static NbaGameplayRimResult cpu_update_live_ball(NbaTipoff *tipoff) {
     /* The same `$87:9B0D` 30-Hz logical pass drives `$85:9ACB+` ball
      * collision/integration. Flight-table durations count these due passes. */
@@ -2601,6 +2726,10 @@ static void cpu_update_rom_inbound(NbaTipoff *tipoff) {
     actor->direction = (uint8_t)tipoff->inbound_direction_raw;
     actor->requested_direction = actor->direction;
     if (tipoff->inbound_ready_raw == 0u) {
+        /* `$86:F56E-$F577`: arrival is the exact whistle/event-latch
+         * release point, immediately before `$09BA` becomes one. */
+        tipoff->fouls.whistle_active_raw_09b6 = 0u;
+        tipoff->fouls.foul_event_raw_0964 = 0u;
         tipoff->inbound_ready_raw = 1u;
     }
     /* `$86:F58F`: signed actor +$16, not actor Z, gates the CPU selector.
@@ -2809,6 +2938,7 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
         !nba_gameplay_ball_self_test() || !nba_gameplay_effect_self_test() ||
         !nba_gameplay_foul_self_test() ||
         !cpu_rim_contact_tick_self_test() ||
+        !cpu_interference_dead_ball_self_test() ||
         !cpu_contact_orchestration_self_test() ||
         !cpu_defensive_planner_self_test() ||
         !cpu_expired_inbound_self_test() ||
@@ -2959,6 +3089,9 @@ void nba_tipoff_update(NbaTipoff *tipoff, const NbaInput *input) {
     }
     if (tipoff->frame >= NBA_TIPOFF_BREAK_FRAME) {
         cpu_update_possession(tipoff);
+        /* `$87:92A5-$95E6` performs dead-ball setup before `$85:93F5`
+         * consumes the pending event later in the same outer pass. */
+        cpu_dispatch_pending_event(tipoff);
     }
     cpu_update_camera(tipoff);
     if (tipoff->frame >= NBA_TIPOFF_BREAK_FRAME) tipoff->phase = NBA_TIPOFF_LIVE;
@@ -3066,8 +3199,12 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
             tipoff->team_context[side].flags_raw_32;
         telemetry->team_context_activity_raw_39[side] =
             tipoff->team_context[side].activity_raw_39;
+        telemetry->team_context_dead_ball_actor_raw_3f[side] =
+            tipoff->team_context[side].dead_ball_actor_raw_3f;
     }
     telemetry->shot_clock_raw_092c = tipoff->rim_raw_092c;
+    telemetry->shot_clock_mirror_raw_09c6 =
+        tipoff->shot_clock_mirror_raw_09c6;
     telemetry->shot_value_raw = tipoff->shot_value_raw;
     telemetry->shot_actor_raw_09c8 = tipoff->shot_actor_raw_09c8;
     telemetry->interference_value_raw_096a = tipoff->rim_raw_096a;
@@ -3084,6 +3221,11 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
     telemetry->inbound_direction_raw = tipoff->inbound_direction_raw;
     telemetry->inbound_ready_raw = tipoff->inbound_ready_raw;
     telemetry->inbound_transfer_raw = tipoff->inbound_transfer_raw;
+    telemetry->dead_ball_raw_0966 = tipoff->dead_ball_raw_0966;
+    telemetry->dead_ball_raw_0968 = tipoff->dead_ball_raw_0968;
+    telemetry->dead_ball_raw_096c = tipoff->dead_ball_raw_096c;
+    telemetry->dead_ball_x_raw_09b0 = tipoff->dead_ball_x_raw_09b0;
+    telemetry->dead_ball_y_raw_09b2 = tipoff->dead_ball_y_raw_09b2;
     telemetry->rim_context_raw_097c = tipoff->rim_raw_097c;
     telemetry->rim_contact_count_raw_0920 = tipoff->rim_raw_0920;
     telemetry->rim_response_raw_0970 = tipoff->rim_raw_0970;
@@ -3114,6 +3256,10 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
         tipoff->fouls.whistle_active_raw_09b6;
     telemetry->whistle_timer_raw_08de =
         (uint16_t)tipoff->fouls.whistle_timer_raw_08de;
+    telemetry->presentation_gate_raw_08e2 =
+        tipoff->fouls.presentation_gate_raw_08e2;
+    telemetry->whistle_audio_queued_raw =
+        tipoff->fouls.whistle_audio_queued_raw;
     telemetry->ball_activity_raw = tipoff->ball_activity_raw;
     telemetry->pass_actor_raw = tipoff->pass_actor_raw;
     telemetry->pass_receiver_raw = tipoff->pass_receiver_raw;

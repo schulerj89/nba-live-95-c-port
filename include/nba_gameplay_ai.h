@@ -12,6 +12,7 @@ typedef struct {
     uint16_t mode_raw_30;
     uint16_t flags_raw_32;
     uint16_t activity_raw_39;
+    uint16_t dead_ball_actor_raw_3f;
     uint16_t help_distance_raw_4e;
     uint8_t actor_order_raw_49[5];
 } NbaGameplayTeamContext;

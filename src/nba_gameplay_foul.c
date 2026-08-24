@@ -6,6 +6,7 @@ void nba_gameplay_foul_init(NbaGameplayFoulState *state) {
     memset(state, 0, sizeof(*state));
     state->offender_actor_raw = -1;
     state->victim_actor_raw = -1;
+    state->whistle_timer_raw_08de = -1;
 }
 
 /* `$86:C4FE-$C6AC` emits pending `$0964` codes 1/2/13 and preserves actor
@@ -74,8 +75,9 @@ bool nba_gameplay_foul_record_violation(NbaGameplayFoulState *state,
     return true;
 }
 
-/* Exact gameplay-visible WRAM writes from `$85:93F5-$945E`. Its BACB/EBD8
- * calls are presentation/audio dispatchers and remain orchestration hooks. */
+/* Exact gameplay-visible WRAM writes from `$85:93F5-$945E`. `$87:BACB`
+ * queues the whistle presentation only while the old signed `$08DE` is
+ * negative; otherwise `$83:EBD8` is the single `STZ $08E2` instruction. */
 bool nba_gameplay_foul_consume_pending(NbaGameplayFoulState *state,
                                        uint8_t camera_side_group,
                                        uint16_t *event_bits_raw_13e7,
@@ -94,6 +96,11 @@ bool nba_gameplay_foul_consume_pending(NbaGameplayFoulState *state,
     if (camera_side_group == 0u)
         state->side_event_bits_raw_13e9 |= 1u;
     state->whistle_active_raw_09b6 = 1u;
+    state->whistle_audio_queued_raw = 0u;
+    if (state->whistle_timer_raw_08de < 0)
+        state->whistle_audio_queued_raw = 1u;
+    else
+        state->presentation_gate_raw_08e2 = 0u;
     state->whistle_timer_raw_08de = short_timer ? 120 : 300;
     state->whistle_state_raw_08e6 = 17u;
     state->whistle_state_mirror_raw_08e8 = 17u;
@@ -137,6 +144,7 @@ bool nba_gameplay_foul_self_test(void) {
     uint16_t event_bits = 0x0010u;
     uint16_t inbound_ready = 9u;
     violation.contact_context_raw_497f = 7u;
+    violation.presentation_gate_raw_08e2 = 9u;
     bool violation_ok = nba_gameplay_foul_record_violation(
             &violation, NBA_GAMEPLAY_VIOLATION_INTERFERENCE, 7u, 2u) &&
         violation.team_fouls[0] == 0u && violation.team_fouls[1] == 0u &&
@@ -149,12 +157,24 @@ bool nba_gameplay_foul_self_test(void) {
         violation.presentation_pending_raw_4937 == 1u &&
         violation.contact_context_raw_497f == 0u && inbound_ready == 0u &&
         violation.whistle_timer_raw_08de == 300 &&
+        violation.whistle_audio_queued_raw == 1u &&
+        violation.presentation_gate_raw_08e2 == 9u &&
         violation.whistle_state_raw_08e6 == 17u &&
         violation.whistle_state_mirror_raw_08e8 == 17u &&
         violation.side_event_bits_raw_13e9 == 1u &&
         event_bits == 0x2010u &&
         !nba_gameplay_foul_consume_pending(
             &violation, 0u, &event_bits, &inbound_ready, false);
+    NbaGameplayFoulState busy_presentation;
+    nba_gameplay_foul_init(&busy_presentation);
+    busy_presentation.foul_event_raw_0964 = NBA_GAMEPLAY_VIOLATION_INTERFERENCE;
+    busy_presentation.whistle_timer_raw_08de = 12;
+    busy_presentation.presentation_gate_raw_08e2 = 7u;
+    bool busy_ok = nba_gameplay_foul_consume_pending(
+            &busy_presentation, 5u, NULL, NULL, true) &&
+        busy_presentation.whistle_audio_queued_raw == 0u &&
+        busy_presentation.presentation_gate_raw_08e2 == 0u &&
+        busy_presentation.whistle_timer_raw_08de == 120;
     return offensive_bonus.team_fouls[0] == 4u &&
            offensive_bonus.personal_fouls[2] == 4u &&
            offensive_bonus.foul_event_raw_0964 ==
@@ -162,5 +182,5 @@ bool nba_gameplay_foul_self_test(void) {
            offensive_bonus.shooting_foul_raw_09bc == 0u &&
            offensive_bonus.free_throw_state_raw_0978 == 1u &&
            offensive_bonus.free_throw_sequence_raw_097a == 2u &&
-           violation_ok;
+           violation_ok && busy_ok;
 }

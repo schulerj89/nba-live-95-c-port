@@ -202,7 +202,9 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
             "\"team_context_mode_raw_30\":[%u,%u],"
             "\"team_context_flags_raw_32\":[%u,%u],"
             "\"team_context_activity_raw_39\":[%u,%u],"
+            "\"team_context_dead_ball_actor_raw_3f\":[%u,%u],"
             "\"shot_clock_raw_092c\":%u,"
+            "\"shot_clock_mirror_raw_09c6\":%u,"
             "\"shot_value_raw\":%u,\"shot_actor_raw_09c8\":%d,"
             "\"interference_value_raw_096a\":%u,"
             "\"shot_chance_raw\":%u,\"shot_miss_index_raw\":%u,"
@@ -212,6 +214,9 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
             "\"inbound_layout_raw\":%d,\"inbound_target_x_raw\":%d,"
             "\"inbound_target_y_raw\":%d,\"inbound_direction_raw\":%u,"
             "\"inbound_ready_raw\":%u,\"inbound_transfer_raw\":%u,"
+            "\"dead_ball_raw_0966\":%u,\"dead_ball_raw_0968\":%u,"
+            "\"dead_ball_raw_096c\":%u,\"dead_ball_x_raw_09b0\":%d,"
+            "\"dead_ball_y_raw_09b2\":%d,"
             "\"rim_context_raw_097c\":%u,"
             "\"rim_contact_count_raw_0920\":%u,"
             "\"rim_response_raw_0970\":%u,"
@@ -230,7 +235,9 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
             "\"free_throw_sequence_raw\":%u,"
             "\"latched_event_raw_08f0\":%u,"
             "\"whistle_active_raw_09b6\":%u,"
-            "\"whistle_timer_raw_08de\":%u},"
+            "\"whistle_timer_raw_08de\":%u,"
+            "\"presentation_gate_raw_08e2\":%u,"
+            "\"whistle_audio_queued_raw\":%u},"
             "\"camera\":{\"x\":%d,\"y\":%d,"
             "\"subject_raw\":%d,\"side_group_raw\":%u,"
             "\"routine\":%u,\"raw_085c\":%u,\"raw_085e\":%u,"
@@ -269,7 +276,10 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
             telemetry->team_context_flags_raw_32[1],
             telemetry->team_context_activity_raw_39[0],
             telemetry->team_context_activity_raw_39[1],
+            telemetry->team_context_dead_ball_actor_raw_3f[0],
+            telemetry->team_context_dead_ball_actor_raw_3f[1],
             telemetry->shot_clock_raw_092c,
+            telemetry->shot_clock_mirror_raw_09c6,
             telemetry->shot_value_raw, telemetry->shot_actor_raw_09c8,
             telemetry->interference_value_raw_096a,
             telemetry->shot_chance_raw,
@@ -281,6 +291,11 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
             telemetry->inbound_target_y_raw,
             telemetry->inbound_direction_raw, telemetry->inbound_ready_raw,
             telemetry->inbound_transfer_raw,
+            telemetry->dead_ball_raw_0966,
+            telemetry->dead_ball_raw_0968,
+            telemetry->dead_ball_raw_096c,
+            telemetry->dead_ball_x_raw_09b0,
+            telemetry->dead_ball_y_raw_09b2,
             telemetry->rim_context_raw_097c,
             telemetry->rim_contact_count_raw_0920,
             telemetry->rim_response_raw_0970,
@@ -309,6 +324,8 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
             telemetry->latched_event_raw_08f0,
             telemetry->whistle_active_raw_09b6,
             telemetry->whistle_timer_raw_08de,
+            telemetry->presentation_gate_raw_08e2,
+            telemetry->whistle_audio_queued_raw,
             telemetry->camera_x, telemetry->camera_y,
             telemetry->camera_subject_raw, telemetry->camera_side_group_raw,
             telemetry->camera_routine,

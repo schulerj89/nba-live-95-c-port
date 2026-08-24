@@ -25,6 +25,8 @@ typedef struct {
     int16_t whistle_timer_raw_08de;
     uint16_t whistle_state_raw_08e6;
     uint16_t whistle_state_mirror_raw_08e8;
+    uint16_t presentation_gate_raw_08e2;
+    uint16_t whistle_audio_queued_raw;
     uint16_t side_event_bits_raw_13e9;
 } NbaGameplayFoulState;
 

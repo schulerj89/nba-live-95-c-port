@@ -84,13 +84,15 @@ without changing the comparison contract.
 | `$86:C4FE–$C6AC`, `$86:D12D–$D1D0` | foul/contact classification feeding pending `$0964` and actor IDs `$492D/$492F` |
 | `$86:CD97–$CE65`, `$86:D078–$D128` | descending-shot pose contact, code-6 interference award, and detached catch RNG |
 | `$85:93F5–$945E`, `$87:92A5–$95E6` | pending-event consumer and dead-ball violation/foul dispatch |
+| `$87:9B41–$9BC8`, `$86:F56E–$F577` | shared dead-ball initializer and exact inbound-arrival whistle release |
+| `$87:BACB–$BAF4`, `$83:EBD8–$EE4F` | whistle presentation queue and audio-control state |
 | `$87:9AA6–$9BCA` | expired inbound: reload `$092E`, layout 5, opposite `$093A ^ 5` side, clear `$093E`, and restart |
 
 Owned-ball defensive contact and descending-shot interference now originate
 from their proven `$86:CCFC-$D205` predicates. The reusable `$85:93F5`
-consumer is represented and tested, but live whistle presentation/restart is
-still gated on translating the surrounding `$87:92A5-$95E6` state machine and
-its audio calls as one unit.
+consumer and code-6 restart are represented and tested; host whistle playback is
+still gated on resolving `$87:BACB`'s `$EC5D/$00AF` presentation request to
+the matching asset-pack/SPC resource rather than substituting a sound.
 
 The extended CPU-only capture covers 1,801 frames. It confirms the `$35`
 post-tip play, CPU reaction staggering, live matchup reassignment, the

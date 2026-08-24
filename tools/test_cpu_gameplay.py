@@ -50,7 +50,9 @@ def main():
             "free_throw_state_raw": 0, "free_throw_sequence_raw": 0,
             "latched_event_raw_08f0": 0,
             "whistle_active_raw_09b6": 0,
-            "whistle_timer_raw_08de": 0,
+            "whistle_timer_raw_08de": 0xFFFF,
+            "presentation_gate_raw_08e2": 0,
+            "whistle_audio_queued_raw": 0,
         }
         activated_foul = next((row for row in rows
                                if sum(row["fouls"]["team_raw"])), None)
