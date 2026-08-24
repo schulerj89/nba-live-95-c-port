@@ -73,14 +73,14 @@ bool nba_player_intro_init(NbaPlayerIntro *screen, const NbaAssetPack *assets,
     memset(screen, 0, sizeof(*screen));
     screen->assets = assets;
     screen->session = session;
-    const NbaAssetItem *court = nba_assets_get(assets, NBA_ASSET_PLAYER_INTRO_COURT);
+    const uint32_t *court = nba_assets_home_court(assets, session->right_team);
     const NbaAssetItem *portraits = nba_assets_get(
         assets, NBA_ASSET_PLAYER_INTRO_PORTRAITS);
     const NbaAssetItem *font = nba_assets_get(
         assets, NBA_ASSET_PLAYER_INTRO_FONT);
     const NbaAssetItem *lineup_font = nba_assets_get(
         assets, NBA_ASSET_STARTING_LINEUP_FONT);
-    if (!court || court->size != 256u * 224u * sizeof(uint32_t) ||
+    if (!court ||
         !portraits || portraits->size < PORTRAIT_HEADER_SIZE ||
         !font || font->size < 0x1000u ||
         !lineup_font || lineup_font->size < 0x1000u) return false;
@@ -152,9 +152,9 @@ static void draw_asset_rgba(NbaRenderer *ren, const uint32_t *pixels,
 }
 
 static void draw_court(const NbaPlayerIntro *screen, NbaRenderer *ren) {
-    const NbaAssetItem *court = nba_assets_get(
-        screen->assets, NBA_ASSET_PLAYER_INTRO_COURT);
-    memcpy(ren->pixels, court->data, 256u * 224u * sizeof(uint32_t));
+    const uint32_t *court = nba_assets_home_court(
+        screen->assets, screen->session->right_team);
+    memcpy(ren->pixels, court, 256u * 224u * sizeof(uint32_t));
 }
 
 static void draw_logo(const NbaPlayerIntro *screen, NbaRenderer *ren,

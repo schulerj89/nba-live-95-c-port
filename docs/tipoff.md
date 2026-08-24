@@ -46,6 +46,14 @@ correlates instructions and calls in those windows:
   screen coordinates are consequently projected from world coordinates with
   `screen_x = world_x + world_y - camera_x` and
   `screen_y = (world_y - world_x)/4 - camera_y - z`.
+
+Asset 272 (`NBCOURT1`) supplies the gameplay-bright home courts. It replays the
+ROM path rather than pasting Team Select logos: `$84:E55D-$E57A` indexes the
+graphics table at `$84:E6B5/$84:E6B7`, `$80:C62B` expands its exact 0x8c0-byte
+tile block, and `$84:E5BD` supplies the matching palette record. An independent
+Chicago capture at the live `$87:A47A` player compositor matches the offline
+reconstruction pixel-for-pixel; home team 18 remains byte-identical to the
+established Orlando frame-140 oracle.
 - The extended 1,801-frame CPU-only run identifies `$85:9700–$985F` as the
   recurring player-coordinate integrator. Per-actor signed motion at `+$0E`
   and `+$10` is added to the 32-bit X/Y pairs at `+$02/+$04` and `+$06/+$08`.

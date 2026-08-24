@@ -27,7 +27,7 @@ def pack_assets(path):
     if raw[:8] != b"NBA95PAK":
         raise AssertionError("invalid pack magic")
     version, count = struct.unpack_from("<II", raw, 8)
-    if version != 21 or 16 + count * 24 > len(raw):
+    if version != 22 or 16 + count * 24 > len(raw):
         raise AssertionError("invalid tip-off pack version/directory")
     assets = {}
     for index in range(count):
@@ -54,6 +54,21 @@ def main():
             raise AssertionError(f"tip-off asset {asset_id} payload changed")
     if assets[262][0][:12] != b"NBBALL1\0\x01\0\0\0":
         raise AssertionError("tip-off ball schema changed")
+    courts, width, height, flags = assets[272]
+    frame_size = 256 * 224 * 4
+    if courts[:8] != b"NBCOURT1" or \
+            struct.unpack_from("<IIII", courts, 8) != (1, 29, 256, 224) or \
+            (width, height, flags, len(courts)) != \
+            (256, 224, 29, 24 + 29 * frame_size):
+        raise AssertionError("gameplay home-court catalog changed")
+    if hashlib.sha256(courts[24 + 18 * frame_size:
+                              24 + 19 * frame_size]).hexdigest() != \
+            EXPECTED_ASSETS[263][4]:
+        raise AssertionError("Orlando gameplay court no longer matches its oracle")
+    if len({hashlib.sha256(courts[24 + team * frame_size:
+                                  24 + (team + 1) * frame_size]).digest()
+            for team in range(29)}) < 27:
+        raise AssertionError("gameplay home courts lost ROM-selected variation")
 
     with tempfile.TemporaryDirectory() as directory:
         for frame, (phase, expected_hash) in EXPECTED_FRAMES.items():
@@ -80,11 +95,26 @@ def main():
             raise AssertionError("final lineup card did not hand off to tip-off\n" +
                                  result.stdout + result.stderr)
 
+        selected_home = Path(directory) / "san_antonio_tipoff.bmp"
+        result = subprocess.run([
+            args.exe, "--headless", "--rom", args.rom, "--assets", args.pack,
+            "--team-only", "--team-right", "5", "--team-confirm",
+            "--player-setup-confirm", "--frames", "5900",
+            "--dump-frame", selected_home, "--debug-state",
+        ], capture_output=True, text=True, check=False)
+        digest = hashlib.sha256(
+            Image.open(selected_home).convert("RGB").tobytes()).hexdigest() \
+            if selected_home.exists() else ""
+        if result.returncode or "SCN:TIPOFF" not in result.stdout or \
+                digest != "763708f398a25a5ce97ef407cf32ec4f14966e83bdc0977405eabb769d5c2d2d":
+            raise AssertionError("selected home court did not persist into tip-off\n" +
+                                 result.stdout + result.stderr)
+
     source = Path(__file__).parents[1] / "src" / "nba_tipoff.c"
     text = source.read_text()
     for value in ("NBA_TIPOFF_BALL_APPEAR_FRAME", "NBA_TIPOFF_TOSS_FRAME",
                   "NBA_TIPOFF_CONTACT_FRAME",
-                  "nba_player_sprite_render", "NBA_ASSET_GAMEPLAY_COURT",
+                  "nba_player_sprite_render", "nba_assets_gameplay_home_court",
                   "visible_submission[8]"):
         if value not in text:
             raise AssertionError(f"tip-off implementation lost {value}")

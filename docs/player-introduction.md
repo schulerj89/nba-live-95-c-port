@@ -37,7 +37,7 @@ The generated listings and decompilation are under the ignored
 
 ## Asset provenance
 
-Asset 260 is the Mode-1 court BG2 reconstructed from raw VRAM/CGRAM using the
+Asset 260 is the legacy Orlando Mode-1 court BG2 reconstructed from raw VRAM/CGRAM using the
 live map `$1000`, CHR `$4000`, and scroll `(6,6)`. Asset 261 contains keyed
 72x72 RGBA portraits decoded from the raw palette-zero OBJ group. PNG files are
 visual evidence only; the extractor does not read them.
@@ -49,6 +49,13 @@ including East and West. The
 navigates Team Select until the requested ID is observed, and verifies that ID
 again when `$87:BE92` begins the lineup loop. It saves raw PPU state only after
 the ROM has built each home-team card.
+
+Asset 271 (`NBCOURT1`) contains the raw-PPU-decoded BG2 court for every home
+selector. `$84:E55D-$E57A` reads `$7E:46EB`, multiplies it by four, and selects
+the compressed graphics pointer through `$84:E6B5/$84:E6B7` before `$80:C62B`
+expands the court block. The C presentation indexes this catalog with
+`NbaSession.right_team`; the visitor never owns the floor. East and West
+intentionally share the ROM's neutral presentation court.
 
 Assets 265-268 contain the Player Introduction's 64 KiB ARAM bank, S-DSP
 register snapshot, SPC state, and 5,560-frame cycle-timed DSP program. Asset

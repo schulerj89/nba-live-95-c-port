@@ -66,6 +66,14 @@ public class DumpPlayerIntroduction extends GhidraScript {
             new Range(0xF901, 0xFA90, "intro_build_rating_balls",
                 "Builds the five team-comparison rows. Live OAM proves ranks 1-8 produce three basketballs, 9-18 two, and 19-27 one; the six ball tiles advance on the $F7B3/$F7BE twelve-frame divider.")
         };
+        if (bank == 0x84) return new Range[] {
+            new Range(0xE540, 0xE6FF, "select_home_court_resources",
+                "Home-court resource selector reached before Player Setup/Introduction. It multiplies the committed home team by four and reads the per-team graphics pointer table at $84:E6B5/$84:E6B7 before dispatching through $80:C62B.")
+        };
+        if (bank == 0x86) return new Range[] {
+            new Range(0x8000, 0x82FF, "initialize_player_intro_state",
+                "Entry called by $87:BD7F before Starting Lineup construction. It initializes lineup/player state; unlike $84:E55D, it does not select the home court resources.")
+        };
         if (bank == 0x87) return new Range[] {
             new Range(0xBD7F, 0xBFE1, "run_player_introduction",
                 "Starting Lineup main flow ends at $87:BFE1. $87:BE13 loads font descriptor $A6:BB16 before centered STARTING/LINEUP calls at $87:BE33/$87:BE4D; $87:BE92 is the repeated card loop and live card changes are 434 frames apart."),

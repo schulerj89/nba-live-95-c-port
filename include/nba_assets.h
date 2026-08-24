@@ -118,7 +118,11 @@ typedef enum {
     NBA_ASSET_PLAYER_INTRO_DSP_TRACE            = 268,
     NBA_ASSET_PLAYER_INTRO_FONT                 = 269,
     NBA_ASSET_STARTING_LINEUP_FONT               = 270,
-    NBA_ASSET_MAX                   = 271
+    /* NBCOURT1: 29 ROM-decoded home presentation courts in team-ID order. */
+    NBA_ASSET_HOME_COURTS                        = 271,
+    /* NBCOURT1: gameplay-bright variants selected by $84:E55D-$E57A. */
+    NBA_ASSET_GAMEPLAY_HOME_COURTS               = 272,
+    NBA_ASSET_MAX                   = 273
 } NbaAssetId;
 
 typedef struct {
@@ -142,5 +146,8 @@ typedef struct {
 bool nba_assets_load(NbaAssetPack *pack, const char *asset_path);
 void nba_assets_free(NbaAssetPack *pack);
 const NbaAssetItem *nba_assets_get(const NbaAssetPack *pack, NbaAssetId id);
+const uint32_t *nba_assets_home_court(const NbaAssetPack *pack, uint8_t home_team);
+const uint32_t *nba_assets_gameplay_home_court(const NbaAssetPack *pack,
+                                                uint8_t home_team);
 
 #endif /* NBA_ASSETS_H */

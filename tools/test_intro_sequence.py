@@ -108,7 +108,7 @@ def main():
 
     raw_pack = args.pack.read_bytes()
     version, count = struct.unpack_from("<II", raw_pack, 8)
-    if raw_pack[:8] != b"NBA95PAK" or version != 21:
+    if raw_pack[:8] != b"NBA95PAK" or version != 22:
         raise AssertionError("EA intro requires asset-pack version 18")
     entries = {
         struct.unpack_from("<I", raw_pack, 16 + index * 24)[0]:

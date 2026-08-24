@@ -32,7 +32,7 @@ def load_pack(path):
     if raw[:8] != b"NBA95PAK":
         raise AssertionError("invalid pack magic")
     version, count = struct.unpack_from("<II", raw, 8)
-    if version != 21 or 16 + count * 24 > len(raw):
+    if version != 22 or 16 + count * 24 > len(raw):
         raise AssertionError("invalid asset directory")
     assets = {}
     for index in range(count):
@@ -83,6 +83,24 @@ def main():
     if len(font) != 0x1000 or (width, height, flags) != (16, 16, 0xA6BB16) or \
             font[:6] != b"\x10\x00\x10\x00\x00\x02":
         raise AssertionError("Starting Lineup ROM font descriptor changed")
+
+    courts, width, height, flags = assets[271]
+    frame_size = 256 * 224 * 4
+    if courts[:8] != b"NBCOURT1" or \
+            struct.unpack_from("<IIII", courts, 8) != (1, 29, 256, 224) or \
+            (width, height, flags, len(courts)) != \
+            (256, 224, 29, 24 + 29 * frame_size):
+        raise AssertionError("home-court catalog header/dimensions changed")
+    court_hashes = {
+        hashlib.sha256(courts[24 + team * frame_size:
+                              24 + (team + 1) * frame_size]).hexdigest()
+        for team in range(29)
+    }
+    if len(court_hashes) != 28 or \
+            hashlib.sha256(courts[24 + 18 * frame_size:
+                                  24 + 19 * frame_size]).hexdigest() != \
+            EXPECTED_ASSETS[260][1]:
+        raise AssertionError("home-team courts are not unique/ROM-ordered")
 
     for asset_id, (size, digest) in EXPECTED_ASSETS.items():
         payload, width, height, flags = assets[asset_id]
@@ -172,7 +190,7 @@ def main():
                      "--player-setup-confirm", "--frames", 3600,
                      "--dump-frame", home_frame, "--debug-state")
         if "TEAM L:03 R:23" not in output or "CARD:06/10" not in output or \
-           rgb_hash(home_frame) != "553501899f403904b1daef979275fbf291a12b8df8fec7d0408f04d21d3a006a":
+           rgb_hash(home_frame) != "0674f5cb327859fb972ff6a6e3a5ad2f9f29d2d97cd5b212f08eae7a2adfaec5":
             raise AssertionError("non-default home portrait selection changed")
 
     print("Player Introduction regression checks passed")

@@ -350,7 +350,7 @@ static void draw_ball(const NbaTipoff *tipoff, NbaRenderer *ren, int x, int y) {
 bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
                      NbaSession *session) {
     if (!tipoff || !assets || !session ||
-        !nba_assets_get(assets, NBA_ASSET_GAMEPLAY_COURT) ||
+        !nba_assets_gameplay_home_court(assets, session->right_team) ||
         !nba_assets_get(assets, NBA_ASSET_TIPOFF_BALL)) return false;
     memset(tipoff, 0, sizeof(*tipoff));
     tipoff->assets = assets;
@@ -597,9 +597,9 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
 
 void nba_tipoff_render(const NbaTipoff *tipoff, NbaRenderer *ren) {
     if (!tipoff || !tipoff->is_initialized || !ren) return;
-    const NbaAssetItem *court = nba_assets_get(
-        tipoff->assets, NBA_ASSET_GAMEPLAY_COURT);
-    memcpy(ren->pixels, court->data, 256u * 224u * sizeof(uint32_t));
+    const uint32_t *court = nba_assets_gameplay_home_court(
+        tipoff->assets, tipoff->session->right_team);
+    memcpy(ren->pixels, court, 256u * 224u * sizeof(uint32_t));
 
     uint8_t render_order[NBA_GAMEPLAY_ACTOR_COUNT];
     int16_t screen_x[NBA_GAMEPLAY_ACTOR_COUNT];

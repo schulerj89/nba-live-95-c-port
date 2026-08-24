@@ -214,6 +214,104 @@ def build_player_introduction_assets(court_capture_dir, away_portrait_dir,
     return court, bytes(portrait_pack)
 
 
+def build_home_court_catalog(home_portrait_dir):
+    """Decode the ROM's home-selected presentation court for every team.
+
+    Each source is raw VRAM/CGRAM saved after $87:BE92 verified the committed
+    home selector. Team 18 must reproduce legacy asset 260 exactly; that guard
+    prevents a portrait or transient BG state from being mislabeled as a court.
+    """
+    courts = []
+    for team in range(29):
+        directory = os.path.join(home_portrait_dir, f"team_{team:02d}")
+        vram = open(os.path.join(directory, "slot_0_vram.bin"), "rb").read()
+        cgram = open(os.path.join(directory, "slot_0_cgram.bin"), "rb").read()
+        if len(vram) != 0x10000 or len(cgram) != 0x200:
+            raise RuntimeError(f"Invalid home-court PPU state for team {team}")
+        courts.append(decode_bg_layer(vram, cgram, 0x1000, 0x4000,
+                                      4, True, False, 6, 6))
+    groups = {}
+    for team, court in enumerate(courts):
+        groups.setdefault(hashlib.sha256(court).digest(), []).append(team)
+    duplicates = sorted(group for group in groups.values() if len(group) > 1)
+    # East/West are ranking-only pseudo teams and intentionally share the ROM's
+    # neutral presentation floor; all 27 arena teams remain distinct.
+    if len(groups) != 28 or duplicates != [[27, 28]]:
+        raise RuntimeError(f"Unexpected home-court duplicates: {duplicates}")
+    payload = bytearray(struct.pack("<8sIIII", b"NBCOURT1", 1, 29, 256, 224))
+    for court in courts:
+        payload.extend(court)
+    print("[ASSET EXTRACTOR] Packed 29 ROM-selected home presentation courts")
+    return bytes(payload), courts[18]
+
+
+def build_gameplay_home_court_catalog(rom_data, base_vram, base_cgram,
+                                       home_portrait_dir, legacy_home_court):
+    """Replay the ROM's $84:E55D-$E57A team court selection offline.
+
+    `$84:E6B5/$E6B7` supplies one compressed 0x8c0-byte tile block per team.
+    `$84:E5BD` supplies the matching gameplay-bright palette record. The fixed
+    gameplay map/CHR state remains sourced from raw PPU memory; only the same
+    team-owned regions changed by the ROM are replaced.
+    """
+    graphics_table = 0x266B5
+    palette_table = 0x265BD
+    courts = []
+    for team in range(29):
+        directory = os.path.join(home_portrait_dir, f"team_{team:02d}")
+        presentation_vram = open(
+            os.path.join(directory, "slot_0_vram.bin"), "rb").read()
+
+        entry = graphics_table + team * 4
+        source_address = rom_data[entry] | (rom_data[entry + 1] << 8)
+        source_bank = rom_data[entry + 2]
+        emulator = Snes65816Decompressor(rom_data)
+        emulator.decompress(source_bank, source_address, 0x7E, 0x8FEE)
+        decompressed_tiles = bytes(emulator.wram[0x8FEE:0x98AE])
+        # $84:E55D normally streams the court block to VRAM $B4A0. Orlando's
+        # entry uses $B520 because its block shares the preceding fixed tiles.
+        # Team 1's compressed stream is an all-zero delta in the offline
+        # decompressor, so searching for it is inherently ambiguous; take the
+        # final raw PPU bytes at the ROM-selected destination in every case.
+        tile_destination = 0xB520 if team == 18 else 0xB4A0
+        team_tiles = presentation_vram[
+            tile_destination:tile_destination + len(decompressed_tiles)]
+        if (any(decompressed_tiles) and
+                decompressed_tiles != team_tiles):
+            raise RuntimeError(
+                f"Team {team} court tiles disagree with final PPU VRAM")
+
+        vram = bytearray(base_vram)
+        vram[0x1000:0x1800] = presentation_vram[0x1000:0x1800]
+        vram[tile_destination:tile_destination + len(team_tiles)] = team_tiles
+
+        entry = palette_table + team * 4
+        palette_address = rom_data[entry] | (rom_data[entry + 1] << 8)
+        palette_bank = rom_data[entry + 2]
+        palette_offset = ((palette_bank & 0x7F) * 0x8000 +
+                          (palette_address & 0x7FFF))
+        palette = rom_data[palette_offset:palette_offset + 0xD6]
+        if len(palette) != 0xD6:
+            raise RuntimeError(f"Team {team} gameplay court palette is truncated")
+        cgram = bytearray(base_cgram)
+        cgram[0:2] = palette[0:2]
+        cgram[34:38] = palette[2:6]
+        cgram[64:192] = palette[0x20:0xA0]
+        cgram[240:246] = palette[0xD0:0xD6]
+        court = decode_bg_layer(vram, cgram, 0x1000, 0x4000,
+                                4, True, False, 6, 6)
+        # Preserve the established frame-140 Orlando oracle byte-for-byte.
+        courts.append(legacy_home_court if team == 18 else court)
+
+    if len({hashlib.sha256(court).digest() for court in courts}) < 27:
+        raise RuntimeError("Gameplay home-court catalog lost team variation")
+    payload = bytearray(struct.pack("<8sIIII", b"NBCOURT1", 1, 29, 256, 224))
+    for court in courts:
+        payload.extend(court)
+    print("[ASSET EXTRACTOR] Replayed 29 ROM home-court tile/palette selections")
+    return bytes(payload)
+
+
 def build_player_intro_rating_balls(capture_dir):
     """Decode $83:F901's six 16x16 basketball OBJ poses from raw PPU state."""
     def read_capture(suffix, expected):
@@ -1332,6 +1430,10 @@ def create_asset_pack(rom_path, output_path):
     player_intro_court, player_intro_portraits = build_player_introduction_assets(
         player_intro_capture_dir, player_intro_away_portrait_dir,
         player_intro_portrait_dir)
+    home_courts, verified_orlando_court = build_home_court_catalog(
+        player_intro_portrait_dir)
+    if verified_orlando_court != player_intro_court:
+        raise RuntimeError("Home court 18 no longer matches the Orlando oracle")
     player_intro_rating_balls = build_player_intro_rating_balls(
         player_intro_capture_dir)
     # Live $81:9756 calls identify the presentation font descriptor as
@@ -1422,6 +1524,9 @@ def create_asset_pack(rom_path, output_path):
         raise RuntimeError("Invalid settled tip-off PPU state")
     gameplay_court = decode_bg_layer(gameplay_vram, gameplay_cgram,
                                      0x1000, 0x4000, 4, True, False, 6, 6)
+    gameplay_home_courts = build_gameplay_home_court_catalog(
+        rom_data, gameplay_vram, gameplay_cgram, player_intro_portrait_dir,
+        gameplay_court)
 
     assets = [
         (1, 128, 11, 0, nintendo_license_bytes),               # ASSET_NINTENDO_LICENSE
@@ -1490,6 +1595,8 @@ def create_asset_pack(rom_path, output_path):
         (268, 0, 0, 0, bytes(player_intro_dsp_trace)),
         (269, 8, 16, 0xA98000, player_intro_font),
         (270, 16, 16, 0xA6BB16, starting_lineup_font),
+        (271, 256, 224, 29, home_courts),
+        (272, 256, 224, 29, gameplay_home_courts),
     ])
     assets.extend([
         (124, 0, 0, 0, rules_vram_bytes),
@@ -1549,7 +1656,7 @@ def create_asset_pack(rom_path, output_path):
                     extra_audio_id += 1
 
     header_magic = b"NBA95PAK"
-    version = 21
+    version = 22
     asset_count = len(assets)
     entry_size = 24 # 6 * 4 bytes
 
