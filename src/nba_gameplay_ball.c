@@ -113,11 +113,12 @@ NbaGameplayRimResult nba_gameplay_rim_step(NbaGameplayRimState *state,
         return NBA_GAMEPLAY_RIM_OUTER_CONTACT;
     }
 
-    /* `$85:9B90-$9BA0` is deliberately asymmetric: +24 contacts, while
-     * the negative side must be strictly below -24. */
-    state->raw_096e = 0x000Fu;
+    /* `$85:9B90-$9BB3`: both signed lip boundaries are inclusive. */
+    /* `$85:9B8C-$9B97` arms this timer once. A live countdown must not be
+     * restarted by every frame that remains inside the outer shell. */
+    if (state->raw_096e == 0u) state->raw_096e = 0x000Fu;
     state->raw_13e7 |= 0x0008u;
-    if (state->y >= 24 || state->y < -24) {
+    if (state->y >= 24 || state->y <= -24) {
         state->y = state->y < 0 ? (int16_t)-27 : (int16_t)27;
         state->velocity_y = halve_if_magnitude_at_least(state->velocity_y, 30u);
         reflect_y_to_matching_sign(state);
@@ -352,11 +353,12 @@ bool nba_gameplay_ball_self_test(void) {
         &rim, -106, 0, false, 1u, false, false, true) ==
             NBA_GAMEPLAY_RIM_OUTER_CONTACT && rim.x == -113 &&
         rim.raw_092c == 0x05A0u && rim.raw_13e7 == 0x48u;
-    rim = (NbaGameplayRimState){344, -24, 80, 20, 31, 150, 0, 0, 0, 0};
+    rim = (NbaGameplayRimState){344, -24, 80, 20, 31, 150,
+                                0, 0, 0, 0, 7, 0};
     bool outer_negative_y_edge =
         nba_gameplay_rim_step(&rim, 1u, false, false, true) ==
             NBA_GAMEPLAY_RIM_OUTER_CONTACT &&
-        rim.y == -24 && rim.velocity_y == 31;
+        rim.y == -27 && rim.velocity_y == -15 && rim.raw_096e == 7u;
     bool shell_gates =
         nba_gameplay_rim_step(&(NbaGameplayRimState){326,0,80,0,0,150,0,0,0,0},
                                1u, false, false, true) == NBA_GAMEPLAY_RIM_FLIGHT &&

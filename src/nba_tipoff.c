@@ -47,6 +47,18 @@ static int16_t fp_round(int32_t value) {
     return (int16_t)(value >= 0 ? (value + 128) >> 8 : -((-value + 128) >> 8));
 }
 
+/* Gameplay records keep the integer coordinate and its subpixel byte
+ * separately. Reading the ROM integer word is a signed floor, not the
+ * nearest-pixel conversion used by screen placement. */
+static int16_t fp_integer_word(int32_t value) {
+    return (int16_t)(value >= 0 ? value / 256 :
+                     -(((-value) + 255) / 256));
+}
+
+static int32_t fp_replace_integer_word(int32_t value, int16_t integer) {
+    return (int32_t)integer * 256 + (int32_t)((uint32_t)value & 0xFFu);
+}
+
 static int basket_x_for_side(unsigned side) {
     return side ? 336 : -336;
 }
@@ -1122,29 +1134,28 @@ static NbaGameplayRimResult cpu_update_live_ball(NbaTipoff *tipoff) {
                ball->state == NBA_BALL_BOUNCE) {
         bool rom_free_flight = ball->state == NBA_BALL_SHOT ||
                                ball->state == NBA_BALL_BOUNCE;
-        if (rom_free_flight)
-            ball->velocity_z = (int16_t)(ball->velocity_z - 0x18);
-        ball->x_fp += ball->velocity_x;
-        ball->y_fp += ball->velocity_y;
-        ball->z_fp += ball->velocity_z;
-        cpu_clamp_record_to_court(tipoff, &ball->x_fp, &ball->y_fp,
-                                  &ball->velocity_x, &ball->velocity_y);
+        NbaGameplayRimResult result = NBA_GAMEPLAY_RIM_FLIGHT;
+        /* `$85:9A78-$A656`: the current integer position is tested against
+         * the rim first. Any reflected velocity and snapped integer axis are
+         * then consumed by gravity/integration on this same logical pass. */
         if (ball->state == NBA_BALL_SHOT) {
-            /* `$85:9ACB-$A081` runs after gravity/integration in the same
-             * signed ROM court domain as actors and formation assets. */
             int hoop_x = basket_x_for_side(tipoff->offense_side);
             int hoop_y = basket_y_for_side(tipoff->offense_side);
+            int16_t before_x = fp_integer_word(ball->x_fp);
+            int16_t before_y = fp_integer_word(ball->y_fp);
+            int16_t before_z = fp_integer_word(ball->z_fp);
             NbaGameplayRimState rim = {
-                fp_round(ball->x_fp), fp_round(ball->y_fp),
-                fp_round(ball->z_fp),
+                before_x, before_y, before_z,
                 ball->velocity_x, ball->velocity_y, ball->velocity_z,
                 tipoff->rim_raw_092c, tipoff->rim_raw_0962,
                 tipoff->rim_raw_096a, tipoff->rim_raw_097c,
                 tipoff->rim_raw_096e, tipoff->rim_raw_13e7
             };
-            bool correct_side = tipoff->handler_actor / 5u ==
-                                tipoff->offense_side;
-            NbaGameplayRimResult result = nba_gameplay_rim_world_step(
+            /* `$85:9D65-$9D7B` compares the selected side context-anchor X
+             * sign with the ball X sign; it is not an owner/team test. */
+            bool correct_side = tipoff->offense_side != 0u ?
+                                before_x >= 0 : before_x < 0;
+            result = nba_gameplay_rim_world_step(
                 &rim, (int16_t)hoop_x, (int16_t)hoop_y,
                 tipoff->offense_side != 0u, tipoff->live_state_raw, false,
                 tipoff->shot_inner_veto_raw, correct_side);
@@ -1155,19 +1166,26 @@ static NbaGameplayRimResult cpu_update_live_ball(NbaTipoff *tipoff) {
             tipoff->rim_raw_096e = rim.raw_096e;
             tipoff->rim_raw_13e7 = rim.raw_13e7;
             if (result == NBA_GAMEPLAY_RIM_OUTER_CONTACT) {
-                ball->x_fp = (int32_t)rim.x * 256;
-                ball->y_fp = (int32_t)rim.y * 256;
-                ball->z_fp = (int32_t)rim.z * 256;
+                /* The ROM writes only axes touched by the collision branch;
+                 * retain each independent fractional byte. */
+                if (rim.x != before_x)
+                    ball->x_fp = fp_replace_integer_word(ball->x_fp, rim.x);
+                if (rim.y != before_y)
+                    ball->y_fp = fp_replace_integer_word(ball->y_fp, rim.y);
+                if (rim.z != before_z)
+                    ball->z_fp = fp_replace_integer_word(ball->z_fp, rim.z);
                 ball->velocity_x = rim.velocity_x;
                 ball->velocity_y = rim.velocity_y;
                 ball->velocity_z = rim.velocity_z;
             }
-            if (result != NBA_GAMEPLAY_RIM_FLIGHT &&
-                result != NBA_GAMEPLAY_RIM_OUTER_CONTACT)
-                return result;
-            if (result == NBA_GAMEPLAY_RIM_OUTER_CONTACT)
-                return result;
         }
+        if (rom_free_flight)
+            ball->velocity_z = (int16_t)(ball->velocity_z - 0x18);
+        ball->x_fp += ball->velocity_x;
+        ball->y_fp += ball->velocity_y;
+        ball->z_fp += ball->velocity_z;
+        cpu_clamp_record_to_court(tipoff, &ball->x_fp, &ball->y_fp,
+                                  &ball->velocity_x, &ball->velocity_y);
         if (!rom_free_flight)
             ball->velocity_z = (int16_t)(ball->velocity_z - 48);
         if (ball->z_fp < 0) {
@@ -1204,6 +1222,7 @@ static NbaGameplayRimResult cpu_update_live_ball(NbaTipoff *tipoff) {
                 ball->state = NBA_BALL_BOUNCE;
             }
         }
+        return result;
     }
     if (attached) {
         ball->velocity_x = (int16_t)(ball->x_fp - old_x);
@@ -1211,6 +1230,36 @@ static NbaGameplayRimResult cpu_update_live_ball(NbaTipoff *tipoff) {
         ball->velocity_z = (int16_t)(ball->z_fp - old_z);
     }
     return NBA_GAMEPLAY_RIM_FLIGHT;
+}
+
+/* Contact-tick regression for `$85:9A78-$A656`: the negative Y lip reflects
+ * velocity before this pass integrates it, while all three fractional bytes
+ * survive. This deliberately exercises the live orchestration rather than
+ * only the isolated rim classifier. */
+static bool cpu_rim_contact_tick_self_test(void) {
+    NbaTipoff state;
+    memset(&state, 0, sizeof(state));
+    state.offense_side = 1u;
+    state.handler_actor = 5u;
+    state.live_state_raw = 1u;
+    state.rim_raw_096e = 7u;
+    state.ball.state = NBA_BALL_SHOT;
+    state.ball.x_fp = 344 * 256 + 128;
+    state.ball.y_fp = -24 * 256 + 64;
+    state.ball.z_fp = 80 * 256 + 96;
+    state.ball.velocity_x = 100;
+    state.ball.velocity_y = 31;
+    state.ball.velocity_z = 150;
+    NbaGameplayRimResult result = cpu_update_live_ball(&state);
+    return result == NBA_GAMEPLAY_RIM_OUTER_CONTACT &&
+           state.ball.x_fp == 344 * 256 + 228 &&
+           state.ball.y_fp == -27 * 256 + 49 &&
+           state.ball.z_fp == 80 * 256 + 222 &&
+           state.ball.velocity_x == 100 &&
+           state.ball.velocity_y == -15 &&
+           state.ball.velocity_z == 126 &&
+           state.rim_raw_096e == 7u &&
+           (state.rim_raw_13e7 & 0x0008u) != 0u;
 }
 
 static void cpu_update_tip_ball(NbaTipoff *tipoff) {
@@ -1865,6 +1914,7 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
     if (!tipoff || !assets || !session ||
         !nba_gameplay_rng_self_test() || !nba_gameplay_ai_self_test() ||
         !nba_gameplay_ball_self_test() || !nba_gameplay_foul_self_test() ||
+        !cpu_rim_contact_tick_self_test() ||
         !cpu_expired_inbound_self_test() ||
         !ball_attachment_assets_valid(assets) ||
         !nba_assets_gameplay_court_panorama(assets, session->right_team) ||

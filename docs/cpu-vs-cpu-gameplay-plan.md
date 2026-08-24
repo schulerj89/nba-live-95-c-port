@@ -630,3 +630,33 @@ court corner before collision visitation. A 50,000-frame run again sustains
 both-team scoring, collision-selected inbounds, transfers, and catches.
 Evidence is under `build/evidence/cpu-inbound-v2/`. This checkpoint does not
 claim final half-court spacing or the remaining collision/rim/animation work.
+
+Increment 4V uses the working recompilation as an instruction-exact gameplay
+oracle instead of treating it only as a rendered reference. A focused
+`snesrecomp` configuration for bank `$85` exposes the complete
+`$85:9ACB-$A656` register/memory flow. Manifest AOT can lift the edge response
+at `$9DAC`, miss response at `$9F01`, gravity at `$A3B7`, and clamp at `$A656`;
+the monolithic entry remains LLE in that mode because the scoring call
+`$85:A346->$83:CE36` has an unproven transitive exit. Direct regeneration still
+emits the full body, making both paths useful translation evidence without
+copying emulator dispatch or CPU-flag machinery into the port.
+
+That evidence corrected the live 30-Hz ball order. `$85:9A78-$A345` tests the
+current integer position and mutates rim velocity/state first; only then does
+`$85:A3B7-$A5F1` apply gravity and integrate, followed by the `$85:A656+`
+court clamp. The port formerly integrated and clamped before rim contact and
+returned immediately, delaying a reflected impulse by one logical tick. It now
+uses the ROM integer word for collision, applies the response before same-tick
+integration, and replaces only collision-touched integer axes while retaining
+all subpixel bytes. The make gate now compares the ball X sign with the selected
+basket context sign as `$85:9D65-$9D7B` does, replacing the former tautological
+handler-team check. A live-orchestration self-test locks that a `Y=-24` lip
+contact moves with its reflected velocity on the contact tick.
+
+Two outer-shell details are also corrected directly from `$85:9B8C-$9BB3`:
+negative Y contact is inclusive at `-24`, and `$096E=15` is installed only
+when the timer is zero rather than restarted on every contact. Exact inner
+distance-7 and distance-8..10 velocity responses are now decoded, but remain
+the next checkpoint because their `$0920/$0948/$094A/$0970/$0978/$09F8/`
+`$1866/$07F6` inputs and forced-state oracle vectors must be represented
+together. This checkpoint does not relabel those branches as generic bounce.
