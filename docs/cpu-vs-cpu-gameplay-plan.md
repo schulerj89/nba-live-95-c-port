@@ -181,3 +181,11 @@ the landing point; ownership changes only on the C equivalent of
 `$86:BAA2/$86:BAEE`, so offensive rebounds remain possible. Raw contest and
 timing inputs to `$86:9ED8-$A11D` are still explicit defaults, and rim response
 is still a bounded/damped host approximation pending the full collision port.
+
+The CPU-only Mesen oracle now exports the live `$07F6` LFSR state instead of
+the former `FFFF` placeholder and directly probes `$87:9245/$87:9BD0` behavior
+dispatch plus `$85:963D/$85:980B/$85:985F` actor physics/coordinate commits.
+A fresh 1,801-frame capture validates 23 possession-owner changes, 994 CPU
+mode-11 actor frames, and 1,677 distinct RNG states. This makes subsequent
+same-seed policy and scheduler comparisons reproducible; the ignored raw
+capture remains evidence rather than a runtime asset.

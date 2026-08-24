@@ -25,6 +25,7 @@ def main():
         for index in range(1, len(rows)))
     cpu_mode_11 = sum(actor["raw"]["control_mode"] == 11 for row in rows
                       for actor in row["actors"])
+    rng_states = {row["possession"]["rng_state_raw"] for row in rows}
     if bad_assignments or controlled or human_actor_frames:
         raise AssertionError(
             f"not CPU-only: assignments={bad_assignments[:8]} "
@@ -33,8 +34,12 @@ def main():
         raise AssertionError(
             f"oracle lacks live CPU behavior: possession_changes={possession_changes} "
             f"mode11={cpu_mode_11}")
+    if rng_states == {65535} or len(rng_states) < 16:
+        raise AssertionError(
+            f"oracle lacks live $07F6 RNG state: values={sorted(rng_states)[:16]}")
     print(f"CPU-vs-CPU ROM oracle PASS: frames={len(rows)} "
-          f"possession_changes={possession_changes} mode11_actor_frames={cpu_mode_11}")
+          f"possession_changes={possession_changes} mode11_actor_frames={cpu_mode_11} "
+          f"rng_states={len(rng_states)}")
 
 
 if __name__ == "__main__":

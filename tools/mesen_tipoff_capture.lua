@@ -120,6 +120,11 @@ local probes = {
     [0x86d3f9]="$86:D3F9", [0x86b04c]="$86:B04C",
     [0x86ecf4]="$86:ECF4", [0x87b3bd]="$87:B3BD",
     [0x87b538]="$87:B538", [0x87b555]="$87:B555", [0x87b832]="$87:B832",
+    [0x879245]="$87:9245 actor behavior dispatch",
+    [0x879bd0]="$87:9BD0 behavior jump table",
+    [0x85963d]="$85:963D actor physics entry",
+    [0x85980b]="$85:980B actor X commit",
+    [0x85985f]="$85:985F actor Y commit",
 }
 for address, name in pairs(probes) do
     emu.addMemoryCallback(function()
@@ -237,7 +242,7 @@ local function dump_gameplay_jsonl(frame)
         "\"actor_pointer_raw\":%u}," ..
         "\"possession\":{\"actor\":%d,\"team\":%d," ..
         "\"candidate_raw\":%d,\"play_code_raw\":%u," ..
-        "\"rng_state_raw\":65535}," ..
+        "\"rng_state_raw\":%u}," ..
         "\"camera\":{\"x\":%d,\"y\":%d,\"routine\":%u," ..
         "\"raw_085c\":%u,\"raw_085e\":%u,\"raw_0860\":%u," ..
         "\"raw_0862\":%u,\"raw_086c\":%u,\"raw_086e\":%u," ..
@@ -250,7 +255,7 @@ local function dump_gameplay_jsonl(frame)
         exported_control_actor, force_cpu_vs_cpu and -1 or signed_word(0x093a),
         signed_word(0x0954), exported_control_actor,
         force_cpu_vs_cpu and 0 or word(0x0940), possession_actor,
-        signed_word(0x093a), signed_word(0x0946), word(0x0996),
+        signed_word(0x093a), signed_word(0x0946), word(0x0996), word(0x07f6),
         signed_word(0x085c), signed_word(0x0860), 0x859192,
         word(0x085c), word(0x085e), word(0x0860), word(0x0862),
         word(0x086c), word(0x086e), word(0x0874), word(0x0876),
