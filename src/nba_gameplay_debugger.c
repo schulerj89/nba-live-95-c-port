@@ -111,10 +111,18 @@ void nba_gameplay_debugger_render(const NbaGameplayDebugger *debugger,
                  actor->ai_target_actor, actor->assignment_direction_raw,
                  actor->velocity_x, actor->velocity_y);
         text(renderer, 6, 180, line, 0xFFFFFFFFu);
-        snprintf(line, sizeof(line), "H:%u POS:%d ASG:%u DST:%u R:%u B:%u",
-                 telemetry->controlled_actor, telemetry->possession_actor,
-                 actor->assignment_current_raw, actor->assignment_distance_raw,
-                 actor->reaction_threshold_raw, actor->movement_boost_raw);
+        if (actor->control_mode_raw == 15u)
+            snprintf(line, sizeof(line),
+                     "PASS B:%u D:%u F:%d PH:%u/%u REL:%u",
+                     actor->pass_band_62_raw, actor->pass_direction_66_raw,
+                     actor->pass_family_c0_raw, actor->upper_phase_raw,
+                     actor->pass_release_threshold_raw,
+                     actor->pass_released_raw);
+        else
+            snprintf(line, sizeof(line), "H:%u POS:%d ASG:%u DST:%u R:%u B:%u",
+                     telemetry->controlled_actor, telemetry->possession_actor,
+                     actor->assignment_current_raw, actor->assignment_distance_raw,
+                     actor->reaction_threshold_raw, actor->movement_boost_raw);
         text(renderer, 6, 192, line, 0xFF9EF7A9u);
     } else {
         snprintf(line, sizeof(line), "CAM:%d,%d S:%d G:%u R:$%06X",
@@ -183,6 +191,8 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
             "\"play_mirror_raw\":%u,\"play_event_wait_raw\":%u,"
             "\"play_request_raw\":%u,\"play_cycle_raw\":%u,"
             "\"play_hold_raw\":%u,\"special_actor_raw\":%u,"
+            "\"pass_actor_raw\":%d,\"pass_receiver_raw\":%d,"
+            "\"pass_active_raw\":%u,\"pass_distance_raw\":%u,"
             "\"play_selector_raw\":[%d,%d,%d],"
             "\"rng_state_raw\":%u},\"match\":{\"score_left_raw\":%u,"
             "\"score_right_raw\":%u,\"shot_value_raw\":%u,"
@@ -213,6 +223,8 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
             telemetry->play_event_wait_raw, telemetry->play_request_raw,
             telemetry->play_cycle_raw,
             telemetry->play_hold_raw, telemetry->special_actor_raw,
+            telemetry->pass_actor_raw, telemetry->pass_receiver_raw,
+            telemetry->pass_active_raw, telemetry->pass_distance_raw,
             telemetry->play_selector_raw[0],
             telemetry->play_selector_raw[1], telemetry->play_selector_raw[2],
             telemetry->rng_state_raw,
@@ -257,8 +269,11 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
                 "\"direction_4e\":%u,\"direction_50\":%u,"
                 "\"direction_52\":%u,\"target_x_56\":%d,"
                 "\"target_y_58\":%d,\"control_mode\":%u,"
-                "\"mode_saved_62\":%u,"
-                "\"control_mode_saved\":%u,\"side_group\":%u,"
+                "\"mode_saved_62\":%u,\"pass_band_62\":%u,"
+                "\"pass_direction_66\":%u,"
+                "\"control_mode_saved\":%u,\"saved_mode_84\":%u,"
+                "\"pass_family_c0\":%d,\"pass_release_threshold\":%u,"
+                "\"pass_released\":%u,\"side_group\":%u,"
                 "\"assignment_base\":%u,\"assignment_current\":%u,"
                 "\"assignment_alternate\":%u,\"assignment_distance\":%u,"
                 "\"assignment_direction\":%u,\"pair_distance\":%u,"
@@ -282,7 +297,10 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
                 a->motion_3c_raw, a->direction_4e_raw, a->direction_50_raw,
                 a->direction_52_raw, a->target_x_56_raw, a->target_y_58_raw,
                 a->control_mode_raw, a->mode_saved_62_raw,
-                a->control_mode_saved_raw, a->side_group_raw,
+                a->pass_band_62_raw, a->pass_direction_66_raw,
+                a->control_mode_saved_raw, a->saved_mode_84_raw,
+                a->pass_family_c0_raw, a->pass_release_threshold_raw,
+                a->pass_released_raw, a->side_group_raw,
                 a->assignment_base_raw, a->assignment_current_raw,
                 a->assignment_alternate_raw, a->assignment_distance_raw,
                 a->assignment_direction_raw, a->pair_distance_raw,

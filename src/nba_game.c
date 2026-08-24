@@ -185,6 +185,18 @@ static void nba_game_debug_lines(const NbaGame *game, NbaDebugLines *out) {
                  s->ball.velocity_y / 256, s->ball.velocity_z / 256,
                  s->play_code, s->play_step_raw, s->play_countdown_raw,
                  s->play_event_wait_raw);
+        if (s->pass_active_raw && s->pass_actor_raw >= 0 &&
+            s->pass_actor_raw < NBA_GAMEPLAY_ACTOR_COUNT) {
+            const NbaTipoffActor *passer = &s->actors[s->pass_actor_raw];
+            snprintf(out->line[out->count++], NBA_DEBUG_LINE_SIZE,
+                     "PASS $0942:%d $0946:%d D:%u B:%u DIR:%u F:%d PH:%u/%u R:%u",
+                     s->pass_actor_raw, s->pass_receiver_raw,
+                     s->pass_distance_raw, passer->pass_band_raw,
+                     passer->pass_direction_raw, passer->pass_family_raw,
+                     passer->upper_animation_phase_raw,
+                     passer->pass_release_threshold_raw,
+                     passer->pass_released_raw ? 1u : 0u);
+        }
         snprintf(out->line[out->count++], NBA_DEBUG_LINE_SIZE,
                  "SCORE %u-%u VAL:%u CH:%u MISS:%u/%u IN:%u/%u T:%u A2:%02X ACT:%u",
                  s->session->score[0], s->session->score[1],

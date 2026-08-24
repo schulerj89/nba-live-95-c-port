@@ -47,7 +47,13 @@ typedef struct {
     int16_t target_y_58_raw;
     uint16_t control_mode_raw;
     uint16_t mode_saved_62_raw;
+    uint16_t pass_band_62_raw;
+    uint16_t pass_direction_66_raw;
     uint16_t control_mode_saved_raw;
+    uint16_t saved_mode_84_raw;
+    int16_t pass_family_c0_raw;
+    uint8_t pass_release_threshold_raw;
+    uint8_t pass_released_raw;
     uint16_t side_group_raw;
     uint16_t assignment_base_raw;
     uint16_t assignment_current_raw;
@@ -127,6 +133,10 @@ typedef struct {
     uint16_t inbound_actor_raw;
     uint16_t inbound_timer_raw;
     uint16_t ball_activity_raw;
+    int16_t pass_actor_raw;
+    int16_t pass_receiver_raw;
+    uint16_t pass_active_raw;
+    uint16_t pass_distance_raw;
     int8_t collision_actor_a;
     int8_t collision_actor_b;
     int16_t camera_x, camera_y;

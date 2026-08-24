@@ -16,8 +16,8 @@ FORMATION = [
     (-8, -3), (16, 83), (24, -80), (-104, 56), (-96, -59),
 ]
 EXPECTED_RGB = {
-    600: "08279bf43d01079c8dfc6aa6c8391d3a04881994a5dbc74759a43516566dc7a3",
-    1300: "53007a95f5865214b7e093c1520ef7328f5b09732d5017eb63ae9b762c22fc77",
+    600: "3c8c2b53aa486deeaea82c222bfafc51b52437ce76040f3c57a8f73719899261",
+    1300: "c663e07d664bf0780566e23ab3efa424ae38f1ab3a110936fdf7c7f4c74d2619",
 }
 
 
@@ -121,7 +121,12 @@ def main():
         installs = [0, 0]
         completions = [0, 0]
         for previous, current in zip(rows[218:], rows[219:]):
-            possession = current["possession"]
+            # Actor pass runs before the rebound/catch commit in the same
+            # host tick. If possession changes, a bit-$08 rise still belongs
+            # to the previous play graph, exactly like `$87:8F01` ordering.
+            possession = previous["possession"] if \
+                previous["possession"]["team"] != current["possession"]["team"] \
+                else current["possession"]
             for before, after in zip(previous["actors"], current["actors"]):
                 old_flags = before["raw"]["behavior_flags"]
                 new_flags = after["raw"]["behavior_flags"]
@@ -476,6 +481,50 @@ def main():
                 repr(next((pair for pair in attached
                            if not attachment_matches(pair)), None)))
 
+        # `$86:AB2D-$AF65/$86:A6B3-$A790`: mode 15 installs one of the
+        # live-covered pass states, keeps the ball attached through the
+        # resource phase threshold, then releases it via the ROM table.
+        pass_rows = []
+        release_rows = []
+        for index, row in enumerate(rows[219:], 219):
+            possession = row["possession"]
+            actor_id = possession["pass_actor_raw"]
+            if not possession["pass_active_raw"]:
+                continue
+            if actor_id < 0 or actor_id >= 10 or \
+                    possession["pass_receiver_raw"] < 0 or \
+                    possession["pass_receiver_raw"] >= 10:
+                raise AssertionError(f"invalid `$0942/$0946` pass actors: {possession}")
+            actor = row["actors"][actor_id]
+            raw = actor["raw"]
+            expected_band = 0 if possession["pass_distance_raw"] < 0x41 else \
+                6 if possession["pass_distance_raw"] < 0x79 else \
+                12 if possession["pass_distance_raw"] < 0xC9 else \
+                18 if possession["pass_distance_raw"] < 0x119 else \
+                24 if possession["pass_distance_raw"] < 0x191 else 30
+            if raw["pass_band_62"] != expected_band or \
+                    raw["mode_saved_62"] != expected_band or \
+                    raw["pass_direction_66"] >= 8 or \
+                    raw["saved_mode_84"] != raw["control_mode_saved"] or \
+                    actor["animation"] not in (0x2D, 0x2E, 0x2F, 0x30, 0x31):
+                raise AssertionError(f"mode-15 pass metadata diverged: {actor}")
+            pass_rows.append((index, row, actor))
+            if raw["pass_released"] and index and \
+                    not rows[index - 1]["actors"][actor_id]["raw"]["pass_released"]:
+                release_rows.append((index, row, actor, rows[index - 1]))
+        if len(pass_rows) < 100 or not release_rows:
+            raise AssertionError("ROM mode-15 pass lifecycle was not sustained")
+        for _, row, actor, before in release_rows:
+            raw = actor["raw"]
+            before_actor = before["actors"][actor["id"]]
+            if before_actor["raw"]["upper_phase"] <= \
+                    raw["pass_release_threshold"] or \
+                    row["ball"]["state"] != 3 or row["ball"]["owner"] != -1:
+                raise AssertionError("pass released before `$86:A736-$A747` phase gate")
+        if not {0x2D, 0x2F, 0x30}.issubset(
+                {actor["animation"] for _, _, actor in pass_rows}):
+            raise AssertionError("live-covered pass-animation families regressed")
+
         for first in range(220, 1900, 240):
             last = min(first + 239, len(rows) - 1)
             counts = []
@@ -522,6 +571,10 @@ def main():
                    "$86:A110", "$86:A17D", "$86:BAA2/$86:BAEE",
                     "$86:E923-$E96E", "$86:B0F7-$B153",
                    "$85:A82C-$AB16", "nba_gameplay_velocity_step",
+                   "$86:AB2D-$AF65", "$86:A6B3-$A790",
+                   "$86:9DDB-$9DE4", "$86:9B84-$9B8F",
+                   "nba_gameplay_pass_direction", "cpu_begin_rom_pass",
+                   "cpu_update_rom_passer",
                    "nba_player_gameplay_movement_profile",
                    "nba_player_gameplay_shot_ratings", "cpu_commit_rebound"):
         if marker not in implementation:

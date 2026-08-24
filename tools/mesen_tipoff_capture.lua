@@ -298,6 +298,8 @@ local function dump_gameplay_jsonl(frame)
         "\"play_mirror_raw\":%u,\"play_event_wait_raw\":%u," ..
         "\"play_request_raw\":%u,\"play_cycle_raw\":%u," ..
         "\"play_hold_raw\":%u,\"special_actor_raw\":%u," ..
+        "\"pass_actor_raw\":%d,\"pass_receiver_raw\":%d," ..
+        "\"pass_active_raw\":%u,\"pass_distance_raw\":%u," ..
         "\"play_selector_raw\":[%d,%d,%d]," ..
         "\"rng_state_raw\":%u}," ..
         "\"camera\":{\"x\":%d,\"y\":%d," ..
@@ -316,6 +318,8 @@ local function dump_gameplay_jsonl(frame)
         signed_word(0x093a), signed_word(0x0946), word(0x0996),
         signed_word(0x0998), signed_word(0x099a), word(0x099c), word(0x099e),
         word(0x0994), word(0x09a4), word(0x09d0), word(0x09a2),
+        signed_word(0x0942), signed_word(0x0946),
+        word(0x09c4), word(0x09da),
         signed_word(0x09aa),
         signed_word(0x09ac), signed_word(0x09ae), word(0x07f6),
         signed_word(0x085c), signed_word(0x0860), possession_actor,
@@ -381,9 +385,11 @@ local function dump_gameplay_jsonl(frame)
             "\"direction_4e\":%u,\"direction_50\":%u," ..
             "\"direction_52\":%u,\"target_x_56\":%d," ..
             "\"target_y_58\":%d,\"control_mode\":%u," ..
-            "\"mode_saved_62\":%u,\"dispatch_dt_c6\":%u," ..
+            "\"mode_saved_62\":%u,\"pass_band_62\":%u," ..
+            "\"pass_direction_66\":%u,\"dispatch_dt_c6\":%u," ..
             "\"think_dt_c8\":%u," ..
-            "\"control_mode_saved\":%u,\"side_group\":%u," ..
+            "\"control_mode_saved\":%u,\"saved_mode_84\":%u," ..
+            "\"pass_family_c0\":%d,\"side_group\":%u," ..
             "\"assignment_base\":%u,\"assignment_current\":%u," ..
             "\"assignment_alternate\":%u,\"assignment_distance\":%u," ..
             "\"assignment_direction\":%u,\"pair_distance\":%u," ..
@@ -409,9 +415,11 @@ local function dump_gameplay_jsonl(frame)
             word(base + 0x3a), word(base + 0x3c), word(base + 0x4e),
             word(base + 0x50), word(base + 0x52), signed_word(base + 0x56),
             signed_word(base + 0x58), word(base + 0x5e), word(base + 0x62),
+            word(base + 0x62), word(base + 0x66),
             actor_dispatch_c6[actor] or 0xffff,
             actor_dispatch_c8[actor] or 0xffff,
-            word(base + 0x84), word(base + 0x6e), word(base + 0x76),
+            word(base + 0x84), word(base + 0x84), signed_word(base + 0xc0),
+            word(base + 0x6e), word(base + 0x76),
             word(base + 0x74), word(base + 0x78), word(base + 0x8e),
             word(base + 0x86), word(base + 0x8a), word(base + 0x60),
             signed_byte(base + 0x16), word(base + 0x4c), word(base + 0x7a),

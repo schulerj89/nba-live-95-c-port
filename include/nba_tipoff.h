@@ -61,8 +61,14 @@ typedef struct {
     uint8_t lower_animation_state;
     uint16_t upper_animation_tick;
     uint16_t lower_animation_tick;
+    uint16_t upper_animation_phase_raw; /* actor `+$3A` */
     uint8_t control_mode;
-    uint8_t saved_control_mode;
+    uint8_t saved_control_mode;         /* actor `+$84` */
+    uint16_t pass_band_raw;             /* actor `+$62`: 0,6,...,30 */
+    uint16_t pass_direction_raw;        /* actor `+$66` */
+    int16_t pass_family_raw;            /* actor `+$C0` */
+    uint8_t pass_release_threshold_raw;
+    bool pass_released_raw;
     uint8_t requested_direction;
     uint8_t movement_direction;
     uint8_t assignment_actor;
@@ -124,6 +130,10 @@ typedef struct {
     uint16_t inbound_state_raw;    /* `$0952` */
     uint16_t inbound_actor_raw;    /* `$0954` */
     uint16_t ball_activity_raw;    /* `$0948`, canonical shot detach */
+    int16_t pass_actor_raw;        /* `$0942` */
+    int16_t pass_receiver_raw;     /* `$0946` */
+    uint16_t pass_active_raw;      /* `$09C4` */
+    uint16_t pass_distance_raw;    /* `$09DA` */
     /* Persistent globals consumed/mutated by `$85:9ACB-$A081`. Keep their
      * raw names until the surrounding writers establish narrower labels. */
     uint16_t rim_raw_092c;

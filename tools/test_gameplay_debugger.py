@@ -56,6 +56,8 @@ def main():
             raise AssertionError("tip-off introduced a human-controlled actor")
         required = {"base", "action", "flags", "control_mode", "side_group",
                     "target_x_56", "target_y_58", "mode_saved_62",
+                    "pass_band_62", "pass_direction_66", "saved_mode_84",
+                    "pass_family_c0", "pass_release_threshold", "pass_released",
                     "assignment_current", "reaction_threshold",
                     "movement_boost_72", "controller_assignment_16",
                     "movement_magnitude_4c", "recovery_inhibit_7a", "upper_restart",
@@ -66,6 +68,9 @@ def main():
                 not {"raw_087a", "subject_raw", "side_group_raw"}.issubset(
                     sample["camera"]) or "flags_raw" not in sample["ball"]:
             raise AssertionError("controller/camera/ball telemetry schema is incomplete")
+        if not {"pass_actor_raw", "pass_receiver_raw", "pass_active_raw",
+                "pass_distance_raw"}.issubset(sample["possession"]):
+            raise AssertionError("mode-15 pass telemetry schema is incomplete")
         scheduler = sample["scheduler"]
         if set(scheduler) != {"due_raw", "actor_pass_dt_raw",
                              "actor_pass_mask_raw", "actor_pass_order_raw"}:

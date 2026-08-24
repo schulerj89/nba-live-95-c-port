@@ -454,3 +454,20 @@ and the 16-bit overflow before the `3*x/2` slope test. Boundary and overflow
 vectors lock those non-obvious 65816 semantics. Asset pack v28 also preserves
 roster bytes `+$39/+$3E` in `NBPROST2` and exposes a typed accessor, so the
 next mode-15 initializer can read the same per-player inputs as the ROM.
+
+Increment 4O activates the first evidence-complete mode-15 slice. At the pass
+boundary, C now predicts passer/receiver positions with the ROM's `/16` and
+`/8` velocity terms, computes `$09DA`, installs actor `+$62/+$66/+$C0`, and
+selects the live-covered grounded upper states `$2D/$2E/$2F/$30/$31` without
+changing the lower channel. `$86:A6B3-$A790` keeps `$093E` and the asset-based
+ball attachment intact while the upper `+$3A` phase is at or below the ROM
+threshold. Only then does the packed `$86:9C6F` duration/vertical record lead
+the receiver and detach the pass. JSON/F8 comparison state now distinguishes
+the old mislabeled `+$62` from the true saved mode at `+$84` and exports
+`$0942/$0946/$09C4/$09DA`. Unsupported aligned `$2A-$2C`, airborne `$AFC4`,
+and `$AF66` catch-preinit branches remain explicit gates rather than guessed
+fallback animations.
+The release also restores `$0936=0` at `$86:9B84-$9B8F`; the shot initializer
+then writes `$0936=1` at `$86:9DDB-$9DE4`. This previously hidden state pair
+is regression-locked through successful rim makes, score writes, and the
+next-pass `$0994` request/consume lifecycle.

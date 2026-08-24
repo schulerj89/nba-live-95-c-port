@@ -20,13 +20,17 @@ single-frame stepping in headless runs.
 
 F8 page 3 and the normal CLI debug state expose
 `PLAY:code/step T:count W:wait R:request`.
-JSON adds raw `$0994/$0998/$099A/$099C/$099E/$09A2/$09A4/$09D0` values plus the three
+JSON adds raw `$0942/$0946/$0994/$0998/$099A/$099C/$099E/$09A2/$09A4/$09C4/$09D0/$09DA`
+values plus the three
 side-relative `$09AA/$09AC/$09AE` selectors. Positive countdown records advance
 once per completed 30-Hz actor pass. Negative event records preserve signed
 underflow while `$85:B24C` scans the active five actors; signed actor `+$16`
 or `+$7E & $40` releases each actor, and all five clear `$099E` and advance.
 Each actor's JSON `raw` object also exposes `controller_assignment_16`,
 `movement_magnitude_4c`, `recovery_inhibit_7a`, and `behavior_flags`.
+Mode-15 rows additionally expose actor `+$62` pass band, `+$66` direction,
+`+$84` saved mode, signed `+$C0` family, the selected release threshold, and
+whether `$86:A6B3` has detached the ball.
 
 ## Confirmed ROM map
 
@@ -58,6 +62,8 @@ without changing the comparison contract.
 | `$85:B4B9–$B50D`, `$85:F5E4–$F715` | `$09A2` clear-lane cutter cadence and blocker rectangle |
 | `$0948` | canonical detached-shot activity; ORed with `$097C` for formation edge routing |
 | `$86:9C6F–$9CDA`, `$86:A7A0–$A7A7` | pass launch records and animation release thresholds |
+| `$85:F3C3–$F472` | fine 16-direction and weighted-distance helper used by pass setup |
+| `$86:AB2D–$AF65`, `$86:A6B3–$A790` | mode-15 pass animation selection, attached phase gate, and release |
 | `$85:9192–$93F4` | camera subject transform and adaptive approach |
 | `$85:8EE6–$90C3` | circular court streamer sourced from `$A0:8006` |
 | `$85:9D40–$A079` | final hoop/rim/made classification |
