@@ -18,7 +18,7 @@ FORMATION = [
 ]
 EXPECTED_RGB = {
     600: "360d3daee6e864a067b082ec976927bb076809f3d10dba483da16230a6a43e83",
-    1300: "be5cd8c2ef4234369b095f55bff2fd788e2e4a2201cd024fb8b8030668e2d074",
+    1300: "e1f03ba17a9da091c5690879eec2e6e17f04ebcd516143c3963a1b8e53efd47e",
 }
 
 
@@ -34,7 +34,7 @@ def main():
         trace = root / "cpu_gameplay.jsonl"
         command = [
             args.exe, "--headless", "--rom", args.rom, "--assets", args.pack,
-            "--tipoff-only", "--frames", "35000", "--gameplay-trace", str(trace),
+            "--tipoff-only", "--frames", "50000", "--gameplay-trace", str(trace),
             "--debug-state",
         ]
         result = subprocess.run(command, capture_output=True, text=True, check=False)
@@ -42,8 +42,8 @@ def main():
                 "BALL M:" not in result.stdout:
             raise AssertionError(result.stdout + result.stderr)
         rows = [json.loads(line) for line in trace.read_text().splitlines()]
-        if len(rows) != 35000:
-            raise AssertionError(f"expected 35000 CPU frames, got {len(rows)}")
+        if len(rows) != 50000:
+            raise AssertionError(f"expected 50000 CPU frames, got {len(rows)}")
 
         def frame(number):
             return rows[number - 1]
@@ -86,7 +86,7 @@ def main():
                 mode = actor["raw"]["control_mode"]
                 if mode >= len(behavior_targets) or \
                         actor["ai_routine"] != behavior_targets[mode]:
-                    raise AssertionError(f"$87:9245 mode dispatch changed: {actor}")
+                    raise AssertionError(f"$87:9244 mode dispatch changed: {actor}")
                 if actor["actor_routine"] != 0x85963D:
                     raise AssertionError("actor integration lost $85:963D")
                 if actor["raw"]["upper_resource"] == 0xFFFF or \
@@ -140,8 +140,10 @@ def main():
             elif run:
                 dead_runs.append(run)
                 run = []
-        if not dead_runs or any(values[0] != 300 or values[-1] != 0 or
-                                not {240, 120, 60, 0}.issubset(values) or
+        if not dead_runs or any(values[0] != 300 or values[-1] not in (61, 0) or
+                                not {240, 120}.issubset(values) or
+                                (values[-1] == 0 and
+                                 not {60, 0}.issubset(values)) or
                                 any(a < b for a, b in zip(values, values[1:]))
                                 for values in dead_runs):
             raise AssertionError("$092E inbound thresholds changed: " +

@@ -89,8 +89,56 @@ void nba_gameplay_miss_offset(uint8_t index, bool left_basket,
     if (dy) *dy = (int16_t)y;
 }
 
+uint16_t nba_gameplay_shot_flight_duration(int16_t dx, int16_t dy) {
+    /* First two words of each `$86:A4AB` record. The third word is not read by
+     * the normal launch path and intentionally remains unlabeled. */
+    static const uint16_t records[13][2] = {
+        {0x0040,0x0028},{0x0060,0x002E},{0x0080,0x0032},
+        {0x00A0,0x0038},{0x00B8,0x003C},{0x00E8,0x0042},
+        {0x0118,0x0046},{0x0150,0x0049},{0x0180,0x004C},
+        {0x01B0,0x004E},{0x01E0,0x0050},{0x0250,0x0056},
+        {0x0640,0x005A}
+    };
+    uint16_t distance = nba_gameplay_hoop_distance(dx, dy);
+    for (unsigned i = 0; i < 13u; ++i)
+        if (distance < records[i][0]) return records[i][1];
+    return records[12][1];
+}
+
+void nba_gameplay_shot_launch(int32_t ball_x_fp, int32_t ball_y_fp,
+                              int32_t ball_z_fp, int16_t target_x,
+                              int16_t target_y, int16_t *velocity_x,
+                              int16_t *velocity_y, int16_t *velocity_z) {
+    /* `$86:A1BD-$A292`. Host positions are 24.8, which exactly preserve the
+     * ROM's signed 8.8 velocity increments used by this base launch branch. */
+    int32_t dx_fp = (int32_t)target_x * 256 - ball_x_fp;
+    int32_t dy_fp = (int32_t)target_y * 256 - ball_y_fp;
+    uint16_t duration = nba_gameplay_shot_flight_duration(
+        (int16_t)(dx_fp / 256), (int16_t)(dy_fp / 256));
+    int32_t dz_fp = 80 * 256 - ball_z_fp;
+    if (velocity_x) *velocity_x = (int16_t)(dx_fp / (int32_t)duration);
+    if (velocity_y) *velocity_y = (int16_t)(dy_fp / (int32_t)duration);
+    if (velocity_z) *velocity_z = (int16_t)(
+        dz_fp / (int32_t)duration + 12 * (int32_t)duration + 0x18);
+}
+
+int16_t nba_gameplay_arithmetic_shift_right(int16_t value, unsigned amount) {
+    /* Make the 65816 signed `ROR` result explicit instead of relying on the
+     * implementation-defined result of shifting a negative C integer. */
+    if (amount == 0u) return value;
+    if (amount >= 15u) return value < 0 ? -1 : 0;
+    uint16_t raw = (uint16_t)value;
+    uint16_t shifted = (uint16_t)(raw >> amount);
+    if (value < 0) shifted |= (uint16_t)(0xFFFFu << (16u - amount));
+    return (int16_t)shifted;
+}
+
 bool nba_gameplay_ball_self_test(void) {
-    return nba_gameplay_ball_is_make(1, false, false, true, 0, 0, 74) &&
+    int16_t vx = 0, vy = 0, vz = 0;
+    nba_gameplay_shot_launch(0, 0, 20 * 256, 63, 0, &vx, &vy, &vz);
+    bool launch_ok = vx == 403 && vy == 0 && vz == 888;
+    return launch_ok &&
+           nba_gameplay_ball_is_make(1, false, false, true, 0, 0, 74) &&
            nba_gameplay_ball_is_make(1, false, false, true, 6, 0, 82) &&
            !nba_gameplay_ball_is_make(1, false, false, true, 7, 0, 82) &&
            !nba_gameplay_ball_is_make(1, false, false, true, 0, 0, 73) &&
@@ -106,5 +154,10 @@ bool nba_gameplay_ball_self_test(void) {
            nba_gameplay_shot_value(false, 224, 178, true) == 3u &&
            nba_gameplay_shot_value(true, 300, 0, true) == 1u &&
            nba_gameplay_shot_chance(0xC0, 0xC0, 0, true) == 210u &&
-           nba_gameplay_shot_chance(0xA0, 0xA0, 2, true) == 110u;
+           nba_gameplay_shot_chance(0xA0, 0xA0, 2, true) == 110u &&
+           nba_gameplay_shot_flight_duration(63, 0) == 40u &&
+           nba_gameplay_shot_flight_duration(64, 0) == 46u &&
+           nba_gameplay_shot_flight_duration(1599, 0) == 90u &&
+           nba_gameplay_arithmetic_shift_right(-17, 4) == -2 &&
+           nba_gameplay_arithmetic_shift_right(17, 4) == 1;
 }

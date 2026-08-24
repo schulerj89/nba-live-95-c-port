@@ -39,7 +39,7 @@ correlates instructions and calls in those windows:
 - `$85:F34F` quantizes a target delta to one of eight directions and
   `$87:B832–$B952` applies its movement vector. The C scene uses that same
   target/direction/update split rather than a list of captured screen points.
-- `$87:9245/$9BD0` dispatches actor `+$5E` behavior modes. CPU-vs-CPU leaves every
+- `$87:9244/$9BD0` dispatches actor `+$5E` behavior modes. CPU-vs-CPU leaves every
   actor on its CPU branch; actor 8 being selected as ballhandler does not make
   it a human-controlled player.
 - `$85:9192–$93F4` follows the selected actor proxy; `$85:8EE6–$90C3`
@@ -83,7 +83,7 @@ per-frame actor state, routine hits, sprite origins, raw PPU states, and frames.
 
 `tools/test_tipoff.py` locks pack version 18, the raw ball/court assets, the
 formation/jump/contact cadence, Ghidra-address diagnostics, and RGB hashes at
-frames 90, 170, and 220. `tools/test_cpu_gameplay.py` runs through frame 2000
+frames 90, 170, and 220. `tools/test_cpu_gameplay.py` runs through frame 50,000
 and rejects stationary teams, detached hand possession, missing pass/shot/
 bounce modes, missing offense changes, missing recurring play codes, or changed
 post-tip proof frames.

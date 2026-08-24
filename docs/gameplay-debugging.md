@@ -34,7 +34,7 @@ without changing the comparison contract.
 | `$34EB + slot*$100` | ten player actor records |
 | `$3EEB` | ball actor; position `$3EEF/$3EF3/$3EF7` |
 | `$0946` | transient possession/ball-owner player index |
-| `$87:9245/$9BD0` | actor `+$5E` behavior-mode dispatch |
+| `$87:9244/$9BD0` | actor `+$5E` behavior-mode dispatch |
 | `$85:BC43–$BD7D` | assignment target, direction, distance, control mode |
 | `$85:B95C–$B9D1` | AI reaction threshold using ball distance and RNG |
 | `$87:B832–$B952` | directional movement calculation |
@@ -89,6 +89,6 @@ owned ball.
 eight-player settled-camera visibility, CPU-only mapping, controller,
 ball, camera, collision and AI raw fields, overlay pixels, JSON parsing, and
 paused single-frame stepping, and both comparator pass and intentional-failure
-paths. `tools/test_cpu_gameplay.py` separately protects 8,000 frames of live
+paths. `tools/test_cpu_gameplay.py` separately protects 50,000 frames of live
 CPU behavior, score monotonicity, made-ball Z, `$0952/$0954`, the 300-tick
 inbound gates, and resumed possessions for both teams.

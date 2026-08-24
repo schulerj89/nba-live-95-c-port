@@ -113,8 +113,12 @@ static void cpu_set_role_targets(NbaTipoff *tipoff) {
         for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
             tipoff->actors[actor].target_x = ball_x;
             tipoff->actors[actor].target_y = ball_y;
-            tipoff->actors[actor].control_mode = 12u;
+            tipoff->actors[actor].control_mode =
+                actor / 5u == tipoff->offense_side ? 1u : 2u;
         }
+        if (tipoff->handler_actor < NBA_GAMEPLAY_ACTOR_COUNT)
+            tipoff->actors[tipoff->handler_actor].control_mode =
+                tipoff->play_state_frame < 12u ? 16u : 7u;
         return;
     }
 
@@ -175,6 +179,18 @@ static void cpu_set_role_targets(NbaTipoff *tipoff) {
         handler->target_x = (int16_t)(attack_right ? 350 : -70);
         handler->target_y = -55;
     }
+
+    /* Actor `+$5E` is a local executor mode, not the global C play phase.
+     * Preserve the proven CPU possession lifecycle from `$87:9244/$9BD0`:
+     * handler 11, receiver 10, passer 15, shot 12, recovery 16. */
+    if (tipoff->cpu_play_state == NBA_CPU_PLAY_PASS) {
+        handler->control_mode = 15u;
+        tipoff->actors[tipoff->receiver_actor].control_mode = 10u;
+    } else if (tipoff->cpu_play_state == NBA_CPU_PLAY_SHOT) {
+        handler->control_mode = tipoff->play_state_frame == 0u ? 12u : 16u;
+    } else {
+        handler->control_mode = 11u;
+    }
 }
 
 static void cpu_move_actor(NbaTipoff *tipoff, unsigned slot) {
@@ -188,8 +204,8 @@ static void cpu_move_actor(NbaTipoff *tipoff, unsigned slot) {
     unsigned delay = tipoff->possession_number == 0u ? first_move_start[slot] :
                      (unsigned)(actor->reaction_threshold % 18u);
     if (tipoff->possession_frame < delay) {
-        actor->velocity_x = (int16_t)approach(actor->velocity_x, 0, 32);
-        actor->velocity_y = (int16_t)approach(actor->velocity_y, 0, 32);
+        actor->velocity_x = (int16_t)approach(actor->velocity_x, 0, 16);
+        actor->velocity_y = (int16_t)approach(actor->velocity_y, 0, 16);
         return;
     }
     /* `$85:97CA-$985F` integrates fractional words every scheduled actor
@@ -199,23 +215,25 @@ static void cpu_move_actor(NbaTipoff *tipoff, unsigned slot) {
     int dx = actor->target_x - x, dy = actor->target_y - y;
     uint8_t direction = cpu_direction(dx, dy);
     if (direction >= 8u) {
-        actor->velocity_x = (int16_t)approach(actor->velocity_x, 0, 32);
-        actor->velocity_y = (int16_t)approach(actor->velocity_y, 0, 32);
-        actor->x_fp += actor->velocity_x;
-        actor->y_fp += actor->velocity_y;
+        actor->velocity_x = (int16_t)approach(actor->velocity_x, 0, 16);
+        actor->velocity_y = (int16_t)approach(actor->velocity_y, 0, 16);
+        actor->x_fp += (int32_t)actor->velocity_x * 2;
+        actor->y_fp += (int32_t)actor->velocity_y * 2;
         actor_set_animation(actor, 0u, 0u);
         return;
     }
-    int speed = slot == tipoff->handler_actor ? 224 :
-                actor->control_mode == 4u ? 208 : 176;
+    int speed = slot == tipoff->handler_actor ? 112 :
+                actor->control_mode == 4u ? 104 : 88;
     int sx = direction == 1u || direction == 2u || direction == 3u ? 1 :
              direction == 5u || direction == 6u || direction == 7u ? -1 : 0;
     int sy = direction == 7u || direction == 0u || direction == 1u ? 1 :
              direction == 3u || direction == 4u || direction == 5u ? -1 : 0;
-    actor->velocity_x = (int16_t)approach(actor->velocity_x, sx * speed, 40);
-    actor->velocity_y = (int16_t)approach(actor->velocity_y, sy * speed, 40);
-    actor->x_fp += actor->velocity_x;
-    actor->y_fp += actor->velocity_y;
+    actor->velocity_x = (int16_t)approach(actor->velocity_x, sx * speed, 20);
+    actor->velocity_y = (int16_t)approach(actor->velocity_y, sy * speed, 20);
+    /* `$8E86-$8E9C` turns `$0938=2` into fixed multiplier `$0200` before
+     * `$85:AB17`; in the host 24.8 bridge this is velocity8.8 * dt. */
+    actor->x_fp += (int32_t)actor->velocity_x * 2;
+    actor->y_fp += (int32_t)actor->velocity_y * 2;
     if ((sx > 0 && fp_round(actor->x_fp) > actor->target_x) ||
         (sx < 0 && fp_round(actor->x_fp) < actor->target_x))
         actor->x_fp = (int32_t)actor->target_x * 256;
@@ -309,6 +327,9 @@ static void begin_inbound_after_score(NbaTipoff *tipoff) {
 }
 
 static void cpu_update_live_ball(NbaTipoff *tipoff) {
+    /* The same `$87:9B0D` 30-Hz logical pass drives `$85:9ACB+` ball
+     * collision/integration. Flight-table durations count these due passes. */
+    if ((tipoff->simulation_tick & 1u) != 0u) return;
     NbaTipoffBall *ball = &tipoff->ball;
     int32_t old_x = ball->x_fp, old_y = ball->y_fp, old_z = ball->z_fp;
     bool attached = ball->state == NBA_BALL_ATTACHED;
@@ -316,31 +337,31 @@ static void cpu_update_live_ball(NbaTipoff *tipoff) {
         ball_attach_to_actor(tipoff, tipoff->handler_actor);
     } else if (ball->state == NBA_BALL_PASS || ball->state == NBA_BALL_SHOT ||
                ball->state == NBA_BALL_BOUNCE) {
+        bool rom_free_flight = ball->state == NBA_BALL_SHOT ||
+                               ball->state == NBA_BALL_BOUNCE;
+        if (rom_free_flight)
+            ball->velocity_z = (int16_t)(ball->velocity_z - 0x18);
         ball->x_fp += ball->velocity_x;
         ball->y_fp += ball->velocity_y;
         ball->z_fp += ball->velocity_z;
-        ball->velocity_z = (int16_t)(ball->velocity_z - 48);
+        if (!rom_free_flight)
+            ball->velocity_z = (int16_t)(ball->velocity_z - 48);
         if (ball->z_fp < 0) {
             ball->z_fp = 0;
-            if (ball->state == NBA_BALL_BOUNCE || ball->velocity_z > -384) {
-                ball->velocity_z = 0;
-                if (ball->state == NBA_BALL_BOUNCE) {
-                    /* `$85:A3B7-$A7A1` damps the free ball and keeps its
-                     * projected landing point inside the playable court. */
-                    ball->velocity_x = (int16_t)(ball->velocity_x * 7 / 8);
-                    ball->velocity_y = (int16_t)(ball->velocity_y * 7 / 8);
-                    if (abs(ball->velocity_x) < 8) ball->velocity_x = 0;
-                    if (abs(ball->velocity_y) < 8) ball->velocity_y = 0;
-                    int x = fp_round(ball->x_fp), y = fp_round(ball->y_fp);
-                    if (x < -106 || x > 386) {
-                        ball->x_fp = (x < -106 ? -106 : 386) * 256;
-                        ball->velocity_x = (int16_t)(-ball->velocity_x / 2);
-                    }
-                    if (y < -180 || y > 180) {
-                        ball->y_fp = (y < -180 ? -180 : 180) * 256;
-                        ball->velocity_y = (int16_t)(-ball->velocity_y / 2);
-                    }
-                }
+            if (rom_free_flight) {
+                /* `$85:A3B7-$A4DA`: gravity precedes integration; ground
+                 * impact applies 7/8 vertical restitution (cap $0400) and
+                 * impact-only 15/16 lateral damping. */
+                int16_t original_vz = ball->velocity_z;
+                int rebound = -(int)original_vz +
+                    nba_gameplay_arithmetic_shift_right(original_vz, 3);
+                if (rebound > 0x0400) rebound = 0x0400;
+                ball->velocity_z = (int16_t)rebound;
+                ball->velocity_x = (int16_t)(ball->velocity_x -
+                    nba_gameplay_arithmetic_shift_right(ball->velocity_x, 4));
+                ball->velocity_y = (int16_t)(ball->velocity_y -
+                    nba_gameplay_arithmetic_shift_right(ball->velocity_y, 4));
+                ball->state = NBA_BALL_BOUNCE;
             } else {
                 ball->velocity_z = (int16_t)(-ball->velocity_z / 2);
                 ball->velocity_x = (int16_t)(ball->velocity_x * 3 / 4);
@@ -399,6 +420,7 @@ static void cpu_begin_possession(NbaTipoff *tipoff, uint8_t offense_side) {
     tipoff->shot_miss_index_raw = 0xFFu;
     tipoff->shot_value_raw = 0u;
     ball_attach_to_actor(tipoff, tipoff->handler_actor);
+    tipoff->actors[tipoff->handler_actor].control_mode = 11u;
     for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
         tipoff->actors[actor].reaction_threshold =
             nba_gameplay_reaction_threshold(&tipoff->rng,
@@ -428,7 +450,9 @@ static void cpu_enter_play_state(NbaTipoff *tipoff, NbaCpuPlayState state) {
 static void cpu_update_all_actors(NbaTipoff *tipoff) {
     /* `$87:8F01-$8F8D` updates all ten actors as one logical pass with
      * `$C6/$0938=2`. */
-    if ((tipoff->possession_frame & 1u) != 0u) return;
+    /* `$87:8EFB-$8F92` is one global 30-Hz pass with `$0938/$C6=2`.
+     * Possession and inbound changes do not rephase it. */
+    if ((tipoff->simulation_tick & 1u) != 0u) return;
     ++tipoff->actor_update_tick;
     for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
         NbaTipoffActor *state = &tipoff->actors[actor];
@@ -494,6 +518,8 @@ static void cpu_update_possession(NbaTipoff *tipoff) {
         case NBA_CPU_PLAY_DRIVE:
             if (handler_distance < 18) {
                 cpu_enter_play_state(tipoff, NBA_CPU_PLAY_PASS);
+                handler->control_mode = 15u;
+                receiver->control_mode = 10u;
                 ball_launch(tipoff, fp_round(receiver->x_fp),
                             fp_round(receiver->y_fp), 38u, 704, NBA_BALL_PASS);
                 tipoff->possession_actor = -1;
@@ -508,6 +534,7 @@ static void cpu_update_possession(NbaTipoff *tipoff) {
                 ball_attach_to_actor(tipoff, tipoff->handler_actor);
                 tipoff->possession_actor = (int8_t)tipoff->handler_actor;
                 cpu_enter_play_state(tipoff, NBA_CPU_PLAY_ATTACK);
+                tipoff->actors[tipoff->handler_actor].control_mode = 11u;
             }
             break;
         case NBA_CPU_PLAY_ATTACK:
@@ -551,9 +578,14 @@ static void cpu_update_possession(NbaTipoff *tipoff) {
                     basket_y += miss_y;
                 }
                 cpu_enter_play_state(tipoff, NBA_CPU_PLAY_SHOT);
-                ball_launch(tipoff, basket_x, basket_y, 52u, 1536,
-                            NBA_BALL_SHOT);
-                handler->control_mode = 15u;
+                nba_gameplay_shot_launch(tipoff->ball.x_fp,
+                    tipoff->ball.y_fp, tipoff->ball.z_fp,
+                    (int16_t)basket_x, (int16_t)basket_y,
+                    &tipoff->ball.velocity_x, &tipoff->ball.velocity_y,
+                    &tipoff->ball.velocity_z);
+                tipoff->ball.owner_actor = -1;
+                tipoff->ball.state = NBA_BALL_SHOT;
+                handler->control_mode = 12u;
                 actor_set_animation(handler, 0x31u, 0x03u);
                 tipoff->possession_actor = -1;
             }
@@ -681,7 +713,7 @@ void nba_tipoff_update(NbaTipoff *tipoff, const NbaInput *input) {
         cpu_update_tip_ball(tipoff);
     if (tipoff->frame == NBA_TIPOFF_POSSESSION_FRAME) {
         /* `$85:B100-$B28B` resolves the tip and writes play code $35.
-         * `$87:9245/$9BD0` then dispatches actor +$5E behavior modes. */
+         * `$87:9244/$9BD0` then dispatches actor +$5E behavior modes. */
         tipoff->possession_actor = 8;
         tipoff->possession_team = 1;
         tipoff->play_code = 0x35u;

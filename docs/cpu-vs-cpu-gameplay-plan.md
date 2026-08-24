@@ -35,7 +35,7 @@ semantic name is not yet proven.
 |---|---|---|
 | World integration | `$85:963D-$990F` (`$9700` airborne subpath), actor records `$34EB + slot*$100` | actor write-PC trace and fixed-point before/after values |
 | Direction/movement | `$85:F34F`, `$87:B832-$B952` | delta inputs, direction result, velocity/output cadence |
-| Assignment/CPU branch | `$85:BC43-$BD7D`, `$85:B95C-$B9D1`, dispatch `$87:9245/$9BD0` | actor target, mode, action and reaction fields across both teams |
+| Assignment/CPU branch | `$85:BC43-$BD7D`, `$85:B95C-$B9D1`, dispatch `$87:9244/$9BD0` | actor target, mode, action and reaction fields across both teams |
 | Play selection | `$85:B100-$B28B`, globals `$0996-$099C` | fixed RNG-state trace through at least two possessions |
 | Camera | `$85:9192-$93F4`; streamer `$85:8EE6-$90C3`; ROM map `$A0:8006` | subject proxy, bounds, step/easing, projection, source/destination mapping |
 | Ball/possession | ball record `$3EEB`, owner/candidate `$0946`, `$86:CED6-$D43C`, `$87:B649/$B66A` | owner transitions and XYZ/velocity at attachment, pass and loose-ball edges |
@@ -85,7 +85,7 @@ ROM under the same seed. Commit and push.
 
 Implementation evidence (increment 2A): `$87:A160` was disproven as a routine;
 it is the high operand byte of `$A15E LDA actor+$5E`. The real 18-mode dispatch
-is `$87:9245 -> $87:9BD3 -> $87:9BD0`. `$87:8F01-$8F8D` calls `$85:963D`
+is `$87:9244 -> $87:9BD3 -> $87:9BD0`. `$87:8F01-$8F8D` calls `$85:963D`
 for all ten actors in one logical pass with `dt=2`; `$85:9700` is only its
 airborne/Z subpath. Actor `+$64` is a modulo-47 cadence timer, not an action
 ID. C now preserves those facts, the exact `$80:CEE7` LFSR and golden vector,
@@ -183,9 +183,26 @@ timing inputs to `$86:9ED8-$A11D` are still explicit defaults, and rim response
 is still a bounded/damped host approximation pending the full collision port.
 
 The CPU-only Mesen oracle now exports the live `$07F6` LFSR state instead of
-the former `FFFF` placeholder and directly probes `$87:9245/$87:9BD0` behavior
+the former `FFFF` placeholder and directly probes `$87:9244/$87:9BD0` behavior
 dispatch plus `$85:963D/$85:980B/$85:985F` actor physics/coordinate commits.
 A fresh 1,801-frame capture validates 23 possession-owner changes, 994 CPU
-mode-11 actor frames, and 1,677 distinct RNG states. This makes subsequent
+mode-11 actor frames, and 1,404 distinct RNG states. This makes subsequent
 same-seed policy and scheduler comparisons reproducible; the ignored raw
 capture remains evidence rather than a runtime asset.
+
+Increment 4B corrects the behavior entry to `$87:9244` and expands the
+headless dump to all 18 `$87:9BD3` destinations. C now preserves the proven
+CPU possession lifecycle modes (receiver 10, handler 11, shot 12, passer 15,
+post-shot 16, recovery 7) without claiming that the remaining policy handlers
+have been ported. Actor physics uses a global 30-Hz phase that survives
+possession/inbound changes and integrates host 24.8 positions with the ROM's
+`dt=2` bridge from `$87:9B0D/$85:963D`.
+
+Normal shots now use the first two words of every `$86:A4AB` record and the
+base launch formula at `$86:A1BD-$A292`. Free flight follows `$85:A3B7-$A4DA`:
+gravity `$18` per due physics pass, 7/8 vertical restitution capped at `$0400`,
+and impact-only 15/16 lateral damping. The unresolved `$0978` timing variants
+and multi-branch rim shell remain disabled rather than receiving guessed raw
+inputs. A 50,000-frame regression locks repeated makes, deterministic misses,
+collision-owned rebounds, both-team scoring, and both early/timeout inbound
+completion paths.

@@ -44,7 +44,7 @@ uint16_t nba_gameplay_reaction_threshold(NbaGameplayRng *rng,
     return (uint16_t)(result > 0x96u ? 0x96u : result);
 }
 
-/* `$87:9245 -> $87:9BD3 -> $87:9BD0` behavior-mode jump table. */
+/* `$87:9244 -> $87:9BD3 -> $87:9BD0` behavior-mode jump table. */
 uint32_t nba_gameplay_behavior_routine(uint8_t mode) {
     static const uint32_t targets[18] = {
         0x879C1Bu, 0x86F1B0u, 0x86F6CDu, 0x86F23Fu, 0x86F794u,
