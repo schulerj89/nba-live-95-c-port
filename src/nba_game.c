@@ -701,10 +701,19 @@ void nba_game_tick(NbaGame *game, float delta_time) {
             break;
 
         case NBA_STATE_TIPOFF:
-            nba_tipoff_update(&game->scene.tipoff, &game->input);
-            nba_tipoff_capture_telemetry(&game->scene.tipoff, &game->input,
-                                         &game->gameplay_telemetry);
-            game->gameplay_telemetry.global_frame = game->frame_count;
+            {
+                uint16_t whistle_before =
+                    game->scene.tipoff.fouls.whistle_active_raw_09b6;
+                nba_tipoff_update(&game->scene.tipoff, &game->input);
+                if (whistle_before == 0u &&
+                    game->scene.tipoff.fouls.whistle_active_raw_09b6 != 0u &&
+                    game->scene.tipoff.fouls.whistle_presentation_queued_raw != 0u)
+                    (void)nba_audio_play_gameplay_whistle(
+                        &game->audio, &game->assets);
+                nba_tipoff_capture_telemetry(&game->scene.tipoff, &game->input,
+                                             &game->gameplay_telemetry);
+                game->gameplay_telemetry.global_frame = game->frame_count;
+            }
             break;
 
         default:

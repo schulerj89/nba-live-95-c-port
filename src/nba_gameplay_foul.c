@@ -96,9 +96,9 @@ bool nba_gameplay_foul_consume_pending(NbaGameplayFoulState *state,
     if (camera_side_group == 0u)
         state->side_event_bits_raw_13e9 |= 1u;
     state->whistle_active_raw_09b6 = 1u;
-    state->whistle_audio_queued_raw = 0u;
+    state->whistle_presentation_queued_raw = 0u;
     if (state->whistle_timer_raw_08de < 0)
-        state->whistle_audio_queued_raw = 1u;
+        state->whistle_presentation_queued_raw = 1u;
     else
         state->presentation_gate_raw_08e2 = 0u;
     state->whistle_timer_raw_08de = short_timer ? 120 : 300;
@@ -157,7 +157,7 @@ bool nba_gameplay_foul_self_test(void) {
         violation.presentation_pending_raw_4937 == 1u &&
         violation.contact_context_raw_497f == 0u && inbound_ready == 0u &&
         violation.whistle_timer_raw_08de == 300 &&
-        violation.whistle_audio_queued_raw == 1u &&
+        violation.whistle_presentation_queued_raw == 1u &&
         violation.presentation_gate_raw_08e2 == 9u &&
         violation.whistle_state_raw_08e6 == 17u &&
         violation.whistle_state_mirror_raw_08e8 == 17u &&
@@ -172,7 +172,7 @@ bool nba_gameplay_foul_self_test(void) {
     busy_presentation.presentation_gate_raw_08e2 = 7u;
     bool busy_ok = nba_gameplay_foul_consume_pending(
             &busy_presentation, 5u, NULL, NULL, true) &&
-        busy_presentation.whistle_audio_queued_raw == 0u &&
+        busy_presentation.whistle_presentation_queued_raw == 0u &&
         busy_presentation.presentation_gate_raw_08e2 == 0u &&
         busy_presentation.whistle_timer_raw_08de == 120;
     return offensive_bonus.team_fouls[0] == 4u &&

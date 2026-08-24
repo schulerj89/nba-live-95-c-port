@@ -913,8 +913,8 @@ The exact `$85:93F5-$945E` pending-event consumer is now a tested reusable C
 state transition: it moves `$0964` to `$08F0`, clears the pending/shooting
 latches, raises `$09B6/$4937`, updates `$13E7/$13E9`, and installs the
 300/120 timer plus `$08E6/$08E8=17`. Headless analysis of bank `$83` also
-proves that `$83:EBD8` is only `STZ $08E2`; `$87:BACB` queues its presentation
-resource only when the old signed `$08DE` is negative. Both outcomes are now
+proves that `$83:EBD8` is only `STZ $08E2`; `$87:BACB` queues its visual
+presentation object only when the old signed `$08DE` is negative. Both outcomes are now
 represented and regression-tested independently of the eventual host SFX
 playback binding.
 
@@ -929,6 +929,29 @@ target flow. A refreshed whole-ROM write search found the missing lifecycle
 edge at `$86:F56E-$F577`: when the inbound actor reaches its target, the ROM
 clears `$09B6/$0964` immediately before setting `$09BA=1`. The port now does
 the same, so the whistle neither remains stuck nor releases early.
+
+The ordinary-contact branches are now connected as well. `$87:9411-$949E`
+uses inbound layout 4, or layout 3 when `$0966` is nonzero. Defensive foul
+code 1 selects the five-player side opposite `$492D`; charging and offensive
+codes 2/13 write `$0952=$093A XOR 5` without changing persistent camera side
+`$093A`. `$87:9B41` demotes the old owner/context actor, but does not select
+the inbounder: `$85:C37D-$C388` always derives provisional `$0954` as actor 2
+or 7 from `$0952`. Bonus state `$0978=1/$097A=2` still runs this placement and
+event-consumption path before the free-throw actor dispatcher takes over.
+Deferred `$09BC` shooting fouls and the free-throw scene itself remain the
+next translation boundary; they are not converted into ordinary inbounds.
+
+A follow-up call-chain audit corrected the presentation/audio boundary:
+`$87:BACB` supplies `$EC5D/$00AF` to `$80:8CD0`, an object scheduler, and the
+payload at `$87:EC5D` is a graphics descriptor stream. `$83:EBDB` reaches
+`$80:8AD2`, which is VRAM DMA. Neither is the whistle sample dispatcher.
+The independent audio chain is now proven as `$85:9413-$941F` setting event
+bit `$2000`, `$82:FEF4-$FF07` consuming it, and `$80:9DF3` dispatching command
+`$44`. The captured resident DSP state keys voice 4, SRCN `$12`, pitch `$0556`,
+VOL `$14/$14`, ADSR `$8E/$A0`. That BRR source already exists byte-identically
+in asset-pack Player Introduction SPC RAM, so the port now renders it through
+the reusable parameterized SPC SFX path instead of substituting the menu
+sound's `$03C6/$8E/$E0` registers.
 
 ### Recomp boundary
 

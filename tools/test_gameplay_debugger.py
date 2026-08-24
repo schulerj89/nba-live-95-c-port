@@ -81,7 +81,7 @@ def main():
                           "whistle_active_raw_09b6",
                           "whistle_timer_raw_08de",
                           "presentation_gate_raw_08e2",
-                          "whistle_audio_queued_raw"}:
+                          "whistle_presentation_queued_raw"}:
             raise AssertionError(f"foul telemetry schema is incomplete: {fouls}")
         if fouls != {"event_raw": 0, "shooting_raw": 0,
                      "offender_raw": -1, "victim_raw": -1,
@@ -92,7 +92,7 @@ def main():
                      "whistle_active_raw_09b6": 0,
                      "whistle_timer_raw_08de": 0xFFFF,
                      "presentation_gate_raw_08e2": 0,
-                     "whistle_audio_queued_raw": 0}:
+                     "whistle_presentation_queued_raw": 0}:
             raise AssertionError(f"unverified foul detector activated: {fouls}")
         if not {"match_clock_raw_0928", "shot_actor_raw_09c8",
                 "interference_value_raw_096a", "shot_clock_mirror_raw_09c6",

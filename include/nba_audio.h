@@ -47,6 +47,8 @@ void nba_audio_set_host_playback_enabled(NbaAudio *audio, bool enabled);
 void nba_audio_shutdown(NbaAudio *audio);
 void nba_audio_play_wav(NbaAudio *audio, const void *data, size_t size);
 void nba_audio_play_setup_sfx(NbaAudio *audio, const NbaAssetPack *assets, uint8_t srcn);
+bool nba_audio_play_gameplay_whistle(NbaAudio *audio,
+                                     const NbaAssetPack *assets);
 void nba_audio_set_setup_music_volume(NbaAudio *audio, uint16_t value, uint16_t maximum);
 void nba_audio_set_setup_sfx_volume(NbaAudio *audio, uint16_t value, uint16_t maximum);
 bool nba_audio_play_title_spc(NbaAudio *audio, const NbaAssetPack *assets);

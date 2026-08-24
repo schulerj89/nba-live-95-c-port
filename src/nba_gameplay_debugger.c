@@ -237,7 +237,7 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
             "\"whistle_active_raw_09b6\":%u,"
             "\"whistle_timer_raw_08de\":%u,"
             "\"presentation_gate_raw_08e2\":%u,"
-            "\"whistle_audio_queued_raw\":%u},"
+            "\"whistle_presentation_queued_raw\":%u},"
             "\"camera\":{\"x\":%d,\"y\":%d,"
             "\"subject_raw\":%d,\"side_group_raw\":%u,"
             "\"routine\":%u,\"raw_085c\":%u,\"raw_085e\":%u,"
@@ -325,7 +325,7 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
             telemetry->whistle_active_raw_09b6,
             telemetry->whistle_timer_raw_08de,
             telemetry->presentation_gate_raw_08e2,
-            telemetry->whistle_audio_queued_raw,
+            telemetry->whistle_presentation_queued_raw,
             telemetry->camera_x, telemetry->camera_y,
             telemetry->camera_subject_raw, telemetry->camera_side_group_raw,
             telemetry->camera_routine,

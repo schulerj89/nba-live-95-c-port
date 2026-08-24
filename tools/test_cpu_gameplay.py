@@ -30,6 +30,23 @@ def main():
 
     with tempfile.TemporaryDirectory() as directory:
         root = Path(directory)
+        whistle = root / "gameplay_whistle.wav"
+        whistle_run = subprocess.run([
+            args.exe, "--headless", "--rom", args.rom, "--assets", args.pack,
+            "--frames", "0", "--dump-gameplay-whistle", str(whistle),
+        ], capture_output=True, text=True, check=False)
+        if whistle_run.returncode or (
+                "command $44 SRCN $12 pitch=$0556 voice=4 "
+                "ADSR1/2=$8E/$A0 VOL=$14/$14 peak=3598"
+                not in whistle_run.stdout):
+            raise AssertionError(whistle_run.stdout + whistle_run.stderr)
+        wav = whistle.read_bytes()
+        if len(wav) != 96044 or wav[:4] != b"RIFF" or wav[36:40] != b"data":
+            raise AssertionError("gameplay whistle WAV shape changed")
+        whistle_hash = hashlib.sha256(wav[44:]).hexdigest()
+        if whistle_hash != "3c8bfb56d2bffd1a0a8b85136c316d0d1f5b1b329ffc1daff1693a5628397846":
+            raise AssertionError(
+                f"gameplay command-$44 whistle PCM changed: {whistle_hash}")
         trace = root / "cpu_gameplay.jsonl"
         command = [
             args.exe, "--headless", "--rom", args.rom, "--assets", args.pack,
@@ -52,7 +69,7 @@ def main():
             "whistle_active_raw_09b6": 0,
             "whistle_timer_raw_08de": 0xFFFF,
             "presentation_gate_raw_08e2": 0,
-            "whistle_audio_queued_raw": 0,
+            "whistle_presentation_queued_raw": 0,
         }
         activated_foul = next((row for row in rows
                                if sum(row["fouls"]["team_raw"])), None)

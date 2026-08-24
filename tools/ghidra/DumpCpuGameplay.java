@@ -39,7 +39,7 @@ public class DumpCpuGameplay extends GhidraScript {
             {0x9800, 0xbaff}, {0xc400, 0xddff}, {0xe300, 0xf8ff}
         };
         if (bank.equals("87")) return new long[][] {
-            {0x9200, 0xadff}, {0xb300, 0xb9ff}
+            {0x9200, 0xadff}, {0xb300, 0xbaff}
         };
         return new long[0][0];
     }
@@ -76,7 +76,7 @@ public class DumpCpuGameplay extends GhidraScript {
             0x9b0d, 0x9b30, 0x9b41, 0x9bd0, 0x9cdb,
             0xa2ce, 0xa357, 0xa846, 0xa9d0, 0xaa02, 0xaab2,
             0xad5b, 0xaec3, 0xb37c, 0xb47a, 0xb4db, 0xb538, 0xb555,
-            0xb649, 0xb66a, 0xb832, 0xb953, 0xb572
+            0xb649, 0xb66a, 0xb832, 0xb953, 0xb572, 0xbacb
         };
         return new long[0];
     }
@@ -169,7 +169,7 @@ public class DumpCpuGameplay extends GhidraScript {
                 }
             }
             if (bank.equals("83")) {
-                out.println("\n--- Complete gameplay whistle audio control ---");
+                out.println("\n--- Complete gameplay whistle presentation control ---");
                 addEntryPoint(toAddr(0xebd8)); disassemble(toAddr(0xebd8));
                 addEntryPoint(toAddr(0xebdb)); disassemble(toAddr(0xebdb));
                 for (long address = 0xebd8; address <= 0xee4f; ++address) {
@@ -285,6 +285,13 @@ public class DumpCpuGameplay extends GhidraScript {
                 addEntryPoint(toAddr(0x9b41)); disassemble(toAddr(0x9b41));
                 addEntryPoint(toAddr(0x9cdb)); disassemble(toAddr(0x9cdb));
                 for (long address = 0x9b30; address <= 0x9d20; ++address) {
+                    Instruction instruction = listing.getInstructionAt(toAddr(address));
+                    if (instruction != null)
+                        out.printf("$87:%04X  %s%n", address, instruction.toString());
+                }
+                out.println("\n--- Complete whistle presentation-object scheduler ---");
+                addEntryPoint(toAddr(0xbacb)); disassemble(toAddr(0xbacb));
+                for (long address = 0xbacb; address <= 0xbaf4; ++address) {
                     Instruction instruction = listing.getInstructionAt(toAddr(address));
                     if (instruction != null)
                         out.printf("$87:%04X  %s%n", address, instruction.toString());

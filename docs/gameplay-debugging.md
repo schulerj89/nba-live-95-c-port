@@ -44,7 +44,7 @@ without changing the comparison contract.
 | `$86:8000–$8212` | controller ownership, assignment, and repeat timers |
 | `$87:9B38` | gameplay controller-mask accessor |
 | `$093E/$0940` | current possession/catcher actor index and resolved actor pointer |
-| `$0952/$0954` | context-dependent side group/slot; after a make, opponent inbound group and actor 2 or 7 |
+| `$0952/$0954` | inbound side and provisional actor; `$85:C37D` always derives actor 2/7 from side 0/5 |
 | `$34EB + slot*$100` | ten player actor records |
 | `$3EEB` | ball actor; position `$3EEF/$3EF3/$3EF7` |
 | `$0946` | transient possession/ball-owner player index |
@@ -85,14 +85,18 @@ without changing the comparison contract.
 | `$86:CD97–$CE65`, `$86:D078–$D128` | descending-shot pose contact, code-6 interference award, and detached catch RNG |
 | `$85:93F5–$945E`, `$87:92A5–$95E6` | pending-event consumer and dead-ball violation/foul dispatch |
 | `$87:9B41–$9BC8`, `$86:F56E–$F577` | shared dead-ball initializer and exact inbound-arrival whistle release |
-| `$87:BACB–$BAF4`, `$83:EBD8–$EE4F` | whistle presentation queue and audio-control state |
+| `$87:BACB–$BAF4`, `$83:EBD8–$EE4F` | whistle presentation-object queue and visual-control state |
 | `$87:9AA6–$9BCA` | expired inbound: reload `$092E`, layout 5, opposite `$093A ^ 5` side, clear `$093E`, and restart |
 
 Owned-ball defensive contact and descending-shot interference now originate
 from their proven `$86:CCFC-$D205` predicates. The reusable `$85:93F5`
-consumer and code-6 restart are represented and tested; host whistle playback is
-still gated on resolving `$87:BACB`'s `$EC5D/$00AF` presentation request to
-the matching asset-pack/SPC resource rather than substituting a sound.
+consumer and code-6 restart are represented and tested. `$87:BACB` is not an
+audio call: `$80:8CD0` queues a visual object whose `$87:EC5D` payload is a
+ROM descriptor stream, while `$80:8AD2` in `$83:EBDB` is VRAM DMA. Gameplay
+whistle audio comes from the independent `$85:9413 -> $82:FEF4 -> $80:9DF3`
+command-$44 path. It uses asset-pack SRCN `$12` on voice 4 at pitch `$0556`,
+VOL `$14/$14`, ADSR `$8E/$A0`; the C port logs those exact parameters whenever
+the `$09B6` whistle edge queues playback.
 
 The extended CPU-only capture covers 1,801 frames. It confirms the `$35`
 post-tip play, CPU reaction staggering, live matchup reassignment, the

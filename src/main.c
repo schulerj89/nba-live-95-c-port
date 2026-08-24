@@ -63,6 +63,7 @@ int main(int argc, char *argv[]) {
     const char *dump_frame_path = NULL;
     const char *dump_audio_path = NULL;
     const char *dump_menu_sfx_path = NULL;
+    const char *dump_gameplay_whistle_path = NULL;
     const char *setup_transition_trace_path = NULL;
     const char *gameplay_trace_path = NULL;
     const char *dump_sequence_dir = NULL;
@@ -187,6 +188,9 @@ int main(int argc, char *argv[]) {
             player_lab_direction_right = atoi(argv[++i]);
         } else if (strcmp(argv[i], "--dump-menu-sfx") == 0 && i + 1 < argc) {
             dump_menu_sfx_path = argv[++i];
+        } else if (strcmp(argv[i], "--dump-gameplay-whistle") == 0 &&
+                   i + 1 < argc) {
+            dump_gameplay_whistle_path = argv[++i];
         } else if (strcmp(argv[i], "--menu-sfx-srcn") == 0 && i + 1 < argc) {
             char *end = NULL;
             long value = strtol(argv[++i], &end, 0);
@@ -306,6 +310,7 @@ int main(int argc, char *argv[]) {
             printf("  --player-animation-right N Apply N Player Lab E presses\n");
             printf("  --player-direction-right N Apply N Player Lab I presses\n");
             printf("  --dump-menu-sfx FILE  Save a deterministic packed-SPC menu sound\n");
+            printf("  --dump-gameplay-whistle FILE  Save ROM command-$44 whistle PCM\n");
             printf("  --menu-sfx-srcn N     Select menu SRCN 0x1A..0x1C (default 0x1B)\n");
             printf("  --title-only          Start at $80:E01E title state (headless tests)\n");
             printf("  --setup-only          Start at the $80:E600 -> $80:A2BF handoff\n");
@@ -815,6 +820,15 @@ int main(int argc, char *argv[]) {
                                      (uint8_t)menu_sfx_srcn);
             if (!nba_audio_save_setup_sfx_wav(&game.audio, dump_menu_sfx_path)) {
                 fprintf(stderr, "[HEADLESS] Failed to write menu SFX WAV.\n");
+                nba_game_shutdown(&game);
+                return 1;
+            }
+        }
+        if (dump_gameplay_whistle_path) {
+            if (!nba_audio_play_gameplay_whistle(&game.audio, &game.assets) ||
+                !nba_audio_save_setup_sfx_wav(
+                    &game.audio, dump_gameplay_whistle_path)) {
+                fprintf(stderr, "[HEADLESS] Failed to write gameplay whistle WAV.\n");
                 nba_game_shutdown(&game);
                 return 1;
             }

@@ -256,30 +256,24 @@ void nba_audio_play_wav(NbaAudio *audio, const void *data, size_t size) {
 #endif
 }
 
-/**
- * Offset/Address/Size: $80:9DF3 | menu SFX dispatch | commands $49-$4B
- * Subroutines: $80:A9E3/$80:AACD (APU queue), SPC SRCN $1A-$1C
- * Purpose: Keys the packed Setup ARAM/DIR source through the captured S-DSP
- *          voice registers without stopping Setup's independent music stream.
- */
-void nba_audio_play_setup_sfx(NbaAudio *audio, const NbaAssetPack *assets,
-                              uint8_t srcn) {
-    if (!audio || !assets || srcn >= 30u) return;
-    const NbaAssetItem *ram = nba_assets_get(assets, NBA_ASSET_SETUP_SPC_RAM);
-    const NbaAssetItem *dsp = nba_assets_get(assets, NBA_ASSET_SETUP_SPC_DSP);
-    const NbaAssetItem *state_item = nba_assets_get(assets, NBA_ASSET_SETUP_SPC_STATE);
+static bool audio_play_spc_sfx(NbaAudio *audio, const NbaAssetPack *assets,
+                               NbaAssetId ram_id, NbaAssetId dsp_id,
+                               NbaAssetId state_id, const char state_magic[8],
+                               uint8_t srcn, uint8_t voice, uint16_t pitch,
+                               uint8_t volume_l, uint8_t volume_r,
+                               uint8_t adsr1, uint8_t adsr2, uint8_t gain,
+                               uint32_t sample_frames, int *peak_out) {
+    if (!audio || !assets || voice >= 8u || sample_frames == 0u) return false;
+    const NbaAssetItem *ram = nba_assets_get(assets, ram_id);
+    const NbaAssetItem *dsp = nba_assets_get(assets, dsp_id);
+    const NbaAssetItem *state_item = nba_assets_get(assets, state_id);
     if (!ram || ram->size < NBA_SPC_RAM_SIZE ||
         !dsp || dsp->size < NBA_SPC_DSP_REGS ||
-        !state_item || state_item->size < 20u) return;
+        !state_item || state_item->size < 20u) return false;
     const uint8_t *state = (const uint8_t *)state_item->data;
-    if (memcmp(state, "NBTSSPC1", 8) != 0 || audio_u32(state + 8) != 1u) return;
+    if (memcmp(state, state_magic, 8) != 0 ||
+        audio_u32(state + 8) != 1u) return false;
 
-    /* Hardware writes captured at the three $80:9DF3 commands.  The F11 WAVs
-     * deliberately expose undecorated BRR sources; menu playback is different:
-     * the resident driver keys voice 1 with these pitch/envelope registers. */
-    uint16_t pitch = srcn == 0x1Au ? 0x05A8u :
-                     srcn == 0x1Bu ? 0x050Au : 0x03C6u;
-    const uint32_t sample_frames = 24000u; /* 0.75 s includes DSP release tail */
     const size_t pcm_bytes = (size_t)sample_frames * 2u * sizeof(int16_t);
     const size_t wav_size = 44u + pcm_bytes;
 #if defined(_WIN32)
@@ -287,43 +281,38 @@ void nba_audio_play_setup_sfx(NbaAudio *audio, const NbaAssetPack *assets,
 #endif
     if (audio->setup_sfx_wav_size < wav_size) {
         uint8_t *grown = (uint8_t *)realloc(audio->setup_sfx_wav, wav_size);
-        if (!grown) return;
+        if (!grown) return false;
         audio->setup_sfx_wav = grown;
         audio->setup_sfx_wav_size = wav_size;
     }
     NbaSpc *spc = (NbaSpc *)malloc(sizeof(*spc));
-    if (!spc) return;
+    if (!spc) return false;
     if (!nba_spc_load(spc, ram->data, ram->size, dsp->data, dsp->size,
                       audio_u16(state + 12), state[14], state[15], state[16],
                       state[17], state[18])) {
         free(spc);
-        return;
+        return false;
     }
-    for (int voice = 0; voice < 8; ++voice) {
-        nba_spc_write_dsp(spc, (uint8_t)(voice * 16 + NBA_DSP_VOL_L), 0);
-        nba_spc_write_dsp(spc, (uint8_t)(voice * 16 + NBA_DSP_VOL_R), 0);
+    for (int index = 0; index < 8; ++index) {
+        nba_spc_write_dsp(spc, (uint8_t)(index * 16 + NBA_DSP_VOL_L), 0);
+        nba_spc_write_dsp(spc, (uint8_t)(index * 16 + NBA_DSP_VOL_R), 0);
     }
     nba_spc_write_dsp(spc, NBA_DSP_KOF, 0xFFu);
     nba_spc_write_dsp(spc, NBA_DSP_PMON, 0u);
     nba_spc_write_dsp(spc, NBA_DSP_NON, 0u);
     nba_spc_write_dsp(spc, NBA_DSP_EON, 0u);
     nba_spc_render_dsp(spc, (int16_t *)(audio->setup_sfx_wav + 44), 64);
-    const uint8_t base = 0x10u; /* voice 1 */
-    /* The settled default capture writes $40 at the game's 30/45 setting.
-     * Apply the option at the DSP voice, as $87:8C2D does, instead of
-     * attenuating an already-rendered host PCM buffer. */
-    uint32_t voice_volume = ((uint32_t)audio->setup_sfx_volume * 0x40u) / 30u;
-    if (voice_volume > 0x7Fu) voice_volume = 0x7Fu;
-    nba_spc_write_dsp(spc, base + NBA_DSP_VOL_L, (uint8_t)voice_volume);
-    nba_spc_write_dsp(spc, base + NBA_DSP_VOL_R, (uint8_t)voice_volume);
+    const uint8_t base = (uint8_t)(voice * 16u);
+    nba_spc_write_dsp(spc, base + NBA_DSP_VOL_L, volume_l);
+    nba_spc_write_dsp(spc, base + NBA_DSP_VOL_R, volume_r);
     nba_spc_write_dsp(spc, base + NBA_DSP_PITCH_L, (uint8_t)pitch);
     nba_spc_write_dsp(spc, base + NBA_DSP_PITCH_H, (uint8_t)(pitch >> 8));
     nba_spc_write_dsp(spc, base + NBA_DSP_SRCN, srcn);
-    nba_spc_write_dsp(spc, base + NBA_DSP_ADSR1, 0x8Eu);
-    nba_spc_write_dsp(spc, base + NBA_DSP_ADSR2, 0xE0u);
-    nba_spc_write_dsp(spc, base + NBA_DSP_GAIN, 0u);
+    nba_spc_write_dsp(spc, base + NBA_DSP_ADSR1, adsr1);
+    nba_spc_write_dsp(spc, base + NBA_DSP_ADSR2, adsr2);
+    nba_spc_write_dsp(spc, base + NBA_DSP_GAIN, gain);
     nba_spc_write_dsp(spc, NBA_DSP_KOF, 0u);
-    nba_spc_write_dsp(spc, NBA_DSP_KON, 0x02u);
+    nba_spc_write_dsp(spc, NBA_DSP_KON, (uint8_t)(1u << voice));
     int16_t *pcm = (int16_t *)(audio->setup_sfx_wav + 44);
     nba_spc_render_dsp(spc, pcm, (int)sample_frames);
     free(spc);
@@ -348,15 +337,61 @@ void nba_audio_play_setup_sfx(NbaAudio *audio, const NbaAssetPack *assets,
         int magnitude = pcm[i] < 0 ? -(int)pcm[i] : (int)pcm[i];
         if (magnitude > peak) peak = magnitude;
     }
+    if (peak_out) *peak_out = peak;
+#if defined(_WIN32)
+    if (audio->host_playback_enabled)
+        PlaySoundA((LPCSTR)audio->setup_sfx_wav, NULL,
+                   SND_MEMORY | SND_ASYNC | SND_NODEFAULT);
+#endif
+    return peak != 0;
+}
+
+/**
+ * Offset/Address/Size: $80:9DF3 | menu SFX dispatch | commands $49-$4B
+ * Subroutines: $80:A9E3/$80:AACD (APU queue), SPC SRCN $1A-$1C
+ * Purpose: Keys the packed Setup ARAM/DIR source through the captured S-DSP
+ *          voice registers without stopping Setup's independent music stream.
+ */
+void nba_audio_play_setup_sfx(NbaAudio *audio, const NbaAssetPack *assets,
+                              uint8_t srcn) {
+    if (!audio || !assets || srcn >= 30u) return;
+    /* Hardware writes captured at the three $80:9DF3 commands.  The F11 WAVs
+     * deliberately expose undecorated BRR sources; menu playback is different:
+     * the resident driver keys voice 1 with these pitch/envelope registers. */
+    uint16_t pitch = srcn == 0x1Au ? 0x05A8u :
+                     srcn == 0x1Bu ? 0x050Au : 0x03C6u;
+    const uint32_t sample_frames = 24000u; /* 0.75 s includes DSP release tail */
+    /* The settled default capture writes $40 at the game's 30/45 setting.
+     * Apply the option at the DSP voice, as $87:8C2D does, instead of
+     * attenuating an already-rendered host PCM buffer. */
+    uint32_t voice_volume = ((uint32_t)audio->setup_sfx_volume * 0x40u) / 30u;
+    if (voice_volume > 0x7Fu) voice_volume = 0x7Fu;
+    int peak = 0;
+    if (!audio_play_spc_sfx(audio, assets, NBA_ASSET_SETUP_SPC_RAM,
+            NBA_ASSET_SETUP_SPC_DSP, NBA_ASSET_SETUP_SPC_STATE,
+            "NBTSSPC1", srcn, 1u, pitch, (uint8_t)voice_volume,
+            (uint8_t)voice_volume, 0x8Eu, 0xE0u, 0u,
+            sample_frames, &peak)) return;
     printf("[SETUP] DSP menu SFX SRCN $%02X pitch=$%04X ADSR1/2=$8E/$E0, "
            "volume=%u/45 DSPVOL=$%02X peak=%d.\n", srcn, pitch,
            audio->setup_sfx_volume, (unsigned)voice_volume, peak);
-#if defined(_WIN32)
-    if (audio->host_playback_enabled) {
-        PlaySoundA((LPCSTR)audio->setup_sfx_wav, NULL,
-                   SND_MEMORY | SND_ASYNC | SND_NODEFAULT);
-    }
-#endif
+}
+
+/* `$85:9413-$941F -> $82:FEF4-$FF07 -> $80:9DF3`: event bit $2000
+ * dispatches command $44. The resident gameplay bank keys voice 4 from
+ * asset-pack SRCN $12 with these exact captured S-DSP registers. */
+bool nba_audio_play_gameplay_whistle(NbaAudio *audio,
+                                     const NbaAssetPack *assets) {
+    int peak = 0;
+    bool ok = audio_play_spc_sfx(audio, assets,
+        NBA_ASSET_PLAYER_INTRO_SPC_RAM, NBA_ASSET_PLAYER_INTRO_SPC_DSP,
+        NBA_ASSET_PLAYER_INTRO_SPC_STATE, "NBPISPC1",
+        0x12u, 4u, 0x0556u, 0x14u, 0x14u,
+        0x8Eu, 0xA0u, 0u, 24000u, &peak);
+    if (ok)
+        printf("[GAMEPLAY] DSP whistle command $44 SRCN $12 pitch=$0556 "
+               "voice=4 ADSR1/2=$8E/$A0 VOL=$14/$14 peak=%d.\n", peak);
+    return ok;
 }
 
 bool nba_audio_save_setup_sfx_wav(const NbaAudio *audio, const char *path) {

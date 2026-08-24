@@ -181,7 +181,7 @@ typedef struct {
     uint16_t whistle_active_raw_09b6;
     uint16_t whistle_timer_raw_08de;
     uint16_t presentation_gate_raw_08e2;
-    uint16_t whistle_audio_queued_raw;
+    uint16_t whistle_presentation_queued_raw;
     uint16_t ball_activity_raw;
     int16_t pass_actor_raw;
     int16_t pass_receiver_raw;
