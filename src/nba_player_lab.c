@@ -521,6 +521,18 @@ static bool player_record(const NbaAssetPack *assets, int team, int player,
     return true;
 }
 
+bool nba_player_gameplay_shot_ratings(const NbaAssetPack *assets,
+                                      uint8_t team, uint8_t roster_slot,
+                                      uint8_t *two_point, uint8_t *three_point) {
+    PlayerLabRecord player;
+    if (!two_point || !three_point ||
+        !player_record(assets, team, roster_slot, &player)) return false;
+    /* Roster profile `+$36/+$37`, selected by `$86:A4A5` for 2/3 points. */
+    *two_point = player.appearance_a;
+    *three_point = player.appearance_b;
+    return true;
+}
+
 bool nba_player_sprite_render(NbaRenderer *renderer, const NbaAssetPack *assets,
                               uint8_t team, uint8_t roster_slot, uint8_t side,
                               uint8_t upper_state, uint8_t direction,

@@ -122,11 +122,10 @@ void nba_gameplay_debugger_render(const NbaGameplayDebugger *debugger,
                  telemetry->camera_routine, telemetry->collision_routine,
                  telemetry->possession_routine);
         text(renderer, 6, 180, line, 0xFFFFFFFFu);
-        snprintf(line, sizeof(line), "SCORE:%u-%u VAL:%u LIVE:%02X IN:%u/%u T:%u",
+        snprintf(line, sizeof(line), "SCORE:%u-%u VAL:%u C:%u M:%u/%u",
                  telemetry->score_left_raw, telemetry->score_right_raw,
-                 telemetry->shot_value_raw, telemetry->live_state_raw,
-                 telemetry->inbound_state_raw, telemetry->inbound_actor_raw,
-                 telemetry->inbound_timer_raw);
+                 telemetry->shot_value_raw, telemetry->shot_chance_raw,
+                 telemetry->shot_inner_veto_raw, telemetry->shot_miss_index_raw);
         text(renderer, 6, 192, line, 0xFF9EF7A9u);
         snprintf(line, sizeof(line), "COARSE:%u,%u SRC:$A0:%04X RNG:$%04X F:%u",
                  telemetry->camera_086c_raw, telemetry->camera_086e_raw,
@@ -169,6 +168,8 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
             "\"team\":%d,\"candidate_raw\":%d,\"play_code_raw\":%u,"
             "\"rng_state_raw\":%u},\"match\":{\"score_left_raw\":%u,"
             "\"score_right_raw\":%u,\"shot_value_raw\":%u,"
+            "\"shot_chance_raw\":%u,\"shot_miss_index_raw\":%u,"
+            "\"shot_inner_veto_raw\":%u,"
             "\"live_state_raw\":%u,\"inbound_state_raw\":%u,"
             "\"inbound_actor_raw\":%u,\"inbound_timer_raw\":%u},"
             "\"camera\":{\"x\":%d,\"y\":%d,"
@@ -189,7 +190,9 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
             telemetry->possession_team, telemetry->possession_candidate_raw,
             telemetry->play_code_raw, telemetry->rng_state_raw,
             telemetry->score_left_raw, telemetry->score_right_raw,
-            telemetry->shot_value_raw, telemetry->live_state_raw,
+            telemetry->shot_value_raw, telemetry->shot_chance_raw,
+            telemetry->shot_miss_index_raw, telemetry->shot_inner_veto_raw,
+            telemetry->live_state_raw,
             telemetry->inbound_state_raw, telemetry->inbound_actor_raw,
             telemetry->inbound_timer_raw,
             telemetry->camera_x, telemetry->camera_y, telemetry->camera_routine,

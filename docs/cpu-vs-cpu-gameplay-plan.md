@@ -172,3 +172,12 @@ mismatches in 202 comparable frames. Remaining blockers are therefore explicit:
 The exact score field path and isolated hoop/arc helpers remain valid partial
 ports. No foul enum or callback is added because no foul event writer, handler,
 or state mutation has been proven.
+
+Increment 4A ports the first safe miss/rebound boundary: asset-pack roster
+bytes `+$36/+$37`, `$86:9F32/$9F38` rating tiers/difficulty adjustments, the
+exact `$80:CEE7` outcome comparison at `$86:A110`, `$09F8`, and all 16 miss
+offsets at `$86:A17D`. Missed balls retain free physics and all players pursue
+the landing point; ownership changes only on the C equivalent of
+`$86:BAA2/$86:BAEE`, so offensive rebounds remain possible. Raw contest and
+timing inputs to `$86:9ED8-$A11D` are still explicit defaults, and rim response
+is still a bounded/damped host approximation pending the full collision port.

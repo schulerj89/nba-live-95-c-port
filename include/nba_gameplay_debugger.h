@@ -99,6 +99,9 @@ typedef struct {
     uint16_t score_left_raw;
     uint16_t score_right_raw;
     uint16_t shot_value_raw;
+    uint8_t shot_chance_raw;
+    uint8_t shot_miss_index_raw;
+    uint8_t shot_inner_veto_raw;
     uint16_t live_state_raw;
     uint16_t inbound_state_raw;
     uint16_t inbound_actor_raw;

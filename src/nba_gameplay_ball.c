@@ -53,6 +53,42 @@ uint16_t nba_gameplay_shot_value(bool one_point_attempt, int16_t shooter_x,
     return 2u;
 }
 
+uint8_t nba_gameplay_shot_chance(uint8_t rating, uint8_t raw_actor_8c,
+                                 uint8_t difficulty,
+                                 bool raw_actor_16_nonnegative) {
+    /* Base tier of `$86:9ED8-$A11D`; `$86:A110` compares its result to the
+     * low byte from the exact gameplay LFSR. */
+    static const int8_t high_adjust[3] = {50, 15, 0}; /* `$86:9F32` */
+    static const int8_t low_adjust[3] = {40, 23, 0};  /* `$86:9F38` */
+    bool high_branch = raw_actor_8c >= rating;
+    int chance;
+    if (high_branch)
+        chance = rating >= 0xD9 ? 0xDC : rating >= 0xC0 ? 0xA0 :
+                 rating >= 0xA8 ? 0x82 : 0x6E;
+    else
+        chance = rating >= 0xD9 ? 0xE6 : rating >= 0xC0 ? 0xC0 :
+                 rating >= 0xA8 ? 0x99 : 0x73;
+    if (raw_actor_16_nonnegative)
+        chance += (high_branch ? high_adjust : low_adjust)[difficulty < 3u ?
+                                                           difficulty : 2u];
+    if (chance < 5) chance = 5;
+    if (chance > 255) chance = 255;
+    return (uint8_t)chance;
+}
+
+void nba_gameplay_miss_offset(uint8_t index, bool left_basket,
+                              int16_t *dx, int16_t *dy) {
+    /* `$86:A17D`, selected with the second `$80:CEE7` result & $0F. */
+    static const int8_t offsets[16][2] = {
+        {0,7},{0,-7},{0,-7},{-8,0},{6,0},{6,0},{0,7},{0,7},
+        {4,-8},{4,-8},{3,7},{3,8},{5,7},{5,8},{2,-7},{2,-7}
+    };
+    int x = offsets[index & 15u][0], y = offsets[index & 15u][1];
+    if (left_basket) { x = -x; y = -y; }
+    if (dx) *dx = (int16_t)x;
+    if (dy) *dy = (int16_t)y;
+}
+
 bool nba_gameplay_ball_self_test(void) {
     return nba_gameplay_ball_is_make(1, false, false, true, 0, 0, 74) &&
            nba_gameplay_ball_is_make(1, false, false, true, 6, 0, 82) &&
@@ -68,5 +104,7 @@ bool nba_gameplay_ball_self_test(void) {
            nba_gameplay_shot_value(false, -115, 0, false) == 3u &&
            nba_gameplay_shot_value(false, 225, 178, true) == 2u &&
            nba_gameplay_shot_value(false, 224, 178, true) == 3u &&
-           nba_gameplay_shot_value(true, 300, 0, true) == 1u;
+           nba_gameplay_shot_value(true, 300, 0, true) == 1u &&
+           nba_gameplay_shot_chance(0xC0, 0xC0, 0, true) == 210u &&
+           nba_gameplay_shot_chance(0xA0, 0xA0, 2, true) == 110u;
 }

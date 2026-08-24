@@ -1,5 +1,6 @@
 #include "nba_tipoff.h"
 #include "nba_player_lab.h"
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -105,6 +106,17 @@ static void cpu_set_role_targets(NbaTipoff *tipoff) {
     unsigned offense_base = tipoff->offense_side ? 5u : 0u;
     unsigned defense_base = tipoff->offense_side ? 0u : 5u;
     bool attack_right = tipoff->offense_side != 0u;
+
+    if (tipoff->cpu_play_state == NBA_CPU_PLAY_REBOUND) {
+        int16_t ball_x = fp_round(tipoff->ball.x_fp);
+        int16_t ball_y = fp_round(tipoff->ball.y_fp);
+        for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
+            tipoff->actors[actor].target_x = ball_x;
+            tipoff->actors[actor].target_y = ball_y;
+            tipoff->actors[actor].control_mode = 12u;
+        }
+        return;
+    }
 
     for (unsigned slot = 0; slot < 5; ++slot) {
         unsigned actor = offense_base + slot;
@@ -277,7 +289,8 @@ static bool ball_crossed_scoring_cylinder(const NbaTipoff *tipoff) {
     int dy = y - basket_y_for_side(tipoff->offense_side);
     bool correct_side = tipoff->handler_actor / 5u == tipoff->offense_side;
     return tipoff->ball.state == NBA_BALL_SHOT &&
-           nba_gameplay_ball_is_make(tipoff->live_state_raw, false, false,
+           nba_gameplay_ball_is_make(tipoff->live_state_raw, false,
+                                     tipoff->shot_inner_veto_raw,
                                      correct_side, (int16_t)dx,
                                      (int16_t)dy, (int16_t)z);
 }
@@ -311,6 +324,23 @@ static void cpu_update_live_ball(NbaTipoff *tipoff) {
             ball->z_fp = 0;
             if (ball->state == NBA_BALL_BOUNCE || ball->velocity_z > -384) {
                 ball->velocity_z = 0;
+                if (ball->state == NBA_BALL_BOUNCE) {
+                    /* `$85:A3B7-$A7A1` damps the free ball and keeps its
+                     * projected landing point inside the playable court. */
+                    ball->velocity_x = (int16_t)(ball->velocity_x * 7 / 8);
+                    ball->velocity_y = (int16_t)(ball->velocity_y * 7 / 8);
+                    if (abs(ball->velocity_x) < 8) ball->velocity_x = 0;
+                    if (abs(ball->velocity_y) < 8) ball->velocity_y = 0;
+                    int x = fp_round(ball->x_fp), y = fp_round(ball->y_fp);
+                    if (x < -106 || x > 386) {
+                        ball->x_fp = (x < -106 ? -106 : 386) * 256;
+                        ball->velocity_x = (int16_t)(-ball->velocity_x / 2);
+                    }
+                    if (y < -180 || y > 180) {
+                        ball->y_fp = (y < -180 ? -180 : 180) * 256;
+                        ball->velocity_y = (int16_t)(-ball->velocity_y / 2);
+                    }
+                }
             } else {
                 ball->velocity_z = (int16_t)(-ball->velocity_z / 2);
                 ball->velocity_x = (int16_t)(ball->velocity_x * 3 / 4);
@@ -365,6 +395,9 @@ static void cpu_begin_possession(NbaTipoff *tipoff, uint8_t offense_side) {
     tipoff->possession_actor = (int8_t)tipoff->handler_actor;
     tipoff->cpu_play_state = NBA_CPU_PLAY_BREAK;
     tipoff->shot_result_resolved = false;
+    tipoff->shot_inner_veto_raw = false;
+    tipoff->shot_miss_index_raw = 0xFFu;
+    tipoff->shot_value_raw = 0u;
     ball_attach_to_actor(tipoff, tipoff->handler_actor);
     for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
         tipoff->actors[actor].reaction_threshold =
@@ -373,6 +406,18 @@ static void cpu_begin_possession(NbaTipoff *tipoff, uint8_t offense_side) {
                 fp_round(tipoff->actors[actor].y_fp),
                 fp_round(tipoff->ball.x_fp), fp_round(tipoff->ball.y_fp));
     }
+}
+
+static void cpu_commit_rebound(NbaTipoff *tipoff, uint8_t catcher) {
+    /* `$86:BAA2/$86:BAEE` commits the collision winner to `$093E`; only
+     * that player/ball collision may select the next offense. */
+    unsigned side = catcher / 5u;
+    ++tipoff->possession_number;
+    cpu_begin_possession(tipoff, (uint8_t)side);
+    tipoff->handler_actor = catcher;
+    tipoff->receiver_actor = (uint8_t)(side * 5u + ((catcher + 1u) % 5u));
+    ball_attach_to_actor(tipoff, catcher);
+    tipoff->possession_actor = (int8_t)catcher;
 }
 
 static void cpu_enter_play_state(NbaTipoff *tipoff, NbaCpuPlayState state) {
@@ -479,6 +524,32 @@ static void cpu_update_possession(NbaTipoff *tipoff) {
                 tipoff->shot_value_raw = nba_gameplay_shot_value(
                     false, release_x_rom, tipoff->shot_origin_y,
                     tipoff->offense_side != 0u);
+                uint8_t team = tipoff->offense_side ?
+                    tipoff->session->right_team : tipoff->session->left_team;
+                uint8_t rating_2pt = 0xA8u, rating_3pt = 0xA8u;
+                (void)nba_player_gameplay_shot_ratings(
+                    tipoff->assets, team, tipoff->handler_actor % 5u,
+                    &rating_2pt, &rating_3pt);
+                uint8_t rating = tipoff->shot_value_raw == 3u ?
+                                 rating_3pt : rating_2pt;
+                uint8_t difficulty = (uint8_t)tipoff->session->config.main_values[2];
+                /* Raw actor +$8C/+16 modifiers remain explicit defaults until
+                 * their CPU writers are captured; the rating tiers, difficulty
+                 * tables, RNG consumption, `$09F8`, and miss table are exact. */
+                tipoff->shot_chance_raw = nba_gameplay_shot_chance(
+                    rating, rating, difficulty, true);
+                uint8_t roll = (uint8_t)nba_gameplay_rng_next(&tipoff->rng);
+                tipoff->shot_inner_veto_raw = roll >= tipoff->shot_chance_raw;
+                tipoff->shot_miss_index_raw = 0xFFu;
+                if (tipoff->shot_inner_veto_raw) {
+                    int16_t miss_x, miss_y;
+                    tipoff->shot_miss_index_raw =
+                        (uint8_t)(nba_gameplay_rng_next(&tipoff->rng) & 0x0Fu);
+                    nba_gameplay_miss_offset(tipoff->shot_miss_index_raw,
+                        tipoff->offense_side == 0u, &miss_x, &miss_y);
+                    basket_x += miss_x;
+                    basket_y += miss_y;
+                }
                 cpu_enter_play_state(tipoff, NBA_CPU_PLAY_SHOT);
                 ball_launch(tipoff, basket_x, basket_y, 52u, 1536,
                             NBA_BALL_SHOT);
@@ -499,18 +570,28 @@ static void cpu_update_possession(NbaTipoff *tipoff) {
             }
             break;
         case NBA_CPU_PLAY_REBOUND:
+            if (tipoff->ball.z_fp <= 24 * 256) {
+                uint8_t catcher = NBA_GAMEPLAY_NO_ACTOR;
+                uint16_t nearest = 0xFFFFu;
+                for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
+                    int dx = fp_round(tipoff->actors[actor].x_fp) -
+                             fp_round(tipoff->ball.x_fp);
+                    int dy = fp_round(tipoff->actors[actor].y_fp) -
+                             fp_round(tipoff->ball.y_fp);
+                    uint16_t distance = actor_distance(dx, dy);
+                    if (distance < nearest) {
+                        nearest = distance;
+                        catcher = (uint8_t)actor;
+                    }
+                }
+                if (catcher != NBA_GAMEPLAY_NO_ACTOR && nearest <= 14u)
+                    cpu_commit_rebound(tipoff, catcher);
+            }
             break;
     }
 
     ++tipoff->possession_frame;
     ++tipoff->play_state_frame;
-    /* Miss recovery remains bounded until the loose-ball actor collision
-     * branch is ported; made baskets use the `$85:A079` score/dead-ball path. */
-    if (tipoff->cpu_play_state == NBA_CPU_PLAY_REBOUND &&
-        tipoff->play_state_frame >= 90u) {
-        ++tipoff->possession_number;
-        cpu_begin_possession(tipoff, (uint8_t)!tipoff->offense_side);
-    }
 }
 
 static void cpu_update_camera(NbaTipoff *tipoff) {
@@ -695,6 +776,9 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
     telemetry->score_left_raw = tipoff->session->score[0];
     telemetry->score_right_raw = tipoff->session->score[1];
     telemetry->shot_value_raw = tipoff->shot_value_raw;
+    telemetry->shot_chance_raw = tipoff->shot_chance_raw;
+    telemetry->shot_miss_index_raw = tipoff->shot_miss_index_raw;
+    telemetry->shot_inner_veto_raw = tipoff->shot_inner_veto_raw ? 1u : 0u;
     telemetry->live_state_raw = tipoff->live_state_raw;
     telemetry->inbound_state_raw = tipoff->inbound_state_raw;
     telemetry->inbound_actor_raw = tipoff->inbound_actor_raw;

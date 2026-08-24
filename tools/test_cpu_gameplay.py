@@ -34,7 +34,7 @@ def main():
         trace = root / "cpu_gameplay.jsonl"
         command = [
             args.exe, "--headless", "--rom", args.rom, "--assets", args.pack,
-            "--tipoff-only", "--frames", "8000", "--gameplay-trace", str(trace),
+            "--tipoff-only", "--frames", "35000", "--gameplay-trace", str(trace),
             "--debug-state",
         ]
         result = subprocess.run(command, capture_output=True, text=True, check=False)
@@ -42,8 +42,8 @@ def main():
                 "BALL M:" not in result.stdout:
             raise AssertionError(result.stdout + result.stderr)
         rows = [json.loads(line) for line in trace.read_text().splitlines()]
-        if len(rows) != 8000:
-            raise AssertionError(f"expected 8000 CPU frames, got {len(rows)}")
+        if len(rows) != 35000:
+            raise AssertionError(f"expected 35000 CPU frames, got {len(rows)}")
 
         def frame(number):
             return rows[number - 1]
@@ -147,6 +147,30 @@ def main():
             raise AssertionError("$092E inbound thresholds changed: " +
                                  repr([(len(v), v[0], v[-1]) for v in dead_runs]))
 
+        shots = []
+        last_state = rows[218]["ball"]["state"]
+        for row in rows[219:]:
+            state = row["ball"]["state"]
+            if state == 5 and last_state != 5:
+                match = row["match"]
+                shots.append({"frame": row["frame"],
+                              "team": row["possession"]["team"],
+                              "veto": match["shot_inner_veto_raw"],
+                              "index": match["shot_miss_index_raw"],
+                              "rebound": None})
+            if state == 4 and last_state == 6 and shots:
+                shots[-1]["rebound"] = (row["ball"]["owner"],
+                                        row["possession"]["team"])
+            last_state = state
+        misses = [shot for shot in shots if shot["veto"]]
+        if len(misses) < 2 or any(not 0 <= shot["index"] < 16 for shot in misses):
+            raise AssertionError(f"$86:A110/$A17D miss path missing: {misses}")
+        if any(shot["rebound"] is None for shot in misses):
+            raise AssertionError(f"miss did not reach collision-owned rebound: {misses}")
+        if not any(owner // 5 == shot["team"] for shot in misses
+                   for owner, _ in [shot["rebound"]]):
+            raise AssertionError("offensive rebounds were replaced by forced turnovers")
+
         def signed16(value):
             return value - 0x10000 if value & 0x8000 else value
 
@@ -219,13 +243,16 @@ def main():
                 raise AssertionError(f"CPU gameplay frame {number} changed: {digest}")
 
     source = Path(__file__).parents[1]
-    implementation = (source / "src" / "nba_tipoff.c").read_text()
+    implementation = "\n".join((source / relative).read_text() for relative in (
+        "src/nba_tipoff.c", "src/nba_gameplay_ball.c", "src/nba_player_lab.c"))
     for marker in ("$85:963D-$985F", "$85:BC43-$BC81", "$85:B95C",
                    "$87:B832", "$87:B649", "$87:B66A", "$85:9192",
                    "$87:8F01-$8F8D", "nba_gameplay_camera_update",
                    "cpu_begin_possession", "cpu_update_possession",
                    "ball_attach_to_actor", "ball_launch",
-                   "$85:A079-$A345", "$4711/$4791", "score_made_basket"):
+                   "$85:A079-$A345", "$4711/$4791", "score_made_basket",
+                   "$86:A110", "$86:A17D", "$86:BAA2/$86:BAEE",
+                   "nba_player_gameplay_shot_ratings", "cpu_commit_rebound"):
         if marker not in implementation:
             raise AssertionError(f"CPU gameplay implementation lost {marker}")
     for relative in ("include/nba_gameplay_ai.h", "src/nba_gameplay_ai.c",

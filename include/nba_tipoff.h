@@ -105,6 +105,9 @@ typedef struct {
     uint16_t inbound_state_raw;    /* `$0952` */
     uint16_t inbound_actor_raw;    /* `$0954` */
     int16_t shot_origin_x, shot_origin_y;
+    uint8_t shot_chance_raw;
+    uint8_t shot_miss_index_raw;
+    bool shot_inner_veto_raw;  /* `$09F8` */
     uint8_t last_scoring_side;
     bool shot_result_resolved;
     uint8_t offense_side;

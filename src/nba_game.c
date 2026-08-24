@@ -184,9 +184,10 @@ static void nba_game_debug_lines(const NbaGame *game, NbaDebugLines *out) {
                  s->ball.velocity_y / 256, s->ball.velocity_z / 256,
                  s->play_code);
         snprintf(out->line[out->count++], NBA_DEBUG_LINE_SIZE,
-                 "SCORE %u-%u VAL:%u LIVE:$%02X IN:%u/%u T:%u",
+                 "SCORE %u-%u VAL:%u CH:%u MISS:%u/%u IN:%u/%u T:%u",
                  s->session->score[0], s->session->score[1],
-                 s->shot_value_raw, s->live_state_raw,
+                 s->shot_value_raw, s->shot_chance_raw,
+                 s->shot_inner_veto_raw ? 1u : 0u, s->shot_miss_index_raw,
                  s->inbound_state_raw, s->inbound_actor_raw,
                  s->inbound_timer_raw);
     }
