@@ -514,6 +514,66 @@ def build_gameplay_formation_asset(rom_data):
     return bytes(payload)
 
 
+def build_gameplay_play_control_asset(rom_data):
+    """Pack `$85:B377/$B2DC`'s independent 61-play control streams.
+
+    `$85:C6AF` is a table of bank-$85 stream pointers. Every stream contains
+    complete four-word records followed by the two-byte-only `$23BA`
+    sentinel; counts must be discovered from that sentinel because they
+    intentionally differ from the adjacent formation graph for several plays.
+    """
+    pointer_table = lorom_offset(0x85C6AF)
+    pointer_bytes = rom_data[pointer_table:pointer_table + 61 * 2]
+    if hashlib.sha256(pointer_bytes).hexdigest() != \
+            "ec730707bd9a46518203b109c36d0ca7c76cbae1c1b20f6cf5bb8af22d451ade":
+        raise RuntimeError("Gameplay play-control pointer table changed")
+    pointers = struct.unpack("<61H", pointer_bytes)
+    streams = []
+    counts = []
+    records = bytearray()
+    for play, pointer in enumerate(pointers):
+        source = lorom_offset(0x850000 | pointer)
+        stream = bytearray()
+        while True:
+            if source + 2 > len(rom_data):
+                raise RuntimeError(f"Truncated play-control stream {play}")
+            word = struct.unpack_from("<H", rom_data, source)[0]
+            if word == 0x23BA:
+                break
+            if source + 8 > len(rom_data):
+                raise RuntimeError(f"Truncated play-control record {play}")
+            stream.extend(rom_data[source:source + 8])
+            source += 8
+        counts.append(len(stream) // 8)
+        streams.append(bytes(stream))
+        records.extend(stream)
+    expected_counts = (
+        3,3,3,3,3,3,5,5,5,5,5,4,4,3,4,4,4,4,5,5,5,5,5,5,5,6,6,8,
+        8,5,6,6,4,4,8,5,5,5,5,8,7,8,8,7,6,6,7,7,6,9,8,5,4,4,4,6,
+        5,5,5,5,4,
+    )
+    digest = hashlib.sha256(records).hexdigest()
+    if tuple(counts) != expected_counts or len(records) != 2560 or \
+            digest != "5d0775922793118a8e8d0b2b3c5e3a074d09f6a511742822111d057880aa48bd":
+        raise RuntimeError(
+            f"Gameplay play-control graph changed: counts={counts!r} "
+            f"bytes={len(records)} sha256={digest}")
+
+    header_size = struct.calcsize("<8s6IH2x")
+    entry_size = struct.calcsize("<HHI")
+    entry_offset = header_size
+    data_offset = entry_offset + len(pointers) * entry_size
+    payload = bytearray(struct.pack(
+        "<8s6IH2x", b"NBPLAY1", 1, len(pointers), sum(counts),
+        entry_offset, data_offset, len(records), 0xC6AF))
+    record_offset = data_offset
+    for pointer, count, stream in zip(pointers, counts, streams):
+        payload.extend(struct.pack("<HHI", pointer, count, record_offset))
+        record_offset += len(stream)
+    payload.extend(records)
+    return bytes(payload)
+
+
 def build_player_front_pose(rom_data):
     """Assemble the camera-facing default pose from exact ROM OBJ tiles.
 
@@ -1520,6 +1580,7 @@ def create_asset_pack(rom_path, output_path):
 
     player_rosters = build_player_roster_asset(rom_data)
     gameplay_formations = build_gameplay_formation_asset(rom_data)
+    gameplay_play_control = build_gameplay_play_control_asset(rom_data)
     (player_default_pose, player_tile_sources, player_palette_tables,
      player_pose_layout) = build_player_front_pose(rom_data)
     player_animations = build_player_animation_asset(rom_data)
@@ -1723,6 +1784,7 @@ def create_asset_pack(rom_path, output_path):
         (272, 256, 224, 29, gameplay_home_courts),
         (273, 912, 416, 29, gameplay_court_panoramas),
         (274, 61, 5, 1595, gameplay_formations),
+        (275, 61, 320, 0x85C6AF, gameplay_play_control),
     ])
     assets.extend([
         (124, 0, 0, 0, rules_vram_bytes),
@@ -1782,7 +1844,7 @@ def create_asset_pack(rom_path, output_path):
                     extra_audio_id += 1
 
     header_magic = b"NBA95PAK"
-    version = 24
+    version = 25
     asset_count = len(assets)
     entry_size = 24 # 6 * 4 bytes
 

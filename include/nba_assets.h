@@ -126,7 +126,9 @@ typedef enum {
     NBA_ASSET_GAMEPLAY_COURT_PANORAMAS            = 273,
     /* NBFORM1: exact `$85:AD6B` 61-play x five-role coordinate graph. */
     NBA_ASSET_GAMEPLAY_FORMATIONS                  = 274,
-    NBA_ASSET_MAX                   = 275
+    /* NBPLAY1: `$85:B377/$B2DC` 61-play control stream graph. */
+    NBA_ASSET_GAMEPLAY_PLAY_CONTROL                 = 275,
+    NBA_ASSET_MAX                   = 276
 } NbaAssetId;
 
 typedef struct {
@@ -160,5 +162,17 @@ bool nba_assets_gameplay_formation_offset(const NbaAssetPack *pack,
                                           uint8_t index, bool mirror_y,
                                           int16_t ball_x, int16_t *x,
                                           int16_t *y);
+
+typedef struct {
+    int16_t countdown;
+    int16_t selector_a;
+    int16_t selector_b;
+    int16_t selector_c;
+} NbaGameplayPlayControlRecord;
+
+bool nba_assets_gameplay_play_control(const NbaAssetPack *pack, uint8_t play,
+                                      uint8_t index,
+                                      NbaGameplayPlayControlRecord *record,
+                                      uint8_t *count);
 
 #endif /* NBA_ASSETS_H */

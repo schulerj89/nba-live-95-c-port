@@ -5,7 +5,7 @@
 
 #define NBA_ASSET_MAGIC "NBA95PAK"
 
-#define NBA_ASSET_PACK_VERSION 24u
+#define NBA_ASSET_PACK_VERSION 25u
 #define NBA_ASSET_HEADER_SIZE 16u
 #define NBA_ASSET_ENTRY_SIZE 24u
 
@@ -49,6 +49,28 @@ static bool formation_payload_valid(const uint8_t *data, size_t size) {
             previous_pointer = pointer;
             expected_offset += (size_t)counts[play] * 4u;
         }
+    }
+    return expected_offset == size;
+}
+
+static bool play_control_payload_valid(const uint8_t *data, size_t size) {
+    static const uint8_t counts[61] = {
+        3,3,3,3,3,3,5,5,5,5,5,4,4,3,4,4,4,4,5,5,5,5,5,5,5,6,6,8,8,5,
+        6,6,4,4,8,5,5,5,5,8,7,8,8,7,6,6,7,7,6,9,8,5,4,4,4,6,5,5,5,5,4
+    };
+    if (!data || size != 3084u || memcmp(data, "NBPLAY1", 8) ||
+        asset_u32(data + 8) != 1u || asset_u32(data + 12) != 61u ||
+        asset_u32(data + 16) != 320u || asset_u32(data + 20) != 36u ||
+        asset_u32(data + 24) != 524u || asset_u32(data + 28) != 2560u ||
+        asset_u16(data + 32) != 0xC6AFu) return false;
+    size_t expected_offset = 524u;
+    for (unsigned play = 0; play < 61u; ++play) {
+        const uint8_t *entry = data + 36u + play * 8u;
+        uint16_t pointer = asset_u16(entry);
+        uint16_t count = asset_u16(entry + 2u);
+        if (pointer < 0xC9A7u || count != counts[play] ||
+            asset_u32(entry + 4u) != expected_offset) return false;
+        expected_offset += (size_t)count * 8u;
     }
     return expected_offset == size;
 }
@@ -306,6 +328,21 @@ bool nba_assets_load(NbaAssetPack *pack, const char *asset_path) {
             return asset_load_error(pack,
                 "Gameplay formation accessor vectors are invalid");
     }
+    const NbaAssetItem *play_control = nba_assets_get(
+        pack, NBA_ASSET_GAMEPLAY_PLAY_CONTROL);
+    if (play_control && !play_control_payload_valid(
+            (const uint8_t *)play_control->data, play_control->size))
+        return asset_load_error(pack, "Gameplay play-control graph is invalid");
+    if (play_control) {
+        NbaGameplayPlayControlRecord record;
+        uint8_t count = 0u;
+        if (!nba_assets_gameplay_play_control(
+                pack, 0x35u, 0u, &record, &count) || count != 4u ||
+            record.countdown != -1 || record.selector_a != 4 ||
+            record.selector_b != 2 || record.selector_c != -1)
+            return asset_load_error(pack,
+                "Gameplay play-control accessor vectors are invalid");
+    }
     printf("[ASSETS] Loaded asset pack: '%s' (%zu bytes, %u assets)\n",
            asset_path, pack->raw_size, pack->item_count);
     return true;
@@ -406,5 +443,32 @@ bool nba_assets_gameplay_formation_offset(const NbaAssetPack *pack,
     }
     *x = (int16_t)raw_x;
     *y = (int16_t)raw_y;
+    return true;
+}
+
+bool nba_assets_gameplay_play_control(const NbaAssetPack *pack, uint8_t play,
+                                      uint8_t index,
+                                      NbaGameplayPlayControlRecord *record,
+                                      uint8_t *count) {
+    const NbaAssetItem *item = nba_assets_get(
+        pack, NBA_ASSET_GAMEPLAY_PLAY_CONTROL);
+    if (!item || !item->data || play >= 61u || item->size != 3084u)
+        return false;
+    const uint8_t *data = (const uint8_t *)item->data;
+    if (memcmp(data, "NBPLAY1", 8) || asset_u32(data + 8) != 1u ||
+        asset_u32(data + 20) != 36u || asset_u32(data + 24) != 524u)
+        return false;
+    const uint8_t *entry = data + 36u + (size_t)play * 8u;
+    uint16_t record_count = asset_u16(entry + 2u);
+    uint32_t offset = asset_u32(entry + 4u);
+    if (count) *count = (uint8_t)record_count;
+    if (!record || index >= record_count || offset < 524u ||
+        (size_t)offset + (size_t)record_count * 8u > item->size)
+        return false;
+    const uint8_t *source = data + offset + (size_t)index * 8u;
+    record->countdown = (int16_t)asset_u16(source);
+    record->selector_a = (int16_t)asset_u16(source + 2u);
+    record->selector_b = (int16_t)asset_u16(source + 4u);
+    record->selector_c = (int16_t)asset_u16(source + 6u);
     return true;
 }

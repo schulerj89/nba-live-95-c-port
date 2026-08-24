@@ -1,4 +1,4 @@
-"""Exact-ROM regression vectors for the `$85:AD6B` formation graph."""
+"""Exact-ROM regressions for gameplay formation and play-control graphs."""
 
 import argparse
 import hashlib
@@ -7,7 +7,9 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from extract_assets import build_gameplay_formation_asset, load_verified_rom
+from extract_assets import (build_gameplay_formation_asset,
+                            build_gameplay_play_control_asset,
+                            load_verified_rom)
 
 
 def pack_asset(path, wanted):
@@ -15,8 +17,8 @@ def pack_asset(path, wanted):
     if raw[:8] != b"NBA95PAK":
         raise AssertionError("invalid asset-pack magic")
     version, count = struct.unpack_from("<II", raw, 8)
-    if version != 24:
-        raise AssertionError(f"formation graph requires pack v24, got {version}")
+    if version != 25:
+        raise AssertionError(f"gameplay graphs require pack v25, got {version}")
     for index in range(count):
         asset_id, offset, size, width, height, flags = struct.unpack_from(
             "<6I", raw, 16 + index * 24)
@@ -44,13 +46,32 @@ def transformed(pair, play, mirror_y=False, ball_x=0):
     return wrap(x), wrap(y)
 
 
+def control_records(payload, play):
+    entry = 36 + play * 8
+    pointer, count, offset = struct.unpack_from("<HHI", payload, entry)
+    records = [struct.unpack_from("<hhhh", payload, offset + index * 8)
+               for index in range(count)]
+    return pointer, records
+
+
 def write_subset(path, payload, corrupt=False):
     data = bytearray(payload)
     if corrupt:
         struct.pack_into("<H", data, 48 + 2, 4)  # play 0 count must be three
     offset = 40
-    raw = (b"NBA95PAK" + struct.pack("<II", 24, 1) +
+    raw = (b"NBA95PAK" + struct.pack("<II", 25, 1) +
            struct.pack("<6I", 274, offset, len(data), 61, 5, 1595) + data)
+    path.write_bytes(raw)
+
+
+def write_control_subset(path, payload, corrupt=False):
+    data = bytearray(payload)
+    if corrupt:
+        struct.pack_into("<H", data, 36 + 2, 4)  # play 0 count must be three
+    offset = 40
+    raw = (b"NBA95PAK" + struct.pack("<II", 25, 1) +
+           struct.pack("<6I", 275, offset, len(data), 61, 320, 0x85C6AF) +
+           data)
     path.write_bytes(raw)
 
 
@@ -104,19 +125,61 @@ def main():
        transformed(play_10[0][0], 0x10, True, -1) != (-320, -120):
         raise AssertionError("$85:AD6B mirror transform changed")
 
+    control, control_metadata = pack_asset(args.pack, 275)
+    if control_metadata != (61, 320, 0x85C6AF) or len(control) != 3084:
+        raise AssertionError(
+            f"invalid play-control metadata: {control_metadata}, {len(control)}")
+    control_header = struct.unpack_from("<8s6IH2x", control)
+    if control_header != (b"NBPLAY1\0", 1, 61, 320, 36, 524, 2560, 0xC6AF):
+        raise AssertionError(f"play-control header changed: {control_header}")
+    expected_control = build_gameplay_play_control_asset(
+        load_verified_rom(args.rom))
+    if control != expected_control:
+        raise AssertionError("packed play-control graph differs from verified ROM")
+    control_digest = hashlib.sha256(control[524:]).hexdigest()
+    if control_digest != \
+            "5d0775922793118a8e8d0b2b3c5e3a074d09f6a511742822111d057880aa48bd":
+        raise AssertionError(f"play-control checksum changed: {control_digest}")
+    expected_streams = {
+        0x35: [(-1,4,2,-1),(-1,4,2,-1),(-1,3,2,-1),(-1,1,2,-1)],
+        0x01: [(120,3,4,-1),(100,4,3,-1),(100,3,4,-1)],
+        0x0F: [(-1,-1,-1,-1),(-1,-1,-1,-1),(-1,3,-1,-1),(-1,1,0,-1)],
+        0x26: [(-1,4,3,-1),(-1,4,1,-1),(-1,4,1,-1),(-1,4,1,-1),
+               (120,3,2,1)],
+    }
+    for play, expected_stream in expected_streams.items():
+        pointer, actual_stream = control_records(control, play)
+        if pointer < 0xC9A7 or actual_stream != expected_stream:
+            raise AssertionError(
+                f"play-control stream changed play=${play:02X}: "
+                f"${pointer:04X} {actual_stream}")
+
     with tempfile.TemporaryDirectory() as directory:
         valid = Path(directory) / "formation.pak"
         invalid = Path(directory) / "bad-formation.pak"
+        valid_control = Path(directory) / "play-control.pak"
+        invalid_control = Path(directory) / "bad-play-control.pak"
         write_subset(valid, payload)
         write_subset(invalid, payload, corrupt=True)
+        write_control_subset(valid_control, control)
+        write_control_subset(invalid_control, control, corrupt=True)
         base = [str(args.exe), "--headless", "--frames", "0", "--assets"]
         good = subprocess.run(base + [str(valid)], capture_output=True, text=True)
         bad = subprocess.run(base + [str(invalid)], capture_output=True, text=True)
+        good_control = subprocess.run(
+            base + [str(valid_control)], capture_output=True, text=True)
+        bad_control = subprocess.run(
+            base + [str(invalid_control)], capture_output=True, text=True)
         if good.returncode:
             raise AssertionError(good.stdout + good.stderr)
         if bad.returncode == 0 or "formation graph is invalid" not in bad.stderr:
             raise AssertionError("runtime accepted a malformed formation graph")
-    print("[FORMATION ASSET TEST] PASS: roots, pointers, counts, vectors, checksum, parser")
+        if good_control.returncode:
+            raise AssertionError(good_control.stdout + good_control.stderr)
+        if bad_control.returncode == 0 or \
+                "play-control graph is invalid" not in bad_control.stderr:
+            raise AssertionError("runtime accepted a malformed play-control graph")
+    print("[GAMEPLAY GRAPH TEST] PASS: formation/control roots, streams, checksums, parsers")
 
 
 if __name__ == "__main__":

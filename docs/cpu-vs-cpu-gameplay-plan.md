@@ -305,3 +305,22 @@ side-relative player selectors. `$87:8FA1 -> $85:AF5C` advances it once after
 each completed ten-actor logical pass with `C6=2`, advancing only after the
 countdown underflows. Packing this independent graph and replacing the host
 play-state timeline is the next checkpoint.
+
+Increment 4G packs that graph as ROM-derived asset `NBPLAY1` in asset-pack
+version 25. The `$85:C6AF` pointer bytes hash to
+`ec730707bd9a46518203b109c36d0ca7c76cbae1c1b20f6cf5bb8af22d451ade`;
+following all 61 two-byte pointers and stopping only at each two-byte `$23BA`
+sentinel yields 320 records (2,560 bytes) hashing to
+`5d0775922793118a8e8d0b2b3c5e3a074d09f6a511742822111d057880aa48bd`.
+The runtime validates independent counts, offsets, source pointers, and the
+known `$35/$01/$0F/$26` streams before exposing a typed four-word accessor.
+No Mesen frame or generated recompilation source is stored in the pack.
+
+The available recompilation is useful as an executable hardware oracle but
+does not presently provide native C for gameplay. Its generated dispatch table
+contains discovered entries only in banks `$80-$82`, while `generic_host.c`
+explicitly routes other addresses through `interp_bridge_run_until_quiescent`.
+Gameplay semantics therefore continue to come from exact ROM bytes, Ghidra
+control flow, and Mesen WRAM/execution traces. The recomp remains valuable for
+repeatable end-to-end playback and future function-boundary discovery, not as
+a false C-level reference for bank `$85-$87` gameplay routines.
