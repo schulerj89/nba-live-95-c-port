@@ -171,6 +171,41 @@ static void setup_advance_steady_bg2(NbaSetupScreen *s) {
     }
 }
 
+/* $80:A3B8, observed after Start on Exhibition at Mesen frames 401..452.
+ * This is still the live Game Setup scene: BG3 leaves first at 14 px/frame,
+ * then BG1/BG2 separate at 8 px/frame while INIDISP fades.  Team Select is
+ * not dispatched until the forced-blank handoff through $80:DBF6. */
+static bool setup_update_team_select_exit(NbaSetupScreen *s) {
+    int t = ++s->team_select_exit_frame;
+    s->transition_blank = false;
+
+    if (t == 1) {
+        s->main_screen = 0x07;
+    } else if (t <= NBA_SETUP_TEAM_EXIT_BG3_FRAMES) {
+        s->main_screen = 0x13;
+        s->bg3_vscroll = t >= 3 ? (t - 2) * NBA_SETUP_BG3_SCROLL_STEP : 0;
+    } else {
+        s->main_screen = 0x03;
+        s->bg3_vscroll = 182;
+    }
+    s->sub_screen = t < 51 ? NBA_SETUP_SUB_SETTLED : 0;
+
+    if (t == NBA_SETUP_TEAM_EXIT_SLIDE_FRAME) {
+        s->bg1_hscroll = 0;
+        s->bg2_hscroll = 0;
+    } else if (t > NBA_SETUP_TEAM_EXIT_SLIDE_FRAME) {
+        int step = (t - NBA_SETUP_TEAM_EXIT_SLIDE_FRAME) * 8;
+        s->bg1_hscroll = step;
+        s->bg2_hscroll = (1024 - step) & 0x3FF;
+        if (t >= 24 && t <= 50)
+            s->brightness = 15 - (t - 22) / 2;
+    }
+
+    if (t >= 51)
+        s->transition_blank = true;
+    return t >= NBA_SETUP_TEAM_EXIT_HANDOFF_FRAME;
+}
+
 static void setup_release_page_transition(NbaSetupScreen *s) {
     s->bg2_scroll_from_transition = true;
     setup_advance_steady_bg2(s);
@@ -782,6 +817,13 @@ NbaSetupUpdateResult nba_setup_screen_update(NbaSetupScreen *s,
     if (s->transition_release_pending)
         setup_release_page_transition(s);
 
+    if (s->team_select_exit_active) {
+        if (setup_update_team_select_exit(s))
+            return setup_result(NBA_SETUP_SOUND_NONE,
+                                NBA_SETUP_ACTION_CONFIRM_MODE);
+        return setup_result(NBA_SETUP_SOUND_NONE, NBA_SETUP_ACTION_NONE);
+    }
+
     if (!input) return setup_result(NBA_SETUP_SOUND_NONE, NBA_SETUP_ACTION_NONE);
 
     if (s->transition != NBA_SETUP_TRANSITION_NONE) {
@@ -893,9 +935,20 @@ NbaSetupUpdateResult nba_setup_screen_update(NbaSetupScreen *s,
                                 NBA_SETUP_ACTION_OPEN_OPTIONS);
         }
         /* Live ROM: A opens Rules/Options, but only Start confirms a mode. */
-        if (s->row < NBA_SETUP_ROW_RULES && (input->pressed & NBA_BTN_START))
+        if (s->row < NBA_SETUP_ROW_RULES && (input->pressed & NBA_BTN_START)) {
+            /* Exhibition remains in Game Setup while $80:A3B8 performs its
+             * layer exit. Other modes are still reported to their future
+             * dispatchers immediately. */
+            if (s->config->main_values[0] == 0u) {
+                s->team_select_exit_active = true;
+                s->team_select_exit_frame = 0;
+            } else {
+                return setup_result(NBA_SETUP_SOUND_CONFIRM,
+                                    NBA_SETUP_ACTION_CONFIRM_MODE);
+            }
             return setup_result(NBA_SETUP_SOUND_CONFIRM,
-                                NBA_SETUP_ACTION_CONFIRM_MODE);
+                                NBA_SETUP_ACTION_NONE);
+        }
     }
     if (input->pressed & (NBA_BTN_UP | NBA_BTN_DOWN))
         return setup_result(NBA_SETUP_SOUND_MOVE, NBA_SETUP_ACTION_NONE);

@@ -27,6 +27,11 @@ public class DumpTeamSelect extends GhidraScript {
 
     private Range[] rangesFor(int bank) {
         if (bank == 0x80) return new Range[] {
+            new Range(0xA3B8, 0xA495, "setup_shared_frame_sequencer",
+                "Shared Game Setup frame sequencer. On Exhibition Start the live PPU trace " +
+                "shows BG3 leaving at 14 pixels/frame, then BG1/BG2 separating at 8 " +
+                "pixels/frame under the INIDISP ramp. It remains active through forced blank; " +
+                "$80:DBF6 dispatches Team Select only afterward."),
             new Range(0xB344, 0xB480, "draw_rom_object_group",
                 "Shared ROM object-group renderer called twice per Team Select side by $81:AA73: " +
                 "A=$2800 draws the variable team logo, then object group $22 uses A=$2200 for " +

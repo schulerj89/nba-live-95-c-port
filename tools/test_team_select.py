@@ -13,22 +13,22 @@ from PIL import Image
 EXPECTED_FRAME_HASHES = {
     # Captures correspond to live-ROM $7E:1693 selector states, not merely
     # self-consistent port behavior. See docs/team-select.md.
-    "initial": "7d774d07aab89faf773c6f18b6b2c126e3fae9c1366512d95dbfa91239c6f906",
-    "plate_phase_1": "f4daf58e2396ae6163246c11e0e27e89137d69d746190a25e140575b8af7e003",
-    "alphabetical_right": "4efd24e3b1fafbdd68cfbe19154eb4f75f125bf73bc7bb91318aaa2a50183301",
-    "scoring": "3d32e61e823232242957c5b978532a4fee5135e3269af48fda90cbf2703b3ce0",
-    "overall": "ded276d556c5531c14032aae9a20f83b0e7dad43dabfac511d29a1eab728a67d",
-    "side_toggle_name": "12aadcca4222b45324bc34c731d0d2d46dbde3cc11a3842639d053fa593b1115",
-    "side_toggle_rank": "200f84bbbc4de696dd573c6538e20815e74a5dedd12112b20157cdef573dec51",
-    "ranked_right": "88b21affd2c2ee3b2e796342ba2e2eaabd64ce872d9771cd8672505c4bf1869c",
-    "alpha_wrap_right": "7cb160685cc71b5e0c666a32deb2f2e0194002c2d4a4f9eb5e74186fffefa932",
-    "alpha_wrap_left": "b58bc47cb9f0128621f5739bf667450a6140ad8035d50a200612c3e1b589fedd",
+    "initial": "caa629073e4261102d063bce153a9014832f63544f97216132e7ec4194e97a86",
+    "plate_phase_1": "5621b10391b624ef32cb4213f7fd2ebe7363db5a2071b779d8e65acd14b23cd9",
+    "alphabetical_right": "3883cde7d8def515381d7bc3ff2a026714b8799020bc4809095d1647ba8f0171",
+    "scoring": "3a12a2735ed9ebdbff35707b4222117c32f3b665b6dcaf73272ac8e73bab46e0",
+    "overall": "5e355aa5b32910b75f1d53e60095b1623473d473f135a7cce08140cef786bace",
+    "side_toggle_name": "e18c42754a108537fba5d5aa9ea70e85c2a02c2a30e10f29448ad7c8180557a2",
+    "side_toggle_rank": "4bc485baba09c05bceaa3df5147aa4f6eddf706993825ffea3527e74a0a3bccf",
+    "ranked_right": "f47ead7c29fef693748a05fec48eb807fe2f41f0d5b6864d48dce18b42bb824f",
+    "alpha_wrap_right": "b2f3363c7f3c21ed4cb388cd22fe8d295cfd22fc71aab680643ff08e2450cec8",
+    "alpha_wrap_left": "56203b4dded797eb41aa4e535c4826ad2703f3c0a0a469164cdb97bdaf4c4b65",
     "rank_wrap": "1ff537623a02762701a20379ed5ff9b50a89c6175f2fbe64067a5ebbe5440d40",
-    "wallpaper_orlando": "32a648a2c0ca4cecb684ecb6c987cf53c7fd3aef3e7bf9f3fa928aa75f182cb6",
-    "left_golden_state": "aaacaaf7e22af0cf466f5e514fc7b5131e0d1bbd499acb019dd60e180092d02a",
-    "right_philadelphia": "ca4d126ef130b0e7d47636218d05c4d2357a1b2d080961bd01f5131307c4be3c",
-    "east": "fe0bc64162af9c341b92fde6be732907bbbc9c30443b9b3435bac1433b997312",
-    "west": "e384503f8b20c1fa2abadf0d055062c58fe6f59e0716936f5401c832dbb711a0",
+    "wallpaper_orlando": "a6c373361981029165758755f113b9132a680badbb8c1a1ada80217d8398e452",
+    "left_golden_state": "eeb46a34f88102bdded834ab2c9042e84314c5eca8f0202b4761821d2135cf40",
+    "right_philadelphia": "487b0efe17269dcf04d1f004fd4ca1f5647ecd60e3a4b72099427bd03fab3acf",
+    "east": "09902c67a6ce3b516c83b079ae8f609494459cf100a13c0ec735c9e0f5a5dfe7",
+    "west": "94d3d4fe72c06911a9c27748dd1e5fdfcd83ec6e407706ca2c20326b7d9d0662",
     "logo_debug": "3dcf00e5a2bf130cadb0514159385cfe0aa76e476574798d4b86770f7099872f",
 }
 
@@ -260,6 +260,27 @@ def main():
     if "route=TEAM_SELECTION" not in handoff or "SCN:TEAM_SELECT" not in handoff or \
        "AUD:SETUP_SPC" not in handoff or "transition=176" not in handoff:
         raise AssertionError(f"Start handoff or continuous Setup music failed:\n{handoff}")
+
+    # Mesen frames 401/403/421/422/450/451/452/514, rebased to the
+    # setup-only harness. These guards prevent the removed screenshot fade
+    # from being reintroduced at the scene boundary.
+    edge_states = {
+        164: ("SCN:GAME_SETUP", "X1:512 X2:000", "Y3:000"),
+        166: ("SCN:GAME_SETUP", "Y3:014"),
+        184: ("SCN:GAME_SETUP", "X1:000 X2:000", "Y3:182"),
+        185: ("SCN:GAME_SETUP", "X1:008 X2:1016", "Y3:182"),
+        213: ("SCN:GAME_SETUP", "B:01 X1:232 X2:792"),
+        214: ("SCN:GAME_SETUP", "BLK:1"),
+        215: ("SCN:TEAM_SELECT", "TF:052"),
+        277: ("SCN:TEAM_SELECT", "TF:114"),
+    }
+    for frames, markers in edge_states.items():
+        edge = run(exe, "--headless", "--rom", rom, "--assets", pack,
+                   "--setup-only", "--setup-main-row", "0",
+                   "--setup-main-confirm", "--frames", frames, "--debug-state")
+        if any(marker not in edge for marker in markers):
+            raise AssertionError(
+                f"Setup -> Team Select edge frame {frames} changed:\n{edge}")
 
     a_handoff = run(exe, "--headless", "--rom", rom, "--assets", pack,
                     "--setup-only", "--setup-main-row", "0", "--setup-main-a",

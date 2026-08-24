@@ -82,6 +82,13 @@
 #define NBA_SETUP_BG3_START_VSCROLL   252
 #define NBA_SETUP_BG3_SCROLL_STEP     14
 
+/* Game Setup -> Team Select exit captured at Mesen frames 400..452.  The
+ * shared $80:A3B8 sequencer first removes BG3, then separates BG1/BG2 under
+ * the master-brightness ramp before $80:DBF6 enters $82:809A. */
+#define NBA_SETUP_TEAM_EXIT_BG3_FRAMES 15
+#define NBA_SETUP_TEAM_EXIT_SLIDE_FRAME 21
+#define NBA_SETUP_TEAM_EXIT_HANDOFF_FRAME 52
+
 /* Main/sub screen designation ($212C/$212D) before and after the slide-in */
 #define NBA_SETUP_MAIN_ENTER    0x03   /* BG1 + BG2                          */
 #define NBA_SETUP_MAIN_SETTLED  0x17   /* BG1 + BG2 + BG3 + OBJ              */
@@ -213,6 +220,8 @@ typedef struct {
     int bg2_scroll_hold_frames;
     bool transition_bg2_origin_valid;
     bool bg2_scroll_from_transition;
+    bool team_select_exit_active;
+    int team_select_exit_frame;
     const uint8_t *rules_vram;
     const uint8_t *rules_cgram;
     const uint8_t *options_vram;

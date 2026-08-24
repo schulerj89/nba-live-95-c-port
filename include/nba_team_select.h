@@ -9,6 +9,8 @@
 #define NBA_TEAM_COUNT 29
 #define NBA_TEAM_RANK_COUNT 5
 #define NBA_TEAM_TRANSITION_FRAMES 176
+#define NBA_TEAM_SCENE_ENTRY_FRAME 52
+#define NBA_TEAM_ENTRANCE_FRAME 114
 #define NBA_TEAM_PLATE_ANIM_START_FRAME 172
 #define NBA_TEAM_PLATE_ANIM_PERIOD 56
 
@@ -69,7 +71,6 @@ typedef struct {
 typedef struct {
     const NbaAssetPack *assets;
     NbaSession *session;
-    uint32_t *outgoing_pixels;
     NbaTeamSide active_side;
     NbaTeamSelectPosition selector;
     int transition_frame;
@@ -81,7 +82,7 @@ typedef struct {
 extern const NbaTeamRecord nba_team_records[NBA_TEAM_COUNT];
 const NbaTeamRecord *nba_team_record(uint8_t team);
 bool nba_team_select_init(NbaTeamSelect *screen, const NbaAssetPack *assets,
-                          NbaSession *session, const uint32_t *outgoing_pixels);
+                          NbaSession *session);
 void nba_team_select_shutdown(NbaTeamSelect *screen);
 NbaTeamSelectSound nba_team_select_update(NbaTeamSelect *screen,
                                            const NbaInput *input);

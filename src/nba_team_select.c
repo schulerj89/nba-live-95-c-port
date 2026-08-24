@@ -1,6 +1,5 @@
 #include "nba_team_select.h"
 #include "nba_snes_ppu.h"
-#include <stdlib.h>
 #include <string.h>
 
 #define TEAM_BG1_MAP 0x1800
@@ -55,7 +54,7 @@ static const NbaAssetItem *team_asset(const NbaTeamSelect *screen,
 }
 
 bool nba_team_select_init(NbaTeamSelect *screen, const NbaAssetPack *assets,
-                          NbaSession *session, const uint32_t *outgoing_pixels) {
+                          NbaSession *session) {
     if (!screen || !assets || !session) return false;
     memset(screen, 0, sizeof(*screen));
     screen->assets = assets;
@@ -63,16 +62,6 @@ bool nba_team_select_init(NbaTeamSelect *screen, const NbaAssetPack *assets,
     screen->active_side = NBA_TEAM_SIDE_RIGHT;
     /* $82:8360-$8370 initializes $16B5=2 and $1693=1. */
     screen->selector = NBA_TEAM_SELECT_RIGHT_NAME;
-    screen->outgoing_pixels = (uint32_t *)malloc(
-        (size_t)NBA_SNES_WIDTH * NBA_SNES_HEIGHT * sizeof(uint32_t));
-    if (!screen->outgoing_pixels) return false;
-    if (outgoing_pixels) {
-        memcpy(screen->outgoing_pixels, outgoing_pixels,
-               (size_t)NBA_SNES_WIDTH * NBA_SNES_HEIGHT * sizeof(uint32_t));
-    } else {
-        memset(screen->outgoing_pixels, 0,
-               (size_t)NBA_SNES_WIDTH * NBA_SNES_HEIGHT * sizeof(uint32_t));
-    }
     for (uint8_t team = 0; team < NBA_TEAM_COUNT; ++team) {
         const NbaAssetItem *logo = team_asset(screen, NBA_ASSET_TEAM_LOGO_BASE, team);
         const NbaAssetItem *vram = team_asset(screen, NBA_ASSET_TEAM_VRAM_BASE, team);
@@ -95,8 +84,6 @@ bool nba_team_select_init(NbaTeamSelect *screen, const NbaAssetPack *assets,
 
 void nba_team_select_shutdown(NbaTeamSelect *screen) {
     if (!screen) return;
-    free(screen->outgoing_pixels);
-    screen->outgoing_pixels = NULL;
     screen->is_initialized = false;
 }
 
@@ -361,36 +348,37 @@ static void team_draw_logo(NbaRenderer *renderer, const NbaAssetItem *asset,
 void nba_team_select_render(const NbaTeamSelect *screen, NbaRenderer *renderer) {
     if (!screen || !screen->is_initialized || !renderer) return;
     int frame = screen->transition_frame;
-    if (frame < 52) {
-        int brightness = frame <= 20 ? 15 : 15 - (frame - 20) * 14 / 31;
-        for (int i = 0; i < NBA_SNES_WIDTH * NBA_SNES_HEIGHT; ++i) {
-            uint32_t color = screen->outgoing_pixels[i];
-            uint32_t r = ((color >> 16) & 255u) * (uint32_t)brightness / 15u;
-            uint32_t g = ((color >> 8) & 255u) * (uint32_t)brightness / 15u;
-            uint32_t b = (color & 255u) * (uint32_t)brightness / 15u;
-            renderer->pixels[i] = 0xFF000000u | (r << 16) | (g << 8) | b;
-        }
+    /* Frames 1..51 belong to the live Game Setup renderer. $80:DBF6 enters
+     * $82:809A on frame 52, which builds Team Select under forced blank. */
+    if (frame < NBA_TEAM_ENTRANCE_FRAME) {
+        nba_renderer_clear(renderer, 0xFF000000u);
         return;
     }
-    if (frame < 113) { nba_renderer_clear(renderer, 0xFF000000u); return; }
 
     /* The right side is the home team. Its tiles/palette own the wallpaper;
      * changing the visitor or merely moving the active cursor does not. */
     uint8_t home_team = screen->session->right_team;
     const NbaAssetItem *home_vram = team_asset(screen, NBA_ASSET_TEAM_VRAM_BASE, home_team);
     const NbaAssetItem *home_cgram = team_asset(screen, NBA_ASSET_TEAM_CGRAM_BASE, home_team);
-    int k = frame - 113, bg1_h = 512, bg2_h = 0, bg3_v = 0, brightness = 15;
+    int k = frame - NBA_TEAM_ENTRANCE_FRAME;
+    int bg1_h = 512, bg2_h = 0, bg3_v = 0, brightness = 15;
     bool show_bg3 = true, show_objects = true;
-    if (k < 38) {
+    if (k <= 32) {
         bg1_h = 768 - k * 8; if (bg1_h < 512) bg1_h = 512;
         bg2_h = (768 + k * 8) & 1023;
-        brightness = k + 2; if (brightness > 15) brightness = 15;
+        brightness = k + 1; if (brightness > 15) brightness = 15;
         show_bg3 = false; show_objects = false;
-    } else if (k < 62) {
-        bg3_v = 280 - (k - 38) * 14; if (bg3_v < 0) bg3_v = 0;
+    } else if (k < 39) {
+        bg3_v = 280;
+        show_bg3 = false; show_objects = false;
+    } else {
+        bg3_v = k <= 40 ? 252 : 252 - (k - 40) * 14;
+        if (bg3_v < 0) bg3_v = 0;
+        show_bg3 = k >= 40;
         show_objects = k >= 58;
     }
-    int bg2_v = k < 63 ? k / 3 : 21 + screen->steady_frame / 3;
+    int bg2_v = screen->transition_frame < NBA_TEAM_TRANSITION_FRAMES ?
+                k / 3 : 20 + (screen->steady_frame + 1) / 3;
     team_render_layers(renderer, home_vram->data, home_cgram->data,
                        bg1_h, bg2_h, bg2_v,
                        bg3_v, brightness, show_bg3, screen->selector);

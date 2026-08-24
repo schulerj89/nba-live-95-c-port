@@ -120,9 +120,12 @@ row and the five rankings. Left/Right moves alphabetically on the name row
 or to the adjacent one-based rank on a ranking row, with wrap in either case.
 Both team IDs live in `NbaSession`.
 
-`NbaTeamSelect.transition_frame` reproduces the 176-frame captured edge from
-Setup confirm through the outgoing fade, forced blank, opposing BG1/BG2 slide,
-BG3 vertical staging, and OBJ release. `--dump-sequence-dir` exports every
+The 176-frame edge is split at the same scene boundary as the ROM. Game Setup
+keeps ownership through frame 51: `$80:A3B8` scrolls BG3 away, slides BG1/BG2
+apart, and ramps INIDISP down. At forced blank, `$80:DBF6` dispatches
+`$82:809A`; `NbaTeamSelect.transition_frame` resumes at frame 52 for the hidden
+builder, opposing BG1/BG2 entrance, BG3 vertical staging, and OBJ release. No
+captured host frame is faded. `--dump-sequence-dir` exports every
 headless rendered frame for video/regression inspection; `--team-demo` scripts
 right-team cycling, the ROM side toggle, then left-team cycling.
 

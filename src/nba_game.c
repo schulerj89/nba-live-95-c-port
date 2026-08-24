@@ -299,10 +299,12 @@ bool nba_game_enter_state(NbaGame *game, NbaGameState state) {
         }
     } else if (state == NBA_STATE_TEAM_SELECT) {
         if (!nba_team_select_init(&game->scene.team_select, &game->assets,
-                                  &game->session, game->renderer.pixels)) {
+                                  &game->session)) {
             fprintf(stderr, "[GAME] Team Select asset initialization failed.\n");
             return false;
         }
+        if (previous_state == NBA_STATE_GAME_SETUP)
+            game->scene.team_select.transition_frame = NBA_TEAM_SCENE_ENTRY_FRAME;
     } else if (state == NBA_STATE_PLAYER_SETUP) {
         if (!nba_player_setup_init(&game->scene.player_setup, &game->assets,
                                    &game->session, game->renderer.pixels)) {

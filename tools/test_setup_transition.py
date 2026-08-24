@@ -705,7 +705,7 @@ def check_frames(exe, rom, pack):
             navigation = subprocess.run(
                 [str(exe), "--headless", "--setup-only", "--setup-main-row", "0",
                  "--setup-main-right", str(mode), "--setup-main-confirm",
-                 "--rom", str(rom), "--assets", str(pack), "--frames", "200"],
+                 "--rom", str(rom), "--assets", str(pack), "--frames", "230"],
                 text=True, capture_output=True, check=True,
             )
             marker = f"Mode confirmed: mode={mode} route={route}"

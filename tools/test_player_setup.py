@@ -17,7 +17,9 @@ EXPECTED_ASSET_HASHES = {
 }
 
 EXPECTED_FRAME_HASHES = {
-    "outgoing": "f766b0cfca0f63691528f5769df52deb9ae28a8faf7e60fdf919ff90d5185b61",
+    # Team Select's settled BG2 cadence now remains continuous from the
+    # corrected Setup edge (Mesen frame 576 = vscroll 20).
+    "outgoing": "872f67151f1dc4fed9bca5fe54cb669861b105a197ac87b319e735437ecd2629",
     "blank": "2cbbeef1249170a43854962fa5b19fba628470c70beb9ce23e15a0f05cb891f2",
     "background": "18e07023dae89084b28b738c7b50dddfa0ab77a6d24c41a6ec92ab6ac39432e8",
     "labels": "19673f073dbc2f2af58a3dbcf19cbe1e3b0d94f44a8600b7913a539c6e0750f8",
