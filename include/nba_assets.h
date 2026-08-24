@@ -117,7 +117,8 @@ typedef enum {
     NBA_ASSET_PLAYER_INTRO_SPC_STATE            = 267,
     NBA_ASSET_PLAYER_INTRO_DSP_TRACE            = 268,
     NBA_ASSET_PLAYER_INTRO_FONT                 = 269,
-    NBA_ASSET_MAX                   = 270
+    NBA_ASSET_STARTING_LINEUP_FONT               = 270,
+    NBA_ASSET_MAX                   = 271
 } NbaAssetId;
 
 typedef struct {

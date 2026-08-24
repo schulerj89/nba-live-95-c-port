@@ -1341,6 +1341,12 @@ def create_asset_pack(rom_path, output_path):
     if len(player_intro_font) != 0x1000 or player_intro_font[:6] != \
             b"\x10\x00\x0e\x00\x01\x02":
         raise RuntimeError("Player Introduction ROM font descriptor is invalid")
+    # $87:BE13 loads the larger Starting Lineup descriptor from $A6:BB16.
+    # Its glyph records are two adjacent 8x16 2bpp strips (16x16 total).
+    starting_lineup_font = rom_data[0x133B16:0x134B16]
+    if len(starting_lineup_font) != 0x1000 or starting_lineup_font[:6] != \
+            b"\x10\x00\x10\x00\x00\x02":
+        raise RuntimeError("Starting Lineup ROM font descriptor is invalid")
     player_intro_audio_dir = os.environ.get(
         "NBA95_PLAYER_INTRO_AUDIO_DIR") or os.path.join(
             os.path.dirname(os.path.abspath(__file__)), "..", ".analysis",
@@ -1483,6 +1489,7 @@ def create_asset_pack(rom_path, output_path):
         (267, 0, 0, 0, player_intro_spc_state),
         (268, 0, 0, 0, bytes(player_intro_dsp_trace)),
         (269, 8, 16, 0xA98000, player_intro_font),
+        (270, 16, 16, 0xA6BB16, starting_lineup_font),
     ])
     assets.extend([
         (124, 0, 0, 0, rules_vram_bytes),
@@ -1542,7 +1549,7 @@ def create_asset_pack(rom_path, output_path):
                     extra_audio_id += 1
 
     header_magic = b"NBA95PAK"
-    version = 20
+    version = 21
     asset_count = len(assets)
     entry_size = 24 # 6 * 4 bytes
 

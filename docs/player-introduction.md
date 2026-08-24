@@ -8,9 +8,15 @@ Start/A.
 
 ## ROM and Ghidra proof
 
-- `$87:BD7F-$87:C0AB` is the complete Starting Lineup presentation routine.
-  `$87:BE92` is its repeated card/palette/graphics loop; `$87:C0AB` is the final
-  `RTL`, not the entry point.
+- `$87:BD7F-$87:BFE1` is the main Starting Lineup presentation routine and
+  `$87:BE92` is its repeated card/palette/graphics loop. `$87:C01E-$87:C06E`
+  draws the team label, `$87:C06F-$87:C0AB` allocates the two detail grids,
+  and `$87:C0AC+` builds the current card strings.
+- `$87:BE13-$87:BE1B` loads the large `$A6:BB16` descriptor before the
+  centered STARTING/LINEUP calls at `$87:BE33/$87:BE4D`. The card builder at
+  `$87:C0AC` keeps that font for jersey/name at x=$50/$70, then switches to
+  `$A9:8000` at `$87:C13C` for the position. `$87:C01E` uses `$A9:8000` for
+  the team name at x=$50.
 - `$80:C62B-$80:C67D` dispatches compressed graphics commands. Every observed
   card swap reaches `$80:C633`; command `FB46` branches to the `$80:BD1B`
   expansion handler.
@@ -47,6 +53,7 @@ the ROM has built each home-team card.
 Assets 265-268 contain the Player Introduction's 64 KiB ARAM bank, S-DSP
 register snapshot, SPC state, and 5,560-frame cycle-timed DSP program. Asset
 269 is the `$A9:8000` ROM font descriptor and its original 8x16 2bpp glyphs.
+Asset 270 is the larger `$A6:BB16` 16x16 Starting Lineup font descriptor.
 The C runtime synthesizes the BRR samples and does not store a mixed song WAV.
 
 ## Regression

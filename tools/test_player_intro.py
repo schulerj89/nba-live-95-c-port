@@ -32,7 +32,7 @@ def load_pack(path):
     if raw[:8] != b"NBA95PAK":
         raise AssertionError("invalid pack magic")
     version, count = struct.unpack_from("<II", raw, 8)
-    if version != 20 or 16 + count * 24 > len(raw):
+    if version != 21 or 16 + count * 24 > len(raw):
         raise AssertionError("invalid asset directory")
     assets = {}
     for index in range(count):
@@ -79,6 +79,10 @@ def main():
     if len(font) != 0x1000 or (width, height, flags) != (8, 16, 0xA98000) or \
             font[:6] != b"\x10\x00\x0e\x00\x01\x02":
         raise AssertionError("Player Introduction ROM font descriptor changed")
+    font, width, height, flags = assets[270]
+    if len(font) != 0x1000 or (width, height, flags) != (16, 16, 0xA6BB16) or \
+            font[:6] != b"\x10\x00\x10\x00\x00\x02":
+        raise AssertionError("Starting Lineup ROM font descriptor changed")
 
     for asset_id, (size, digest) in EXPECTED_ASSETS.items():
         payload, width, height, flags = assets[asset_id]
@@ -138,7 +142,7 @@ def main():
         if "SCN:PLAYER_INTRO" not in output or "CARD:01/10" not in output or \
            "ROM LOOP:$87:BE92" not in output:
             raise AssertionError("Player Setup did not hand off to the lineup state")
-        if rgb_hash(frame) != "ba775d7945cfa26dafdb9042ef3e0a0763eca0319abdc586fa2bff19c9688e78":
+        if rgb_hash(frame) != "40a35ddd7b828401c2cf9702ce973bf57e7761117c27912bef7675276cbe1d7b":
             raise AssertionError("first Starting Lineup frame changed")
 
         output = run(exe, "--headless", "--rom", rom, "--assets", pack,
@@ -159,7 +163,7 @@ def main():
                      "--team-confirm", "--player-setup-confirm", "--frames", 1600,
                      "--dump-frame", away_frame, "--debug-state")
         if "TEAM L:08 R:18" not in output or "CARD:01/10" not in output or \
-           rgb_hash(away_frame) != "3692ecb800b94532d428548115862225ee3885044af19529357382e0cb151ba7":
+           rgb_hash(away_frame) != "0150574f6ccb502d45747766dcbbaf8c755bd0af2ebafc9156d62296866dfec9":
             raise AssertionError("non-default visitor portrait selection changed")
 
         home_frame = Path(directory) / "san_antonio_home.bmp"
@@ -168,7 +172,7 @@ def main():
                      "--player-setup-confirm", "--frames", 3600,
                      "--dump-frame", home_frame, "--debug-state")
         if "TEAM L:03 R:23" not in output or "CARD:06/10" not in output or \
-           rgb_hash(home_frame) != "7561ce66fdfc393b54233e34fe0c53533ce36ccf1ff508837216db9b11e625d9":
+           rgb_hash(home_frame) != "553501899f403904b1daef979275fbf291a12b8df8fec7d0408f04d21d3a006a":
             raise AssertionError("non-default home portrait selection changed")
 
     print("Player Introduction regression checks passed")

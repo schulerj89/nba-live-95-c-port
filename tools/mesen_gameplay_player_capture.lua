@@ -184,7 +184,7 @@ if PLAYER_INTRO_TRACE then
             emu.cpuType.snes, emu.memType.snesMemory)
     end
     emu.addMemoryCallback(function(address)
-        if setup_frame < 2040 or setup_frame > 2500 then return end
+        if setup_frame < 2040 or setup_frame > 3000 then return end
         local state = emu.getState()
         local direct = state["cpu.d"] or 0
         local function byte(at)
