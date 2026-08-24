@@ -578,3 +578,55 @@ in the edge route forever. The old four-play host rotation is no longer used
 after catches; the 50,000-frame regression now covers the ROM strategy ranges,
 both-side scoring, mode-12 releases, boundary contacts, collision-owned
 rebounds, repeated inbounds, and sustained camera/player movement.
+
+Increment 4T replaces the post-score timer shortcut with the ROM inbound
+target and pass executor. The former bridge attached the ball when a host
+timer reached 120 and began a new possession at 60. Continuous Ghidra dumps
+and the 1,800-frame Mesen oracle disprove that interpretation:
+`$85:C37D-$C5C0` selects team slot 2, its target/facing, and a play; mode 11
+then reaches `$86:F43A-$F653` while live state remains `$82`.
+
+The native path now compensates its steering target by signed velocity `/16`
+toward zero, accepts only raw X/Y deltas `[-9,+8]`, and reloads `$092E=300`
+on every failed arrival. Timer 240 never attempts a pass, 239..120 uses
+`RNG & $003C`, and below 120 always validates `$09AA/$09AC/$09AE` through
+the represented `$85:B60B` predicate. Only below 60 may the side-slot-4/3
+fallback be used. The context-side X guard precedes `$86:AB2D`, which installs
+mode 15/10; release remains in `$86:A6B3-$A790`, and the shared
+`$86:BAA2-$BC99` catch boundary alone completes live state `$82`.
+
+The synthetic `NBA_BALL_INBOUND` timer phase is no longer part of this path.
+Debug JSON and F10 now expose layout `$0956`, target `$0958/$095A/$095C`,
+arrival state, transfer latch `$09B8`, and timer `$092E`. Pure golden vectors
+lock target and arrival endpoints; the 50,000-frame runtime test locks the
+300-reset sawtooth, transfer timing, selector handoff, pose attachment, catch,
+repeated scoring, and both teams. Headless Ghidra now emits complete
+`$85:C37D-$C600` and `$86:F3D2-$F669` sections. The expanded Mesen script
+completed a 251-frame schema smoke capture, and native frames 1900/1966 show
+arrival and catch completion without corrupt court/player composition.
+
+Increment 4U corrects three assumptions exposed by direct component
+differential testing. Initial `$0954` slot 2/7 is only provisional: the ROM
+keeps `$093E=-1` until `$86:CCFC-$D43C` finds the first inbound-side pose
+collision, which may replace it (the oracle changes 2 to 3 at frame 918).
+The port now preserves that separation and no longer derives `$093E` from the
+logical ball owner at the end of every host frame. During the dead-ball walk,
+the ball uses the selected player's resource attachment coordinates while its
+logical owner remains negative; `$86:AB2D` alone installs mode 15 and logical
+attachment for release.
+
+The regenerated listing also corrected layout state 2. `$85:C49E-$C4D1`
+uses X `+/-226` from context `+$0A`, Y `+/-224` and direction 0/4 from
+`$09B2`, then calls endline selector `$85:C602`. The previous `+/-160` clamp
+and direction 2/6 belong to neighboring negative-layout path `$85:C50B`.
+Golden cases now distinguish both states.
+
+Finally, `$87:9AA6-$9BCA` is represented as expired-inbound recovery: reload
+300, select layout 5, award the opposite `$093A ^ 5` side, demote the expired
+carrier to mode 2, clear signed possession, restore the shot clock, and reseed
+`$85:C37D`. The made-ball bridge also closes its host subpixel hoop overshoot
+at the oracle's proven `+/-336,0` cylinder so a valid make cannot drift to a
+court corner before collision visitation. A 50,000-frame run again sustains
+both-team scoring, collision-selected inbounds, transfers, and catches.
+Evidence is under `build/evidence/cpu-inbound-v2/`. This checkpoint does not
+claim final half-court spacing or the remaining collision/rim/animation work.

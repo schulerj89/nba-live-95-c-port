@@ -48,8 +48,7 @@ typedef enum {
     NBA_BALL_ATTACHED,
     NBA_BALL_SHOT,
     NBA_BALL_BOUNCE,
-    NBA_BALL_DEAD,
-    NBA_BALL_INBOUND
+    NBA_BALL_DEAD
 } NbaBallMode;
 
 typedef struct {
@@ -131,6 +130,12 @@ typedef struct {
     uint16_t live_state_raw;       /* `$0936` */
     uint16_t inbound_state_raw;    /* `$0952` */
     uint16_t inbound_actor_raw;    /* `$0954` */
+    int16_t inbound_layout_raw;    /* `$0956` */
+    int16_t inbound_target_x_raw;  /* `$0958` */
+    int16_t inbound_target_y_raw;  /* `$095A` */
+    uint16_t inbound_direction_raw;/* `$095C` */
+    uint16_t inbound_ready_raw;    /* represented `$09BA` arrival latch */
+    uint16_t inbound_transfer_raw; /* `$09B8` */
     uint16_t ball_activity_raw;    /* `$0948`, canonical shot detach */
     int16_t pass_actor_raw;        /* `$0942` */
     int16_t pass_receiver_raw;     /* `$0946` */

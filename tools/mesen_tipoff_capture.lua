@@ -127,6 +127,12 @@ local probes = {
     [0x85963d]="$85:963D actor physics entry",
     [0x85980b]="$85:980B actor X commit",
     [0x85985f]="$85:985F actor Y commit",
+    [0x85c37d]="$85:C37D inbound placement",
+    [0x85c5c1]="$85:C5C1 inbound play request",
+    [0x86f3d2]="$86:F3D2 inbound actor executor",
+    [0x86f43a]="$86:F43A inbound receiver/pass path",
+    [0x86f59f]="$86:F59F inbound pass timing gate",
+    [0x86f64f]="$86:F64F inbound AB2D handoff",
 }
 for address, name in pairs(probes) do
     emu.addMemoryCallback(function()
@@ -285,7 +291,12 @@ local function dump_gameplay_jsonl(frame)
         "\"shot_value_raw\":%u,\"shot_chance_raw\":65535," ..
         "\"shot_miss_index_raw\":65535,\"shot_inner_veto_raw\":%u," ..
         "\"live_state_raw\":%u,\"inbound_state_raw\":%u," ..
-        "\"inbound_actor_raw\":%u,\"inbound_timer_raw\":%u}," ..
+        "\"inbound_actor_raw\":%u,\"inbound_timer_raw\":%u," ..
+        "\"inbound_phase_raw\":%u,\"inbound_target_x_raw\":%d," ..
+        "\"inbound_target_y_raw\":%d,\"inbound_direction_raw\":%u," ..
+        "\"inbound_source_x_raw\":%d,\"inbound_source_y_raw\":%d," ..
+        "\"inbound_aux_raw_09b6\":%u,\"inbound_transfer_raw\":%u," ..
+        "\"inbound_ready_raw\":%u}," ..
         "\"fouls\":{\"event_raw\":%u,\"shooting_raw\":%u," ..
         "\"offender_raw\":%d,\"victim_raw\":%d," ..
         "\"team_raw\":[%u,%u],\"personal_raw\":[]," ..
@@ -293,6 +304,9 @@ local function dump_gameplay_jsonl(frame)
         "\"free_throw_sequence_raw\":%u},",
         word(0x4711), word(0x4791), word(0x094c), word(0x09f8),
         word(0x0936), word(0x0952), word(0x0954), word(0x092e),
+        word(0x0956), signed_word(0x0958), signed_word(0x095a), word(0x095c),
+        signed_word(0x09b0), signed_word(0x09b2), word(0x09b6),
+        word(0x09b8), word(0x09ba),
         word(0x0964), word(0x09bc), signed_word(0x492d),
         signed_word(0x492f), word(0x4713), word(0x4793),
         word(0x0978), word(0x097a)))

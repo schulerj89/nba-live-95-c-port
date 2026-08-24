@@ -206,6 +206,13 @@ static void nba_game_debug_lines(const NbaGame *game, NbaDebugLines *out) {
                  s->inbound_state_raw, s->inbound_actor_raw,
                  s->inbound_timer_raw, s->special_actor_raw & 0xFFu,
                   s->ball_activity_raw, s->rim_raw_097c, s->rim_raw_13e7);
+        if (s->live_state_raw == 0x82u &&
+            out->count < NBA_DEBUG_MAX_LINES)
+            snprintf(out->line[out->count++], NBA_DEBUG_LINE_SIZE,
+                     "INBOUND L:%d TARGET:%d,%d D:%u READY:%u TIMER:%u",
+                     s->inbound_layout_raw, s->inbound_target_x_raw,
+                     s->inbound_target_y_raw, s->inbound_direction_raw,
+                     s->inbound_ready_raw, s->inbound_timer_raw);
     }
 
     if (out->count < NBA_DEBUG_MAX_LINES) {

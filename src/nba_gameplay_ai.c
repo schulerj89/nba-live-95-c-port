@@ -106,6 +106,112 @@ bool nba_gameplay_receiver_candidate_valid(
     return true;
 }
 
+static uint8_t inbound_edge_play(int16_t x, int16_t y,
+                                 int16_t context_anchor_x,
+                                 NbaGameplayRng *rng) {
+    if ((int16_t)(context_anchor_x ^ x) < 0)
+        return y < -72 ? 0u : y >= 72 ? 2u : 1u;
+    return (uint8_t)(14u + (nba_gameplay_rng_next(rng) & 3u));
+}
+
+static uint8_t inbound_endline_play(int16_t x, int16_t context_anchor_x,
+                                    NbaGameplayRng *rng) {
+    uint16_t magnitude = x < 0 ? (uint16_t)(0u - (uint16_t)x) : (uint16_t)x;
+    if ((int16_t)(context_anchor_x ^ x) < 0)
+        return magnitude < 136u ? 5u : magnitude >= 272u ? 3u : 4u;
+    return (uint8_t)((magnitude < 136u ? 6u : 10u) +
+                     (nba_gameplay_rng_next(rng) & 3u));
+}
+
+/* `$85:C37D-$C5C0`: derive the designated inbound actor's raw court target,
+ * facing, and any play request. Layout values above five are ROM-impossible. */
+bool nba_gameplay_inbound_target(
+    int16_t layout_state, int16_t source_x, int16_t source_y,
+    int16_t context_anchor_x, int16_t ball_x, NbaGameplayRng *rng,
+    NbaGameplayInboundTarget *target) {
+    if (!rng || !target || layout_state > 5) return false;
+    int16_t x = 0, y = 0;
+    uint8_t direction = 0u, play = 0u;
+    bool request = false;
+    if (layout_state == 0) {
+        x = 394; y = -64; direction = 6u;
+        if (context_anchor_x >= 0) { x = -394; y = 64; direction = 2u; }
+        play = inbound_edge_play(x, y, context_anchor_x, rng);
+        request = true;
+    } else if (layout_state < 0) {
+        x = source_x < 0 ? -394 : 394;
+        y = source_y < -160 ? -160 : source_y > 160 ? 160 : source_y;
+        direction = source_x < 0 ? 2u : 6u;
+        play = inbound_edge_play(x, y, context_anchor_x, rng);
+        request = true;
+    } else if (layout_state == 2) {
+        /* `$85:C49E-$C4D1`: unlike the negative-state edge inbound, state 2
+         * is an endline layout. X comes only from side context +$0A; `$09B2`
+         * selects the fixed +/-224 Y edge and its 0/4 facing. */
+        x = context_anchor_x >= 0 ? -226 : 226;
+        y = source_y < 0 ? -224 : 224;
+        direction = source_y < 0 ? 0u : 4u;
+        play = inbound_endline_play(x, context_anchor_x, rng);
+        request = true;
+    } else if (layout_state == 1 || layout_state == 4) {
+        if ((int16_t)(context_anchor_x ^ source_x) < 0)
+            x = context_anchor_x < 0 ? -40 : 40;
+        else x = ball_x;
+        y = source_y < 0 ? -224 : 224;
+        direction = source_y < 0 ? 0u : 4u;
+        play = inbound_endline_play(x, context_anchor_x, rng);
+        request = true;
+    } else if (layout_state == 3) {
+        x = source_x < -332 ? -332 : source_x > 337 ? 337 : source_x;
+        y = source_y < 0 ? -224 : 224;
+        direction = source_y < 0 ? 0u : 4u;
+        play = inbound_endline_play(x, context_anchor_x, rng);
+        request = true;
+    } else { /* state 5 */
+        x = source_x; y = source_y;
+        if (x >= 362) {
+            play = inbound_edge_play(x, y, context_anchor_x, rng);
+            request = true; x = 394;
+        } else if (x < -362) {
+            play = inbound_edge_play(x, y, context_anchor_x, rng);
+            request = true; x = -394;
+        }
+        if (y >= 192) {
+            play = inbound_endline_play(x, context_anchor_x, rng);
+            request = true; y = 224;
+        } else if (y < -192) {
+            play = inbound_endline_play(x, context_anchor_x, rng);
+            request = true; y = -224;
+        }
+        direction = y >= 208 ? 4u : y < -208 ? 0u : x >= 378 ? 6u : 2u;
+    }
+    /* `$85:C579-$C59F`: the same diagonal court correction used by actors. */
+    if (y < 0) {
+        int16_t minimum = (int16_t)(-556 - y);
+        if (x < minimum) x = minimum;
+    } else {
+        int16_t maximum = (int16_t)(561 - y);
+        if (x > maximum) x = maximum;
+    }
+    target->x = x; target->y = y; target->direction = direction;
+    target->play_code = play; target->play_requested = request;
+    return true;
+}
+
+/* `$86:F4F2-$F51D`: signed comparisons accept exactly [-9,+8]. */
+bool nba_gameplay_inbound_arrived(int16_t actor_x, int16_t actor_y,
+                                  int16_t target_x, int16_t target_y) {
+    int16_t dx = (int16_t)(target_x - actor_x);
+    int16_t dy = (int16_t)(target_y - actor_y);
+    return dx >= -9 && dx < 9 && dy >= -9 && dy < 9;
+}
+
+/* `$86:F59F-$F5BB`: 240+ waits, 120..239 is RNG-gated, below 120 is due. */
+bool nba_gameplay_inbound_pass_due(uint16_t timer, uint16_t random_word) {
+    if ((int16_t)timer >= 240) return false;
+    return timer < 120u || (random_word & 0x003Cu) == 0u;
+}
+
 static bool receiver_is_in_forward_window(
     const NbaGameplayReceiverState *passer,
     const NbaGameplayReceiverState *receiver, bool attack_right) {
@@ -433,6 +539,44 @@ bool nba_gameplay_ai_self_test(void) {
             court_vx != court_edges[i].expected_vx ||
             court_vy != court_edges[i].expected_vy) return false;
     }
+    NbaGameplayRng inbound_rng = {0x9146u};
+    NbaGameplayInboundTarget inbound;
+    if (!nba_gameplay_inbound_target(
+            0, 0, 0, -80, 0, &inbound_rng, &inbound) ||
+        inbound.x != 394 || inbound.y != -64 || inbound.direction != 6u ||
+        !inbound.play_requested || inbound.play_code != 1u) return false;
+    if (!nba_gameplay_inbound_target(
+            0, 0, 0, 80, 0, &inbound_rng, &inbound) ||
+        inbound.x != -394 || inbound.y != 64 || inbound.direction != 2u ||
+        !inbound.play_requested || inbound.play_code != 1u) return false;
+    if (!nba_gameplay_inbound_target(
+            5, 378, -52, -80, 0, &inbound_rng, &inbound) ||
+        inbound.x != 394 || inbound.y != -52 || inbound.direction != 6u)
+        return false;
+    if (!nba_gameplay_inbound_target(
+            5, -378, 52, 80, 0, &inbound_rng, &inbound) ||
+        inbound.x != -394 || inbound.y != 52 || inbound.direction != 2u)
+        return false;
+    if (!nba_gameplay_inbound_target(
+            2, 500, -12, -80, 0, &inbound_rng, &inbound) ||
+        inbound.x != 226 || inbound.y != -224 || inbound.direction != 0u ||
+        !inbound.play_requested || inbound.play_code != 4u) return false;
+    if (!nba_gameplay_inbound_target(
+            2, -500, 12, 80, 0, &inbound_rng, &inbound) ||
+        inbound.x != -226 || inbound.y != 224 || inbound.direction != 4u ||
+        !inbound.play_requested || inbound.play_code != 4u) return false;
+    if (!nba_gameplay_inbound_target(
+            3, 500, -300, -80, 0, &inbound_rng, &inbound) ||
+        inbound.x != 337 || inbound.y != -224 || inbound.direction != 0u)
+        return false;
+    if (!nba_gameplay_inbound_arrived(0, 0, 8, 8) ||
+        !nba_gameplay_inbound_arrived(0, 0, -9, -9) ||
+        nba_gameplay_inbound_arrived(0, 0, 9, 0) ||
+        nba_gameplay_inbound_arrived(0, 0, -10, 0)) return false;
+    if (nba_gameplay_inbound_pass_due(240u, 0u) ||
+        !nba_gameplay_inbound_pass_due(239u, 0u) ||
+        nba_gameplay_inbound_pass_due(239u, 4u) ||
+        !nba_gameplay_inbound_pass_due(119u, 0x003Cu)) return false;
     static const struct { int16_t x, y; uint8_t direction; uint16_t distance; } cases[] = {
         {0,0,8,0},{10,0,2,10},{0,10,0,10},{-10,-10,5,12},
         {10,20,1,22},{10,21,0,23},{10,11,1,12}

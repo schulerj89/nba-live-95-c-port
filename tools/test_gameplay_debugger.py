@@ -157,7 +157,9 @@ def main():
                    "0x0936", "score_left_raw",
                    "assignment_current", "raw_087a", "0x0998",
                    "play_step_raw", "play_selector_raw", "subject_raw",
-                   "0x0964", "0x09bc", "0x492d", "0x492f"):
+                   "0x0964", "0x09bc", "0x492d", "0x492f",
+                   "inbound_phase_raw", "inbound_target_x_raw",
+                   "0x85c37d", "0x86f43a", "0x86f64f"):
         if marker not in mesen:
             raise AssertionError(f"Mesen gameplay oracle lost {marker}")
     print("Gameplay Lab regression checks passed")

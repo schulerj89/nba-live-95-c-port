@@ -87,8 +87,8 @@ def main():
         if len(play_codes) < 4:
             errors.append(f"only {len(play_codes)} recurring play codes")
         modes = {row["ball"]["state"] for row in rows[args.start:]}
-        if not {3, 4, 5, 8}.issubset(modes):
-            errors.append(f"missing pass/attach/shot/inbound modes: {sorted(modes)}")
+        if not {3, 4, 5, 6}.issubset(modes):
+            errors.append(f"missing pass/attach/shot/bounce modes: {sorted(modes)}")
         if weak_windows:
             errors.append(f"stationary team windows: {weak_windows}")
         # ROM animation-resource poses reach roughly 37 world pixels from the

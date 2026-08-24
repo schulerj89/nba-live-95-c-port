@@ -71,6 +71,9 @@ without changing the comparison contract.
 | `$86:A561–$A5AF` / `$85:ABFB` | two/three-point arc classification/table |
 | `$85:A1E9–$A26E` | score write and post-make inbound initialization |
 | `$85:C37D–$C5C0`, `$86:F3D2–$F653` | inbound steering, receiver and pass path |
+| `$85:C37D–$C600` | inbound layout `$0956` to actor 2/7 target `$0958/$095A/$095C` and play request |
+| `$86:F34F–$F439` | ordinary mode-11 owner cadence: `B678`, optional `AD6B`, then `B50E` |
+| `$86:F43A–$F669` | inbound `[-9,+8]` arrival, `$092E` 300/240/120/60 gates, selectors and `AB2D` |
 | `$85:A3B7–$A656` | ownerless Z/gravity, ground restitution, damping, and settle |
 | `$85:A656–$A755`, `$86:A613–$A628` | shared actor/ball rectangular and isometric court clamp plus boundary-state cancellation |
 | `$85:B50E–$B677` | persistent A2/AA/AC/AE receiver selection and candidate validation |
@@ -78,6 +81,7 @@ without changing the comparison contract.
 | `$86:BAA2–$BC99` | shared catch/rebound ownership install, `$0994` request, and final shot-context reset |
 | `$86:C4FE–$C6AC`, `$86:D12D–$D1D0` | foul/contact classification feeding pending `$0964` and actor IDs `$492D/$492F` |
 | `$87:92AD–$95A8`, `$87:9B38` | dead-ball foul consumption, counters, bonus/free-throw state, and restart setup |
+| `$87:9AA6–$9BCA` | expired inbound: reload `$092E`, layout 5, opposite `$093A ^ 5` side, clear `$093E`, and restart |
 
 The foul fields are comparison-only scaffolding for now. The port exports the
 ROM-shaped state but does not synthesize contact calls; a focused Mesen trace
@@ -139,3 +143,7 @@ paused single-frame stepping, and both comparator pass and intentional-failure
 paths. `tools/test_cpu_gameplay.py` separately protects 50,000 frames of live
 CPU behavior, score monotonicity, made-ball Z, `$0952/$0954`, the 300-tick
 inbound gates, and resumed possessions for both teams.
+It also verifies that pose collision may replace provisional slot 2/7, that
+the installed dead-ball `$093E` actor coexists with logical ball owner `-1`,
+and that the current inbound actor owns arrival and transfer rather than the
+initial provisional slot.

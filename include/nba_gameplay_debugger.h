@@ -133,6 +133,12 @@ typedef struct {
     uint16_t inbound_state_raw;
     uint16_t inbound_actor_raw;
     uint16_t inbound_timer_raw;
+    int16_t inbound_layout_raw;
+    int16_t inbound_target_x_raw;
+    int16_t inbound_target_y_raw;
+    uint16_t inbound_direction_raw;
+    uint16_t inbound_ready_raw;
+    uint16_t inbound_transfer_raw;
     uint16_t rim_context_raw_097c;
     uint16_t event_bits_raw_13e7;
     uint16_t foul_event_raw;

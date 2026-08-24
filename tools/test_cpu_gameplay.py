@@ -144,6 +144,9 @@ def main():
                 old_flags = before["raw"]["behavior_flags"]
                 new_flags = after["raw"]["behavior_flags"]
                 if not old_flags & 0x08 and new_flags & 0x08:
+                    if current["match"]["live_state_raw"] == 0x82 and \
+                            after["id"] == current["match"]["inbound_actor_raw"]:
+                        continue
                     side = after["id"] // 5
                     expected = formation_target(
                         possession["play_code_raw"], after["id"] % 5,
@@ -241,8 +244,8 @@ def main():
         for row in play_01_rows:
             left = relative_01[row["play_step_raw"]]
             right = [value + 5 if value >= 0 else value for value in left]
-            # Mode-11 `$85:B50E` consumes `$09AA/$09AC/$09AE` after its
-            # decision; the next play-control record reloads them.
+            # B50E and the inbound F5C7 selector retain these words; the
+            # play-control stream or BAA2 acquisition reloads/clears them.
             if row["play_selector_raw"] not in (left, right, [-1, -1, -1]):
                 raise AssertionError(
                     f"play $01 side-relative selectors changed: {row}")
@@ -250,14 +253,15 @@ def main():
         if not {0, 1}.issubset(teams):
             raise AssertionError(f"CPU offense did not change sides: {teams}")
         modes = {row["ball"]["state"] for row in rows[219:]}
-        if not {3, 4, 5, 8}.issubset(modes):
+        if not {3, 4, 5, 6}.issubset(modes):
             raise AssertionError(f"ball physics modes missing: {modes}")
         owners = {row["ball"]["owner"] for row in rows[219:]}
         if len(owners - {-1}) < 4:
             raise AssertionError(f"ballhandler did not rotate: {owners}")
         acquisitions = [(before, after) for before, after in zip(rows, rows[1:])
                         if before["ball"]["state"] in (3, 6) and
-                        after["ball"]["state"] == 4]
+                        after["ball"]["state"] == 4 and
+                        after["match"]["live_state_raw"] != 0x82]
         if len(acquisitions) < 10:
             raise AssertionError("$86:BAA2 catch/rebound path was not sustained")
         for _, acquired in acquisitions:
@@ -444,18 +448,66 @@ def main():
         run = []
         for row in rows:
             if row["match"]["live_state_raw"] == 0x82:
-                run.append(row["match"]["inbound_timer_raw"])
+                run.append(row)
             elif run:
                 dead_runs.append(run)
                 run = []
-        if not dead_runs or any(values[0] != 300 or values[-1] not in (61, 0) or
-                                not {240, 120}.issubset(values) or
-                                (values[-1] == 0 and
-                                 not {60, 0}.issubset(values)) or
-                                any(a < b for a, b in zip(values, values[1:]))
-                                for values in dead_runs):
-            raise AssertionError("$092E inbound thresholds changed: " +
-                                 repr([(len(v), v[0], v[-1]) for v in dead_runs]))
+        if not dead_runs:
+            raise AssertionError("$092E inbound executor was not exercised")
+        replaced_provisional = 0
+        for inbound in dead_runs:
+            first = inbound[0]
+            match = first["match"]
+            provisional_actor = match["inbound_actor_raw"]
+            expected_target = (394, -64, 6) if provisional_actor == 2 else (-394, 64, 2)
+            actual_target = (match["inbound_target_x_raw"],
+                             match["inbound_target_y_raw"],
+                             match["inbound_direction_raw"])
+            if match["inbound_timer_raw"] != 300 or provisional_actor not in (2, 7) or \
+                    actual_target != expected_target:
+                raise AssertionError(f"$85:A1E9/C37D inbound seed changed: {first}")
+            installed = [row for row in inbound
+                         if row["possession"]["actor"] >= 0]
+            if not installed:
+                raise AssertionError("pose collision never installed the inbound owner")
+            installed_actor = installed[0]["match"]["inbound_actor_raw"]
+            if installed_actor != installed[0]["possession"]["actor"] or \
+                    installed[0]["ball"]["owner"] != -1:
+                raise AssertionError(
+                    "$093E dead-ball owner was conflated with logical ball ownership")
+            if installed_actor != provisional_actor:
+                replaced_provisional += 1
+            ready = [row for row in inbound
+                     if row["match"]["inbound_ready_raw"]]
+            if not ready:
+                raise AssertionError("$86:F4F2 inbound never reached raw target box")
+            first_ready = ready[0]
+            actor_id = first_ready["match"]["inbound_actor_raw"]
+            actor = first_ready["actors"][actor_id]
+            dx = first_ready["match"]["inbound_target_x_raw"] - actor["x"]
+            dy = first_ready["match"]["inbound_target_y_raw"] - actor["y"]
+            if not (-9 <= dx < 9 and -9 <= dy < 9):
+                raise AssertionError(f"$86:F4F2 accepted outside [-9,+8]: {(dx, dy)}")
+            before_ready = [row["match"]["inbound_timer_raw"]
+                            for row in inbound
+                            if row["possession"]["actor"] >= 0 and
+                            not row["match"]["inbound_ready_raw"]]
+            if any(value not in (299, 300) for value in before_ready):
+                raise AssertionError("$86:F654 stopped reloading 300 before arrival")
+            ready_timers = [row["match"]["inbound_timer_raw"] for row in ready]
+            if any(a < b for a, b in zip(ready_timers, ready_timers[1:])):
+                raise AssertionError("arrived inbound timer increased")
+            transfer = [row for row in ready
+                        if row["match"]["inbound_transfer_raw"]]
+            transfer_actor = transfer[0]["match"]["inbound_actor_raw"] \
+                if transfer else -1
+            if not transfer or transfer[0]["match"]["inbound_timer_raw"] >= 240 or \
+                    transfer[0]["possession"]["pass_actor_raw"] != transfer_actor or \
+                    not transfer[0]["possession"]["pass_active_raw"]:
+                raise AssertionError(f"$86:F59F/F64F transfer gate changed: {transfer[:1]}")
+        if replaced_provisional == 0:
+            raise AssertionError(
+                "$86:CCFC pose collision never replaced provisional actor 2/7")
 
         shots = []
         last_state = rows[218]["ball"]["state"]
@@ -546,9 +598,9 @@ def main():
                           row["ball"]["y"] - actor["y"],
                           row["ball"]["z"] - actor["z"])
                 expected = expected_attachment(actor)
-                attached.append((actual, expected))
+                attached.append((row["frame"], actual, expected))
         def attachment_matches(pair):
-            actual, expected = pair
+            _, actual, expected = pair
             return all(abs(a - e) <= 1 for a, e in zip(actual, expected))
         if not attached or any(not attachment_matches(pair) for pair in attached):
             raise AssertionError(
