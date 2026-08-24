@@ -229,6 +229,52 @@ public class DumpCpuGameplay extends GhidraScript {
                     if (instruction != null)
                         out.printf("$86:%04X  %s%n", address, instruction.toString());
                 }
+                out.println("\n--- Complete player/player contact and response ---");
+                long[] contactEntries = {
+                    0xbd41, 0xbf0b, 0xbf17, 0xbf1a, 0xbf22, 0xbf35,
+                    0xbf48, 0xbf5b, 0xbf74, 0xbf96, 0xbfa2, 0xbfaf,
+                    0xbfba, 0xbfc6, 0xbfde, 0xbfea, 0xc002, 0xc012,
+                    0xc03a, 0xc063, 0xc076, 0xc0a2, 0xc0c3, 0xc0df,
+                    0xc101, 0xc109, 0xc12f, 0xc15a, 0xc189, 0xc1a4,
+                    0xc1c1, 0xc1ee, 0xc201, 0xc21b, 0xc239, 0xc244,
+                    0xc254, 0xc261, 0xc279, 0xc28a, 0xc29d, 0xc2ad,
+                    0xc2c1, 0xc2d8, 0xc2eb, 0xc2f1, 0xc302, 0xc34c,
+                    0xc3ad, 0xc3ef, 0xc42d, 0xc454, 0xc476, 0xc88f, 0xc8c9,
+                    0xc8d2, 0xc8da, 0xc8e7, 0xc8ef, 0xc8f7, 0xc908,
+                    0xc91e, 0xc92a, 0xc93e, 0xc94b, 0xc959, 0xc968,
+                    0xc97c, 0xc984, 0xc995, 0xc9a1, 0xc9b2, 0xc9c3,
+                    0xc9ea, 0xca0c, 0xca28, 0xca36, 0xca4a, 0xca73,
+                    0xca89, 0xcaa4, 0xcaba, 0xcac8, 0xcad6, 0xcaec,
+                    0xcaf6, 0xcb27, 0xcb33, 0xcb46, 0xcb51, 0xcb62,
+                    0xcb72, 0xcb7a, 0xcb82, 0xcbc4, 0xcbd3, 0xcbec,
+                    0xcc00, 0xcc10, 0xcc25, 0xcc7d, 0xcc94, 0xcca8,
+                    0xccb8, 0xccca, 0xd5db, 0xd652
+                };
+                for (long entry : contactEntries) {
+                    addEntryPoint(toAddr(entry)); disassemble(toAddr(entry));
+                }
+                for (long address = 0xbd41; address <= 0xc492; ++address) {
+                    Instruction instruction = listing.getInstructionAt(toAddr(address));
+                    if (instruction != null)
+                        out.printf("$86:%04X  %s%n", address, instruction.toString());
+                }
+                for (long address = 0xc88f; address <= 0xcccc; ++address) {
+                    Instruction instruction = listing.getInstructionAt(toAddr(address));
+                    if (instruction != null)
+                        out.printf("$86:%04X  %s%n", address, instruction.toString());
+                }
+                out.println("\n--- Complete mode-8 knockdown recovery ---");
+                long[] recoveryEntries = {
+                    0xc6ad, 0xc6c1, 0xc6df, 0xc701, 0xc70f, 0xc728, 0xc73c
+                };
+                for (long entry : recoveryEntries) {
+                    addEntryPoint(toAddr(entry)); disassemble(toAddr(entry));
+                }
+                for (long address = 0xc6ad; address <= 0xc74d; ++address) {
+                    Instruction instruction = listing.getInstructionAt(toAddr(address));
+                    if (instruction != null)
+                        out.printf("$86:%04X  %s%n", address, instruction.toString());
+                }
                 out.println("\n--- Complete foul classification/bookkeeping boundary ---");
                 addEntryPoint(toAddr(0xc493)); disassemble(toAddr(0xc493));
                 addEntryPoint(toAddr(0xc4fe)); disassemble(toAddr(0xc4fe));

@@ -194,6 +194,10 @@ typedef struct {
     uint16_t pass_distance_raw;
     int8_t collision_actor_a;
     int8_t collision_actor_b;
+    uint16_t player_contact_count_raw;
+    int8_t player_contact_actor_a_raw;
+    int8_t player_contact_actor_b_raw;
+    uint32_t player_contact_routine_raw;
     int16_t camera_x, camera_y;
     int16_t camera_subject_raw;
     uint16_t camera_side_group_raw;

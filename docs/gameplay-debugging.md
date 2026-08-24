@@ -161,3 +161,10 @@ Actor JSON includes raw contact inhibit `+$5A` and the asset-composed body
 height `+$AA`. The sustained regression also locks `$87:9C3A->$86:A5B0`:
 once `$0946` becomes negative, mode 10 must normalize through `$86:9846`
 within one 30-Hz actor pass instead of drifting indefinitely.
+The top-level `collision` object separately reports `player_count`, the last
+`player_a/player_b` pair, and `player_routine`. Values `$86:BD41`, `$86:BF0B`,
+`$86:BFBA`, and `$86:C91E` distinguish teammate projection, opponent
+projection, high-speed knockdown, and the animation-`$38` pose impulse. This
+is deliberately separate from the existing
+ball/contact `a/b/routine` fields so a body response cannot hide a steal,
+interference, or foul-classifier event from the trace.

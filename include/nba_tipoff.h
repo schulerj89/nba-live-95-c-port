@@ -63,10 +63,12 @@ typedef struct {
     uint16_t upper_animation_tick;
     uint16_t lower_animation_tick;
     uint16_t upper_animation_phase_raw; /* actor `+$3A` */
+    uint16_t actor_status_raw_28;       /* actor `+$28`, `$86:C476` */
     uint8_t control_mode;
     uint8_t saved_control_mode;         /* actor `+$84` */
     uint16_t pass_band_raw;             /* actor `+$62`: 0,6,...,30 */
     uint16_t pass_direction_raw;        /* actor `+$66` */
+    int16_t special_contact_raw_56;     /* actor `+$56`, `$86:C943-$C951` */
     int16_t pass_family_raw;            /* actor `+$C0` */
     uint8_t pass_release_threshold_raw;
     bool pass_released_raw;
@@ -88,6 +90,7 @@ typedef struct {
     int8_t controller_assignment_raw; /* signed actor `+$16` */
     uint16_t movement_magnitude_raw;  /* actor `+$4C` */
     uint16_t contact_inhibit_raw_5a;  /* actor `+$5A`, `$86:CD03/D460` */
+    uint16_t contact_action_timer_raw_60; /* actor `+$60`, `$86:C0DF/C12F` */
     uint16_t contact_height_raw_aa;   /* actor `+$AA`, `$87:A6A9-A6B2` */
     uint16_t free_throw_launch_half_raw_a8; /* actor `+$A8`, `$86:A2A7` */
     uint16_t recovery_inhibit_raw;    /* actor `+$7A` */
@@ -198,6 +201,10 @@ typedef struct {
     int8_t collision_actor_a_raw; /* `$492D`, current contact candidate */
     int8_t collision_actor_b_raw; /* `$492F`, current owner/victim */
     uint32_t collision_routine_raw;
+    uint16_t player_contact_count_raw;
+    int8_t player_contact_actor_a_raw;
+    int8_t player_contact_actor_b_raw;
+    uint32_t player_contact_routine_raw;
     bool cpu_vs_cpu;
     bool is_initialized;
 } NbaTipoff;

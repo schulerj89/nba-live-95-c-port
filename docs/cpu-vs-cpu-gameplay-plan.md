@@ -1001,3 +1001,56 @@ owner/VZ/Z/`$097C`/`$0972`/`$094C` gates. `$85:EDB3`'s unconditional
 `$08DE--` cadence is also represented. Forced in-process vectors protect
 the mirrored lineup, direction records, rating endpoints, and retry-state
 wrap, while the public gameplay tests retain the 60,000-frame simulation.
+
+### Increment 5K: stable player/player contact physics
+
+The recompilation and maintained headless Ghidra dump now agree on the native
+per-pass order: `$87:8F01-$8F8D` moves all ten actors, `$87:8F95` advances the
+ball, `$86:D5DB` stable-sorts actor records by signed world X, and
+`$86:D652-$D720` traverses candidate pairs before `$85:AF5C/$BC07` refreshes
+roles. The C scheduler now follows that order; role refresh no longer runs
+inside the actor movement loop.
+
+`$86:C88F` supplies the exact broadphase. Opponents use signed X `[-16,16]`,
+Y `[-16,15]`, and `max(abs(dx),abs(dy))+min/4 < 17`; teammates use Y
+`[-8,7]` and metric `< 8`. Live-state `$82` excludes the inbound actor and
+mode-3 records. `$86:BF0B-$C475` and `$86:BD41-$BF08` then apply the ROM's
+wrapped low-word dot/cross products and arithmetic shifts. Opponents use four
+shifts plus `$86:C302`'s vertical separation nudge; teammates use three.
+Actor `+$7E bit 0` restores each protected velocity axis after the response,
+and the `$86:C239` assignment specialization preserves the qualifying
+near-anchor defender.
+
+Animation `$38` does not use the body metric. `$86:C91E-$CB83` compares pose
+point zero from `$87:B832` in a strict seven-unit box and applies the eight
+strong vectors at `$86:CB84`. The port composes that point from the existing
+asset pack; no emulator capture art or host hitbox is substituted. Forced
+self-test vectors lock horizontal and vertical opponent results, teammate
+strength, `+$7E` restoration, metric boundaries, and inbound exclusion.
+
+The CLI now exposes per-frame body-contact count, last pair, and source
+routine separately from ball/foul collision telemetry. The 60,000-frame test
+uses that evidence to permit `+$4C` to remain the pre-contact movement
+magnitude, as it does in the ROM, while still rejecting unexplained stale
+values. Visual goldens at frames 600 and 1300 were regenerated only after
+inspection of the new ROM-derived trajectories.
+
+`$86:BFBA-$C238` is retained as a distinct high-speed outcome. It normalizes
+the stationary victim and moving hitter, requires hitter magnitude `$0250`,
+uses the original one-in-eight RNG gate and independent signed-byte jitters,
+transfers five-eighths of each hitter velocity to the victim, stops the
+hitter, and installs action `$35` or the boosted `$36`. Mode-10/14 receiver
+cancellation, recovery/contact timers, mode 8, direction reversal, and
+ball-owner detachment are all portable and translated. The call to `$86:C4FE`
+is isolated: its later foul-adjudication side effects remain part of the
+unfinished classifier, but they do not gate or alter the translated
+knockdown physics and presentation writes.
+
+The matching mode-8 executor is `$87:9C67 -> $86:C6AD-$C74D`. The global
+`$87:9090` scheduler saturates `+$5A` toward zero while C6AD wraps `+$60` by
+two per 30-Hz pass, reproduces the
+`+$28` presentation-bit windows, and restores mode 1/2 from the actor side
+when the signed timer expires (mode 11 if that actor has regained possession).
+Action `$36` additionally uses `+$56/+$66` to produce the original landing
+hop, halve planar velocity, and stop on its next landing. This recovery path
+prevents entry-only knockdowns from becoming permanent mode-8 actors.

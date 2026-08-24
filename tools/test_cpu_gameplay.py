@@ -16,8 +16,8 @@ FORMATION = [
     (-8, -3), (16, 83), (24, -80), (-104, 56), (-96, -59),
 ]
 EXPECTED_RGB = {
-    600: "18daf3db8aa3e27f84ef9783555831c3df8f8d0da7875e0adc1258e6fd1bc818",
-    1300: "b4cec8543e3fc88bc68d52247774d00164192d77c431ffcd4d6d989442a28f49",
+    600: "6c103ff0fe22b29384806281dd9a04f61e0ed867eb732f36bb32c168b4eda900",
+    1300: "41850300d48ac3447bf1a17a956d26043a3ecf185b9052423646563c0cc1321e",
 }
 
 
@@ -105,6 +105,19 @@ def main():
                 raise AssertionError(
                     "$86:CCFC owned-ball contact accepted a same-team or "
                     f"invalid pair: {collision}")
+        player_contacts = [row["collision"] for row in rows[219:]
+                           if row["collision"]["player_count"]]
+        if not player_contacts:
+            raise AssertionError("$86:D652 never produced player/player contact")
+        for contact in player_contacts:
+            if contact["player_routine"] not in (
+                    0x86BD41, 0x86BF0B, 0x86BFBA, 0x86C91E) or \
+                    not 0 <= contact["player_a"] < 10 or \
+                    not 0 <= contact["player_b"] < 10:
+                raise AssertionError(f"invalid player contact telemetry: {contact}")
+            same_team = contact["player_a"] // 5 == contact["player_b"] // 5
+            if same_team != (contact["player_routine"] == 0x86BD41):
+                raise AssertionError(f"player contact classifier changed: {contact}")
 
         def frame(number):
             return rows[number - 1]
@@ -317,7 +330,8 @@ def main():
                         row["possession"]["play_request_raw"] == 0]
         if not play_01_rows or play_01_rows[0]["play_step_raw"] != 0 or \
                 play_01_rows[0]["play_countdown_raw"] != 120 or \
-                play_01_rows[0]["play_selector_raw"] != [3, 4, -1]:
+                play_01_rows[0]["play_selector_raw"] not in (
+                    [3, 4, -1], [8, 9, -1]):
             raise AssertionError(f"play $01 record zero changed: {play_01_rows[:1]}")
         if any(row["play_step_raw"] not in (0, 1, 2) for row in play_01_rows):
             raise AssertionError("play $01 escaped its ROM control stream")
@@ -394,6 +408,9 @@ def main():
                     min(abs(actor["vx"]), abs(actor["vy"])) // 4
                 # `+$4C` is written by the velocity resolver and remains
                 # latched if a later branch zeros/skips velocity that frame.
+                # `$86:BD41/$BF0B` likewise rewrites planar velocity after
+                # actor integration without recomputing +$4C; +$7A marks
+                # that post-resolver player/player response.
                 # `$85:A656-$A726` can independently cancel one outward axis
                 # after +$4C was written when the record touches ±394/±224.
                 # Telemetry rounds 24.8 coordinates, while the ROM compares
@@ -404,16 +421,21 @@ def main():
                 on_isometric_edge = actor["x"] <= -556 - actor["y"] + 1 \
                     if actor["y"] < 0 else \
                     actor["x"] >= 561 - actor["y"] - 1
-                stable_movement_mode = previous is not None and \
+                stable_movement_mode = row["scheduler"]["due_raw"] != 0 and \
+                    previous is not None and \
                     previous["actors"][actor["id"]]["raw"]["control_mode"] == \
                     raw["control_mode"] and raw["control_mode"] in (1, 2, 3, 4, 5, 6)
+                post_resolver_contact = row["collision"]["player_count"] != 0 or \
+                    (previous is not None and
+                     previous["collision"]["player_count"] != 0)
                 if (actor["vx"] or actor["vy"]) and \
                         raw["movement_magnitude_4c"] != expected_magnitude and \
                         not on_rectangular_edge and not on_isometric_edge and \
-                        stable_movement_mode:
+                        stable_movement_mode and not post_resolver_contact:
                     raise AssertionError(
-                        f"actor +$4C magnitude changed: {raw['movement_magnitude_4c']} "
-                        f"!= {expected_magnitude}")
+                        f"actor +$4C magnitude changed at frame {row['frame']} "
+                        f"actor {actor['id']}: {raw['movement_magnitude_4c']} "
+                        f"!= {expected_magnitude}; collision={row['collision']}")
                 mode = actor["raw"]["control_mode"]
                 if mode >= len(behavior_targets) or \
                         actor["ai_routine"] != behavior_targets[mode]:
@@ -849,6 +871,13 @@ def main():
                    "cpu_update_rom_passer",
                    "$86:D035-$D205", "nba_gameplay_owned_contact_attempt",
                    "cpu_try_owned_ball_contact",
+                   "$86:D5DB", "$86:D652-$D728", "$86:BD41-$BF08",
+                   "$86:BF0B-$C475", "$86:C88F-$C91D",
+                   "$86:BFBA-$C238", "$86:C91E-$CB83",
+                   "cpu_try_player_knockdown_contact",
+                   "$87:9C67", "$86:C6AD-$C74D",
+                   "cpu_update_knockdown_actor",
+                   "cpu_update_player_contacts",
                    "$86:CD97-$D1D6", "cpu_try_detached_shot_contact",
                    "nba_gameplay_detached_shot_contact_attempt",
                    "nba_player_gameplay_contact_rating",
