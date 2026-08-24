@@ -100,6 +100,13 @@ typedef struct {
     int8_t possession_team;
     uint8_t camera_side_group_raw; /* persistent `$093A`: 0 or 5 */
     uint16_t play_code;
+    int16_t play_step_raw;       /* `$0998` */
+    int16_t play_countdown_raw;  /* `$099A` */
+    uint16_t play_mirror_raw;    /* `$099C` */
+    uint16_t play_event_wait_raw;/* `$099E` */
+    uint16_t play_cycle_raw;     /* `$09A4` */
+    uint16_t play_hold_raw;      /* `$09D0` */
+    int16_t play_selector_raw[3];/* `$09AA/$09AC/$09AE` */
     uint32_t simulation_tick;
     uint32_t actor_update_tick;
     uint16_t possession_frame;

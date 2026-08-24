@@ -103,6 +103,13 @@ typedef struct {
     int8_t possession_team;
     int16_t possession_candidate_raw;
     uint16_t play_code_raw;
+    int16_t play_step_raw;
+    int16_t play_countdown_raw;
+    uint16_t play_mirror_raw;
+    uint16_t play_event_wait_raw;
+    uint16_t play_cycle_raw;
+    uint16_t play_hold_raw;
+    int16_t play_selector_raw[3];
     uint16_t rng_state_raw;
     uint16_t score_left_raw;
     uint16_t score_right_raw;

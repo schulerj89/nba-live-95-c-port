@@ -178,12 +178,13 @@ static void nba_game_debug_lines(const NbaGame *game, NbaDebugLines *out) {
                  s->possession_number, s->possession_frame,
                  s->handler_actor, s->receiver_actor, s->rng.state);
         snprintf(out->line[out->count++], NBA_DEBUG_LINE_SIZE,
-                 "BALL M:%u O:%d W:%d,%d,%d V:%d,%d,%d PLAY:$%02X",
+                 "BALL M:%u O:%d W:%d,%d,%d V:%d,%d,%d PLAY:$%02X/%d T:%d W:%u",
                  s->ball.state, s->ball.owner_actor,
                  (int)(s->ball.x_fp / 256), (int)(s->ball.y_fp / 256),
                  (int)(s->ball.z_fp / 256), s->ball.velocity_x / 256,
                  s->ball.velocity_y / 256, s->ball.velocity_z / 256,
-                 s->play_code);
+                 s->play_code, s->play_step_raw, s->play_countdown_raw,
+                 s->play_event_wait_raw);
         snprintf(out->line[out->count++], NBA_DEBUG_LINE_SIZE,
                  "SCORE %u-%u VAL:%u CH:%u MISS:%u/%u IN:%u/%u T:%u",
                  s->session->score[0], s->session->score[1],

@@ -84,6 +84,29 @@ def main():
         play_codes = {row["possession"]["play_code_raw"] for row in rows[219:]}
         if not {0x35, 0x01, 0x0F, 0x26}.issubset(play_codes):
             raise AssertionError(f"recurring ROM play codes missing: {play_codes}")
+        play_35 = frame(220)["possession"]
+        expected_35 = {
+            "play_step_raw": 0, "play_countdown_raw": 0,
+            "play_event_wait_raw": 1, "play_selector_raw": [9, 7, -1],
+        }
+        if any(play_35[key] != value for key, value in expected_35.items()):
+            raise AssertionError(f"$85:B377/$B2DC play $35 load changed: {play_35}")
+        play_01_rows = [row["possession"] for row in rows
+                        if row["possession"]["play_code_raw"] == 0x01]
+        if not play_01_rows or play_01_rows[0]["play_step_raw"] != 0 or \
+                play_01_rows[0]["play_countdown_raw"] != 120 or \
+                play_01_rows[0]["play_selector_raw"] != [3, 4, -1]:
+            raise AssertionError(f"play $01 record zero changed: {play_01_rows[:1]}")
+        if {row["play_step_raw"] for row in play_01_rows} != {0, 1, 2} or \
+                not any(row["play_cycle_raw"] == 1 for row in play_01_rows):
+            raise AssertionError("play $01 countdown did not traverse and cycle")
+        play_01_selectors = {
+            row["play_step_raw"]: row["play_selector_raw"]
+            for row in play_01_rows
+        }
+        if play_01_selectors != {0: [3, 4, -1], 1: [4, 3, -1],
+                                2: [3, 4, -1]}:
+            raise AssertionError(f"play $01 selectors changed: {play_01_selectors}")
         teams = {row["possession"]["team"] for row in rows[219:]}
         if not {0, 1}.issubset(teams):
             raise AssertionError(f"CPU offense did not change sides: {teams}")

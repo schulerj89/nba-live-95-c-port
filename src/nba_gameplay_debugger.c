@@ -128,9 +128,10 @@ void nba_gameplay_debugger_render(const NbaGameplayDebugger *debugger,
                  telemetry->shot_value_raw, telemetry->shot_chance_raw,
                  telemetry->shot_inner_veto_raw, telemetry->shot_miss_index_raw);
         text(renderer, 6, 192, line, 0xFF9EF7A9u);
-        snprintf(line, sizeof(line), "COARSE:%u,%u SRC:$A0:%04X RNG:$%04X F:%u",
-                 telemetry->camera_086c_raw, telemetry->camera_086e_raw,
-                 telemetry->camera_0876_raw, telemetry->rng_state_raw,
+        snprintf(line, sizeof(line), "PLAY:%02X/%d T:%d W:%u RNG:$%04X F:%u",
+                 telemetry->play_code_raw, telemetry->play_step_raw,
+                 telemetry->play_countdown_raw,
+                 telemetry->play_event_wait_raw, telemetry->rng_state_raw,
                  telemetry->scene_frame);
         text(renderer, 6, 204, line, 0xFF79D7FFu);
     }
@@ -177,6 +178,10 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
             "\"initial_slot_raw\":%d,\"selected_slot_raw\":%d,"
             "\"actor_pointer_raw\":%u},\"possession\":{\"actor\":%d,"
             "\"team\":%d,\"candidate_raw\":%d,\"play_code_raw\":%u,"
+            "\"play_step_raw\":%d,\"play_countdown_raw\":%d,"
+            "\"play_mirror_raw\":%u,\"play_event_wait_raw\":%u,"
+            "\"play_cycle_raw\":%u,\"play_hold_raw\":%u,"
+            "\"play_selector_raw\":[%d,%d,%d],"
             "\"rng_state_raw\":%u},\"match\":{\"score_left_raw\":%u,"
             "\"score_right_raw\":%u,\"shot_value_raw\":%u,"
             "\"shot_chance_raw\":%u,\"shot_miss_index_raw\":%u,"
@@ -200,7 +205,12 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
             telemetry->initial_controlled_slot_raw, telemetry->selected_slot_raw,
             telemetry->controlled_actor_pointer_raw, telemetry->possession_actor,
             telemetry->possession_team, telemetry->possession_candidate_raw,
-            telemetry->play_code_raw, telemetry->rng_state_raw,
+            telemetry->play_code_raw, telemetry->play_step_raw,
+            telemetry->play_countdown_raw, telemetry->play_mirror_raw,
+            telemetry->play_event_wait_raw, telemetry->play_cycle_raw,
+            telemetry->play_hold_raw, telemetry->play_selector_raw[0],
+            telemetry->play_selector_raw[1], telemetry->play_selector_raw[2],
+            telemetry->rng_state_raw,
             telemetry->score_left_raw, telemetry->score_right_raw,
             telemetry->shot_value_raw, telemetry->shot_chance_raw,
             telemetry->shot_miss_index_raw, telemetry->shot_inner_veto_raw,

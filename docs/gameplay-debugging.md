@@ -18,6 +18,12 @@ The CLI exposes the same state as newline-delimited JSON:
 proof frame. `--gameplay-paused --gameplay-step-count N` verifies deterministic
 single-frame stepping in headless runs.
 
+F8 page 3 and the normal CLI debug state expose `PLAY:code/step T:count W:wait`.
+JSON adds raw `$0998/$099A/$099C/$099E/$09A4/$09D0` values plus the three
+side-relative `$09AA/$09AC/$09AE` selectors. Positive countdown records advance
+once per completed 30-Hz actor pass; event records deliberately hold until the
+ROM teammate/event scan that clears `$099E` is ported.
+
 ## Confirmed ROM map
 
 The initial Ghidra/Mesen audit established these hooks. Raw values remain in

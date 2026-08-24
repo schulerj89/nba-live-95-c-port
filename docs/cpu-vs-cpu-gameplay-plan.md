@@ -324,3 +324,13 @@ Gameplay semantics therefore continue to come from exact ROM bytes, Ghidra
 control flow, and Mesen WRAM/execution traces. The recomp remains valuable for
 repeatable end-to-end playback and future function-boundary discovery, not as
 a false C-level reference for bank `$85-$87` gameplay routines.
+
+Increment 4H installs the control stream's raw runtime registers and debugger
+contract. New possessions execute the proven `$85:B377 -> $B2DC` reset/load,
+translate nonnegative selectors through the offense side base, and decrement
+positive `$099A` records by `C6=2` only after a completed ten-actor pass.
+Underflow advances; `$23BA` cycles to record zero or repeats the final record
+when `$09D0` is set. Negative countdown records set `$099E` and intentionally
+hold: the prerequisite teammate/event scan is not yet ported, so no host phase
+is allowed to impersonate it. F8, CLI, JSON, and the 50,000-frame regression
+now expose and lock these boundaries before formation indices consume them.

@@ -507,6 +507,73 @@ static void cpu_update_tip_ball(NbaTipoff *tipoff) {
     ball->velocity_z = (int16_t)(ball->z_fp - old_z);
 }
 
+static bool cpu_load_next_play_control(NbaTipoff *tipoff) {
+    NbaGameplayPlayControlRecord record;
+    uint8_t count = 0u;
+    int next = tipoff->play_step_raw + 1;
+    if (!nba_assets_gameplay_play_control(
+            tipoff->assets, (uint8_t)tipoff->play_code, (uint8_t)next,
+            &record, &count)) {
+        if (next < count) return false;
+        /* `$85:B309-$B326`: `$09D0` repeats the final record; otherwise the
+         * `$23BA` sentinel sets `$09A4`, rewinds `$0998`, and loads record 0. */
+        if (tipoff->play_hold_raw != 0u) {
+            next = count ? (int)count - 1 : 0;
+        } else {
+            tipoff->play_cycle_raw = 1u;
+            next = 0;
+        }
+        if (!nba_assets_gameplay_play_control(
+                tipoff->assets, (uint8_t)tipoff->play_code, (uint8_t)next,
+                &record, &count)) return false;
+    }
+    tipoff->play_step_raw = (int16_t)next;
+    if (record.countdown < 0) {
+        tipoff->play_countdown_raw = 0;
+        tipoff->play_event_wait_raw = 1u;
+    } else {
+        tipoff->play_countdown_raw = record.countdown;
+        tipoff->play_event_wait_raw = 0u;
+    }
+    int side_base = tipoff->offense_side ? 5 : 0;
+    const int16_t source[3] = {
+        record.selector_a, record.selector_b, record.selector_c
+    };
+    for (unsigned i = 0; i < 3u; ++i)
+        tipoff->play_selector_raw[i] = source[i] < 0 ? source[i] :
+                                       (int16_t)(source[i] + side_base);
+    return true;
+}
+
+static void cpu_reset_play_control(NbaTipoff *tipoff) {
+    /* `$85:B377`: initialize the stream registers, then fall through
+     * `$85:B28B/$B2DC` to load record zero. */
+    tipoff->play_step_raw = -1;
+    tipoff->play_countdown_raw = 0;
+    tipoff->play_event_wait_raw = 0u;
+    tipoff->play_cycle_raw = 0u;
+    tipoff->play_hold_raw = 0u;
+    tipoff->play_mirror_raw = tipoff->play_code >= 0x12u ?
+        (tipoff->rng.state & 1u) : 0u;
+    for (unsigned i = 0; i < 3u; ++i) tipoff->play_selector_raw[i] = -1;
+    (void)cpu_load_next_play_control(tipoff);
+}
+
+static void cpu_update_play_control(NbaTipoff *tipoff) {
+    if ((tipoff->simulation_tick & 1u) != 0u) return;
+    /* `$099E` is cleared only by the unresolved teammate/event scan before
+     * `$85:B28B`. Holding is faithful; advancing it from host play phases
+     * would fabricate the very CPU decision boundary this state exposes. */
+    if (tipoff->play_event_wait_raw != 0u) return;
+    int16_t remaining = (int16_t)(uint16_t)(
+        (uint16_t)tipoff->play_countdown_raw - 2u);
+    if (remaining >= 0) {
+        tipoff->play_countdown_raw = remaining;
+        return;
+    }
+    (void)cpu_load_next_play_control(tipoff);
+}
+
 static void cpu_begin_possession(NbaTipoff *tipoff, uint8_t offense_side) {
     static const uint8_t play_codes[4] = {0x35u, 0x01u, 0x0Fu, 0x26u};
     static const uint8_t handler_slots[4] = {3u, 3u, 2u, 2u};
@@ -516,6 +583,7 @@ static void cpu_begin_possession(NbaTipoff *tipoff, uint8_t offense_side) {
     tipoff->possession_frame = 0;
     tipoff->play_state_frame = 0;
     tipoff->play_code = play_codes[tipoff->possession_number % 4u];
+    cpu_reset_play_control(tipoff);
     unsigned base = offense_side ? 5u : 0u;
     tipoff->handler_actor = (uint8_t)(base + handler_slots[tipoff->possession_number % 4u]);
     tipoff->receiver_actor = (uint8_t)(base +
@@ -610,6 +678,7 @@ static void cpu_update_possession(NbaTipoff *tipoff) {
     cpu_set_role_targets(tipoff);
     cpu_update_all_actors(tipoff);
     NbaGameplayRimResult rim_result = cpu_update_live_ball(tipoff);
+    cpu_update_play_control(tipoff);
 
     NbaTipoffActor *handler = &tipoff->actors[tipoff->handler_actor];
     NbaTipoffActor *receiver = &tipoff->actors[tipoff->receiver_actor];
@@ -946,6 +1015,14 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
                                           tipoff->handler_actor : -1;
     telemetry->play_code_raw = tipoff->frame >= NBA_TIPOFF_POSSESSION_FRAME ?
                                tipoff->play_code : NBA_GAMEPLAY_UNKNOWN_WORD;
+    telemetry->play_step_raw = tipoff->play_step_raw;
+    telemetry->play_countdown_raw = tipoff->play_countdown_raw;
+    telemetry->play_mirror_raw = tipoff->play_mirror_raw;
+    telemetry->play_event_wait_raw = tipoff->play_event_wait_raw;
+    telemetry->play_cycle_raw = tipoff->play_cycle_raw;
+    telemetry->play_hold_raw = tipoff->play_hold_raw;
+    for (unsigned i = 0; i < 3u; ++i)
+        telemetry->play_selector_raw[i] = tipoff->play_selector_raw[i];
     telemetry->rng_state_raw = tipoff->rng.state;
     telemetry->score_left_raw = tipoff->session->score[0];
     telemetry->score_right_raw = tipoff->session->score[1];
