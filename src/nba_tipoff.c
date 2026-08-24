@@ -403,6 +403,10 @@ static void score_made_basket(NbaTipoff *tipoff) {
     tipoff->inbound_state_raw = (uint16_t)(inbound_side * 5u);
     tipoff->inbound_actor_raw = (uint16_t)(tipoff->inbound_state_raw + 2u);
     tipoff->inbound_timer_raw = 300u;
+    /* `$85:A219-$A222`: dead-ball scoring requests play `$01`; B128 later
+     * preserves it while resetting the stream at the actor-pass boundary. */
+    tipoff->play_code = 1u;
+    tipoff->play_request_raw = 1u;
     tipoff->offense_side = (uint8_t)inbound_side;
     tipoff->possession_team = (int8_t)inbound_side;
     tipoff->handler_actor = (uint8_t)tipoff->inbound_actor_raw;
@@ -603,15 +607,55 @@ static void cpu_reset_play_control(NbaTipoff *tipoff) {
     tipoff->play_countdown_raw = 0;
     tipoff->play_event_wait_raw = 0u;
     tipoff->play_cycle_raw = 0u;
-    tipoff->play_hold_raw = 0u;
     tipoff->play_mirror_raw = tipoff->play_code >= 0x12u ?
         (tipoff->rng.state & 1u) : 0u;
     for (unsigned i = 0; i < 3u; ++i) tipoff->play_selector_raw[i] = -1;
     cpu_advance_play_control(tipoff);
 }
 
+static void cpu_reselect_play_control(NbaTipoff *tipoff) {
+    /* `$85:B128-$B24B`: `$0994` is consumed only at the completed logical
+     * pass boundary. The first RNG result is intentionally discarded. */
+    (void)nba_gameplay_rng_next(&tipoff->rng);
+    tipoff->play_request_raw = 0u;
+    tipoff->play_event_wait_raw = 0u;
+    tipoff->play_cycle_raw = 0u;
+    if (tipoff->live_state_raw == 0x82u) {
+        /* `$85:B176/$B245`: made-score state preserves `$0996` and `$09D0`
+         * while B377 rewinds the selected stream to record zero. */
+        cpu_reset_play_control(tipoff);
+        return;
+    }
+
+    /* The currently represented context has +$2E!=7 and +$56==0. Preserve
+     * the exact normal-path RNG rejection order before the team/coin table. */
+    uint8_t preliminary;
+    do preliminary = (uint8_t)(nba_gameplay_rng_next(&tipoff->rng) & 7u);
+    while (preliminary >= 6u);
+    (void)preliminary;
+    uint8_t coin = (uint8_t)(nba_gameplay_rng_next(&tipoff->rng) & 1u);
+    uint8_t team = tipoff->offense_side ? tipoff->session->right_team :
+                                          tipoff->session->left_team;
+    uint8_t strategy, base, count;
+    bool hold;
+    if (!nba_assets_gameplay_cpu_strategy(
+            tipoff->assets, team, coin, &strategy, &base, &count, &hold))
+        return;
+    (void)strategy;
+    uint8_t offset;
+    do offset = (uint8_t)(nba_gameplay_rng_next(&tipoff->rng) & 7u);
+    while (offset >= count);
+    tipoff->play_code = (uint16_t)(base + offset);
+    tipoff->play_hold_raw = hold ? 1u : 0u;
+    cpu_reset_play_control(tipoff);
+}
+
 static void cpu_update_play_control(NbaTipoff *tipoff) {
     if ((tipoff->simulation_tick & 1u) != 0u) return;
+    if (tipoff->play_request_raw != 0u) {
+        cpu_reselect_play_control(tipoff);
+        return;
+    }
     int16_t remaining = (int16_t)(uint16_t)(
         (uint16_t)tipoff->play_countdown_raw - 2u);
     if (remaining >= 0) {
@@ -644,6 +688,7 @@ static void cpu_begin_possession(NbaTipoff *tipoff, uint8_t offense_side) {
     tipoff->possession_frame = 0;
     tipoff->play_state_frame = 0;
     tipoff->play_code = play_codes[tipoff->possession_number % 4u];
+    tipoff->play_hold_raw = 0u;
     cpu_reset_play_control(tipoff);
     unsigned base = offense_side ? 5u : 0u;
     tipoff->handler_actor = (uint8_t)(base + handler_slots[tipoff->possession_number % 4u]);
@@ -719,6 +764,7 @@ static void cpu_update_possession(NbaTipoff *tipoff) {
         inbounder->target_x = (int16_t)(right_baseline ? 394 : -394);
         inbounder->target_y = (int16_t)(right_baseline ? -64 : 64);
         cpu_update_all_actors(tipoff);
+        cpu_update_play_control(tipoff);
         (void)cpu_update_live_ball(tipoff);
         if (tipoff->inbound_timer_raw > 0u)
             --tipoff->inbound_timer_raw;
@@ -1088,6 +1134,7 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
     telemetry->play_countdown_raw = tipoff->play_countdown_raw;
     telemetry->play_mirror_raw = tipoff->play_mirror_raw;
     telemetry->play_event_wait_raw = tipoff->play_event_wait_raw;
+    telemetry->play_request_raw = tipoff->play_request_raw;
     telemetry->play_cycle_raw = tipoff->play_cycle_raw;
     telemetry->play_hold_raw = tipoff->play_hold_raw;
     for (unsigned i = 0; i < 3u; ++i)

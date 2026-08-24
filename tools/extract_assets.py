@@ -809,6 +809,23 @@ def build_player_animation_asset(rom_data):
     return bytes(payload)
 
 
+def build_cpu_gameplay_ai_asset(rom_data):
+    """Pack proven CPU strategy/pass tables used by banks $85/$86."""
+    header_size = struct.calcsize("<8s9I")
+    strategy_offset = header_size
+    range_offset = strategy_offset + 29 * 2
+    pass_offset = range_offset + 7 * 4
+    threshold_offset = pass_offset + 3 * 6 * 6
+    payload = bytearray(struct.pack(
+        "<8s9I", b"NBCAI1\0\0", 1, 29, 7, 3, 6, strategy_offset,
+        range_offset, pass_offset, threshold_offset))
+    payload.extend(rom_data[lorom_offset(0x85C661):lorom_offset(0x85C661) + 58])
+    payload.extend(rom_data[lorom_offset(0x85C729):lorom_offset(0x85C729) + 28])
+    payload.extend(rom_data[lorom_offset(0x869C6F):lorom_offset(0x869C6F) + 108])
+    payload.extend(rom_data[lorom_offset(0x86A7A0):lorom_offset(0x86A7A0) + 8])
+    return bytes(payload)
+
+
 def create_asset_pack(rom_path, output_path):
     print(f"[ASSET EXTRACTOR] Extracting assets from ROM: {rom_path}")
     print(f"[ASSET EXTRACTOR] Output asset pack: {output_path}")
@@ -1591,6 +1608,7 @@ def create_asset_pack(rom_path, output_path):
     player_rosters = build_player_roster_asset(rom_data)
     gameplay_formations = build_gameplay_formation_asset(rom_data)
     gameplay_play_control = build_gameplay_play_control_asset(rom_data)
+    gameplay_cpu_tables = build_cpu_gameplay_ai_asset(rom_data)
     (player_default_pose, player_tile_sources, player_palette_tables,
      player_pose_layout) = build_player_front_pose(rom_data)
     player_animations = build_player_animation_asset(rom_data)
@@ -1795,6 +1813,7 @@ def create_asset_pack(rom_path, output_path):
         (273, 912, 416, 29, gameplay_court_panoramas),
         (274, 61, 5, 1595, gameplay_formations),
         (275, 61, 320, 0x85C6AF, gameplay_play_control),
+        (276, 29, 7, 0x85C661, gameplay_cpu_tables),
     ])
     assets.extend([
         (124, 0, 0, 0, rules_vram_bytes),
@@ -1854,7 +1873,7 @@ def create_asset_pack(rom_path, output_path):
                     extra_audio_id += 1
 
     header_magic = b"NBA95PAK"
-    version = 26
+    version = 27
     asset_count = len(assets)
     entry_size = 24 # 6 * 4 bytes
 

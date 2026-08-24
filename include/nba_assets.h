@@ -128,7 +128,9 @@ typedef enum {
     NBA_ASSET_GAMEPLAY_FORMATIONS                  = 274,
     /* NBPLAY1: `$85:B377/$B2DC` 61-play control stream graph. */
     NBA_ASSET_GAMEPLAY_PLAY_CONTROL                 = 275,
-    NBA_ASSET_MAX                   = 276
+    /* NBCAI1: ROM CPU strategy, pass-flight, and release-threshold tables. */
+    NBA_ASSET_GAMEPLAY_CPU_TABLES                   = 276,
+    NBA_ASSET_MAX                   = 277
 } NbaAssetId;
 
 typedef struct {
@@ -174,5 +176,16 @@ bool nba_assets_gameplay_play_control(const NbaAssetPack *pack, uint8_t play,
                                       uint8_t index,
                                       NbaGameplayPlayControlRecord *record,
                                       uint8_t *count);
+bool nba_assets_gameplay_cpu_strategy(const NbaAssetPack *pack, uint8_t team,
+                                      uint8_t coin, uint8_t *strategy,
+                                      uint8_t *play_base, uint8_t *play_count,
+                                      bool *hold_final);
+bool nba_assets_gameplay_pass_launch(const NbaAssetPack *pack, uint8_t family,
+                                     uint8_t band, int16_t *flight_scalar,
+                                     int16_t *vertical,
+                                     int16_t *opaque_raw_2);
+bool nba_assets_gameplay_pass_release_threshold(const NbaAssetPack *pack,
+                                                uint8_t upper_state,
+                                                uint8_t *threshold);
 
 #endif /* NBA_ASSETS_H */

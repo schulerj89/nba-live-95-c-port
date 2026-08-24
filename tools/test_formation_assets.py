@@ -7,7 +7,8 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from extract_assets import (build_gameplay_formation_asset,
+from extract_assets import (build_cpu_gameplay_ai_asset,
+                            build_gameplay_formation_asset,
                             build_gameplay_play_control_asset,
                             load_verified_rom)
 
@@ -17,8 +18,8 @@ def pack_asset(path, wanted):
     if raw[:8] != b"NBA95PAK":
         raise AssertionError("invalid asset-pack magic")
     version, count = struct.unpack_from("<II", raw, 8)
-    if version != 26:
-        raise AssertionError(f"gameplay graphs require pack v26, got {version}")
+    if version != 27:
+        raise AssertionError(f"gameplay graphs require pack v27, got {version}")
     for index in range(count):
         asset_id, offset, size, width, height, flags = struct.unpack_from(
             "<6I", raw, 16 + index * 24)
@@ -59,7 +60,7 @@ def write_subset(path, payload, corrupt=False):
     if corrupt:
         struct.pack_into("<H", data, 48 + 2, 4)  # play 0 count must be three
     offset = 40
-    raw = (b"NBA95PAK" + struct.pack("<II", 26, 1) +
+    raw = (b"NBA95PAK" + struct.pack("<II", 27, 1) +
            struct.pack("<6I", 274, offset, len(data), 61, 5, 1595) + data)
     path.write_bytes(raw)
 
@@ -69,7 +70,7 @@ def write_control_subset(path, payload, corrupt=False):
     if corrupt:
         struct.pack_into("<H", data, 36 + 2, 4)  # play 0 count must be three
     offset = 40
-    raw = (b"NBA95PAK" + struct.pack("<II", 26, 1) +
+    raw = (b"NBA95PAK" + struct.pack("<II", 27, 1) +
            struct.pack("<6I", 275, offset, len(data), 61, 320, 0x85C6AF) +
            data)
     path.write_bytes(raw)
@@ -156,6 +157,31 @@ def main():
             raise AssertionError(
                 f"play-control stream changed play=${play:02X}: "
                 f"${pointer:04X} {actual_stream}")
+
+    cpu_tables, cpu_metadata = pack_asset(args.pack, 276)
+    if cpu_metadata != (29, 7, 0x85C661) or len(cpu_tables) != 246:
+        raise AssertionError(f"invalid CPU table metadata: {cpu_metadata}")
+    cpu_header = struct.unpack_from("<8s9I", cpu_tables)
+    if cpu_header != (b"NBCAI1\0\0", 1, 29, 7, 3, 6, 44, 102, 130, 238):
+        raise AssertionError(f"CPU table header changed: {cpu_header}")
+    expected_cpu = build_cpu_gameplay_ai_asset(load_verified_rom(args.rom))
+    if cpu_tables != expected_cpu:
+        raise AssertionError("packed CPU tables differ from verified ROM")
+    if hashlib.sha256(cpu_tables[130:238]).hexdigest() != \
+            "e8b2d2ec179a286a66e52707957c418a9463ba0edc4d87d28779bcfd4431071e":
+        raise AssertionError("pass launch table checksum changed")
+    ranges = [struct.unpack_from("<HH", cpu_tables, 102 + i * 4)
+              for i in range(7)]
+    if ranges != [(0x1D,6),(0x18,5),(0x12,6),(0x2C,7),
+                  (0x27,5),(0x23,4),(0x33,5)]:
+        raise AssertionError(f"$85:C729 strategy ranges changed: {ranges}")
+    pass_records = [struct.unpack_from("<hhh", cpu_tables, 130 + i * 6)
+                    for i in range(18)]
+    if pass_records[0] != (16,192,40) or \
+       pass_records[6] != (20,240,64) or \
+       pass_records[-1] != (40,0,32) or \
+       cpu_tables[238:246] != bytes((2,1,2,1,1,1,1,1)):
+        raise AssertionError("$86:9C6F/$A7A0 pass vectors changed")
 
     with tempfile.TemporaryDirectory() as directory:
         valid = Path(directory) / "formation.pak"

@@ -5,7 +5,7 @@
 
 #define NBA_ASSET_MAGIC "NBA95PAK"
 
-#define NBA_ASSET_PACK_VERSION 26u
+#define NBA_ASSET_PACK_VERSION 27u
 #define NBA_ASSET_HEADER_SIZE 16u
 #define NBA_ASSET_ENTRY_SIZE 24u
 
@@ -75,6 +75,25 @@ static bool play_control_payload_valid(const uint8_t *data, size_t size) {
     return expected_offset == size;
 }
 
+static bool cpu_table_payload_valid(const uint8_t *data, size_t size) {
+    static const uint16_t ranges[14] = {
+        0x1Du,6u, 0x18u,5u, 0x12u,6u, 0x2Cu,7u,
+        0x27u,5u, 0x23u,4u, 0x33u,5u
+    };
+    static const uint8_t thresholds[8] = {2u,1u,2u,1u,1u,1u,1u,1u};
+    if (!data || size != 246u || memcmp(data, "NBCAI1\0\0", 8) ||
+        asset_u32(data + 8) != 1u || asset_u32(data + 12) != 29u ||
+        asset_u32(data + 16) != 7u || asset_u32(data + 20) != 3u ||
+        asset_u32(data + 24) != 6u || asset_u32(data + 28) != 44u ||
+        asset_u32(data + 32) != 102u || asset_u32(data + 36) != 130u ||
+        asset_u32(data + 40) != 238u) return false;
+    for (unsigned i = 0; i < 58u; ++i)
+        if (data[44u + i] >= 7u) return false;
+    for (unsigned i = 0; i < 14u; ++i)
+        if (asset_u16(data + 102u + i * 2u) != ranges[i]) return false;
+    return memcmp(data + 238u, thresholds, sizeof(thresholds)) == 0;
+}
+
 static bool asset_load_error(NbaAssetPack *pack, const char *message) {
     fprintf(stderr, "[ASSETS] Error: %s\n", message);
     free(pack->raw_data);
@@ -123,6 +142,8 @@ static bool asset_metadata_valid(uint32_t id, uint32_t size, uint32_t width,
                width == 912u && height == 416u && flags == 29u;
     if (id == NBA_ASSET_GAMEPLAY_FORMATIONS)
         return size == 8868u && width == 61u && height == 5u && flags == 1595u;
+    if (id == NBA_ASSET_GAMEPLAY_CPU_TABLES)
+        return size == 246u && width == 29u && height == 7u && flags == 0x85C661u;
     if (id == NBA_ASSET_EA_A_FIXED_SEQUENCE) {
         uint32_t x = flags >> 16;
         uint32_t y = flags & 0xFFFFu;
@@ -343,6 +364,24 @@ bool nba_assets_load(NbaAssetPack *pack, const char *asset_path) {
             return asset_load_error(pack,
                 "Gameplay play-control accessor vectors are invalid");
     }
+    const NbaAssetItem *cpu_tables = nba_assets_get(
+        pack, NBA_ASSET_GAMEPLAY_CPU_TABLES);
+    if (cpu_tables && !cpu_table_payload_valid(
+            (const uint8_t *)cpu_tables->data, cpu_tables->size))
+        return asset_load_error(pack, "Gameplay CPU tables are invalid");
+    if (cpu_tables) {
+        uint8_t strategy, base, count;
+        bool hold;
+        int16_t scalar, vertical, opaque;
+        if (!nba_assets_gameplay_cpu_strategy(
+                pack, 0u, 0u, &strategy, &base, &count, &hold) ||
+            strategy != 1u || base != 0x18u || count != 5u || hold ||
+            !nba_assets_gameplay_pass_launch(
+                pack, 2u, 5u, &scalar, &vertical, &opaque) ||
+            scalar != 40 || vertical != 0 || opaque != 32)
+            return asset_load_error(pack,
+                "Gameplay CPU table accessor vectors are invalid");
+    }
     printf("[ASSETS] Loaded asset pack: '%s' (%zu bytes, %u assets)\n",
            asset_path, pack->raw_size, pack->item_count);
     return true;
@@ -472,5 +511,53 @@ bool nba_assets_gameplay_play_control(const NbaAssetPack *pack, uint8_t play,
     record->selector_a = (int16_t)asset_u16(source + 2u);
     record->selector_b = (int16_t)asset_u16(source + 4u);
     record->selector_c = (int16_t)asset_u16(source + 6u);
+    return true;
+}
+
+bool nba_assets_gameplay_cpu_strategy(const NbaAssetPack *pack, uint8_t team,
+                                      uint8_t coin, uint8_t *strategy,
+                                      uint8_t *play_base, uint8_t *play_count,
+                                      bool *hold_final) {
+    const NbaAssetItem *item = nba_assets_get(pack,
+        NBA_ASSET_GAMEPLAY_CPU_TABLES);
+    if (!item || !cpu_table_payload_valid((const uint8_t *)item->data,
+            item->size) || team >= 29u || coin >= 2u || !strategy ||
+        !play_base || !play_count || !hold_final) return false;
+    const uint8_t *data = (const uint8_t *)item->data;
+    uint8_t selected = data[44u + team * 2u + coin];
+    const uint8_t *range = data + 102u + selected * 4u;
+    *strategy = selected;
+    *play_base = (uint8_t)asset_u16(range);
+    *play_count = (uint8_t)asset_u16(range + 2u);
+    *hold_final = selected == 5u;
+    return true;
+}
+
+bool nba_assets_gameplay_pass_launch(const NbaAssetPack *pack, uint8_t family,
+                                     uint8_t band, int16_t *flight_scalar,
+                                     int16_t *vertical,
+                                     int16_t *opaque_raw_2) {
+    const NbaAssetItem *item = nba_assets_get(pack,
+        NBA_ASSET_GAMEPLAY_CPU_TABLES);
+    if (!item || !cpu_table_payload_valid((const uint8_t *)item->data,
+            item->size) || family >= 3u || band >= 6u || !flight_scalar ||
+        !vertical || !opaque_raw_2) return false;
+    const uint8_t *record = (const uint8_t *)item->data + 130u +
+                            ((size_t)family * 6u + band) * 6u;
+    *flight_scalar = (int16_t)asset_u16(record);
+    *vertical = (int16_t)asset_u16(record + 2u);
+    *opaque_raw_2 = (int16_t)asset_u16(record + 4u);
+    return true;
+}
+
+bool nba_assets_gameplay_pass_release_threshold(const NbaAssetPack *pack,
+                                                uint8_t upper_state,
+                                                uint8_t *threshold) {
+    const NbaAssetItem *item = nba_assets_get(pack,
+        NBA_ASSET_GAMEPLAY_CPU_TABLES);
+    if (!item || !cpu_table_payload_valid((const uint8_t *)item->data,
+            item->size) || upper_state < 0x2Au || upper_state > 0x31u ||
+        !threshold) return false;
+    *threshold = ((const uint8_t *)item->data)[238u + upper_state - 0x2Au];
     return true;
 }

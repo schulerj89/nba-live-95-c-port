@@ -370,3 +370,28 @@ actor `+$28` bit 15; `$B832` XORs masks 2/1 when negative. Positive-up Z is
 from ROM frames 422/464/599 are validated during tip-off initialization and
 in the asset regression, so gameplay cannot silently fall back to host art or
 directional constants.
+
+Increment 4K ports the `$0994` play-request boundary at
+`$85:B128-$B24B`. A made basket writes play `$01` and request `$01`; the next
+completed actor pass consumes one discarded RNG result, clears
+`$0994/$099E/$09A4`, preserves `$0996/$09D0` in live state `$82`, and reloads
+record zero through the existing `$85:B377` stream reset. Outside that
+dead-ball state, the represented normal context now follows the ROM's two
+rejection-sampled `rng & 7` draws and coin draw. Team/coin strategy bytes at
+`$85:C661` select one of seven base/count pairs at `$85:C729`; strategy five
+sets the `$09D0` final-record hold.
+
+Asset-pack v27 / `NBCAI1` contains those 58 strategy bytes and 28 range bytes,
+plus the complete 108-byte pass-launch table at `$86:9C6F-$9CDA` and eight
+release thresholds at `$86:A7A0-$A7A7`. The pass bytes hash to
+`e8b2d2ec179a286a66e52707957c418a9463ba0edc4d87d28779bcfd4431071e`.
+They are validated and exposed through typed accessors, but pass mode 15 is
+not activated yet: `$86:AB2D-$AF65` still has unresolved raw state-selection
+gates, so using the table prematurely would manufacture policy.
+
+The exact predictive-arrival primitive at `$85:B402-$B4B8` is now isolated
+and self-tested. It subtracts the actor position and the ROM's biased signed
+`velocity >> 3`, measures distance with `$85:F34F`, and treats distance equal
+to the caller tolerance as arrived. Live frame-400 vectors lock both the
+distance-16 arrival and distance-63 steering cases. Formation modes will call
+this helper only after their `$85:AE35+` target override gates are ported.

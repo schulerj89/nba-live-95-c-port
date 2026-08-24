@@ -110,6 +110,7 @@ typedef struct {
     int16_t play_countdown_raw;
     uint16_t play_mirror_raw;
     uint16_t play_event_wait_raw;
+    uint16_t play_request_raw;
     uint16_t play_cycle_raw;
     uint16_t play_hold_raw;
     int16_t play_selector_raw[3];

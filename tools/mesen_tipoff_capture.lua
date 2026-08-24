@@ -296,7 +296,8 @@ local function dump_gameplay_jsonl(frame)
         "\"candidate_raw\":%d,\"play_code_raw\":%u," ..
         "\"play_step_raw\":%d,\"play_countdown_raw\":%d," ..
         "\"play_mirror_raw\":%u,\"play_event_wait_raw\":%u," ..
-        "\"play_cycle_raw\":%u,\"play_hold_raw\":%u," ..
+        "\"play_request_raw\":%u,\"play_cycle_raw\":%u," ..
+        "\"play_hold_raw\":%u," ..
         "\"play_selector_raw\":[%d,%d,%d]," ..
         "\"rng_state_raw\":%u}," ..
         "\"camera\":{\"x\":%d,\"y\":%d," ..
@@ -314,7 +315,7 @@ local function dump_gameplay_jsonl(frame)
         force_cpu_vs_cpu and 0 or word(0x0940), possession_actor,
         signed_word(0x093a), signed_word(0x0946), word(0x0996),
         signed_word(0x0998), signed_word(0x099a), word(0x099c), word(0x099e),
-        word(0x09a4), word(0x09d0), signed_word(0x09aa),
+        word(0x0994), word(0x09a4), word(0x09d0), signed_word(0x09aa),
         signed_word(0x09ac), signed_word(0x09ae), word(0x07f6),
         signed_word(0x085c), signed_word(0x0860), possession_actor,
         word(0x093a), 0x859192,

@@ -100,8 +100,33 @@ def main():
                        for actor in frame(220)["actors"]]
         if assignments != [-1, -1, -1, -1, -1, -1, -1, -1, 0, -1]:
             raise AssertionError(f"actor +$16 ownership mapping changed: {assignments}")
+        if any(row["possession"]["play_request_raw"] not in (0, 1)
+               for row in rows):
+            raise AssertionError("$0994 escaped its word-boolean contract")
+        requested_01 = [(index, row) for index, row in enumerate(rows)
+                        if row["possession"]["play_request_raw"] == 1]
+        if not requested_01:
+            raise AssertionError("made baskets never requested play $01 through $0994")
+        for index, requested in requested_01:
+            possession = requested["possession"]
+            if possession["play_code_raw"] != 0x01 or \
+                    requested["match"]["live_state_raw"] != 0x82:
+                raise AssertionError(f"invalid pending $0994 state: {requested}")
+            next_due = next((row for row in rows[index + 1:index + 4]
+                             if row["scheduler"]["due_raw"]), None)
+            if next_due is None or \
+                    next_due["possession"]["play_request_raw"] != 0 or \
+                    next_due["possession"]["play_code_raw"] != 0x01 or \
+                    next_due["possession"]["play_step_raw"] != 0 or \
+                    next_due["possession"]["play_countdown_raw"] != 120:
+                raise AssertionError(
+                    f"$85:B128 did not consume $0994 on the next actor pass: "
+                    f"{requested} -> {next_due}")
+        # The score writer changes `$0996` immediately, but B377 does not load
+        # record zero until `$0994` is consumed on the next logical pass.
         play_01_rows = [row["possession"] for row in rows
-                        if row["possession"]["play_code_raw"] == 0x01]
+                        if row["possession"]["play_code_raw"] == 0x01 and
+                        row["possession"]["play_request_raw"] == 0]
         if not play_01_rows or play_01_rows[0]["play_step_raw"] != 0 or \
                 play_01_rows[0]["play_countdown_raw"] != 120 or \
                 play_01_rows[0]["play_selector_raw"] != [3, 4, -1]:

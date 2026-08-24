@@ -108,6 +108,7 @@ typedef struct {
     int16_t play_countdown_raw;  /* `$099A` */
     uint16_t play_mirror_raw;    /* `$099C` */
     uint16_t play_event_wait_raw;/* `$099E` */
+    uint16_t play_request_raw;   /* `$0994` */
     uint16_t play_cycle_raw;     /* `$09A4` */
     uint16_t play_hold_raw;      /* `$09D0` */
     int16_t play_selector_raw[3];/* `$09AA/$09AC/$09AE` */

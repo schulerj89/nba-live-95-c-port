@@ -47,6 +47,29 @@ uint8_t nba_gameplay_target_direction(int16_t dx, int16_t dy,
     return direction_map[key];
 }
 
+/* `$85:B402-$B4B8`: predict target residual by velocity/8 with the ROM's
+ * negative-quotient +1 bias, then use the inclusive caller tolerance. */
+bool nba_gameplay_predictive_arrival(int16_t actor_x, int16_t actor_y,
+                                     int16_t velocity_x, int16_t velocity_y,
+                                     int16_t target_x, int16_t target_y,
+                                     uint16_t tolerance,
+                                     uint8_t *steering_direction,
+                                     uint16_t *distance) {
+    int16_t bias_x = arithmetic_shift_right_3(velocity_x);
+    int16_t bias_y = arithmetic_shift_right_3(velocity_y);
+    if (bias_x < 0) bias_x = wrap16((int32_t)bias_x + 1);
+    if (bias_y < 0) bias_y = wrap16((int32_t)bias_y + 1);
+    int16_t dx = wrap16((int32_t)target_x - actor_x - bias_x);
+    int16_t dy = wrap16((int32_t)target_y - actor_y - bias_y);
+    uint16_t predicted_distance = 0u;
+    uint8_t direction = nba_gameplay_target_direction(
+        dx, dy, &predicted_distance);
+    bool arrived = predicted_distance <= tolerance;
+    if (steering_direction) *steering_direction = arrived ? 8u : direction;
+    if (distance) *distance = predicted_distance;
+    return arrived;
+}
+
 /* `$85:A82C-$AB16`: profile-scaled integer acceleration, damping and cap
  * rejection. Inputs and outputs remain signed 8.8 actor velocity words. */
 void nba_gameplay_velocity_step(int16_t *velocity_x, int16_t *velocity_y,
@@ -221,6 +244,23 @@ bool nba_gameplay_ai_self_test(void) {
         if (nba_gameplay_target_direction(cases[i].x, cases[i].y, &distance) !=
                 cases[i].direction || distance != cases[i].distance) return false;
     }
+    uint8_t steering = 0u;
+    uint16_t predicted = 0u;
+    if (!nba_gameplay_predictive_arrival(
+            275, -53, 310, -161, 320, -88, 16u,
+            &steering, &predicted) || steering != 8u || predicted != 16u)
+        return false;
+    if (nba_gameplay_predictive_arrival(
+            194, 131, 557, -157, 320, 88, 16u,
+            &steering, &predicted) || predicted != 63u)
+        return false;
+    if (!nba_gameplay_predictive_arrival(
+            0, 0, -8, -1, 16, 0, 16u, &steering, &predicted) ||
+        predicted != 16u || steering != 8u)
+        return false;
+    if (nba_gameplay_predictive_arrival(
+            0, 0, -9, 0, 16, 0, 16u, &steering, &predicted) ||
+        predicted != 17u) return false;
     uint16_t boost = 0u; x = 0; y = 0;
     nba_gameplay_velocity_step(&x, &y, &boost, 2u, 0x58u, 2u, false, 8);
     if (x != 97 || y != 0) return false;
