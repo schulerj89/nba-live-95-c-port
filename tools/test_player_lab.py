@@ -11,8 +11,8 @@ def read_pack(path):
     if raw[:8] != b"NBA95PAK":
         raise AssertionError("invalid asset-pack magic")
     version, count = struct.unpack_from("<II", raw, 8)
-    if version != 25:
-        raise AssertionError(f"Player Lab requires pack v18, got {version}")
+    if version != 26:
+        raise AssertionError(f"Player Lab requires pack v26, got {version}")
     assets = {}
     for index in range(count):
         entry = struct.unpack_from("<IIIIII", raw, 16 + index * 24)
@@ -83,21 +83,25 @@ def main():
        len(assets[254][0]) != 36 + 29 * 2 * 3 * 32:
         raise AssertionError("player team/palette matrix is incomplete")
     animations, states, directions, schema = assets[256]
-    if animations[:8] != b"NBPANIM1" or (states, directions, schema) != (57, 8, 4):
+    if animations[:8] != b"NBPANIM1" or (states, directions, schema) != (57, 8, 5):
         raise AssertionError("invalid ROM player-animation schema")
     (animation_version, state_count, resource_count, bank84_offset,
      attachment_offset, directory_offset, data_offset, digit_source_offset,
      bcd_table_offset, number_attachment_offset, number_palette_offset,
-     number_visibility_offset) = struct.unpack_from("<12I", animations, 8)
-    if animation_version != 4 or state_count != 57 or resource_count < 1800 or \
-       bank84_offset != 56 or attachment_offset != 56 + 0x8000 or \
+     number_visibility_offset, ball_upper_x_offset, ball_upper_y_offset,
+     ball_upper_z_offset) = struct.unpack_from("<15I", animations, 8)
+    if animation_version != 5 or state_count != 57 or resource_count < 1800 or \
+       bank84_offset != 68 or attachment_offset != 68 + 0x8000 or \
        not attachment_offset < directory_offset < data_offset < \
        digit_source_offset < bcd_table_offset < number_attachment_offset or \
        digit_source_offset + 90 * 32 != bcd_table_offset or \
        bcd_table_offset + 100 != number_attachment_offset or \
        number_attachment_offset + 0x830 * 2 != number_palette_offset or \
        number_palette_offset + 64 + 29 * 4 != number_visibility_offset or \
-       number_visibility_offset + 0x830 != len(animations):
+       number_visibility_offset + 0x830 != ball_upper_x_offset or \
+       ball_upper_x_offset + 0x830 != ball_upper_y_offset or \
+       ball_upper_y_offset + 0x830 != ball_upper_z_offset or \
+       ball_upper_z_offset + 0x830 != len(animations):
         raise AssertionError("player-animation ROM tables are incomplete")
     if animations[bcd_table_offset + 54] != 0x54 or \
        not any(animations[digit_source_offset:digit_source_offset + 90 * 32]):
@@ -107,6 +111,31 @@ def main():
     if animations[number_visibility_offset + 0x00F3] != 0x08 or \
        animations[number_visibility_offset + 0x01A7] != 0xF5:
         raise AssertionError("jersey-number upper-frame eligibility table changed")
+    def attachment(upper, lower, flags):
+        signed = lambda value: value - 256 if value >= 128 else value
+        lower_y = signed(animations[attachment_offset + lower])
+        lower_z = signed(animations[attachment_offset + 0x830 + lower])
+        upper_x = signed(animations[ball_upper_x_offset + upper])
+        upper_y = signed(animations[ball_upper_y_offset + upper])
+        upper_z = signed(animations[ball_upper_z_offset + upper])
+        if flags & 0x8000:
+            flags ^= 3
+        if flags & 2:
+            lower_y = -lower_y
+        if flags & 1:
+            upper_y = -upper_y
+        midpoint = (lower_y + upper_y) // 2
+        return (midpoint - 2 * upper_x, midpoint + 2 * upper_x,
+                upper_x - lower_z - upper_z)
+    golden_attachments = {
+        (328, 1388, 0): (-6, -2, 48),
+        (964, 1474, 0x8000): (7, 7, 23),
+        (372, 1737, 0x8000): (7, -1, 30),
+    }
+    for inputs, expected in golden_attachments.items():
+        if attachment(*inputs) != expected:
+            raise AssertionError(
+                f"$87:B832 ball attachment changed {inputs}: {attachment(*inputs)}")
     resource_ids = []
     for index in range(resource_count):
         resource_id, reserved, offset, size = struct.unpack_from(

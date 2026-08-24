@@ -329,22 +329,50 @@ static void cpu_move_actor(NbaTipoff *tipoff, unsigned slot) {
 }
 
 static void ball_attach_to_actor(NbaTipoff *tipoff, unsigned owner) {
-    /* `$87:B649` adds a direction-derived X/Y hand offset to the owner and
-     * `$87:B66A` performs the corresponding Z attachment. */
-    static const int8_t hand_x[8] = {5, 7, 8, 7, -5, -7, -8, -7};
-    static const int8_t hand_y[8] = {8, 7, 4, -4, -8, -7, -4, 4};
+    /* `$87:B649`, `$87:B66A`, `$87:B832`, `$87:B953`: resolve the current independent upper
+     * and lower resources, then compose their ROM attachment tables. */
     NbaTipoffActor *actor = &tipoff->actors[owner];
     for (unsigned i = 0; i < NBA_GAMEPLAY_ACTOR_COUNT; ++i)
         tipoff->actors[i].controller_assignment_raw = -1;
     actor->controller_assignment_raw = 0;
-    unsigned direction = actor->direction < 8u ? actor->direction : 0u;
-    int bounce = tipoff->possession_frame % 24;
-    if (bounce > 12) bounce = 24 - bounce;
-    tipoff->ball.x_fp = actor->x_fp + hand_x[direction] * 256;
-    tipoff->ball.y_fp = actor->y_fp + hand_y[direction] * 256;
-    tipoff->ball.z_fp = (8 + bounce * 2) * 256;
+    uint8_t direction = actor->direction < 8u ? actor->direction : 0u;
+    uint16_t upper_resource = 0u, lower_resource = 0u;
+    int16_t offset_x = 0, offset_y = 0, offset_z = 0;
+    uint16_t mirror_flags = direction < 3u ? 0x8000u : 0u;
+    bool resolved = nba_player_animation_resources(
+        tipoff->assets, actor->animation_state, actor->lower_animation_state,
+        direction, actor->upper_animation_tick, actor->lower_animation_tick,
+        &upper_resource, &lower_resource) &&
+        nba_player_ball_attachment_offsets(
+            tipoff->assets, upper_resource, lower_resource, mirror_flags,
+            &offset_x, &offset_y, &offset_z);
+    /* A validated v26 asset pack makes failure unreachable. Keep ownership
+     * deterministic if an externally-corrupted pack reaches this boundary. */
+    if (!resolved) offset_x = offset_y = offset_z = 0;
+    tipoff->ball.x_fp = actor->x_fp + (int32_t)offset_x * 256;
+    tipoff->ball.y_fp = actor->y_fp + (int32_t)offset_y * 256;
+    tipoff->ball.z_fp = actor->z_fp + (int32_t)offset_z * 256;
     tipoff->ball.owner_actor = (int8_t)owner;
     tipoff->ball.state = NBA_BALL_ATTACHED;
+}
+
+static bool ball_attachment_assets_valid(const NbaAssetPack *assets) {
+    static const struct {
+        uint16_t upper, lower, flags;
+        int16_t x, y, z;
+    } vectors[] = {
+        {328u, 1388u, 0u,      -6, -2, 48},
+        {964u, 1474u, 0x8000u,  7,  7, 23},
+        {372u, 1737u, 0x8000u,  7, -1, 30},
+    };
+    for (unsigned i = 0; i < sizeof(vectors) / sizeof(vectors[0]); ++i) {
+        int16_t x, y, z;
+        if (!nba_player_ball_attachment_offsets(
+                assets, vectors[i].upper, vectors[i].lower, vectors[i].flags,
+                &x, &y, &z) || x != vectors[i].x || y != vectors[i].y ||
+                z != vectors[i].z) return false;
+    }
+    return true;
 }
 
 static void ball_launch(NbaTipoff *tipoff, int target_x, int target_y,
@@ -542,7 +570,9 @@ static bool cpu_load_next_play_control(NbaTipoff *tipoff) {
         tipoff->play_countdown_raw = record.countdown;
         tipoff->play_event_wait_raw = 0u;
     }
-    int side_base = tipoff->camera_side_group_raw == 5u ? 5 : 0;
+    /* DP `$9E` is the active team context; it is independent of the camera's
+     * persistent free-ball side proxy `$093A`. */
+    int side_base = tipoff->offense_side ? 5 : 0;
     const int16_t source[3] = {
         record.selector_a, record.selector_b, record.selector_c
     };
@@ -555,7 +585,7 @@ static bool cpu_load_next_play_control(NbaTipoff *tipoff) {
 }
 
 static void cpu_advance_play_control(NbaTipoff *tipoff) {
-    unsigned base = tipoff->camera_side_group_raw == 5u ? 5u : 0u;
+    unsigned base = tipoff->offense_side ? 5u : 0u;
     /* `$85:B28B-$B2AF`: every record boundary consumes readiness bits 08/40
      * for this side only, then may raise the randomized transition flag. */
     for (unsigned i = 0; i < 5u; ++i)
@@ -589,7 +619,7 @@ static void cpu_update_play_control(NbaTipoff *tipoff) {
         return;
     }
     if (tipoff->play_event_wait_raw != 0u) {
-        unsigned base = tipoff->camera_side_group_raw == 5u ? 5u : 0u;
+        unsigned base = tipoff->offense_side ? 5u : 0u;
         for (unsigned i = 0; i < 5u; ++i) {
             const NbaTipoffActor *actor = &tipoff->actors[base + i];
             if (actor->controller_assignment_raw < 0 &&
@@ -895,6 +925,7 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
     if (!tipoff || !assets || !session ||
         !nba_gameplay_rng_self_test() || !nba_gameplay_ai_self_test() ||
         !nba_gameplay_ball_self_test() ||
+        !ball_attachment_assets_valid(assets) ||
         !nba_assets_gameplay_court_panorama(assets, session->right_team) ||
         !nba_assets_get(assets, NBA_ASSET_TIPOFF_BALL)) return false;
     memset(tipoff, 0, sizeof(*tipoff));

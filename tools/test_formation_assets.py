@@ -17,8 +17,8 @@ def pack_asset(path, wanted):
     if raw[:8] != b"NBA95PAK":
         raise AssertionError("invalid asset-pack magic")
     version, count = struct.unpack_from("<II", raw, 8)
-    if version != 25:
-        raise AssertionError(f"gameplay graphs require pack v25, got {version}")
+    if version != 26:
+        raise AssertionError(f"gameplay graphs require pack v26, got {version}")
     for index in range(count):
         asset_id, offset, size, width, height, flags = struct.unpack_from(
             "<6I", raw, 16 + index * 24)
@@ -59,7 +59,7 @@ def write_subset(path, payload, corrupt=False):
     if corrupt:
         struct.pack_into("<H", data, 48 + 2, 4)  # play 0 count must be three
     offset = 40
-    raw = (b"NBA95PAK" + struct.pack("<II", 25, 1) +
+    raw = (b"NBA95PAK" + struct.pack("<II", 26, 1) +
            struct.pack("<6I", 274, offset, len(data), 61, 5, 1595) + data)
     path.write_bytes(raw)
 
@@ -69,7 +69,7 @@ def write_control_subset(path, payload, corrupt=False):
     if corrupt:
         struct.pack_into("<H", data, 36 + 2, 4)  # play 0 count must be three
     offset = 40
-    raw = (b"NBA95PAK" + struct.pack("<II", 25, 1) +
+    raw = (b"NBA95PAK" + struct.pack("<II", 26, 1) +
            struct.pack("<6I", 275, offset, len(data), 61, 320, 0x85C6AF) +
            data)
     path.write_bytes(raw)

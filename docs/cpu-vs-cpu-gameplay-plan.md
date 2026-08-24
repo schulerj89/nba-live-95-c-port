@@ -353,3 +353,20 @@ Modes 1/3/5 refresh persistent `+$56/+58` only after their signed timer and
 from local midcourt steering. This checkpoint fixes the asset API naming and
 locks the transform, but intentionally leaves live target installation until
 the mode gates, `$85:B402` arrival writer, and `$0994` reselect path are ported.
+
+Increment 4J removes the fixed eight-direction hand offsets and fabricated
+24-frame bounce from attached-ball play. Asset-pack v26 / `NBPANIM1` schema 5
+adds the complete `$AC:A9CF`, `$AC:B267`, and `$AC:A583` upper-resource tables
+beside the already-packed `$A9:D86E/$A9:D03E` lower tables. Their SHA-256
+hashes are respectively `4e68d7d66128fca5e036897279235651826646d6ddbf4ebb9ea28fc57b2f9cb7`,
+`d7b9409e98959dd57e5a74427e3f116804446b530d1ced1654566e8362599d8f`,
+and `0b0e1bcac585f59d0f2a6fc03356cafbc9f2cd391af593f42403f758a6d82b58`.
+
+`$87:B649/$B66A/$B832/$B953` now resolves the actor's independent current
+upper/lower animation resources and composes exact X/Y/Z offsets. The
+canonical `$87:AC13-$AC22` mirror writer maps animation direction `0..2` to
+actor `+$28` bit 15; `$B832` XORs masks 2/1 when negative. Positive-up Z is
+`AC:A9CF[upper] - A9:D03E[lower] - AC:A583[upper]`. Golden resource vectors
+from ROM frames 422/464/599 are validated during tip-off initialization and
+in the asset regression, so gameplay cannot silently fall back to host art or
+directional constants.

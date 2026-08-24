@@ -18,7 +18,7 @@ EXPECTED_ASSETS = {
 EXPECTED_FRAMES = {
     90: ("TIP PH:FORMATION", "87e8872a01b4e52a63a5243e042f33c3534d7dc82b4d42611ced4e7099c23b5c"),
     170: ("TIP PH:JUMP BALL", "1c9fa44a36d3fd8923fc40364db0ceac8254a3bfe47d96b83b5cf384c47c61a6"),
-    220: ("TIP PH:LIVE", "e1a965847f9e86905484b90244b47a8777413bb864effe606195231206fe3e16"),
+    220: ("TIP PH:LIVE", "5436be75ff4b3d6c46d90cedee1be8f42ed11c1f4c10d86070620ccacee48f14"),
 }
 
 
@@ -27,7 +27,7 @@ def pack_assets(path):
     if raw[:8] != b"NBA95PAK":
         raise AssertionError("invalid pack magic")
     version, count = struct.unpack_from("<II", raw, 8)
-    if version != 25 or 16 + count * 24 > len(raw):
+    if version != 26 or 16 + count * 24 > len(raw):
         raise AssertionError("invalid tip-off pack version/directory")
     assets = {}
     for index in range(count):

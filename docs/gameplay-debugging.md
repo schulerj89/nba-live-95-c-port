@@ -46,7 +46,7 @@ without changing the comparison contract.
 | `$87:9244/$9BD0` | actor `+$5E` behavior-mode dispatch |
 | `$85:BC43–$BD7D` | assignment target, direction, distance, control mode |
 | `$85:B95C–$B9D1` | AI reaction threshold using ball distance and RNG |
-| `$87:B832–$B952` | directional movement calculation |
+| `$87:B649/$B66A/$B832–$B995` | resource-driven attached-ball X/Y/Z composition |
 | `$86:CED6–$D43C` | tip contact and possession resolution |
 | `$85:B100–$B28B` | randomized initial possession/play decision |
 | `$85:9192–$93F4` | camera subject transform and adaptive approach |

@@ -6,7 +6,7 @@
 
 #define PLAYER_HEADER_SIZE 24u
 #define PLAYER_RECORD_SIZE 64u
-#define PLAYER_ANIMATION_HEADER_SIZE 56u
+#define PLAYER_ANIMATION_HEADER_SIZE 68u
 #define PLAYER_ANIMATION_STATES NBA_PLAYER_ANIMATION_STATES
 #define PLAYER_ANIMATION_BANK84_SIZE 0x8000u
 #define PLAYER_ATTACHMENT_TABLE_SIZE 0x830u
@@ -93,7 +93,7 @@ static const uint8_t *animation_data(const NbaAssetPack *assets,
     const NbaAssetItem *item = nba_assets_get(assets, NBA_ASSET_PLAYER_ANIMATIONS);
     if (!item || !item->data || item->size < PLAYER_ANIMATION_HEADER_SIZE ||
         memcmp(item->data, "NBPANIM1", 8) != 0 ||
-        read_u32((const uint8_t *)item->data + 8) != 4u ||
+        read_u32((const uint8_t *)item->data + 8) != 5u ||
         read_u32((const uint8_t *)item->data + 12) != PLAYER_ANIMATION_STATES)
         return NULL;
     if (item_out) *item_out = item;
@@ -158,6 +158,19 @@ static int8_t animation_attachment(const NbaAssetPack *assets,
         (y_axis ? PLAYER_ATTACHMENT_TABLE_SIZE : 0u) + resource_id;
     if (offset >= item->size) return 0;
     return (int8_t)data[offset];
+}
+
+static bool ball_attachment_table_value(const NbaAssetPack *assets,
+                                        unsigned header_offset,
+                                        uint16_t resource, int8_t *value) {
+    const NbaAssetItem *item;
+    const uint8_t *data = animation_data(assets, &item);
+    if (!data || !value || resource >= PLAYER_ATTACHMENT_TABLE_SIZE ||
+        header_offset > PLAYER_ANIMATION_HEADER_SIZE - 4u) return false;
+    uint32_t table = read_u32(data + header_offset);
+    if (table > item->size || resource >= item->size - table) return false;
+    *value = (int8_t)data[table + resource];
+    return true;
 }
 
 static int8_t number_attachment(const NbaAssetPack *assets,
@@ -608,6 +621,42 @@ bool nba_player_animation_resources(const NbaAssetPack *assets,
     *upper_resource = animation_frame_resource(upper, bank, direction,
                                                 upper_frame);
     return *lower_resource != 0u && *upper_resource != 0u;
+}
+
+bool nba_player_ball_attachment_offsets(const NbaAssetPack *assets,
+                                        uint16_t upper_resource,
+                                        uint16_t lower_resource,
+                                        uint16_t mirror_flags_raw,
+                                        int16_t *x, int16_t *y, int16_t *z) {
+    int8_t lower_y, lower_z, upper_x, upper_y, upper_z;
+    if (!x || !y || !z ||
+        !ball_attachment_table_value(assets, 56u, upper_resource, &upper_x) ||
+        !ball_attachment_table_value(assets, 60u, upper_resource, &upper_y) ||
+        !ball_attachment_table_value(assets, 64u, upper_resource, &upper_z) ||
+        !ball_attachment_table_value(assets, 24u, lower_resource, &lower_y))
+        return false;
+    const NbaAssetItem *item;
+    const uint8_t *data = animation_data(assets, &item);
+    uint32_t lower_z_table = read_u32(data + 24u) + PLAYER_ATTACHMENT_TABLE_SIZE;
+    if (lower_resource >= PLAYER_ATTACHMENT_TABLE_SIZE ||
+        lower_z_table > item->size || lower_resource >= item->size - lower_z_table)
+        return false;
+    lower_z = (int8_t)data[lower_z_table + lower_resource];
+
+    /* `$87:B832`: negative actor `+$28` toggles masks 2/1 before mask 2
+     * mirrors lower Y and mask 1 mirrors upper Y. Bit `$0004` is unrelated. */
+    uint16_t flags = mirror_flags_raw;
+    if ((int16_t)flags < 0) flags ^= 3u;
+    if (flags & 2u) lower_y = (int8_t)-lower_y;
+    if (flags & 1u) upper_y = (int8_t)-upper_y;
+    int sum = (int)lower_y + (int)upper_y;
+    int midpoint = sum >= 0 ? sum / 2 : -((-sum + 1) / 2);
+    *x = (int16_t)(midpoint - 2 * (int)upper_x);
+    *y = (int16_t)(midpoint + 2 * (int)upper_x);
+    /* `$87:B953-$B995`: AC:A9CF - lower Z - AC:A583. The ROM and C
+     * gameplay spaces both use this result as a positive-up actor offset. */
+    *z = (int16_t)((int)upper_x - (int)lower_z - (int)upper_z);
+    return true;
 }
 
 static void fill(NbaRenderer *ren, int x, int y, int w, int h, uint32_t color) {

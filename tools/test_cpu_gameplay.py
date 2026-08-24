@@ -3,7 +3,6 @@
 import argparse
 import hashlib
 import json
-import math
 import subprocess
 import sys
 import tempfile
@@ -17,8 +16,8 @@ FORMATION = [
     (-8, -3), (16, 83), (24, -80), (-104, 56), (-96, -59),
 ]
 EXPECTED_RGB = {
-    600: "9491b363a9ba01499bb981d4eea52668c406966b01f624e0ded7685ba850c58c",
-    1300: "93982f11149aa9527b22790ea73a064ba743334a6f92ab87797deabe48883739",
+    600: "a3e002966912947f3f2cb55e12e5bfa8588ddfae1a116addce44543a328a5448",
+    1300: "7d0cabb2626d484b6762a59f9b396d2bb4f492b03f9a853c3b1bd0542ab6b06a",
 }
 
 
@@ -110,13 +109,13 @@ def main():
         if {row["play_step_raw"] for row in play_01_rows} != {0, 1, 2} or \
                 not any(row["play_cycle_raw"] == 1 for row in play_01_rows):
             raise AssertionError("play $01 countdown did not traverse and cycle")
-        play_01_selectors = {
-            row["play_step_raw"]: row["play_selector_raw"]
-            for row in play_01_rows
-        }
-        if play_01_selectors != {0: [3, 4, -1], 1: [4, 3, -1],
-                                2: [3, 4, -1]}:
-            raise AssertionError(f"play $01 selectors changed: {play_01_selectors}")
+        relative_01 = {0: [3, 4, -1], 1: [4, 3, -1], 2: [3, 4, -1]}
+        for row in play_01_rows:
+            left = relative_01[row["play_step_raw"]]
+            right = [value + 5 if value >= 0 else value for value in left]
+            if row["play_selector_raw"] not in (left, right):
+                raise AssertionError(
+                    f"play $01 side-relative selectors changed: {row}")
         teams = {row["possession"]["team"] for row in rows[219:]}
         if not {0, 1}.issubset(teams):
             raise AssertionError(f"CPU offense did not change sides: {teams}")
@@ -313,15 +312,62 @@ def main():
         if len(camera_positions) < 25:
             raise AssertionError("camera did not follow CPU play")
 
+        pack_raw = Path(args.pack).read_bytes()
+        pack_count = int.from_bytes(pack_raw[12:16], "little")
+        animation = None
+        for index in range(pack_count):
+            entry = 16 + index * 24
+            asset_id = int.from_bytes(pack_raw[entry:entry + 4], "little")
+            if asset_id == 256:
+                offset = int.from_bytes(pack_raw[entry + 4:entry + 8], "little")
+                size = int.from_bytes(pack_raw[entry + 8:entry + 12], "little")
+                animation = pack_raw[offset:offset + size]
+                break
+        if animation is None:
+            raise AssertionError("NBPANIM1 attachment tables are missing")
+        header = [int.from_bytes(animation[8 + i * 4:12 + i * 4], "little")
+                  for i in range(15)]
+        lower_table, upper_x_table, upper_y_table, upper_z_table = \
+            header[4], header[12], header[13], header[14]
+        signed8 = lambda value: value - 256 if value >= 128 else value
+
+        def expected_attachment(actor):
+            raw = actor["raw"]
+            upper, lower = raw["upper_resource"], raw["lower_resource"]
+            lower_y = signed8(animation[lower_table + lower])
+            lower_z = signed8(animation[lower_table + 0x830 + lower])
+            upper_x = signed8(animation[upper_x_table + upper])
+            upper_y = signed8(animation[upper_y_table + upper])
+            upper_z = signed8(animation[upper_z_table + upper])
+            flags = 0x8000 if actor["direction"] < 3 else 0
+            if flags & 0x8000:
+                flags ^= 3
+            if flags & 2:
+                lower_y = -lower_y
+            if flags & 1:
+                upper_y = -upper_y
+            midpoint = (lower_y + upper_y) // 2
+            return (midpoint - 2 * upper_x, midpoint + 2 * upper_x,
+                    upper_x - lower_z - upper_z)
+
         attached = []
         for row in rows[219:]:
             owner = row["ball"]["owner"]
             if row["ball"]["state"] == 4 and owner >= 0:
                 actor = row["actors"][owner]
-                attached.append(math.hypot(row["ball"]["x"] - actor["x"],
-                                           row["ball"]["y"] - actor["y"]))
-        if not attached or max(attached) > 20.0:
-            raise AssertionError("ball is not attached at the actor hand offset")
+                actual = (row["ball"]["x"] - actor["x"],
+                          row["ball"]["y"] - actor["y"],
+                          row["ball"]["z"] - actor["z"])
+                expected = expected_attachment(actor)
+                attached.append((actual, expected))
+        def attachment_matches(pair):
+            actual, expected = pair
+            return all(abs(a - e) <= 1 for a, e in zip(actual, expected))
+        if not attached or any(not attachment_matches(pair) for pair in attached):
+            raise AssertionError(
+                "ball diverged from `$87:B832/$B953` resource attachment: " +
+                repr(next((pair for pair in attached
+                           if not attachment_matches(pair)), None)))
 
         for first in range(220, 1900, 240):
             last = min(first + 239, len(rows) - 1)
