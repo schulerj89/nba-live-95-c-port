@@ -225,14 +225,20 @@ local function dump_gameplay_jsonl(frame)
         "\"raw_085c\":%u,\"raw_085e\":%u,\"raw_0860\":%u," ..
         "\"raw_0862\":%u,\"raw_086c\":%u,\"raw_086e\":%u," ..
         "\"raw_0874\":%u,\"raw_0876\":%u,\"raw_0878\":%u," ..
-        "\"raw_087a\":%u},",
+        "\"raw_087a\":%u,\"speed_x_raw\":%u,\"speed_y_raw\":%u," ..
+        "\"step_x_raw\":%u,\"step_y_raw\":%u," ..
+        "\"subject_x_low_raw\":%u,\"subject_x_raw\":%d," ..
+        "\"subject_y_low_raw\":%u,\"subject_y_raw\":%d," ..
+        "\"stream_source_bank_raw\":%u},",
         signed_word(0x093e), signed_word(0x093a), signed_word(0x0954),
         signed_word(0x093e), word(0x0940), signed_word(0x0946),
         signed_word(0x093a), signed_word(0x0946), word(0x0996),
-        signed_word(0x085c), signed_word(0x0860), 0x858ee6,
+        signed_word(0x085c), signed_word(0x0860), 0x859192,
         word(0x085c), word(0x085e), word(0x0860), word(0x0862),
         word(0x086c), word(0x086e), word(0x0874), word(0x0876),
-        word(0x0878), word(0x087a)))
+        word(0x0878), word(0x087a), word(0x088c), word(0x088e),
+        word(0x0890), word(0x0892), word(0x4a56), signed_word(0x4a58),
+        word(0x4a5a), signed_word(0x4a5c), word(0x00ec)))
     local ball = 0x3eeb
     local ball_x, ball_y, ball_z = signed_word(ball + 4),
         signed_word(ball + 8), signed_word(ball + 12)
@@ -443,6 +449,10 @@ emu.addEventCallback(function()
             emu.memType.snesCgRam, 0x200)
         dump_mem(string.format("tipoff_%04d_oam.bin", frame),
             emu.memType.snesSpriteRam, 0x220)
+        if frame == 220 or frame == 400 or frame == LAST_GAMEPLAY_FRAME then
+            dump_mem(string.format("tipoff_%04d_wram.bin", frame),
+                emu.memType.snesWorkRam, 0x20000)
+        end
     end
 
     if frame >= LAST_GAMEPLAY_FRAME then

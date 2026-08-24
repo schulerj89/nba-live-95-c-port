@@ -17,8 +17,8 @@ FORMATION = [
     (-8, -3), (16, 83), (24, -80), (-104, 56), (-96, -59),
 ]
 EXPECTED_RGB = {
-    600: "a5578009afedc8081ca576bc60ae827adc974524d7e1899401ab63b8143c4eb6",
-    1300: "60458990c9f808f250467d2c4ec3f39e8e1e1708c7ce824c1df7e6ca6dd77d64",
+    600: "7c4a8e81cf354ef3eff358e8ccc7d0eafc2b631e86de853784e0e45bd9e61301",
+    1300: "7e47b104411142d532be5b71c29d2f3dfe51c189aa6b89c4cfaac914e56a3250",
 }
 
 
@@ -71,6 +71,34 @@ def main():
         if len(owners - {-1}) < 4:
             raise AssertionError(f"ballhandler did not rotate: {owners}")
 
+        def signed16(value):
+            return value - 0x10000 if value & 0x8000 else value
+
+        prior_dx = prior_dy = 0
+        camera_positions = set()
+        for row in rows[199:]:
+            camera = row["camera"]
+            if camera["routine"] != 0x859192:
+                raise AssertionError("camera telemetry lost $85:9192 attribution")
+            x, y = camera["x"], camera["y"]
+            if not (-582 <= x <= 328 and -242 <= y <= -53):
+                raise AssertionError(f"camera escaped ROM bounds: {(x, y)}")
+            dx = abs(signed16(camera["raw_085c"]) -
+                     signed16(camera["raw_085e"]))
+            dy = abs(signed16(camera["raw_0860"]) -
+                     signed16(camera["raw_0862"]))
+            if dx > 22 or dy > 22 or dx > prior_dx + 2 or dy > prior_dy + 2:
+                raise AssertionError(
+                    f"$85:9352 camera cadence changed: {prior_dx, prior_dy} -> {dx, dy}")
+            prior_dx, prior_dy = dx, dy
+            expected_source = (0x8006 + camera["raw_086c"] * 104 +
+                               camera["raw_086e"] * 2) & 0xFFFF
+            if camera["raw_0876"] != expected_source:
+                raise AssertionError("$85:8EE6 court source pointer changed")
+            camera_positions.add((x, y))
+        if len(camera_positions) < 25:
+            raise AssertionError("camera did not follow CPU play")
+
         attached = []
         for row in rows[219:]:
             owner = row["ball"]["owner"]
@@ -117,7 +145,8 @@ def main():
     source = Path(__file__).parents[1]
     implementation = (source / "src" / "nba_tipoff.c").read_text()
     for marker in ("$85:9700-$985F", "$85:BC43-$BC81", "$85:B95C",
-                   "$87:B832", "$87:B649", "$87:B66A", "$85:8EE6",
+                   "$87:B832", "$87:B649", "$87:B66A", "$85:9192",
+                   "nba_gameplay_camera_update",
                    "cpu_begin_possession", "cpu_update_possession",
                    "ball_attach_to_actor", "ball_launch"):
         if marker not in implementation:

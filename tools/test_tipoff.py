@@ -13,12 +13,12 @@ EXPECTED_ASSETS = {
     262: (56, 8, 8, 0x0D9C27,
           "a74d28ab12d3bfc35d1c6f4dacc3b7d2b962d7a11f5b7116edc122a17d19ba69"),
     263: (229376, 256, 224, 0,
-          "8a012ead8fdf95d0cf23b0eef70e9a552d866eaacf0a46e0603c44ab9098831e"),
+          "f728c33e94f9266c36798975e5c8580868e237bb223494067893f31dd3c29d10"),
 }
 EXPECTED_FRAMES = {
-    90: ("TIP PH:FORMATION", "f1864c5cab39fa8615db073565ecbf029bb8d2f601802b8cc147ca972941496b"),
-    170: ("TIP PH:JUMP BALL", "e987d14e15586c4f69d49c7e130343ee88be6d91f00692b8c8a4efb1626a9673"),
-    220: ("TIP PH:LIVE", "42ae39af55deb554dcff8e4e8aef7a1dd01d4d8a5736b6e221b798a189208d16"),
+    90: ("TIP PH:FORMATION", "5e78edca172620c2a89d327d900d7061b5161a56241d09374dacb91c1767df26"),
+    170: ("TIP PH:JUMP BALL", "84330113b1285541dab7c9b6d9b11c84fa0460d025bc64d7e0c116813b7d404a"),
+    220: ("TIP PH:LIVE", "3ae9e50fd4dd7536cdc7389975c125dcf2cbe250c11ab417521dc2e25d7f4099"),
 }
 
 
@@ -27,7 +27,7 @@ def pack_assets(path):
     if raw[:8] != b"NBA95PAK":
         raise AssertionError("invalid pack magic")
     version, count = struct.unpack_from("<II", raw, 8)
-    if version != 22 or 16 + count * 24 > len(raw):
+    if version != 23 or 16 + count * 24 > len(raw):
         raise AssertionError("invalid tip-off pack version/directory")
     assets = {}
     for index in range(count):
@@ -69,6 +69,17 @@ def main():
                                   24 + (team + 1) * frame_size]).digest()
             for team in range(29)}) < 27:
         raise AssertionError("gameplay home courts lost ROM-selected variation")
+    panoramas, width, height, flags = assets[273]
+    panorama_size = 912 * 416 * 4
+    if panoramas[:8] != b"NBCOURT2" or \
+            struct.unpack_from("<IIII", panoramas, 8) != (1, 29, 912, 416) or \
+            (width, height, flags, len(panoramas)) != \
+            (912, 416, 29, 24 + 29 * panorama_size):
+        raise AssertionError("complete ROM court panorama catalog changed")
+    if hashlib.sha256(panoramas[24 + 18 * panorama_size:
+                                24 + 19 * panorama_size]).hexdigest() != \
+            "f6324c6ca875ad636c4ba77b74df96e4f1a67c001404cc9040d2306409ba6cf5":
+        raise AssertionError("Orlando ROM court panorama changed")
 
     with tempfile.TemporaryDirectory() as directory:
         for frame, (phase, expected_hash) in EXPECTED_FRAMES.items():
@@ -106,7 +117,7 @@ def main():
             Image.open(selected_home).convert("RGB").tobytes()).hexdigest() \
             if selected_home.exists() else ""
         if result.returncode or "SCN:TIPOFF" not in result.stdout or \
-                digest != "763708f398a25a5ce97ef407cf32ec4f14966e83bdc0977405eabb769d5c2d2d":
+                digest != "66b743433c73d9e5b70efd73d3b0750ccfbf1e498adf0653e8bd86d6dcf6b57d":
             raise AssertionError("selected home court did not persist into tip-off\n" +
                                  result.stdout + result.stderr)
 
@@ -114,7 +125,7 @@ def main():
     text = source.read_text()
     for value in ("NBA_TIPOFF_BALL_APPEAR_FRAME", "NBA_TIPOFF_TOSS_FRAME",
                   "NBA_TIPOFF_CONTACT_FRAME",
-                  "nba_player_sprite_render", "nba_assets_gameplay_home_court",
+                  "nba_player_sprite_render", "nba_assets_gameplay_court_panorama",
                   "visible_submission[8]"):
         if value not in text:
             raise AssertionError(f"tip-off implementation lost {value}")

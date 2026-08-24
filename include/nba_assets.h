@@ -122,7 +122,9 @@ typedef enum {
     NBA_ASSET_HOME_COURTS                        = 271,
     /* NBCOURT1: gameplay-bright variants selected by $84:E55D-$E57A. */
     NBA_ASSET_GAMEPLAY_HOME_COURTS               = 272,
-    NBA_ASSET_MAX                   = 273
+    /* NBCOURT2: complete ROM $A0:8006 114x52-tile gameplay panoramas. */
+    NBA_ASSET_GAMEPLAY_COURT_PANORAMAS            = 273,
+    NBA_ASSET_MAX                   = 274
 } NbaAssetId;
 
 typedef struct {
@@ -149,5 +151,7 @@ const NbaAssetItem *nba_assets_get(const NbaAssetPack *pack, NbaAssetId id);
 const uint32_t *nba_assets_home_court(const NbaAssetPack *pack, uint8_t home_team);
 const uint32_t *nba_assets_gameplay_home_court(const NbaAssetPack *pack,
                                                 uint8_t home_team);
+const uint32_t *nba_assets_gameplay_court_panorama(const NbaAssetPack *pack,
+                                                    uint8_t home_team);
 
 #endif /* NBA_ASSETS_H */

@@ -257,6 +257,47 @@ def build_gameplay_home_court_catalog(rom_data, base_vram, base_cgram,
     graphics_table = 0x266B5
     palette_table = 0x265BD
     courts = []
+    panoramas = []
+
+    def render_panorama(vram, cgram):
+        """Render the complete $A0:8006 court map, not a captured viewport.
+
+        `$85:8EE6` addresses this 114x52 map as
+        `base + coarse_camera_x * 104 + coarse_camera_y * 2`. Thus its ROM
+        storage is column-major relative to the projected 912x416 surface.
+        """
+        width_tiles, height_tiles = 114, 52
+        map_offset = 0x100006  # LoROM $A0:8006
+        map_size = width_tiles * height_tiles * 2
+        tilemap = rom_data[map_offset:map_offset + map_size]
+        if len(tilemap) != map_size:
+            raise RuntimeError("Gameplay court panorama tilemap is truncated")
+        decoded_tiles = [
+            decode_4bpp_tile(vram[0x4000 + tile * 32:
+                                  0x4000 + (tile + 1) * 32])
+            for tile in range(1024)
+        ]
+        palettes = np.zeros((8, 16), dtype=np.uint32)
+        for palette in range(8):
+            for color in range(16):
+                index = palette * 16 + color
+                word = cgram[index * 2] | (cgram[index * 2 + 1] << 8)
+                palettes[palette, color] = bgr555_to_argb(word)
+        pixels = np.zeros((height_tiles * 8, width_tiles * 8), dtype=np.uint32)
+        for tile_x in range(width_tiles):
+            for tile_y in range(height_tiles):
+                offset = (tile_x * height_tiles + tile_y) * 2
+                entry = tilemap[offset] | (tilemap[offset + 1] << 8)
+                indexed = decoded_tiles[entry & 0x3ff]
+                if entry & 0x4000:
+                    indexed = indexed[:, ::-1]
+                if entry & 0x8000:
+                    indexed = indexed[::-1, :]
+                palette = (entry >> 10) & 7
+                pixels[tile_y * 8:(tile_y + 1) * 8,
+                       tile_x * 8:(tile_x + 1) * 8] = palettes[palette][indexed]
+        return pixels.astype("<u4", copy=False).tobytes()
+
     for team in range(29):
         directory = os.path.join(home_portrait_dir, f"team_{team:02d}")
         presentation_vram = open(
@@ -282,8 +323,8 @@ def build_gameplay_home_court_catalog(rom_data, base_vram, base_cgram,
                 f"Team {team} court tiles disagree with final PPU VRAM")
 
         vram = bytearray(base_vram)
-        vram[0x1000:0x1800] = presentation_vram[0x1000:0x1800]
-        vram[tile_destination:tile_destination + len(team_tiles)] = team_tiles
+        if team != 18:
+            vram[tile_destination:tile_destination + len(team_tiles)] = team_tiles
 
         entry = palette_table + team * 4
         palette_address = rom_data[entry] | (rom_data[entry + 1] << 8)
@@ -294,22 +335,36 @@ def build_gameplay_home_court_catalog(rom_data, base_vram, base_cgram,
         if len(palette) != 0xD6:
             raise RuntimeError(f"Team {team} gameplay court palette is truncated")
         cgram = bytearray(base_cgram)
-        cgram[0:2] = palette[0:2]
-        cgram[34:38] = palette[2:6]
-        cgram[64:192] = palette[0x20:0xA0]
-        cgram[240:246] = palette[0xD0:0xD6]
+        if team != 18:
+            cgram[0:2] = palette[0:2]
+            cgram[34:38] = palette[2:6]
+            cgram[64:192] = palette[0x20:0xA0]
+            cgram[240:246] = palette[0xD0:0xD6]
         court = decode_bg_layer(vram, cgram, 0x1000, 0x4000,
                                 4, True, False, 6, 6)
         # Preserve the established frame-140 Orlando oracle byte-for-byte.
         courts.append(legacy_home_court if team == 18 else court)
+        panoramas.append(render_panorama(vram, cgram))
 
     if len({hashlib.sha256(court).digest() for court in courts}) < 27:
         raise RuntimeError("Gameplay home-court catalog lost team variation")
     payload = bytearray(struct.pack("<8sIIII", b"NBCOURT1", 1, 29, 256, 224))
     for court in courts:
         payload.extend(court)
+    panorama_frame_size = 912 * 416 * 4
+    if any(len(panorama) != panorama_frame_size for panorama in panoramas):
+        raise RuntimeError("Gameplay court panorama dimensions changed")
+    # The legacy viewport was decoded from the resident circular VRAM map and
+    # is retained only for old presentation tests. The panorama is decoded
+    # independently from the authoritative ROM map and is validated against
+    # raw live VRAM by tools/mesen_tipoff_capture.lua.
+    panorama_payload = bytearray(struct.pack(
+        "<8sIIII", b"NBCOURT2", 1, 29, 912, 416))
+    for panorama in panoramas:
+        panorama_payload.extend(panorama)
     print("[ASSET EXTRACTOR] Replayed 29 ROM home-court tile/palette selections")
-    return bytes(payload)
+    print("[ASSET EXTRACTOR] Rendered 29 complete $A0:8006 court panoramas")
+    return bytes(payload), bytes(panorama_payload)
 
 
 def build_player_intro_rating_balls(capture_dir):
@@ -1515,7 +1570,7 @@ def create_asset_pack(rom_path, output_path):
         0x32BF, 0x0DDE, 0x019B, 0x0177, 0x00F1, 0x00AC)
     tipoff_capture_dir = os.environ.get("NBA95_TIPOFF_CAPTURE_DIR") or os.path.join(
         os.path.dirname(os.path.abspath(__file__)), "..", ".analysis",
-        "tipoff-actor-probe-20260823")
+        "camera-source-20260823")
     with open(os.path.join(tipoff_capture_dir, "tipoff_0140_vram.bin"), "rb") as f:
         gameplay_vram = f.read()
     with open(os.path.join(tipoff_capture_dir, "tipoff_0140_cgram.bin"), "rb") as f:
@@ -1524,7 +1579,8 @@ def create_asset_pack(rom_path, output_path):
         raise RuntimeError("Invalid settled tip-off PPU state")
     gameplay_court = decode_bg_layer(gameplay_vram, gameplay_cgram,
                                      0x1000, 0x4000, 4, True, False, 6, 6)
-    gameplay_home_courts = build_gameplay_home_court_catalog(
+    gameplay_home_courts, gameplay_court_panoramas = \
+        build_gameplay_home_court_catalog(
         rom_data, gameplay_vram, gameplay_cgram, player_intro_portrait_dir,
         gameplay_court)
 
@@ -1597,6 +1653,7 @@ def create_asset_pack(rom_path, output_path):
         (270, 16, 16, 0xA6BB16, starting_lineup_font),
         (271, 256, 224, 29, home_courts),
         (272, 256, 224, 29, gameplay_home_courts),
+        (273, 912, 416, 29, gameplay_court_panoramas),
     ])
     assets.extend([
         (124, 0, 0, 0, rules_vram_bytes),
@@ -1656,7 +1713,7 @@ def create_asset_pack(rom_path, output_path):
                     extra_audio_id += 1
 
     header_magic = b"NBA95PAK"
-    version = 22
+    version = 23
     asset_count = len(assets)
     entry_size = 24 # 6 * 4 bytes
 

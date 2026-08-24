@@ -321,15 +321,18 @@ static void cpu_update_possession(NbaTipoff *tipoff) {
 }
 
 static void cpu_update_camera(NbaTipoff *tipoff) {
-    /* `$85:8EE6-$9191` derives the streamed-court origin from the live ball
-     * subject. Preserve that separate world-to-screen transform in C. */
+    /* `$85:9192-$93F4` follows the selected actor proxy at $4A56-$4A5C;
+     * `$85:8EE6` separately streams the court from the resulting camera. */
     if (tipoff->frame < NBA_TIPOFF_POSSESSION_FRAME) return;
-    int subject_x = fp_round(tipoff->ball.x_fp);
-    int subject_y = fp_round(tipoff->ball.y_fp);
-    int desired_x = subject_x + subject_y - 50;
-    int desired_y = (subject_y - subject_x) / 4 - 105;
-    tipoff->camera_x = (int16_t)approach(tipoff->camera_x, desired_x, 3);
-    tipoff->camera_y = (int16_t)approach(tipoff->camera_y, desired_y, 2);
+    unsigned subject = tipoff->handler_actor < NBA_GAMEPLAY_ACTOR_COUNT ?
+                       tipoff->handler_actor : 0u;
+    tipoff->camera.subject_actor = (uint8_t)subject;
+    nba_gameplay_camera_update(&tipoff->camera,
+        fp_round(tipoff->actors[subject].x_fp),
+        fp_round(tipoff->actors[subject].y_fp),
+        subject >= 5u ? 5u : 0u);
+    tipoff->camera_x = tipoff->camera.x;
+    tipoff->camera_y = tipoff->camera.y;
 }
 
 static void draw_ball(const NbaTipoff *tipoff, NbaRenderer *ren, int x, int y) {
@@ -350,7 +353,7 @@ static void draw_ball(const NbaTipoff *tipoff, NbaRenderer *ren, int x, int y) {
 bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
                      NbaSession *session) {
     if (!tipoff || !assets || !session ||
-        !nba_assets_gameplay_home_court(assets, session->right_team) ||
+        !nba_assets_gameplay_court_panorama(assets, session->right_team) ||
         !nba_assets_get(assets, NBA_ASSET_TIPOFF_BALL)) return false;
     memset(tipoff, 0, sizeof(*tipoff));
     tipoff->assets = assets;
@@ -358,6 +361,7 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
     tipoff->cpu_vs_cpu = true;
     tipoff->camera_x = -128;
     tipoff->camera_y = -124;
+    nba_gameplay_camera_init(&tipoff->camera, -128, -124);
     tipoff->possession_actor = -1;
     tipoff->possession_team = -1;
     tipoff->ball.x_fp = 0;
@@ -501,15 +505,17 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
                                     SNES_ADDR_TIPOFF_POSSESSION : 0u;
     telemetry->camera_x = tipoff->camera_x;
     telemetry->camera_y = tipoff->camera_y;
-    telemetry->camera_085c_raw = (uint16_t)tipoff->camera_x;
-    telemetry->camera_085e_raw = (uint16_t)tipoff->camera_x;
-    telemetry->camera_0860_raw = (uint16_t)tipoff->camera_y;
-    telemetry->camera_0862_raw = (uint16_t)tipoff->camera_y;
-    telemetry->camera_086c_raw = telemetry->camera_086e_raw =
-        telemetry->camera_0874_raw = telemetry->camera_0876_raw = 0u;
-    telemetry->camera_0878_raw = (uint16_t)(tipoff->camera_x + 134);
-    telemetry->camera_087a_raw = (uint16_t)(tipoff->camera_y + 130);
-    telemetry->camera_routine = 0x858EE6u;
+    telemetry->camera_085c_raw = (uint16_t)tipoff->camera.x;
+    telemetry->camera_085e_raw = (uint16_t)tipoff->camera.previous_x;
+    telemetry->camera_0860_raw = (uint16_t)tipoff->camera.y;
+    telemetry->camera_0862_raw = (uint16_t)tipoff->camera.previous_y;
+    telemetry->camera_086c_raw = tipoff->camera.coarse_x;
+    telemetry->camera_086e_raw = tipoff->camera.coarse_y;
+    telemetry->camera_0874_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
+    telemetry->camera_0876_raw = tipoff->camera.stream_source;
+    telemetry->camera_0878_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
+    telemetry->camera_087a_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
+    telemetry->camera_routine = 0x859192u;
 
     telemetry->ball.world_x = fp_round(tipoff->ball.x_fp);
     telemetry->ball.world_y = fp_round(tipoff->ball.y_fp);
@@ -597,9 +603,18 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
 
 void nba_tipoff_render(const NbaTipoff *tipoff, NbaRenderer *ren) {
     if (!tipoff || !tipoff->is_initialized || !ren) return;
-    const uint32_t *court = nba_assets_gameplay_home_court(
+    const uint32_t *court = nba_assets_gameplay_court_panorama(
         tipoff->assets, tipoff->session->right_team);
-    memcpy(ren->pixels, court, 256u * 224u * sizeof(uint32_t));
+    int crop_x = tipoff->camera_x + 582;
+    int crop_y = tipoff->camera_y + 243;
+    if (crop_x < 0) crop_x = 0;
+    if (crop_x > 912 - 256) crop_x = 912 - 256;
+    if (crop_y < 0) crop_y = 0;
+    if (crop_y > 416 - 224) crop_y = 416 - 224;
+    for (unsigned y = 0; y < 224u; ++y)
+        memcpy(ren->pixels + y * 256u,
+               court + (size_t)(crop_y + (int)y) * 912u + crop_x,
+               256u * sizeof(uint32_t));
 
     uint8_t render_order[NBA_GAMEPLAY_ACTOR_COUNT];
     int16_t screen_x[NBA_GAMEPLAY_ACTOR_COUNT];

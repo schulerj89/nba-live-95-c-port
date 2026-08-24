@@ -5,6 +5,7 @@
 #include "nba_renderer.h"
 #include "nba_session.h"
 #include "nba_gameplay_debugger.h"
+#include "nba_gameplay_camera.h"
 
 /* ROM routines correlated with live Mesen execution. */
 #define SNES_ADDR_TIPOFF_PLAYER_FORMATION 0x86DDA7
@@ -74,6 +75,7 @@ typedef struct {
     NbaTipoffActor actors[NBA_GAMEPLAY_ACTOR_COUNT];
     NbaTipoffBall ball;
     int16_t camera_x, camera_y;
+    NbaGameplayCamera camera;
     int8_t possession_actor;
     int8_t possession_team;
     uint16_t play_code;

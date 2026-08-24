@@ -37,7 +37,7 @@ semantic name is not yet proven.
 | Direction/movement | `$85:F34F`, `$87:B832-$B952` | delta inputs, direction result, velocity/output cadence |
 | Assignment/CPU branch | `$85:BC43-$BD7D`, `$85:B95C-$B9D1`, `$87:A160-$A2CE` | actor target, mode, action and reaction fields across both teams |
 | Play selection | `$85:B100-$B28B`, globals `$0996-$099C` | fixed RNG-state trace through at least two possessions |
-| Camera | `$85:8EE6-$9191`, globals `$085C-$087A` | subject selection, bounds, step/easing, court projection |
+| Camera | `$85:9192-$93F4`; streamer `$85:8EE6-$90C3`; ROM map `$A0:8006` | subject proxy, bounds, step/easing, projection, source/destination mapping |
 | Ball/possession | ball record `$3EEB`, owner/candidate `$0946`, `$86:CED6-$D43C`, `$87:B649/$B66A` | owner transitions and XYZ/velocity at attachment, pass and loose-ball edges |
 | Shooting/scoring | to be resolved from recomp/Ghidra/Mesen | release action, rim test, made/miss branch, score writer and reset routine |
 | Fouls | to be resolved adjacent to contact/collision dispatch | exact event code and handler only; no invented rules |
@@ -56,6 +56,17 @@ semantic name is not yet proven.
 Exit gate: all ten actors remain in world space while the camera follows play
 without exposing invalid court pixels; targeted and full regression suites
 pass. Commit and push this checkpoint before CPU policy work.
+
+Implementation evidence: `$85:9192` stores prior output in `$085E/$0862`,
+limits requested motion to 22 pixels with a one-pixel dead zone, and permits
+only two pixels more acceleration than the prior displacement. `$85:8EE6`
+then computes coarse coordinates `(camera_x+$246)>>3` and
+`(camera_y+$F2)>>3`; its source pointer is exactly
+`$A0:8006 + coarse_x*104 + coarse_y*2`. The asset extractor decodes that
+114x52 ROM table into 29 team-specific 912x416 court panoramas. A focused
+Mesen frame-650 trace confirmed source `$A0:9F60` for coarse `(77,9)` and the
+port regression guards the panorama schema, camera bounds, step cadence and
+non-default home court.
 
 ### 2. CPU policy and animation
 

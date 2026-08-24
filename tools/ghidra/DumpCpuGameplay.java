@@ -30,7 +30,8 @@ public class DumpCpuGameplay extends GhidraScript {
 
     private long[][] focusRanges(String bank) {
         if (bank.equals("85")) return new long[][] {
-            {0x9600, 0x9aff}, {0xa100, 0xa7ff}, {0xaf00, 0xc6ff}
+            {0x8d00, 0x9aff}, {0xa100, 0xa7ff},
+            {0xaf00, 0xc6ff}
         };
         if (bank.equals("86")) return new long[][] {
             {0x9800, 0xb9ff}, {0xd300, 0xd6ff}, {0xe300, 0xf8ff}
@@ -43,7 +44,8 @@ public class DumpCpuGameplay extends GhidraScript {
 
     private long[] candidates(String bank) {
         if (bank.equals("85")) return new long[] {
-            0x963d, 0x9700, 0x9a24, 0xa21f, 0xa357, 0xa518, 0xa5cc,
+            0x8d19, 0x8ee6, 0x9192, 0x963d, 0x9700, 0x9a24,
+            0xa21f, 0xa357, 0xa518, 0xa5cc,
             0xab17, 0xaf5c, 0xb402, 0xb50e, 0xb60b, 0xb678, 0xb9d2,
             0xba1d, 0xbab7, 0xbae4, 0xbc07, 0xc5fb, 0xef3a, 0xf02d,
             0xf34f, 0xf5e4, 0xf78b, 0xf7c9, 0xf867, 0xf8d9
@@ -83,6 +85,10 @@ public class DumpCpuGameplay extends GhidraScript {
             if (focused(address, ranges)) disassemble(toAddr(address));
 
         Listing listing = currentProgram.getListing();
+        if (bank.equals("85")) {
+            addEntryPoint(toAddr(0x8ee6)); disassemble(toAddr(0x8ee6));
+            addEntryPoint(toAddr(0x9192)); disassemble(toAddr(0x9192));
+        }
         File listingFile = new File(outDir, "cpu_gameplay_bank" + bank + "_listing.txt");
         try (PrintWriter out = new PrintWriter(listingFile, "UTF-8")) {
             out.printf("NBA Live '95 extended CPU gameplay, bank $%s%n", bank);
@@ -93,6 +99,14 @@ public class DumpCpuGameplay extends GhidraScript {
                 if (instruction != null)
                     out.printf("$%s:%04X  %s%n", bank, address,
                         instruction.toString());
+            }
+            if (bank.equals("85")) {
+                out.println("\n--- Complete camera/court-streaming disassembly ---");
+                for (long address = 0x8ee6; address <= 0x93f4; ++address) {
+                    Instruction instruction = listing.getInstructionAt(toAddr(address));
+                    if (instruction != null)
+                        out.printf("$85:%04X  %s%n", address, instruction.toString());
+                }
             }
         }
 
