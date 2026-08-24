@@ -8,6 +8,7 @@
 #include "nba_gameplay_camera.h"
 #include "nba_gameplay_ai.h"
 #include "nba_gameplay_ball.h"
+#include "nba_gameplay_effect.h"
 #include "nba_gameplay_foul.h"
 
 /* ROM routines correlated with live Mesen execution. */
@@ -154,7 +155,7 @@ typedef struct {
     uint16_t rim_raw_094a;
     uint16_t rim_raw_0970;
     uint16_t rim_force_raw_1866;
-    uint16_t rim_effect_raw_401b;
+    NbaGameplayEffectState rim_effect;
     int16_t shot_origin_x, shot_origin_y;
     uint8_t shot_chance_raw;
     uint8_t shot_miss_index_raw;

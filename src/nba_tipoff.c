@@ -1175,7 +1175,7 @@ static NbaGameplayRimResult cpu_update_live_ball(NbaTipoff *tipoff) {
                 .raw_09b8 = tipoff->inbound_transfer_raw,
                 .raw_1866 = tipoff->rim_force_raw_1866,
                 .raw_07f6 = tipoff->rng.state,
-                .effect_raw_401b = tipoff->rim_effect_raw_401b
+                .effect_raw_401b = tipoff->rim_effect.effect_raw_401b
             };
             nba_gameplay_rim_apply_inner_response(
                 &rim, result, &rim_context, &tipoff->rng);
@@ -1197,7 +1197,8 @@ static NbaGameplayRimResult cpu_update_live_ball(NbaTipoff *tipoff) {
             tipoff->rim_raw_0970 = rim_context.raw_0970;
             tipoff->shot_inner_veto_raw = rim_context.raw_09f8 != 0u;
             tipoff->inbound_transfer_raw = rim_context.raw_09b8;
-            tipoff->rim_effect_raw_401b = rim_context.effect_raw_401b;
+            if (result == NBA_GAMEPLAY_RIM_MISS)
+                (void)nba_gameplay_effect_start(&tipoff->rim_effect, 3u);
             if (result == NBA_GAMEPLAY_RIM_OUTER_CONTACT ||
                 result == NBA_GAMEPLAY_RIM_EDGE_CONTACT ||
                 result == NBA_GAMEPLAY_RIM_MISS ||
@@ -1287,6 +1288,12 @@ static NbaGameplayRimResult cpu_update_live_ball(NbaTipoff *tipoff) {
                 ball->state = NBA_BALL_BOUNCE;
             }
         }
+        /* `$87:8F95-$8FA9` schedules `$85:9A24` ball physics before
+         * `$87:AA02`, so a miss-started effect receives its first dt=2 step
+         * on this same logical pass. */
+        nba_gameplay_effect_step(
+            &tipoff->rim_effect, fp_integer_word(ball->y_fp),
+            fp_integer_word(ball->z_fp), ball->velocity_z, 2u);
         return result;
     }
     if (attached) {
@@ -1294,6 +1301,9 @@ static NbaGameplayRimResult cpu_update_live_ball(NbaTipoff *tipoff) {
         ball->velocity_y = (int16_t)(ball->y_fp - old_y);
         ball->velocity_z = (int16_t)(ball->z_fp - old_z);
     }
+    nba_gameplay_effect_step(
+        &tipoff->rim_effect, fp_integer_word(ball->y_fp),
+        fp_integer_word(ball->z_fp), ball->velocity_z, 2u);
     return NBA_GAMEPLAY_RIM_FLIGHT;
 }
 
@@ -1304,6 +1314,7 @@ static NbaGameplayRimResult cpu_update_live_ball(NbaTipoff *tipoff) {
 static bool cpu_rim_contact_tick_self_test(void) {
     NbaTipoff state;
     memset(&state, 0, sizeof(state));
+    nba_gameplay_effect_init(&state.rim_effect);
     state.offense_side = 1u;
     state.handler_actor = 5u;
     state.live_state_raw = 1u;
@@ -1980,13 +1991,15 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
                      NbaSession *session) {
     if (!tipoff || !assets || !session ||
         !nba_gameplay_rng_self_test() || !nba_gameplay_ai_self_test() ||
-        !nba_gameplay_ball_self_test() || !nba_gameplay_foul_self_test() ||
+        !nba_gameplay_ball_self_test() || !nba_gameplay_effect_self_test() ||
+        !nba_gameplay_foul_self_test() ||
         !cpu_rim_contact_tick_self_test() ||
         !cpu_expired_inbound_self_test() ||
         !ball_attachment_assets_valid(assets) ||
         !nba_assets_gameplay_court_panorama(assets, session->right_team) ||
         !nba_assets_get(assets, NBA_ASSET_TIPOFF_BALL)) return false;
     memset(tipoff, 0, sizeof(*tipoff));
+    nba_gameplay_effect_init(&tipoff->rim_effect);
     tipoff->special_actor_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
     tipoff->assets = assets;
     tipoff->session = session;
@@ -2180,7 +2193,12 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
     telemetry->rim_context_raw_097c = tipoff->rim_raw_097c;
     telemetry->rim_contact_count_raw_0920 = tipoff->rim_raw_0920;
     telemetry->rim_response_raw_0970 = tipoff->rim_raw_0970;
-    telemetry->rim_effect_raw_401b = tipoff->rim_effect_raw_401b;
+    telemetry->effect_gate_raw_3f33 = tipoff->rim_effect.gate_raw_3f33;
+    telemetry->effect_resource_raw_4015 =
+        tipoff->rim_effect.resource_raw_4015;
+    telemetry->rim_effect_raw_401b = tipoff->rim_effect.effect_raw_401b;
+    telemetry->effect_frame_raw_4025 = tipoff->rim_effect.frame_raw_4025;
+    telemetry->effect_timer_raw_402d = tipoff->rim_effect.timer_raw_402d;
     telemetry->event_bits_raw_13e7 = tipoff->rim_raw_13e7;
     telemetry->foul_event_raw = tipoff->fouls.foul_event_raw_0964;
     telemetry->shooting_foul_raw = tipoff->fouls.shooting_foul_raw_09bc;

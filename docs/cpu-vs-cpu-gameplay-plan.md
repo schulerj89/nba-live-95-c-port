@@ -711,3 +711,25 @@ The isolated settle component now carries the represented `$0936/$0942/`
 the signed `-101 -> -51` half, the pass/live resets, the free-throw latch, and
 the exact Z/VZ entry gates. Gameplay, tip-off, and the sustained 50,000-frame
 CPU regression all execute with the corrected settle physics.
+
+Increment 4Z ports the gameplay-effect dispatcher that the ball/rim path
+selects. Focused native recomp output and Ghidra agree that `$87:A9E3-$AA01`
+writes effect `$401B`, reads one of six descriptors at `$85:8AB4-$8B0F` into
+gate `$3F33`, and clears frame `$4025` and timer `$402D` without immediately
+changing resource `$4015`. `$87:AA02-$AAB1` advances the descriptor with the
+ROM's dt value 2, advances at most one frame per call, and returns to inactive
+resource `$0822` when the descriptor ends. All six exact resource/duration
+records are represented in C; selector 3 now emits `$082A` at timers 2, 4, 6,
+and 8 before its timer-10 terminal reset.
+
+The high-Z descending-net gate is also literal: unsigned Z at least `$004A`,
+negative `(VZ-1)`, permitted latch/effect state, and signed Y distance below 8
+select resource `$082D` and clear `$3F33` without advancing the frame timer.
+The exact distance-8 boundary, duration carry, single-step large-dt behavior,
+and inactive reset have forced component vectors. Scheduling follows
+`$87:8F95-$8FA9`: ball physics runs first, then the effect step on that same
+30-Hz pass, so a miss receives its first `$082A` resource immediately.
+Gameplay JSON now exposes all five raw dispatcher words for future Mesen
+differential traces. Rendering resource `$4015` still requires extracting its
+ROM graphic records; the state is intentionally not mapped to captured art or
+the existing static host ball tile.

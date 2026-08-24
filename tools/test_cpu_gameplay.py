@@ -704,7 +704,8 @@ def main():
     source = Path(__file__).parents[1]
     implementation = "\n".join((source / relative).read_text() for relative in (
         "src/nba_tipoff.c", "src/nba_gameplay_ai.c",
-        "src/nba_gameplay_ball.c", "src/nba_player_lab.c"))
+        "src/nba_gameplay_ball.c", "src/nba_gameplay_effect.c",
+        "src/nba_player_lab.c"))
     for marker in ("$85:963D-$985F", "$85:BC43-$BC81", "$85:B95C",
                    "$87:B832", "$87:B649", "$87:B66A", "$85:9192",
                    "$87:8F01-$8F8D", "nba_gameplay_camera_update",
@@ -717,6 +718,8 @@ def main():
                     "$86:E923-$E96E", "$86:B0F7-$B153",
                    "$85:A82C-$AB16", "nba_gameplay_velocity_step",
                    "$85:A5F4-$A655", "nba_gameplay_ball_apply_settle",
+                   "$87:A9E3-$AA01", "$87:AA02-$AAB1",
+                   "nba_gameplay_effect_step",
                    "$86:AB2D-$AF65", "$86:A6B3-$A790",
                    "$86:9DDB-$9DE4", "$86:9B84-$9B8F",
                    "nba_gameplay_pass_direction", "cpu_begin_rom_pass",
@@ -730,6 +733,8 @@ def main():
             raise AssertionError(f"CPU gameplay implementation lost {marker}")
     for relative in ("include/nba_gameplay_ai.h", "src/nba_gameplay_ai.c",
                      "include/nba_gameplay_ball.h", "src/nba_gameplay_ball.c",
+                     "include/nba_gameplay_effect.h",
+                     "src/nba_gameplay_effect.c",
                      "tools/ghidra/DumpCpuGameplay.java",
                      "tools/ghidra/Run-CpuGameplayAnalysis.ps1"):
         if not (source / relative).is_file():
