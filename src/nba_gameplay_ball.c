@@ -289,6 +289,35 @@ void nba_gameplay_rim_apply_made_response(
         state->velocity_z, 3u);
 }
 
+/* `$85:A5F4-$A655` plus its exact `$86:A613-$A628` state clear. This runs
+ * only for a grounded record whose unsigned VZ is below $18. Planar axes are
+ * thresholded independently and then arithmetic-halved even when retained. */
+bool nba_gameplay_ball_apply_settle(
+    NbaGameplayRimState *state, NbaGameplaySettleContext *context) {
+    if (!state || !context || state->z != 0 ||
+        (uint16_t)state->velocity_z >= 0x0018u) return false;
+
+    if (context->raw_09b8 != 0u) context->raw_0936 = 0u;
+    context->raw_0942 = 0xFFFFu;
+    context->raw_0944 = 0xFFFFu;
+    context->raw_0946 = 0xFFFFu;
+    context->raw_0948 = 0u;
+    context->raw_094a = 0u;
+    context->raw_09b8 = 0u;
+    if (context->raw_0978 == 0x000Au) state->raw_097c = 1u;
+
+    state->velocity_z = 0;
+    if (magnitude16(state->velocity_x) < 0x0018u)
+        state->velocity_x = 0;
+    state->velocity_x = nba_gameplay_arithmetic_shift_right(
+        state->velocity_x, 1u);
+    if (magnitude16(state->velocity_y) < 0x0018u)
+        state->velocity_y = 0;
+    state->velocity_y = nba_gameplay_arithmetic_shift_right(
+        state->velocity_y, 1u);
+    return true;
+}
+
 /* Final made-basket predicate, expressed through the complete ROM shell. The
  * caller's dx/dy are hoop-relative, so +336 reconstructs the right-rim raw X. */
 bool nba_gameplay_ball_is_make(uint16_t live_state, bool alternate_height,
@@ -573,9 +602,33 @@ bool nba_gameplay_ball_self_test(void) {
         rim.raw_0962 == 0u && rim.raw_096a == 0u &&
         make_context.raw_0948 == 0u && make_context.raw_094a == 0u &&
         make_context.raw_09b8 == 0u;
+    NbaGameplaySettleContext settle_context = {
+        .raw_0936 = 2u, .raw_0942 = 4u, .raw_0944 = 5u,
+        .raw_0946 = 6u, .raw_0948 = 7u, .raw_094a = 8u,
+        .raw_0978 = 10u, .raw_09b8 = 1u
+    };
+    rim = (NbaGameplayRimState){0, 0, 0, 100, -101, 23,
+                                0u, 0u, 0u, 9u, 0u, 0u};
+    bool settle_response = nba_gameplay_ball_apply_settle(
+        &rim, &settle_context) && rim.velocity_x == 50 &&
+        rim.velocity_y == -51 && rim.velocity_z == 0 &&
+        rim.raw_097c == 1u && settle_context.raw_0936 == 0u &&
+        settle_context.raw_0942 == 0xFFFFu &&
+        settle_context.raw_0944 == 0xFFFFu &&
+        settle_context.raw_0946 == 0xFFFFu &&
+        settle_context.raw_0948 == 0u && settle_context.raw_094a == 0u &&
+        settle_context.raw_09b8 == 0u;
+    rim = (NbaGameplayRimState){0, 0, 0, 100, -101, 24};
+    bool settle_gates = !nba_gameplay_ball_apply_settle(
+        &rim, &settle_context);
+    rim.z = 1;
+    rim.velocity_z = 0;
+    settle_gates = settle_gates && !nba_gameplay_ball_apply_settle(
+        &rim, &settle_context);
     return launch_ok && shell_gates && outer_generic && outer_y &&
            acquisition_gates && edge_response && miss_response &&
-           inner_distance_vectors && made_response &&
+           inner_distance_vectors && made_response && settle_response &&
+           settle_gates &&
            right_world_bridge && left_world_bridge &&
            outer_negative_y_edge &&
            outer_low && outer_high &&

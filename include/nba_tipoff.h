@@ -138,6 +138,7 @@ typedef struct {
     uint16_t inbound_transfer_raw; /* `$09B8` */
     uint16_t ball_activity_raw;    /* `$0948`, canonical shot detach */
     int16_t pass_actor_raw;        /* `$0942` */
+    int16_t pass_aux_raw;          /* `$0944`, shared activity auxiliary */
     int16_t pass_receiver_raw;     /* `$0946` */
     uint16_t pass_active_raw;      /* `$09C4` */
     uint16_t pass_distance_raw;    /* `$09DA` */

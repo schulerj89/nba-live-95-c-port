@@ -716,6 +716,7 @@ def main():
                    "nba_gameplay_ball_pose_contact",
                     "$86:E923-$E96E", "$86:B0F7-$B153",
                    "$85:A82C-$AB16", "nba_gameplay_velocity_step",
+                   "$85:A5F4-$A655", "nba_gameplay_ball_apply_settle",
                    "$86:AB2D-$AF65", "$86:A6B3-$A790",
                    "$86:9DDB-$9DE4", "$86:9B84-$9B8F",
                    "nba_gameplay_pass_direction", "cpu_begin_rom_pass",

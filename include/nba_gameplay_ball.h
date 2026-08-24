@@ -50,6 +50,17 @@ typedef struct NbaGameplayRimContext {
     uint16_t effect_raw_401b;
 } NbaGameplayRimContext;
 
+typedef struct NbaGameplaySettleContext {
+    uint16_t raw_0936;
+    uint16_t raw_0942;
+    uint16_t raw_0944;
+    uint16_t raw_0946;
+    uint16_t raw_0948;
+    uint16_t raw_094a;
+    uint16_t raw_0978;
+    uint16_t raw_09b8;
+} NbaGameplaySettleContext;
+
 uint16_t nba_gameplay_hoop_distance(int16_t dx, int16_t dy);
 NbaGameplayRimResult nba_gameplay_rim_step(NbaGameplayRimState *state,
                                            uint16_t live_state,
@@ -66,6 +77,8 @@ void nba_gameplay_rim_apply_inner_response(
 void nba_gameplay_rim_apply_made_response(
     NbaGameplayRimState *state, bool right_basket,
     NbaGameplayRimContext *context);
+bool nba_gameplay_ball_apply_settle(
+    NbaGameplayRimState *state, NbaGameplaySettleContext *context);
 bool nba_gameplay_ball_is_make(uint16_t live_state, bool alternate_height,
                                bool inner_veto, bool correct_basket_side,
                                int16_t dx, int16_t dy, int16_t z);

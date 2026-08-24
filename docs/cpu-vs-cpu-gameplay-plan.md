@@ -696,3 +696,18 @@ arithmetic-shift behavior. The sustained CPU test now judges rebound ownership
 only for misses with a complete 600-frame resolution horizon, preventing a
 shot begun in the final capture tail from being mislabeled as an unresolved
 physics regression.
+
+Increment 4Y closes the post-impact settle omission exposed by the focused
+native recomp. `$85:A5F4-$A655` runs only at Z zero with unsigned VZ below
+`$0018`; before changing velocity it observes `$09B8` to clear `$0936`, calls
+the exact `$86:A613-$A628` activity reset, and maps free-throw state
+`$0978=$000A` to `$097C=1`. It then zeroes VZ and treats VX/VY independently:
+signed magnitude below `$0018` becomes zero, after which each axis is always
+arithmetic-shifted right once. The old C path stopped after thresholding and
+therefore retained twice the ROM's lateral energy.
+
+The isolated settle component now carries the represented `$0936/$0942/`
+`$0944/$0946/$0948/$094A/$0978/$097C/$09B8` contract. Golden vectors protect
+the signed `-101 -> -51` half, the pass/live resets, the free-throw latch, and
+the exact Z/VZ entry gates. Gameplay, tip-off, and the sustained 50,000-frame
+CPU regression all execute with the corrected settle physics.

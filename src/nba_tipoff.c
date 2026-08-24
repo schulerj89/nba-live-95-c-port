@@ -1247,16 +1247,38 @@ static NbaGameplayRimResult cpu_update_live_ball(NbaTipoff *tipoff) {
                 ball->velocity_y = (int16_t)(ball->velocity_y -
                     nba_gameplay_arithmetic_shift_right(ball->velocity_y, 4));
                 ball->state = NBA_BALL_BOUNCE;
-                /* `$85:A5F4-$A656`: the post-impact settle path consumes
-                 * unsigned VZ below $18 and independently zeros lateral
-                 * components whose signed magnitude is below $18. */
-                if ((uint16_t)ball->velocity_z < 0x18u) {
-                    ball->velocity_z = 0;
-                    if (abs(ball->velocity_x) < 0x18)
-                        ball->velocity_x = 0;
-                    if (abs(ball->velocity_y) < 0x18)
-                        ball->velocity_y = 0;
-                    tipoff->inbound_transfer_raw = 0u; /* `$09B8` */
+                NbaGameplayRimState settle = {
+                    fp_integer_word(ball->x_fp), fp_integer_word(ball->y_fp),
+                    fp_integer_word(ball->z_fp), ball->velocity_x,
+                    ball->velocity_y, ball->velocity_z, 0u, 0u, 0u,
+                    tipoff->rim_raw_097c, 0u, 0u
+                };
+                NbaGameplaySettleContext settle_context = {
+                    .raw_0936 = tipoff->live_state_raw,
+                    .raw_0942 = (uint16_t)tipoff->pass_actor_raw,
+                    .raw_0944 = (uint16_t)tipoff->pass_aux_raw,
+                    .raw_0946 = (uint16_t)tipoff->pass_receiver_raw,
+                    .raw_0948 = tipoff->ball_activity_raw,
+                    .raw_094a = tipoff->rim_raw_094a,
+                    .raw_0978 = tipoff->fouls.free_throw_state_raw_0978,
+                    .raw_09b8 = tipoff->inbound_transfer_raw
+                };
+                if (nba_gameplay_ball_apply_settle(
+                        &settle, &settle_context)) {
+                    ball->velocity_x = settle.velocity_x;
+                    ball->velocity_y = settle.velocity_y;
+                    ball->velocity_z = settle.velocity_z;
+                    tipoff->rim_raw_097c = settle.raw_097c;
+                    tipoff->live_state_raw = settle_context.raw_0936;
+                    tipoff->pass_actor_raw =
+                        (int16_t)settle_context.raw_0942;
+                    tipoff->pass_aux_raw =
+                        (int16_t)settle_context.raw_0944;
+                    tipoff->pass_receiver_raw =
+                        (int16_t)settle_context.raw_0946;
+                    tipoff->ball_activity_raw = settle_context.raw_0948;
+                    tipoff->rim_raw_094a = settle_context.raw_094a;
+                    tipoff->inbound_transfer_raw = settle_context.raw_09b8;
                 }
             } else {
                 ball->velocity_z = (int16_t)(-ball->velocity_z / 2);
