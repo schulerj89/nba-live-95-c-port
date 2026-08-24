@@ -21,6 +21,7 @@ typedef struct {
     uint16_t head_resource_base, head_resource_front;
     uint8_t decision_profile_39, decision_profile_3e;
     uint8_t contact_rating_3a;
+    uint8_t free_throw_rating_38;
     uint8_t decision_profile_3f, decision_profile_40;
     uint8_t movement_profile_42;
     char name[33];
@@ -540,6 +541,7 @@ static bool player_record(const NbaAssetPack *assets, int team, int player,
     out->decision_profile_39 = p[23];
     out->decision_profile_3e = p[24];
     out->contact_rating_3a = p[25];
+    out->free_throw_rating_38 = p[26];
     memcpy(out->name, p + 32, 32); out->name[32] = '\0';
     return true;
 }
@@ -553,6 +555,30 @@ bool nba_player_gameplay_shot_ratings(const NbaAssetPack *assets,
     /* Roster profile `+$36/+$37`, selected by `$86:A4A5` for 2/3 points. */
     *two_point = player.appearance_a;
     *three_point = player.appearance_b;
+    return true;
+}
+
+bool nba_player_gameplay_free_throw_rating(const NbaAssetPack *assets,
+                                            uint8_t team,
+                                            uint8_t roster_slot,
+                                            uint8_t *rating) {
+    PlayerLabRecord player;
+    if (!rating || !player_record(assets, team, roster_slot, &player))
+        return false;
+    *rating = player.free_throw_rating_38;
+    return true;
+}
+
+bool nba_player_gameplay_free_throw_launch_half(const NbaAssetPack *assets,
+                                                uint8_t team,
+                                                uint8_t roster_slot,
+                                                uint8_t *half) {
+    PlayerLabRecord player;
+    if (!half || !player_record(assets, team, roster_slot, &player))
+        return false;
+    /* `$87:AFC6-$B00D`: actor +$A8 selects the second miss table when
+     * roster byte +$02 (the raw height field) is at least $51. */
+    *half = player.height >= 0x51u ? 1u : 0u;
     return true;
 }
 

@@ -233,6 +233,11 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
             "%u,%u,%u,%u,%u,%u,%u,%u,%u,%u],"
             "\"free_throw_state_raw\":%u,"
             "\"free_throw_sequence_raw\":%u,"
+            "\"free_throw_start_tick_raw_09be\":%u,"
+            "\"free_throw_aim_x_raw_0980\":%u,"
+            "\"free_throw_aim_y_raw_0982\":%u,"
+            "\"free_throw_flight_timer_raw_0930\":%u,"
+            "\"deferred_shot_foul_phase_raw_0a02\":%u,"
             "\"latched_event_raw_08f0\":%u,"
             "\"whistle_active_raw_09b6\":%u,"
             "\"whistle_timer_raw_08de\":%u,"
@@ -321,6 +326,11 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
             telemetry->personal_fouls_raw[9],
             telemetry->free_throw_state_raw,
             telemetry->free_throw_sequence_raw,
+            telemetry->free_throw_start_tick_raw_09be,
+            telemetry->free_throw_aim_x_raw_0980,
+            telemetry->free_throw_aim_y_raw_0982,
+            telemetry->free_throw_flight_timer_raw_0930,
+            telemetry->deferred_shot_foul_phase_raw_0a02,
             telemetry->latched_event_raw_08f0,
             telemetry->whistle_active_raw_09b6,
             telemetry->whistle_timer_raw_08de,

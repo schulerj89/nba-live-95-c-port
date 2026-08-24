@@ -177,6 +177,11 @@ typedef struct {
     uint8_t personal_fouls_raw[NBA_GAMEPLAY_ACTOR_COUNT];
     uint16_t free_throw_state_raw;
     uint16_t free_throw_sequence_raw;
+    uint16_t free_throw_start_tick_raw_09be;
+    uint16_t free_throw_aim_x_raw_0980;
+    uint16_t free_throw_aim_y_raw_0982;
+    uint16_t free_throw_flight_timer_raw_0930;
+    uint16_t deferred_shot_foul_phase_raw_0a02;
     uint16_t latched_event_raw_08f0;
     uint16_t whistle_active_raw_09b6;
     uint16_t whistle_timer_raw_08de;

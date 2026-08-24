@@ -77,6 +77,11 @@ def main():
         if set(fouls) != {"event_raw", "shooting_raw", "offender_raw",
                           "victim_raw", "team_raw", "personal_raw",
                           "free_throw_state_raw", "free_throw_sequence_raw",
+                          "free_throw_start_tick_raw_09be",
+                          "free_throw_aim_x_raw_0980",
+                          "free_throw_aim_y_raw_0982",
+                          "free_throw_flight_timer_raw_0930",
+                          "deferred_shot_foul_phase_raw_0a02",
                           "latched_event_raw_08f0",
                           "whistle_active_raw_09b6",
                           "whistle_timer_raw_08de",
@@ -88,9 +93,16 @@ def main():
                      "team_raw": [0, 0], "personal_raw": [0] * 10,
                      "free_throw_state_raw": 0,
                      "free_throw_sequence_raw": 0,
+                     "free_throw_start_tick_raw_09be": 0,
+                     "free_throw_aim_x_raw_0980": 0,
+                     "free_throw_aim_y_raw_0982": 0,
+                     "free_throw_flight_timer_raw_0930": 0,
+                     "deferred_shot_foul_phase_raw_0a02": 0,
                      "latched_event_raw_08f0": 0,
                      "whistle_active_raw_09b6": 0,
-                     "whistle_timer_raw_08de": 0xFFFF,
+                     # `$85:EDB3` decrements signed `$08DE` every outer
+                     # frame, even before live gameplay begins.
+                     "whistle_timer_raw_08de": (0xFFFF - sample["scene_frame"]) & 0xFFFF,
                      "presentation_gate_raw_08e2": 0,
                      "whistle_presentation_queued_raw": 0}:
             raise AssertionError(f"unverified foul detector activated: {fouls}")

@@ -456,6 +456,9 @@ def build_player_roster_asset(rom_data):
             # `$86:D1D9-$D200` reads roster +$3A as the final owned-ball
             # strip threshold before comparing the second `$80:CEE7` byte.
             packed[25] = record[0x3a]
+            # `$87:9DD4-$9DEA` and `$86:A255-$A291` grade CPU free throws
+            # from roster byte +$38 before their two independent RNG gates.
+            packed[26] = record[0x38]
             packed[32:64] = fixed_name
             payload.extend(packed)
     return bytes(payload)

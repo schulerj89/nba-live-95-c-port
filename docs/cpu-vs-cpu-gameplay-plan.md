@@ -938,8 +938,8 @@ codes 2/13 write `$0952=$093A XOR 5` without changing persistent camera side
 the inbounder: `$85:C37D-$C388` always derives provisional `$0954` as actor 2
 or 7 from `$0952`. Bonus state `$0978=1/$097A=2` still runs this placement and
 event-consumption path before the free-throw actor dispatcher takes over.
-Deferred `$09BC` shooting fouls and the free-throw scene itself remain the
-next translation boundary; they are not converted into ordinary inbounds.
+Deferred `$09BC` shooting fouls and the free-throw scene are translated in
+the following increment; they are not converted into ordinary inbounds.
 
 A follow-up call-chain audit corrected the presentation/audio boundary:
 `$87:BACB` supplies `$EC5D/$00AF` to `$80:8CD0`, an object scheduler, and the
@@ -964,3 +964,40 @@ points, recover those exact blocks with the maintained headless Ghidra dump,
 then translate portable rules, AI, animation, ball physics, camera, scoring,
 and dead-ball state into the native model. Do not import 65816 dispatch,
 memory-bus, PPU/DMA, scheduler, or SPC-emulation machinery.
+
+### Increment 5J: deferred shooting fouls and CPU free throws
+
+The maintained headless dump now includes `$87:9426-$9478`,
+`$87:9CBF-$A017`, `$87:A15C-$A360`, and `$85:9530-$9597`. The first block
+proves `$0A02` is a gameplay phase latch: a detached shooting foul waits for
+`$0948` to clear and either an owner or ball Z below 16, while phase 2
+bypasses that wait. It then seeds `$0978=1`, with `$097A=1` for an and-one
+or 2 otherwise. The C dispatcher now preserves that deferred lifecycle.
+
+Free throws preempt the already-seeded `$0936=$82` inbound path exactly as
+`$87:923D` does. `$87:A15C` provides five mirrored lane records for the
+shooter's side and five records for their `+$76` pairs. The shooter is not
+given possession: `$86:F0FD-$F190` makes that actor pursue the loose ball,
+and readiness requires a nonnegative `$093E`, all ten actors stopped, and
+signed `$08DE<0`. The C scene therefore reuses asset-driven ball contact and
+hand attachment rather than teleporting the ball.
+
+CPU state 3 uses `$084A-$09BE`: animation 2 through tick 119, animation 12
+from tick 120, and forced release at tick 360 (with the earlier `$0B2A` RNG
+gate preserved). Roster byte `+$38` is now packed as the free-throw rating;
+its clamped eight-entry threshold table is
+`[130,145,160,185,200,215,230,245]`. A separate rating roll in
+`$86:A2A7-$A476` chooses the launch physics. Makes use `(+-512,0,864)`;
+misses use the exact two four-record velocity tables, selected by actor
+`+$A8`, whose initializer `$87:AFC6-$B00D` derives it from roster byte
+`+$02 >= $51`. State 9 keeps the ball on the ROM pose attachment through
+lower resource phase `$05FF`, then animation 23 detaches it at `$0600`.
+
+State 10 retains normal rim, gravity, bounce, and settle physics while
+masking normal rebound/inbound control. Intermediate attempts return the
+ball to the shooter at Z=32 and advance through states 11..24 before
+re-entering state 1. The final attempt clears only under the original
+owner/VZ/Z/`$097C`/`$0972`/`$094C` gates. `$85:EDB3`'s unconditional
+`$08DE--` cadence is also represented. Forced in-process vectors protect
+the mirrored lineup, direction records, rating endpoints, and retry-state
+wrap, while the public gameplay tests retain the 60,000-frame simulation.

@@ -54,7 +54,7 @@ public class DumpCpuGameplay extends GhidraScript {
             0xa3b7, 0xa5f4, 0xa656, 0xa755,
             0xab17, 0xaf5c, 0xb402, 0xb50e, 0xb60b, 0xb678, 0xb9d2,
             0xba1d, 0xbab7, 0xbae4, 0xbc07, 0x93f5,
-            0xc37d, 0xc5fb, 0xef3a, 0xf02d,
+            0x9530, 0xc37d, 0xc5fb, 0xef3a, 0xf02d,
             0xf1c1, 0xf34f, 0xf3c3, 0xf5e4, 0xf78b, 0xf7c9, 0xf867, 0xf8d9
         };
         if (bank.equals("86")) return new long[] {
@@ -69,11 +69,12 @@ public class DumpCpuGameplay extends GhidraScript {
             0xf3d2, 0xf43a, 0xf56e, 0xf59f, 0xf64f, 0xf6cd, 0xf794, 0xf8cd,
             /* All 18 `$87:9BD0` behavior targets, including handlers outside
              * the otherwise shot/ball-oriented candidate set. */
-            0x994c, 0xc6ad, 0xa7da, 0xb154, 0xb0f7, 0xb979
+            0x994c, 0xc6ad, 0xa7da, 0xb154, 0xb0f7, 0xb979, 0xbc9b
         };
         if (bank.equals("87")) return new long[] {
             0x9244, 0x92a5, 0x98ea, 0x996a, 0x9a03, 0x9a73,
-            0x9b0d, 0x9b30, 0x9b41, 0x9bd0, 0x9cdb,
+            0x9b0d, 0x9b30, 0x9b41, 0x9bd0, 0x9cbf, 0x9cdb,
+            0x9e39, 0x9e88, 0x9f11, 0x9f60, 0x9f76, 0x9ff3, 0xa017,
             0xa2ce, 0xa357, 0xa846, 0xa9d0, 0xaa02, 0xaab2,
             0xad5b, 0xaec3, 0xb37c, 0xb47a, 0xb4db, 0xb538, 0xb555,
             0xb649, 0xb66a, 0xb832, 0xb953, 0xb572, 0xbacb
@@ -163,6 +164,13 @@ public class DumpCpuGameplay extends GhidraScript {
                 out.println("\n--- Complete pending-event whistle consumer ---");
                 addEntryPoint(toAddr(0x93f5)); disassemble(toAddr(0x93f5));
                 for (long address = 0x93f5; address <= 0x945e; ++address) {
+                    Instruction instruction = listing.getInstructionAt(toAddr(address));
+                    if (instruction != null)
+                        out.printf("$85:%04X  %s%n", address, instruction.toString());
+                }
+                out.println("\n--- Complete free-throw presentation timer gate ---");
+                addEntryPoint(toAddr(0x9530)); disassemble(toAddr(0x9530));
+                for (long address = 0x9530; address <= 0x9597; ++address) {
                     Instruction instruction = listing.getInstructionAt(toAddr(address));
                     if (instruction != null)
                         out.printf("$85:%04X  %s%n", address, instruction.toString());
@@ -285,6 +293,20 @@ public class DumpCpuGameplay extends GhidraScript {
                 addEntryPoint(toAddr(0x9b41)); disassemble(toAddr(0x9b41));
                 addEntryPoint(toAddr(0x9cdb)); disassemble(toAddr(0x9cdb));
                 for (long address = 0x9b30; address <= 0x9d20; ++address) {
+                    Instruction instruction = listing.getInstructionAt(toAddr(address));
+                    if (instruction != null)
+                        out.printf("$87:%04X  %s%n", address, instruction.toString());
+                }
+                out.println("\n--- Complete free-throw actor state machine ---");
+                addEntryPoint(toAddr(0x9cbf)); disassemble(toAddr(0x9cbf));
+                addEntryPoint(toAddr(0x9e39)); disassemble(toAddr(0x9e39));
+                addEntryPoint(toAddr(0x9e88)); disassemble(toAddr(0x9e88));
+                addEntryPoint(toAddr(0x9f11)); disassemble(toAddr(0x9f11));
+                addEntryPoint(toAddr(0x9f60)); disassemble(toAddr(0x9f60));
+                addEntryPoint(toAddr(0x9f76)); disassemble(toAddr(0x9f76));
+                addEntryPoint(toAddr(0x9ff3)); disassemble(toAddr(0x9ff3));
+                addEntryPoint(toAddr(0xa017)); disassemble(toAddr(0xa017));
+                for (long address = 0x9cbf; address <= 0xa017; ++address) {
                     Instruction instruction = listing.getInstructionAt(toAddr(address));
                     if (instruction != null)
                         out.printf("$87:%04X  %s%n", address, instruction.toString());

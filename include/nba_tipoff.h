@@ -89,6 +89,7 @@ typedef struct {
     uint16_t movement_magnitude_raw;  /* actor `+$4C` */
     uint16_t contact_inhibit_raw_5a;  /* actor `+$5A`, `$86:CD03/D460` */
     uint16_t contact_height_raw_aa;   /* actor `+$AA`, `$87:A6A9-A6B2` */
+    uint16_t free_throw_launch_half_raw_a8; /* actor `+$A8`, `$86:A2A7` */
     uint16_t recovery_inhibit_raw;    /* actor `+$7A` */
     uint16_t behavior_flags_raw;      /* actor `+$7E` */
     uint16_t help_request_raw_80;     /* actor `+$80`, `$85:C006` */
@@ -115,6 +116,12 @@ typedef struct {
     NbaGameplayCamera camera;
     NbaGameplayRng rng;
     NbaGameplayFoulState fouls;
+    uint16_t deferred_shot_foul_phase_raw_0a02;
+    uint16_t free_throw_start_tick_raw_09be;
+    uint16_t free_throw_aim_x_raw_0980;
+    uint16_t free_throw_aim_y_raw_0982;
+    uint16_t free_throw_resolution_raw_0972;
+    uint16_t free_throw_flight_timer_raw_0930;
     NbaGameplayTeamContext team_context[2]; /* `$46EB/$476B` +$30/+32/+39 */
     uint16_t period_raw_0926;
     uint16_t match_clock_raw_0928;
