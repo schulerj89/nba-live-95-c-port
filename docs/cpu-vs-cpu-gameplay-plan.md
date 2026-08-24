@@ -682,3 +682,17 @@ Gameplay JSON exposes `$0920`, `$0970`, and the `$87:A9E3` effect selection for
 future differential traces. The effect's asset/animation dispatch is retained
 as explicit state and remains part of the animation-dispatch work, not silently
 discarded as emulation plumbing.
+
+Increment 4X ports the made-ball physics handoff instead of freezing the ball
+at the hoop. Ghidra/recomp control flow `$85:A079-$A345` performs scoring and
+dead-ball setup, then `$85:A34A-$A3B3` anchors X at signed 336, clears Y and
+planar velocity, retains signed VZ/8, clears `$0948/$094A/$0962/$096A/$09B8`,
+reloads `$092C=$05A0`, and enters `$85:A3C8` after the normal gravity entry.
+The native path now performs those represented writes, rebuilds the integer
+ball coordinates so stale host fractions cannot survive the anchor, and runs
+the reduced vertical motion through same-tick integration without applying
+free-flight gravity. A forced negative-VZ golden vector protects 65816
+arithmetic-shift behavior. The sustained CPU test now judges rebound ownership
+only for misses with a complete 600-frame resolution horizon, preventing a
+shot begun in the final capture tail from being mislabeled as an unresolved
+physics regression.

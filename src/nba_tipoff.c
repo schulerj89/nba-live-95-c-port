@@ -1138,6 +1138,7 @@ static NbaGameplayRimResult cpu_update_live_ball(NbaTipoff *tipoff) {
                ball->state == NBA_BALL_BOUNCE) {
         bool rom_free_flight = ball->state == NBA_BALL_SHOT ||
                                ball->state == NBA_BALL_BOUNCE;
+        bool made_response = false;
         NbaGameplayRimResult result = NBA_GAMEPLAY_RIM_FLIGHT;
         /* `$85:9A78-$A656`: the current integer position is tested against
          * the rim first. Any reflected velocity and snapped integer axis are
@@ -1164,19 +1165,25 @@ static NbaGameplayRimResult cpu_update_live_ball(NbaTipoff *tipoff) {
                 tipoff->offense_side != 0u, tipoff->live_state_raw, false,
                 tipoff->shot_inner_veto_raw, correct_side);
             NbaGameplayRimContext rim_context = {
-                tipoff->rim_raw_0920,
-                tipoff->live_state_raw,
-                tipoff->ball_activity_raw,
-                tipoff->rim_raw_094a,
-                tipoff->rim_raw_0970,
-                tipoff->fouls.free_throw_state_raw_0978,
-                tipoff->shot_inner_veto_raw ? 1u : 0u,
-                tipoff->rim_force_raw_1866,
-                tipoff->rng.state,
-                tipoff->rim_effect_raw_401b
+                .raw_0920 = tipoff->rim_raw_0920,
+                .raw_0936 = tipoff->live_state_raw,
+                .raw_0948 = tipoff->ball_activity_raw,
+                .raw_094a = tipoff->rim_raw_094a,
+                .raw_0970 = tipoff->rim_raw_0970,
+                .raw_0978 = tipoff->fouls.free_throw_state_raw_0978,
+                .raw_09f8 = tipoff->shot_inner_veto_raw ? 1u : 0u,
+                .raw_09b8 = tipoff->inbound_transfer_raw,
+                .raw_1866 = tipoff->rim_force_raw_1866,
+                .raw_07f6 = tipoff->rng.state,
+                .effect_raw_401b = tipoff->rim_effect_raw_401b
             };
             nba_gameplay_rim_apply_inner_response(
                 &rim, result, &rim_context, &tipoff->rng);
+            if (result == NBA_GAMEPLAY_RIM_MAKE) {
+                nba_gameplay_rim_apply_made_response(
+                    &rim, tipoff->offense_side != 0u, &rim_context);
+                made_response = true;
+            }
             tipoff->rim_raw_092c = rim.raw_092c;
             tipoff->rim_raw_0962 = rim.raw_0962;
             tipoff->rim_raw_096a = rim.raw_096a;
@@ -1189,31 +1196,40 @@ static NbaGameplayRimResult cpu_update_live_ball(NbaTipoff *tipoff) {
             tipoff->rim_raw_094a = rim_context.raw_094a;
             tipoff->rim_raw_0970 = rim_context.raw_0970;
             tipoff->shot_inner_veto_raw = rim_context.raw_09f8 != 0u;
+            tipoff->inbound_transfer_raw = rim_context.raw_09b8;
             tipoff->rim_effect_raw_401b = rim_context.effect_raw_401b;
             if (result == NBA_GAMEPLAY_RIM_OUTER_CONTACT ||
                 result == NBA_GAMEPLAY_RIM_EDGE_CONTACT ||
-                result == NBA_GAMEPLAY_RIM_MISS) {
+                result == NBA_GAMEPLAY_RIM_MISS ||
+                result == NBA_GAMEPLAY_RIM_MAKE) {
                 /* The ROM writes only axes touched by the collision branch;
                  * retain each independent fractional byte. */
-                if (rim.x != before_x)
+                if (result == NBA_GAMEPLAY_RIM_MAKE) {
+                    /* `$85:A34A-$A3B3` rebuilds the made-ball record from
+                     * integer scratch words, so stale host fractions do not
+                     * survive the cylinder anchor. */
+                    ball->x_fp = (int32_t)rim.x * 256;
+                    ball->y_fp = (int32_t)rim.y * 256;
+                    ball->z_fp = (int32_t)rim.z * 256;
+                } else if (rim.x != before_x)
                     ball->x_fp = fp_replace_integer_word(ball->x_fp, rim.x);
-                if (rim.y != before_y)
+                if (result != NBA_GAMEPLAY_RIM_MAKE && rim.y != before_y)
                     ball->y_fp = fp_replace_integer_word(ball->y_fp, rim.y);
-                if (rim.z != before_z)
+                if (result != NBA_GAMEPLAY_RIM_MAKE && rim.z != before_z)
                     ball->z_fp = fp_replace_integer_word(ball->z_fp, rim.z);
                 ball->velocity_x = rim.velocity_x;
                 ball->velocity_y = rim.velocity_y;
                 ball->velocity_z = rim.velocity_z;
             }
         }
-        if (rom_free_flight)
+        if (rom_free_flight && !made_response)
             ball->velocity_z = (int16_t)(ball->velocity_z - 0x18);
         ball->x_fp += ball->velocity_x;
         ball->y_fp += ball->velocity_y;
         ball->z_fp += ball->velocity_z;
         cpu_clamp_record_to_court(tipoff, &ball->x_fp, &ball->y_fp,
                                   &ball->velocity_x, &ball->velocity_y);
-        if (!rom_free_flight)
+        if (!rom_free_flight && !made_response)
             ball->velocity_z = (int16_t)(ball->velocity_z - 48);
         if (ball->z_fp < 0) {
             ball->z_fp = 0;

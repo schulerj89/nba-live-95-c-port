@@ -527,11 +527,20 @@ def main():
         misses = [shot for shot in shots if shot["veto"]]
         if not misses or any(not 0 <= shot["index"] < 16 for shot in misses):
             raise AssertionError(f"$86:A110/$A17D miss path missing: {misses}")
-        if any(shot["rebound"] is None for shot in misses):
-            raise AssertionError(f"miss did not reach collision-owned rebound: {misses}")
-        if any(not 0 <= owner < 10 or team != owner // 5 for shot in misses
+        # Do not classify a shot begun inside the final 600-frame capture
+        # tail as a failed rebound; the trace ended before its resolution
+        # horizon. Every miss with a complete horizon must still resolve.
+        settled_misses = [shot for shot in misses
+                          if shot["frame"] <= rows[-1]["frame"] - 600]
+        if not settled_misses or any(shot["rebound"] is None
+                                     for shot in settled_misses):
+            raise AssertionError(
+                f"miss did not reach collision-owned rebound: {settled_misses}")
+        if any(not 0 <= owner < 10 or team != owner // 5
+               for shot in settled_misses
                for owner, team in [shot["rebound"]]):
-            raise AssertionError(f"miss rebound ownership was inconsistent: {misses}")
+            raise AssertionError(
+                f"miss rebound ownership was inconsistent: {settled_misses}")
 
         def signed16(value):
             return value - 0x10000 if value & 0x8000 else value

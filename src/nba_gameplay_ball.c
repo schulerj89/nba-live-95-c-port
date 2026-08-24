@@ -267,6 +267,28 @@ void nba_gameplay_rim_apply_inner_response(
     }
 }
 
+/* `$85:A0EB-$A10D,$A34A-$A3B3`: after awarding the basket, the ROM clears
+ * the live ball latches, anchors the ball in the scoring cylinder, removes
+ * planar motion, and retains one eighth of signed VZ. The branch then enters
+ * `$85:A3C8`, deliberately skipping the normal `$85:A3B7` gravity update. */
+void nba_gameplay_rim_apply_made_response(
+    NbaGameplayRimState *state, bool right_basket,
+    NbaGameplayRimContext *context) {
+    if (!state || !context) return;
+    state->raw_092c = 0x05A0u;
+    state->raw_0962 = 0u;
+    state->raw_096a = 0u;
+    context->raw_0948 = 0u;
+    context->raw_094a = 0u;
+    context->raw_09b8 = 0u;
+    state->x = right_basket ? 336 : -336;
+    state->y = 0;
+    state->velocity_x = 0;
+    state->velocity_y = 0;
+    state->velocity_z = nba_gameplay_arithmetic_shift_right(
+        state->velocity_z, 3u);
+}
+
 /* Final made-basket predicate, expressed through the complete ROM shell. The
  * caller's dx/dy are hoop-relative, so +336 reconstructs the right-rim raw X. */
 bool nba_gameplay_ball_is_make(uint16_t live_state, bool alternate_height,
@@ -497,7 +519,8 @@ bool nba_gameplay_ball_self_test(void) {
         !nba_gameplay_ball_pose_contact(points, 108, 100, 80, 8u);
     NbaGameplayRng edge_rng = {0x9146u};
     NbaGameplayRimContext edge_context = {
-        5u, 1u, 4u, 5u, 0u, 0u, 1u, 0u, 0x0012u, 0u
+        .raw_0920 = 5u, .raw_0936 = 1u, .raw_0948 = 4u,
+        .raw_094a = 5u, .raw_09f8 = 1u, .raw_07f6 = 0x0012u
     };
     rim = (NbaGameplayRimState){343, -4, 74, -160, -161, -100};
     nba_gameplay_rim_apply_inner_response(
@@ -513,7 +536,8 @@ bool nba_gameplay_ball_self_test(void) {
         edge_rng.state == 0x3F0Bu;
     NbaGameplayRng miss_rng = {0x9146u};
     NbaGameplayRimContext miss_context = {
-        9u, 1u, 7u, 8u, 0u, 0u, 1u, 0u, 0x0012u, 0u
+        .raw_0920 = 9u, .raw_0936 = 1u, .raw_0948 = 7u,
+        .raw_094a = 8u, .raw_09f8 = 1u, .raw_07f6 = 0x0012u
     };
     rim = (NbaGameplayRimState){336, 8, 74, 100, -61, -200};
     nba_gameplay_rim_apply_inner_response(
@@ -536,9 +560,22 @@ bool nba_gameplay_ball_self_test(void) {
                 NBA_GAMEPLAY_RIM_MISS) inner_distance_vectors = false;
         }
     }
+    NbaGameplayRimContext make_context = {
+        .raw_0948 = 0xFFFFu, .raw_094a = 7u, .raw_09b8 = 9u
+    };
+    rim = (NbaGameplayRimState){335, 3, 77, 95, -65, -73,
+                                1u, 9u, 8u, 0u, 0u, 0u};
+    nba_gameplay_rim_apply_made_response(&rim, true, &make_context);
+    bool made_response =
+        rim.x == 336 && rim.y == 0 && rim.z == 77 &&
+        rim.velocity_x == 0 && rim.velocity_y == 0 &&
+        rim.velocity_z == -10 && rim.raw_092c == 0x05A0u &&
+        rim.raw_0962 == 0u && rim.raw_096a == 0u &&
+        make_context.raw_0948 == 0u && make_context.raw_094a == 0u &&
+        make_context.raw_09b8 == 0u;
     return launch_ok && shell_gates && outer_generic && outer_y &&
            acquisition_gates && edge_response && miss_response &&
-           inner_distance_vectors &&
+           inner_distance_vectors && made_response &&
            right_world_bridge && left_world_bridge &&
            outer_negative_y_edge &&
            outer_low && outer_high &&

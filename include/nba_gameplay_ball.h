@@ -44,6 +44,7 @@ typedef struct NbaGameplayRimContext {
     uint16_t raw_0970;
     uint16_t raw_0978;
     uint16_t raw_09f8;
+    uint16_t raw_09b8;
     uint16_t raw_1866;
     uint16_t raw_07f6;
     uint16_t effect_raw_401b;
@@ -62,6 +63,9 @@ NbaGameplayRimResult nba_gameplay_rim_world_step(
 void nba_gameplay_rim_apply_inner_response(
     NbaGameplayRimState *state, NbaGameplayRimResult result,
     NbaGameplayRimContext *context, NbaGameplayRng *rng);
+void nba_gameplay_rim_apply_made_response(
+    NbaGameplayRimState *state, bool right_basket,
+    NbaGameplayRimContext *context);
 bool nba_gameplay_ball_is_make(uint16_t live_state, bool alternate_height,
                                bool inner_veto, bool correct_basket_side,
                                int16_t dx, int16_t dy, int16_t z);
