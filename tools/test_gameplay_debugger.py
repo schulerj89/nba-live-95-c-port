@@ -138,7 +138,8 @@ def main():
     mesen = (source / "tools" / "mesen_tipoff_capture.lua").read_text()
     for marker in ("gameplay_rom.jsonl", "0x80cb8f", "0x879244", "0x85963d",
                    "0x0936", "score_left_raw",
-                   "assignment_current", "raw_087a"):
+                   "assignment_current", "raw_087a", "0x0998",
+                   "play_step_raw", "play_selector_raw", "subject_raw"):
         if marker not in mesen:
             raise AssertionError(f"Mesen gameplay oracle lost {marker}")
     print("Gameplay Lab regression checks passed")

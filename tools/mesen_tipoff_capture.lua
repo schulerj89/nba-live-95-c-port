@@ -289,8 +289,13 @@ local function dump_gameplay_jsonl(frame)
         "\"actor_pointer_raw\":%u}," ..
         "\"possession\":{\"actor\":%d,\"team\":%d," ..
         "\"candidate_raw\":%d,\"play_code_raw\":%u," ..
+        "\"play_step_raw\":%d,\"play_countdown_raw\":%d," ..
+        "\"play_mirror_raw\":%u,\"play_event_wait_raw\":%u," ..
+        "\"play_cycle_raw\":%u,\"play_hold_raw\":%u," ..
+        "\"play_selector_raw\":[%d,%d,%d]," ..
         "\"rng_state_raw\":%u}," ..
-        "\"camera\":{\"x\":%d,\"y\":%d,\"routine\":%u," ..
+        "\"camera\":{\"x\":%d,\"y\":%d," ..
+        "\"subject_raw\":%d,\"side_group_raw\":%u,\"routine\":%u," ..
         "\"raw_085c\":%u,\"raw_085e\":%u,\"raw_0860\":%u," ..
         "\"raw_0862\":%u,\"raw_086c\":%u,\"raw_086e\":%u," ..
         "\"raw_0874\":%u,\"raw_0876\":%u,\"raw_0878\":%u," ..
@@ -302,8 +307,12 @@ local function dump_gameplay_jsonl(frame)
         exported_control_actor, force_cpu_vs_cpu and -1 or signed_word(0x093a),
         signed_word(0x0954), exported_control_actor,
         force_cpu_vs_cpu and 0 or word(0x0940), possession_actor,
-        signed_word(0x093a), signed_word(0x0946), word(0x0996), word(0x07f6),
-        signed_word(0x085c), signed_word(0x0860), 0x859192,
+        signed_word(0x093a), signed_word(0x0946), word(0x0996),
+        signed_word(0x0998), signed_word(0x099a), word(0x099c), word(0x099e),
+        word(0x09a4), word(0x09d0), signed_word(0x09aa),
+        signed_word(0x09ac), signed_word(0x09ae), word(0x07f6),
+        signed_word(0x085c), signed_word(0x0860), possession_actor,
+        word(0x093a), 0x859192,
         word(0x085c), word(0x085e), word(0x0860), word(0x0862),
         word(0x086c), word(0x086e), word(0x0874), word(0x0876),
         word(0x0878), word(0x087a), word(0x088c), word(0x088e),
