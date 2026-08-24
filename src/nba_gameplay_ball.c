@@ -463,17 +463,44 @@ bool nba_gameplay_ball_coarse_contact(int16_t actor_x, int16_t actor_y,
 
 /* `$86:D549-$D5DA`: either animation-resource attachment point may win.
  * Every axis is a strict cube comparison, so delta threshold itself fails. */
-bool nba_gameplay_ball_pose_contact(const NbaGameplayPosePoint points[2],
-                                    int16_t ball_x, int16_t ball_y,
-                                    int16_t ball_z, uint8_t threshold) {
-    if (!points || threshold == 0u) return false;
+int nba_gameplay_ball_pose_contact_index(
+    const NbaGameplayPosePoint points[2], int16_t ball_x, int16_t ball_y,
+    int16_t ball_z, uint8_t threshold) {
+    if (!points || threshold == 0u) return -1;
     for (unsigned i = 0; i < 2u; ++i) {
         int dx = abs((int)points[i].x - ball_x);
         int dy = abs((int)points[i].y - ball_y);
         int dz = abs((int)points[i].z - ball_z);
-        if (dx < threshold && dy < threshold && dz < threshold) return true;
+        if (dx < threshold && dy < threshold && dz < threshold)
+            return (int)i;
     }
-    return false;
+    return -1;
+}
+
+bool nba_gameplay_ball_pose_contact(const NbaGameplayPosePoint points[2],
+                                    int16_t ball_x, int16_t ball_y,
+                                    int16_t ball_z, uint8_t threshold) {
+    return nba_gameplay_ball_pose_contact_index(
+        points, ball_x, ball_y, ball_z, threshold) >= 0;
+}
+
+/* `$86:D4E3-$D544`: shared loose-ball deflection response. The routine
+ * changes velocity only; the common integrator owns the following motion. */
+void nba_gameplay_ball_apply_deflection(NbaGameplayRimState *state,
+                                        NbaGameplayRng *rng) {
+    if (!state) return;
+    state->velocity_x = nba_gameplay_arithmetic_shift_right(
+        (int16_t)(0u - (uint16_t)state->velocity_x), 2u);
+    state->velocity_y = nba_gameplay_arithmetic_shift_right(
+        state->velocity_y, 2u);
+    if (state->z < 0x30 || !rng) return;
+    uint16_t selector = (uint16_t)(nba_gameplay_rng_next(rng) & 3u);
+    int16_t vz = state->velocity_z;
+    uint16_t magnitude = vz < 0 ? (uint16_t)(0u - (uint16_t)vz) :
+                                  (uint16_t)vz;
+    if (selector == 0u) state->velocity_z = (int16_t)magnitude;
+    else if (selector == 2u) state->velocity_z = (int16_t)(magnitude >> 1);
+    else state->velocity_z = nba_gameplay_arithmetic_shift_right(vz, 1u);
 }
 
 bool nba_gameplay_ball_self_test(void) {
@@ -566,6 +593,29 @@ bool nba_gameplay_ball_self_test(void) {
         !nba_gameplay_ball_pose_contact(points, 116, 100, 80, 16u) &&
         nba_gameplay_ball_pose_contact(points, 107, 107, 87, 8u) &&
         !nba_gameplay_ball_pose_contact(points, 108, 100, 80, 8u);
+    bool contact_selector = nba_gameplay_ball_pose_contact_index(
+        points, 115, 115, 95, 16u) == 0 &&
+        nba_gameplay_ball_pose_contact_index(
+            points, 140, 120, 60, 8u) == 1 &&
+        nba_gameplay_ball_pose_contact_index(
+            points, 108, 100, 80, 8u) == -1;
+    NbaGameplayRng deflect_rng = {0u};
+    NbaGameplayRimState deflect = {
+        0, 0, 0x2F, 64, -101, -32, 0, 0, 0, 0, 0, 0
+    };
+    nba_gameplay_ball_apply_deflection(&deflect, &deflect_rng);
+    bool deflection_vectors = deflect.velocity_x == -16 &&
+        deflect.velocity_y == -26 && deflect.velocity_z == -32 &&
+        deflect_rng.state == 0u;
+    deflect.z = 0x30;
+    deflect.velocity_x = 64;
+    deflect.velocity_y = -64;
+    deflect.velocity_z = -32;
+    nba_gameplay_rng_seed(&deflect_rng, 0u);
+    nba_gameplay_ball_apply_deflection(&deflect, &deflect_rng);
+    deflection_vectors = deflection_vectors && deflect.velocity_x == -16 &&
+        deflect.velocity_y == -16 && deflect.velocity_z == 16 &&
+        deflect_rng.state == 0x9146u;
     NbaGameplayRng edge_rng = {0x9146u};
     NbaGameplayRimContext edge_context = {
         .raw_0920 = 5u, .raw_0936 = 1u, .raw_0948 = 4u,
@@ -657,7 +707,8 @@ bool nba_gameplay_ball_self_test(void) {
     ground_impact = ground_impact && rim.velocity_z == 71 &&
         impact_raw == 71u && rim.raw_13e7 == 0u;
     return launch_ok && shell_gates && outer_generic && outer_y &&
-           acquisition_gates && edge_response && miss_response &&
+           acquisition_gates && contact_selector && deflection_vectors &&
+           edge_response && miss_response &&
            inner_distance_vectors && made_response && settle_response &&
            settle_gates && ground_impact &&
            right_world_bridge && left_world_bridge &&

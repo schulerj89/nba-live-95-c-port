@@ -68,6 +68,8 @@ typedef struct {
     uint16_t movement_boost_raw;
     int16_t controller_assignment_16_raw;
     uint16_t movement_magnitude_4c_raw;
+    uint16_t contact_inhibit_5a_raw;
+    uint16_t contact_height_aa_raw;
     uint16_t recovery_inhibit_7a_raw;
     uint16_t upper_restart_raw;
     uint16_t lower_restart_raw;

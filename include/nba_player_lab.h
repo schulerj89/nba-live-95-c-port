@@ -52,6 +52,12 @@ bool nba_player_animation_resources(const NbaAssetPack *assets,
                                     uint32_t lower_tick,
                                     uint16_t *upper_resource,
                                     uint16_t *lower_resource);
+bool nba_player_animation_contact_height(const NbaAssetPack *assets,
+                                         uint8_t team, uint8_t roster_slot,
+                                         uint16_t upper_resource,
+                                         uint16_t lower_resource,
+                                         uint8_t direction,
+                                         uint16_t *height);
 /* Exact `$87:B832-$B952` ball offset composition from ROM animation-resource
  * tables. `mirror_flags_raw` is actor `+$28`; no host directional offsets. */
 bool nba_player_ball_attachment_offsets(const NbaAssetPack *assets,

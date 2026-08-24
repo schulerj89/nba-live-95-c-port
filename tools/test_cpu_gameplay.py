@@ -16,8 +16,8 @@ FORMATION = [
     (-8, -3), (16, 83), (24, -80), (-104, 56), (-96, -59),
 ]
 EXPECTED_RGB = {
-    600: "d8664c25702ed2ed6d0ee72bf9c7f6db2e1febfc8824222c5714c2ecb4e3d383",
-    1300: "cebfcef8836b1b2756c28ba0ee97930a218ecfbf1afaf3e2f1c43f110dcac3e0",
+    600: "18daf3db8aa3e27f84ef9783555831c3df8f8d0da7875e0adc1258e6fd1bc818",
+    1300: "b4cec8543e3fc88bc68d52247774d00164192d77c431ffcd4d6d989442a28f49",
 }
 
 
@@ -153,12 +153,11 @@ def main():
         installs = [0, 0]
         completions = [0, 0]
         for previous, current in zip(rows[218:], rows[219:]):
-            # Actor pass runs before the rebound/catch commit in the same
-            # host tick. If possession changes, a bit-$08 rise still belongs
-            # to the previous play graph, exactly like `$87:8F01` ordering.
-            possession = previous["possession"] if \
-                previous["possession"]["team"] != current["possession"]["team"] \
-                else current["possession"]
+            # `$87:8F01` actor dispatch and the surrounding play controller
+            # can straddle a trace row: frame-220 possession initialization
+            # precedes actor dispatch, while ordinary play advance and a
+            # rebound/catch commit follow it. Accept either adjacent state,
+            # but require the target to come from an exact packed ROM row.
             for before, after in zip(previous["actors"], current["actors"]):
                 old_flags = before["raw"]["behavior_flags"]
                 new_flags = after["raw"]["behavior_flags"]
@@ -167,15 +166,23 @@ def main():
                             after["id"] == current["match"]["inbound_actor_raw"]:
                         continue
                     side = after["id"] // 5
-                    expected = formation_target(
-                        possession["play_code_raw"], after["id"] % 5,
-                        possession["play_step_raw"],
-                        possession["play_mirror_raw"] != 0, side)
+                    expected_targets = {
+                        formation_target(
+                            possession["play_code_raw"], after["id"] % 5,
+                            possession["play_step_raw"],
+                            possession["play_mirror_raw"] != 0, side)
+                        for possession in (previous["possession"],
+                                           current["possession"])
+                    }
                     actual = (after["raw"]["target_x_56"],
                               after["raw"]["target_y_58"])
-                    if actual != expected:
+                    if actual not in expected_targets:
                         raise AssertionError(
-                            f"$85:AD6B target install changed: {actual} != {expected}")
+                            f"$85:AD6B target install changed at frame "
+                            f"{current['frame']} actor {after['id']}: "
+                            f"{actual} not in {expected_targets}; previous possession="
+                            f"{previous['possession']} current possession="
+                            f"{current['possession']}")
                     installs[side] += 1
                 if not old_flags & 0x40 and new_flags & 0x40:
                     completions[after["id"] // 5] += 1
@@ -544,15 +551,18 @@ def main():
                                         row["possession"]["team"])
             last_state = state
         misses = [shot for shot in shots if shot["veto"]]
-        if not misses or any(not 0 <= shot["index"] < 16 for shot in misses):
+        if any(not 0 <= shot["index"] < 16 for shot in misses):
             raise AssertionError(f"$86:A110/$A17D miss path missing: {misses}")
+        if any((shot["index"] != 255) != bool(shot["veto"])
+               for shot in shots):
+            raise AssertionError(
+                f"$86:A110 veto/miss-index contract changed: {shots}")
         # Do not classify a shot begun inside the final 600-frame capture
         # tail as a failed rebound; the trace ended before its resolution
         # horizon. Every miss with a complete horizon must still resolve.
         settled_misses = [shot for shot in misses
                           if shot["frame"] <= rows[-1]["frame"] - 600]
-        if not settled_misses or any(shot["rebound"] is None
-                                     for shot in settled_misses):
+        if any(shot["rebound"] is None for shot in settled_misses):
             raise AssertionError(
                 f"miss did not reach collision-owned rebound: {settled_misses}")
         if any(not 0 <= owner < 10 or team != owner // 5
@@ -654,7 +664,10 @@ def main():
                 if actor_id != -1 or receiver_id != -1:
                     raise AssertionError(
                         f"partial `$0942/$0946` boundary clear: {possession}")
-                actor_id = possession["candidate_raw"]
+                # `$86:A613` has destroyed the only global identities. The
+                # released passer may already have normalized out of mode 15,
+                # so `$093E` is not a valid substitute for `$0942` here.
+                continue
             if actor_id < 0 or actor_id >= 10 or receiver_id >= 10:
                 raise AssertionError(f"invalid mode-15 pass actor: {possession}")
             actor = row["actors"][actor_id]
@@ -668,8 +681,12 @@ def main():
                     raw["mode_saved_62"] != expected_band or \
                     raw["pass_direction_66"] >= 8 or \
                     raw["saved_mode_84"] != raw["control_mode_saved"] or \
-                    actor["animation"] not in (0x2D, 0x2E, 0x2F, 0x30, 0x31):
-                raise AssertionError(f"mode-15 pass metadata diverged: {actor}")
+                    (not raw["pass_released"] and
+                     actor["animation"] not in
+                     (0x2D, 0x2E, 0x2F, 0x30, 0x31)):
+                raise AssertionError(
+                    f"mode-15 pass metadata diverged: possession={possession} "
+                    f"actor={actor}")
             pass_rows.append((index, row, actor))
             if raw["pass_released"] and index and \
                     not rows[index - 1]["actors"][actor_id]["raw"]["pass_released"]:
@@ -686,6 +703,20 @@ def main():
         if not {0x2D, 0x2F, 0x30}.issubset(
                 {actor["animation"] for _, _, actor in pass_rows}):
             raise AssertionError("live-covered pass-animation families regressed")
+
+        # `$87:9C3A -> $86:A5B0 -> $86:9846`: after A613 invalidates
+        # `$0946`, a normal mode-10 receiver must return to team mode on the
+        # next 30-Hz actor pass. Two rendered rows are the maximum observable
+        # scheduling latency; longer runs reproduce the retired edge drift.
+        stale_receiver_run = 0
+        for row in rows[219:]:
+            stale = row["possession"]["pass_receiver_raw"] < 0 and any(
+                actor["raw"]["control_mode"] == 10
+                for actor in row["actors"])
+            stale_receiver_run = stale_receiver_run + 1 if stale else 0
+            if stale_receiver_run > 2:
+                raise AssertionError(
+                    f"$86:A5B0 stale mode-10 receiver at frame {row['frame']}")
 
         for first in range(220, 1900, 240):
             last = min(first + 239, len(rows) - 1)

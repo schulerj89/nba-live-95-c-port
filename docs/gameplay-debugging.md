@@ -140,10 +140,14 @@ owned ball.
 eight-player settled-camera visibility, CPU-only mapping, controller,
 ball, camera, collision and AI raw fields, overlay pixels, JSON parsing, and
 paused single-frame stepping, and both comparator pass and intentional-failure
-paths. `tools/test_cpu_gameplay.py` separately protects 50,000 frames of live
+paths. `tools/test_cpu_gameplay.py` separately protects 60,000 frames of live
 CPU behavior, score monotonicity, made-ball Z, `$0952/$0954`, the 300-tick
 inbound gates, and resumed possessions for both teams.
 It also verifies that pose collision may replace provisional slot 2/7, that
 the installed dead-ball `$093E` actor coexists with logical ball owner `-1`,
 and that the current inbound actor owns arrival and transfer rather than the
 initial provisional slot.
+Actor JSON includes raw contact inhibit `+$5A` and the asset-composed body
+height `+$AA`. The sustained regression also locks `$87:9C3A->$86:A5B0`:
+once `$0946` becomes negative, mode 10 must normalize through `$86:9846`
+within one 30-Hz actor pass instead of drifting indefinitely.

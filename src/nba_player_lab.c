@@ -648,6 +648,71 @@ bool nba_player_animation_resources(const NbaAssetPack *assets,
     return *lower_resource != 0u && *upper_resource != 0u;
 }
 
+static bool animation_resource_top(const NbaAssetPack *assets,
+                                   uint16_t resource_id, int *top) {
+    uint32_t size = 0u;
+    const uint8_t *resource = animation_resource(assets, resource_id, &size);
+    if (!resource || size < 10u || !top) return false;
+    uint16_t count = read_u16(resource) & 0x7FFFu;
+    if (count > 32u || 10u + (size_t)count * 7u > size) return false;
+    int value = 0x7FFF;
+    for (uint16_t i = 0; i < count; ++i) {
+        int y = (int16_t)read_u16(resource + 10u + (size_t)i * 7u + 2u);
+        if (y < value) value = y;
+    }
+    if (value == 0x7FFF) return false;
+    *top = value;
+    return true;
+}
+
+/* `$87:A60D-$A6B2`: after `$80:AD92` composes lower body, upper body,
+ * jersey number, and head, the renderer stores `foot_y-top_y+11` in actor
+ * +$AA. Rebuild the same extent from raw asset-pack descriptors. */
+bool nba_player_animation_contact_height(const NbaAssetPack *assets,
+                                         uint8_t team, uint8_t roster_slot,
+                                         uint16_t upper_resource,
+                                         uint16_t lower_resource,
+                                         uint8_t direction,
+                                         uint16_t *height) {
+    PlayerLabRecord player;
+    if (!height || !player_record(
+            assets, team, roster_slot, &player)) return false;
+    const uint8_t *bank = animation_bank84(assets, NULL);
+    if (!bank) return false;
+    int lower_top, upper_top, head_top;
+    uint16_t head_resource = (uint16_t)(player.head_resource_base +
+        read_u16(bank + 0x436Eu + (direction & 7u) * 2u));
+    if (!animation_resource_top(assets, lower_resource, &lower_top) ||
+        !animation_resource_top(assets, upper_resource, &upper_top) ||
+        !animation_resource_top(assets, head_resource, &head_top))
+        return false;
+    int upper_origin = animation_attachment(assets, lower_resource, true);
+    int head_origin = upper_origin +
+        animation_attachment(assets, upper_resource, true);
+    int top = lower_top;
+    if (upper_origin + upper_top < top) top = upper_origin + upper_top;
+    static const uint16_t number_resources[8] = {
+        0x0593u, 0xFFFFu, 0x0591u, 0x0592u,
+        0x0593u, 0xFFFFu, 0x0591u, 0x0592u
+    };
+    uint16_t number_resource = number_resources[direction & 7u];
+    int number_top;
+    if (number_resource != 0xFFFFu &&
+        number_allowed_for_upper(assets, upper_resource) &&
+        animation_resource_top(assets, number_resource, &number_top)) {
+        int number_origin = upper_origin +
+            number_attachment(assets, upper_resource, true);
+        if (number_origin + number_top < top)
+            top = number_origin + number_top;
+    }
+    if (head_origin + head_top < top) top = head_origin + head_top;
+    int value = 11 - top;
+    if (value < 0) value = 0;
+    if (value > 0xFFFF) value = 0xFFFF;
+    *height = (uint16_t)value;
+    return true;
+}
+
 bool nba_player_ball_attachment_point_offsets(const NbaAssetPack *assets,
                                         uint16_t upper_resource,
                                         uint16_t lower_resource,

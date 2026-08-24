@@ -104,6 +104,11 @@ bool nba_gameplay_ball_coarse_contact(int16_t actor_x, int16_t actor_y,
 bool nba_gameplay_ball_pose_contact(const NbaGameplayPosePoint points[2],
                                     int16_t ball_x, int16_t ball_y,
                                     int16_t ball_z, uint8_t threshold);
+int nba_gameplay_ball_pose_contact_index(
+    const NbaGameplayPosePoint points[2], int16_t ball_x, int16_t ball_y,
+    int16_t ball_z, uint8_t threshold);
+void nba_gameplay_ball_apply_deflection(NbaGameplayRimState *state,
+                                        NbaGameplayRng *rng);
 bool nba_gameplay_ball_self_test(void);
 
 #endif

@@ -87,6 +87,8 @@ typedef struct {
     uint16_t movement_boost_timer; /* actor `+$72`, consumed by `$85:A82C` */
     int8_t controller_assignment_raw; /* signed actor `+$16` */
     uint16_t movement_magnitude_raw;  /* actor `+$4C` */
+    uint16_t contact_inhibit_raw_5a;  /* actor `+$5A`, `$86:CD03/D460` */
+    uint16_t contact_height_raw_aa;   /* actor `+$AA`, `$87:A6A9-A6B2` */
     uint16_t recovery_inhibit_raw;    /* actor `+$7A` */
     uint16_t behavior_flags_raw;      /* actor `+$7E` */
     uint16_t help_request_raw_80;     /* actor `+$80`, `$85:C006` */

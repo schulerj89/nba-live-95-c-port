@@ -823,3 +823,36 @@ test now treats immutable `+$76` lineup assignments separately from mutable
 movement covers a complete miss and rebound. Frames 600 and 1300 were visually
 reviewed before their RGB hashes were updated. This checkpoint ports no PPU,
 OAM, DMA, bank-dispatch, or CPU-flag machinery from the recomp.
+
+Increment 5G replaces the receiver-only/floor-catch bridge with the portable
+player/ball contact path recovered from focused native recomp output and the
+headless Ghidra listing. `$86:D5DB` performs a stable signed-world-X insertion
+sort of the actor list and `$86:D652-$D728` preserves that order when presenting
+actor/ball pairs. `$86:CCCD-$CCFB` supplies the inclusive 16-unit broadphase;
+`$86:D549-$D5DA` checks two asset-derived pose points with strict cube bounds.
+C now uses those same ordering and bounds rules for loose balls, inbound
+installation, pass catches, and opposing interceptions. The detached-pass
+classifier rejects same-side nonreceivers, uses radius 16 for `$0946` and 12
+for opponents, and preserves the original `$86:D11F-$D128` low-Z bug that
+compares the random byte with pose-point selector DP `$00` instead of the
+computed chance in DP `$AA`. The former `ball.z <= 0` receiver auto-catch is
+gone.
+
+The body fallback at `$86:CF23-$CF89` now derives actor `+$AA` from raw
+asset-pack animation descriptors. This mirrors `$87:A60D-$A6B2` after
+`$80:AD92` composes lower, upper, jersey-number, and head resources, including
+the exact `foot_y - top_y + 11` extent. Telemetry exports `+$5A` contact
+inhibit and `+$AA` height. The portable `$86:D4E3-$D544` deflection velocity
+response is isolated and forced-vector tested; its remaining shot/strip call
+predicates are not guessed and remain part of the next collision checkpoint.
+
+The same audit found a separate receiver lifecycle error. Behavior table
+`$87:9BD3` maps mode 10 through `$87:9C3A` to `$86:A5B0`. When `$0946` is
+valid it decrements actor `+$60`; expiry or a negative `$0946` invokes
+`$86:9846-$986C`, restoring mode 1/2 by actor `+$6E` versus `$093A` and
+clearing the receiver temporaries. C previously coasted mode-10 actors
+indefinitely, leaving stale receivers against a court boundary. The exact
+lifecycle is now ported, and the 60,000-frame regression fails if an invalid
+receiver remains in mode 10 beyond the two-rendered-frame 30-Hz scheduling
+latency. Updated frames 600 and 1300 were visually reviewed before their RGB
+goldens were accepted.

@@ -54,7 +54,8 @@ public class DumpCpuGameplay extends GhidraScript {
             0x9846, 0x99c4, 0x9c45, 0x9cdb, 0x9d6e, 0x9ed8, 0xa110,
             0xa17d, 0xa1bd, 0xa561, 0xa5b0, 0xa613, 0xa6b3, 0xa7a8, 0xab2d,
             0xb00b, 0xb625, 0xb769, 0xb8ca, 0xbaa2, 0xbaee, 0xbf0b,
-            0xc302, 0xc34c, 0xc493, 0xc4fe, 0xd12d,
+            0xc302, 0xc34c, 0xc493, 0xc4fe, 0xcccd, 0xccfc, 0xd12d,
+            0xd1d9, 0xd43e, 0xd549, 0xd5db, 0xd652,
             0xe39a, 0xe3cb, 0xe3e1, 0xe4a7, 0xe5ab,
             0xe635, 0xe7b3, 0xe7dc, 0xe8f7, 0xe923, 0xe96f, 0xec32, 0xecf9,
             0xef09, 0xf0b7, 0xf0fd, 0xf1b0, 0xf23f, 0xf2ca, 0xf34f,
@@ -205,6 +206,19 @@ public class DumpCpuGameplay extends GhidraScript {
                         out.printf("$86:%04X  %s%n", address, instruction.toString());
                 }
                 for (long address = 0xd12d; address <= 0xd1d0; ++address) {
+                    Instruction instruction = listing.getInstructionAt(toAddr(address));
+                    if (instruction != null)
+                        out.printf("$86:%04X  %s%n", address, instruction.toString());
+                }
+                out.println("\n--- Complete player/ball contact orchestration ---");
+                addEntryPoint(toAddr(0xcccd)); disassemble(toAddr(0xcccd));
+                addEntryPoint(toAddr(0xccfc)); disassemble(toAddr(0xccfc));
+                addEntryPoint(toAddr(0xd1d9)); disassemble(toAddr(0xd1d9));
+                addEntryPoint(toAddr(0xd43e)); disassemble(toAddr(0xd43e));
+                addEntryPoint(toAddr(0xd549)); disassemble(toAddr(0xd549));
+                addEntryPoint(toAddr(0xd5db)); disassemble(toAddr(0xd5db));
+                addEntryPoint(toAddr(0xd652)); disassemble(toAddr(0xd652));
+                for (long address = 0xcccd; address <= 0xd728; ++address) {
                     Instruction instruction = listing.getInstructionAt(toAddr(address));
                     if (instruction != null)
                         out.printf("$86:%04X  %s%n", address, instruction.toString());
