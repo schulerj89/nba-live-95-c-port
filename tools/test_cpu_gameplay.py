@@ -718,6 +718,8 @@ def main():
                     "$86:E923-$E96E", "$86:B0F7-$B153",
                    "$85:A82C-$AB16", "nba_gameplay_velocity_step",
                    "nba_gameplay_same_x_half",
+                   "$86:E82F-$E8F6", "$86:E8F7-$E922",
+                   "nba_gameplay_defense_pair_target",
                    "$85:A5F4-$A655", "nba_gameplay_ball_apply_settle",
                    "$85:A43A-$A44B",
                    "nba_gameplay_ball_apply_ground_impact",

@@ -38,6 +38,12 @@ void nba_gameplay_target_from_pair(int16_t paired_x, int16_t paired_y,
                                    int16_t paired_velocity_y,
                                    int16_t offset_x, int16_t offset_y,
                                    int16_t *target_x, int16_t *target_y);
+void nba_gameplay_defense_pair_target(
+    int16_t paired_x, int16_t paired_y,
+    int16_t paired_velocity_x, int16_t paired_velocity_y,
+    uint8_t paired_direction, uint16_t context_raw_30,
+    uint16_t context_raw_32, bool force_close_table,
+    int16_t *target_x, int16_t *target_y);
 bool nba_gameplay_decision_timer_step(uint16_t *timer, uint8_t profile_byte,
                                       uint16_t reload_base,
                                       bool add_half_court_delay);

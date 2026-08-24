@@ -421,6 +421,36 @@ void nba_gameplay_target_from_pair(int16_t paired_x, int16_t paired_y,
             arithmetic_shift_right_3(paired_velocity_y) + offset_y);
 }
 
+/* `$86:E82F-$E8F6` circular spacing tables. `$86:E8F7-$E922` selects the
+ * ordinary table from side-context +$30/+$32; `$86:E7DC` can force the
+ * closest `$E8CF` table before `$86:E923-$E96E` predicts pair motion. */
+void nba_gameplay_defense_pair_target(
+    int16_t paired_x, int16_t paired_y,
+    int16_t paired_velocity_x, int16_t paired_velocity_y,
+    uint8_t paired_direction, uint16_t context_raw_30,
+    uint16_t context_raw_32, bool force_close_table,
+    int16_t *target_x, int16_t *target_y) {
+    static const int16_t tables[5][20] = {
+        {0,64,118,155,168,155,118,64,0,-64,-118,-155,-168,-155,-118,-64,0,64,118,155},
+        {0,24,45,59,64,59,45,24,0,-24,-45,-59,-64,-59,-45,-24,0,24,45,59},
+        {0,18,33,44,48,44,33,18,0,-18,-33,-44,-48,-44,-33,-18,0,18,33,44},
+        {0,9,16,22,24,22,16,9,0,-9,-16,-22,-24,-22,-16,-9,0,9,16,22},
+        {0,7,13,17,19,17,13,7,0,-7,-13,-17,-19,-17,-13,-7,0,7,13,17}
+    };
+    unsigned table_index;
+    if (force_close_table || context_raw_30 == 2u) table_index = 4u;
+    else {
+        uint16_t selector = context_raw_32 & 3u;
+        table_index = selector == 0u ? 1u : selector == 1u ? 2u : 3u;
+    }
+    if (paired_direction >= 16u) return;
+    unsigned direction = paired_direction;
+    nba_gameplay_target_from_pair(
+        paired_x, paired_y, paired_velocity_x, paired_velocity_y,
+        tables[table_index][direction], tables[table_index][direction + 4u],
+        target_x, target_y);
+}
+
 /* `$85:B714-$B833`: exact symmetric mode-11 direct-shot rectangle. The
  * negative X path explicitly computes two's-complement magnitude. */
 bool nba_gameplay_mode11_shot_rectangle(int16_t rom_x, int16_t y, int16_t z) {
@@ -488,6 +518,15 @@ bool nba_gameplay_ai_self_test(void) {
     if (x != 83 || y != -42) return false;
     nba_gameplay_target_from_pair(32760, -32760, 64, -64, 16, -16, &x, &y);
     if (x != -32752 || y != 32752) return false;
+    nba_gameplay_defense_pair_target(
+        100, -50, 31, -31, 4u, 0u, 0u, false, &x, &y);
+    if (x != 167 || y != -54) return false;
+    nba_gameplay_defense_pair_target(
+        100, -50, 31, -31, 4u, 0u, 0u, true, &x, &y);
+    if (x != 122 || y != -54) return false;
+    nba_gameplay_defense_pair_target(
+        100, -50, 31, -31, 4u, 2u, 3u, false, &x, &y);
+    if (x != 122 || y != -54) return false;
     uint16_t timer = 49u;
     if (nba_gameplay_decision_timer_step(&timer, 15u, 0x40u, false) ||
         timer != 17u) return false;

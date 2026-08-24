@@ -752,3 +752,14 @@ decision interval. The shared predicate now preserves the native word XOR;
 four sign combinations and the reproducing `+200/-80` case are locked by the
 AI component self-test. The deeper target-table dispatch remains gated until
 its context `+$30/+$32` owners are represented explicitly.
+
+Increment 5C translates the portable target geometry shared by defensive
+modes 2/4/6 without prematurely wiring guessed context. The five exact
+20-word circular tables at `$86:E82F-$E8F6` encode radii 168, 64, 48, 24,
+and 19 across 16 directions plus the four wrapped Y entries. The selector at
+`$86:E8F7-$E922` consumes context `+$30/+$32`; `$86:E923-$E96E` adds the
+selected X/Y offsets to paired position plus arithmetic velocity/8, with
+16-bit wrapping. `$86:E7DC` may force the radius-19 table. A pure C component
+now owns this exact behavior and forced vectors lock ordinary radius-64,
+forced-close, and context-`+$30==2` targets. It remains deliberately unhooked
+from live defenders until those two context words are added to the runtime.
