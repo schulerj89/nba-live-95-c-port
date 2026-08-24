@@ -122,8 +122,13 @@ static void cpu_set_role_targets(NbaTipoff *tipoff) {
             int basket_x = attack_right ? 370 : -90;
             target_x = (target_x * 2 + basket_x) / 3;
         }
-        tipoff->actors[actor].target_x = (int16_t)target_x;
-        tipoff->actors[actor].target_y = (int16_t)target_y;
+        /* Modes 1/3/5 own persistent +$56/+$58 through `$85:AD6B` and the
+         * actor +$7E bit-$08 install latch. Keep the provisional phase target
+         * only for the not-yet-ported handler executors. */
+        if (actor == tipoff->handler_actor) {
+            tipoff->actors[actor].target_x = (int16_t)target_x;
+            tipoff->actors[actor].target_y = (int16_t)target_y;
+        }
         /* Functional policy currently keeps the attacking five on mode 1.
          * The genuine controller-free ROM oracle proves mode `$0B` is also
          * used by CPU actors, so it must not be labeled human-only. */
@@ -268,8 +273,71 @@ static bool cpu_active_decision_due(NbaTipoff *tipoff, unsigned slot) {
         mode == 2u ? 0x30u : 0x20u, same_half);
 }
 
+/* `$85:AD6B-$AF5B`: install one formation coordinate per play-step and run
+ * the normal `$85:B402` completion route. The unresolved state-$82 inbound
+ * override (`$AE3B-$AE95`) and DP-$5C override (`$AE97-$AEBB`) are excluded;
+ * neither raw owner is represented by the current CPU-only runtime. */
+static uint8_t cpu_formation_target_direction(NbaTipoff *tipoff,
+                                              unsigned slot) {
+    NbaTipoffActor *actor = &tipoff->actors[slot];
+    uint8_t role = (uint8_t)(slot % 5u);
+    if ((actor->behavior_flags_raw & 0x0008u) == 0u) {
+        int16_t target_x = actor->target_x, target_y = actor->target_y;
+        int16_t side_anchor_x = slot < 5u ? -80 : 80;
+        if (nba_assets_gameplay_formation_offset(
+                tipoff->assets, (uint8_t)tipoff->play_code, role,
+                (uint8_t)tipoff->play_step_raw,
+                tipoff->play_mirror_raw != 0u, side_anchor_x,
+                &target_x, &target_y)) {
+            actor->target_x = target_x;
+            actor->target_y = target_y;
+            actor->behavior_flags_raw |= 0x0008u;
+        }
+    }
+
+    int16_t actor_x = fp_round(actor->x_fp);
+    int16_t actor_y = fp_round(actor->y_fp);
+    bool opposite_x_sign = (int16_t)(actor->target_x ^ actor_x) < 0;
+    bool special_edge = tipoff->rim_raw_097c != 0u && role >= 3u;
+    if (opposite_x_sign && role < 3u) {
+        /* `$85:AEDF-$AEF3`: cross midcourt through X=+/-16 with B3AA;
+         * this path never sets the completion bit. */
+        int16_t gate_x = actor->target_x < 0 ? -16 : 16;
+        return nba_gameplay_target_direction(
+            (int16_t)(gate_x - actor_x),
+            (int16_t)(actor->target_y - actor_y), NULL);
+    }
+    if ((opposite_x_sign && role >= 3u) || special_edge) {
+        /* `$85:AEF5-$AF28`: keep the back roles on their current court edge;
+         * arrival here deliberately does not set +$7E bit $40. */
+        int16_t edge_x = actor_x < 0 ? -0x152 : 0x152;
+        int16_t edge_y = actor_y < 0 ? -16 : 16;
+        uint8_t steering = 8u;
+        (void)nba_gameplay_predictive_arrival(
+            actor_x, actor_y, actor->velocity_x, actor->velocity_y,
+            edge_x, edge_y, 16u, &steering, NULL);
+        return steering;
+    }
+
+    uint8_t steering = 8u;
+    if (nba_gameplay_predictive_arrival(
+            actor_x, actor_y, actor->velocity_x, actor->velocity_y,
+            actor->target_x, actor->target_y, 16u, &steering, NULL))
+        actor->behavior_flags_raw |= 0x0040u;
+    return steering;
+}
+
 static void cpu_move_actor(NbaTipoff *tipoff, unsigned slot) {
     NbaTipoffActor *actor = &tipoff->actors[slot];
+    if (actor->control_mode == 5u && slot != (unsigned)tipoff->possession_actor) {
+        /* `$86:F3F6-$F40A`: mode 5 belongs only to `$093E`. Every other
+         * actor falls back to mode 1 and clears the complete +$7E word. */
+        actor->control_mode = 1u;
+        actor->behavior_timer = 47u;
+        actor->reaction_threshold = 0u;
+        actor->behavior_flags_raw = 0u;
+        return;
+    }
     if (cpu_apply_passive_mode(actor)) return;
     /* `$85:B95C` seeds actor +$60; the mode-specific `$C8=$20` cadence above
      * replaces the former handcrafted per-slot/possession-frame delay. */
@@ -292,8 +360,13 @@ static void cpu_move_actor(NbaTipoff *tipoff, unsigned slot) {
     }
     uint8_t direction = actor->movement_direction;
     if (decision_due && actor->recovery_inhibit_raw == 0u) {
-        direction = nba_gameplay_target_direction((int16_t)dx, (int16_t)dy,
-                                                    NULL);
+        uint8_t mode = actor->control_mode;
+        if ((mode == 1u || mode == 3u || mode == 5u) &&
+                actor->controller_assignment_raw < 0)
+            direction = cpu_formation_target_direction(tipoff, slot);
+        else
+            direction = nba_gameplay_target_direction(
+                (int16_t)dx, (int16_t)dy, NULL);
         actor->movement_direction = direction;
         if (direction < 8u) actor->requested_direction = direction;
     }
@@ -315,12 +388,6 @@ static void cpu_move_actor(NbaTipoff *tipoff, unsigned slot) {
      * `$85:AB17`; in the host 24.8 bridge this is velocity8.8 * dt. */
     actor->x_fp += (int32_t)actor->velocity_x * 2;
     actor->y_fp += (int32_t)actor->velocity_y * 2;
-    if ((dx > 0 && fp_round(actor->x_fp) > actor->target_x) ||
-        (dx < 0 && fp_round(actor->x_fp) < actor->target_x))
-        actor->x_fp = (int32_t)actor->target_x * 256;
-    if ((dy > 0 && fp_round(actor->y_fp) > actor->target_y) ||
-        (dy < 0 && fp_round(actor->y_fp) < actor->target_y))
-        actor->y_fp = (int32_t)actor->target_y * 256;
     actor->direction = actor->requested_direction;
     actor_set_animation(actor, direction >= 8u ? 0u :
                         slot == tipoff->handler_actor ? 11u : 3u,

@@ -53,6 +53,8 @@ without changing the comparison contract.
 | `$85:B128–$B24B` | `$0994` play-request consumption, strategy selection, and stream reset |
 | `$85:C661/$85:C729` | 29-team coin strategy bytes and seven play base/count ranges |
 | `$85:B402–$B4B8` | velocity-biased target arrival/direction with inclusive tolerance |
+| `$85:AD6B–$AE1D` | play/step/role formation install and side/mirror transform; actor `+$7E bit $08` latches it |
+| `$85:AE35–$AF5B` | crossing/edge target routes; normal arrival sets actor `+$7E bit $40` |
 | `$86:9C6F–$9CDA`, `$86:A7A0–$A7A7` | pass launch records and animation release thresholds |
 | `$85:9192–$93F4` | camera subject transform and adaptive approach |
 | `$85:8EE6–$90C3` | circular court streamer sourced from `$A0:8006` |

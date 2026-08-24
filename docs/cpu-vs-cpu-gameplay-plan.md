@@ -394,4 +394,29 @@ and self-tested. It subtracts the actor position and the ROM's biased signed
 `velocity >> 3`, measures distance with `$85:F34F`, and treats distance equal
 to the caller tolerance as arrived. Live frame-400 vectors lock both the
 distance-16 arrival and distance-63 steering cases. Formation modes will call
-this helper only after their `$85:AE35+` target override gates are ported.
+this helper through the live-covered `$85:AE35+` routes in the next increment;
+unobserved special rewrites remain separately gated.
+
+Increment 4L connects the safe, live-covered mode 1/3/5 formation lifecycle.
+On the roster-driven signed `+$60` expiry, CPU actors with `+$7A==0` and
+signed `+$16<0` install `NBFORM1[play $0996][role][step $0998]` once. Actor
+`+$7E bit $08` is the install latch; `$85:B28B/$B359` clear bits `$08/$40`
+when the stream advances or resets. The target persists between decision
+ticks instead of being overwritten by the port's former per-frame offensive
+shape.
+
+`$85:AE35-$AF5B` now handles the normal live routes: opposite-X-sign front
+roles steer through local X `+/-16` without changing the persistent target;
+back roles under the represented `$097C` activity gate use local court-edge
+`+/-338,+/-16`; all other actors use `$85:B402` with inclusive tolerance 16.
+Only the normal arrival path sets `+$7E bit $40`, which releases the existing
+`$099E` five-actor barrier. The runtime regression validates every observed
+bit-$08 rising edge against the ROM asset's play/step/role/mirror/side
+coordinate and requires sustained installs and completions by both teams.
+
+The unobserved `$AE3B-$AE95` inbound-teammate rewrite and `$AE97-$AEBB`
+DP-`$5C` short-timer rewrite remain disabled, as does the unresolved mode-1
+pre-call `$86:E635` side effect and `$09A2` anchor-target writer. `$0948` is
+not yet represented, so the
+special activity route currently uses only proven persistent `$097C`. These
+are explicit next inputs, not host-authored substitutes.
