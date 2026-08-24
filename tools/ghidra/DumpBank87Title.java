@@ -56,7 +56,7 @@ public class DumpBank87Title extends GhidraScript {
             currentProgram.getListing().setComment(address, CodeUnit.PLATE_COMMENT, comments[i]);
         }
         currentProgram.getListing().setComment(toAddr(0x80DC), CodeUnit.PRE_COMMENT,
-            "Slide the active credit: $0615 moves by four pixels and $1872 by two until the hold/exit bounds are reached.");
+            "Slide the active credit: $0615 moves by four pixels and $1872 by two until the hold/exit bounds are reached. The $87:8211 raster presentation retains zero role-band scroll through the first $0615=$0004 endpoint step before continuing monotonically in four-pixel increments.");
         currentProgram.getListing().setComment(toAddr(0x8114), CodeUnit.PRE_COMMENT,
             "Select the next credit motion direction from table $87:825C using $186C.");
 

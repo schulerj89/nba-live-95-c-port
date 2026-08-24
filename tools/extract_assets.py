@@ -580,6 +580,7 @@ def create_asset_pack(rom_path, output_path):
     ea_packed = []
     ea_a_layer_bytes = b""
     ea_e_layer_bytes = b""
+    ea_sports_layer_bytes = b""
     ea_a_fixed_bytes = bytearray()
 
     if all(os.path.exists(p) for p in ea_candidates):
@@ -640,7 +641,7 @@ def create_asset_pack(rom_path, output_path):
         # $82:F512 returns after $80:8FA3 has written A's independent Mode 7
         # tilegroup. Decode the native interleaved Mode 7 tilemap/character
         # plane: even VRAM bytes select tiles and odd bytes hold indexed pixels.
-        def decode_ea_mode7_layer(stem, index_low, index_high, expected_bounds,
+        def decode_ea_mode7_layer(stem, index_ranges, expected_bounds,
                                   routine, letter):
             vram_path = os.path.join(intro_capture_dir, stem + "_vram.bin")
             cgram_path = os.path.join(intro_capture_dir, stem + "_cgram.bin")
@@ -660,7 +661,9 @@ def create_asset_pack(rom_path, output_path):
                             word = tile * 64 + pixel_y * 8 + pixel_x
                             mode7[tile_y * 8 + pixel_y,
                                   tile_x * 8 + pixel_x] = mode7_vram[word * 2 + 1]
-            source = (mode7 >= index_low) & (mode7 <= index_high)
+            source = np.zeros(mode7.shape, dtype=bool)
+            for index_low, index_high in index_ranges:
+                source |= (mode7 >= index_low) & (mode7 <= index_high)
             ys, xs = np.where(source)
             bounds = (xs.min(), ys.min(), xs.max(), ys.max())
             if bounds != expected_bounds:
@@ -686,9 +689,18 @@ def create_asset_pack(rom_path, output_path):
         # M7X/M7Y and the captured scroll origin map source (382,402) to
         # native screen (0,0). E and A use separate palette-index blocks.
         ea_e_layer_bytes = decode_ea_mode7_layer(
-            "ea_e_mode7", 0x31, 0x3F, (441, 449, 519, 524), "$82:F4F6", "E")
+            "ea_e_mode7", [(0x31, 0x3F)], (441, 449, 519, 524), "$82:F4F6", "E")
         ea_a_layer_bytes = decode_ea_mode7_layer(
-            "ea_a_mode7", 0x41, 0x4F, (494, 449, 572, 524), "$82:F512", "A")
+            "ea_a_mode7", [(0x41, 0x4F)], (494, 449, 572, 524), "$82:F512", "A")
+        # $82:F52E passes the ROM descriptor at $82:F6D8 to $80:8FA3 twice,
+        # at tile rows $38 and $3D.  Indices $21-$2F are the visible blue
+        # SPORTS word and trademark; the $11-$1F block is intentionally black
+        # background/clearing data and is not artwork in the host's transparent
+        # layer.  Deriving either from screenshot differences produces ghost
+        # EA pixels during the zoom.
+        ea_sports_layer_bytes = decode_ea_mode7_layer(
+            "ea_sports_mode7", [(0x21, 0x2F)],
+            (444, 530, 581, 559), "$82:F52E", "SPORTS")
 
     # 7. Audio: EA Intro Voice / Sound Effect
     def decode_brr_to_pcm(data):
@@ -1323,6 +1335,7 @@ def create_asset_pack(rom_path, output_path):
         (71, w4, h4, ea_flags, ea_e_layer_bytes),             # ASSET_EA_E_LAYER
         (72, w4, h4, ea_flags, ea_packed[4]),                 # ASSET_EA_LOGO_FINAL
         (73, w4, h4, ea_flags, ea_a_fixed_bytes),             # ASSET_EA_A_FIXED_SEQUENCE
+        (74, w4, h4, ea_flags, ea_sports_layer_bytes),        # ASSET_EA_SPORTS_LAYER
     ]
 
     if len(audio_intro_bytes) > 0:
@@ -1430,7 +1443,7 @@ def create_asset_pack(rom_path, output_path):
                     extra_audio_id += 1
 
     header_magic = b"NBA95PAK"
-    version = 17
+    version = 18
     asset_count = len(assets)
     entry_size = 24 # 6 * 4 bytes
 

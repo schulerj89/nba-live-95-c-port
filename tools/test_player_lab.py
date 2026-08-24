@@ -11,8 +11,8 @@ def read_pack(path):
     if raw[:8] != b"NBA95PAK":
         raise AssertionError("invalid asset-pack magic")
     version, count = struct.unpack_from("<II", raw, 8)
-    if version != 17:
-        raise AssertionError(f"Player Lab requires pack v17, got {version}")
+    if version != 18:
+        raise AssertionError(f"Player Lab requires pack v18, got {version}")
     assets = {}
     for index in range(count):
         entry = struct.unpack_from("<IIIIII", raw, 16 + index * 24)

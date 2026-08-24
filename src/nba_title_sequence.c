@@ -146,8 +146,13 @@ static void title_render_ppu(const NbaTitleSequence *s, NbaRenderer *renderer) {
                 bool attract = s->attract_index != 0xFFFF;
                 /* $87:8211/$87:8230 split BG3 by scanline. $186E gates the
                  * animation in $87:80CB but never changes scroll position. */
-                int credit_top_x = s->credit_x -
-                    (s->credit_x != 0 ? TITLE_BG_FETCH_X_OFFSET : 0);
+                /* $87:80CB changes $0615 in four-pixel steps. At the first
+                 * step ($0004), $87:8211 still presents the zero-scroll role
+                 * band; the normal eight-pixel BG fetch correction begins at
+                 * $0008. Applying it at $0004 creates 0,-4,0,4... and makes
+                 * PROGRAMMER visibly backstep on entry (and again on exit). */
+                int credit_top_x = s->credit_x > 4 ?
+                    s->credit_x - TITLE_BG_FETCH_X_OFFSET : 0;
                 int bg3_x = attract ?
                     (y < TITLE_CREDIT_SCROLL_SCANLINE ? credit_top_x : 0) :
                     s->bg_hscroll[2];

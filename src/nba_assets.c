@@ -5,7 +5,7 @@
 
 #define NBA_ASSET_MAGIC "NBA95PAK"
 
-#define NBA_ASSET_PACK_VERSION 17u
+#define NBA_ASSET_PACK_VERSION 18u
 #define NBA_ASSET_HEADER_SIZE 16u
 #define NBA_ASSET_ENTRY_SIZE 24u
 
@@ -115,6 +115,7 @@ static bool asset_metadata_valid(uint32_t id, uint32_t size, uint32_t width,
         case NBA_ASSET_EA_LOGO_STAGE4:
         case NBA_ASSET_EA_A_LAYER:
         case NBA_ASSET_EA_E_LAYER:
+        case NBA_ASSET_EA_SPORTS_LAYER:
         case NBA_ASSET_EA_LOGO_FINAL: {
             uint32_t x = flags >> 16;
             uint32_t y = flags & 0xFFFFu;
@@ -225,6 +226,7 @@ bool nba_assets_load(NbaAssetPack *pack, const char *asset_path) {
             ea_flags = flags;
         }
         if ((id == NBA_ASSET_EA_A_LAYER || id == NBA_ASSET_EA_E_LAYER ||
+             id == NBA_ASSET_EA_SPORTS_LAYER ||
              id == NBA_ASSET_EA_LOGO_FINAL ||
              id == NBA_ASSET_EA_A_FIXED_SEQUENCE) &&
             (width != ea_width || height != ea_height || flags != ea_flags)) {

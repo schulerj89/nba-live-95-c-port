@@ -21,6 +21,12 @@ EXPECTED_RGB_SHA256 = {
     720: "1510bc88860b49adc5a858d0bc98d1aae005b2baecf09d699ec7cdeb72888b6f",
     840: "94aeb0c07ec8bcbba98532e6322618af8fb574bae6af08dbea90951a1d3c4967",
     960: "1df6a727a484fef0a735f3e2c0acf47e2f7a8e3189ac11957f5debc600b9785e",
+    # $87:80CB/$87:8211 role-band entrance. These frames lock the zero,
+    # first-$0004, and following four-pixel steps so the role cannot backstep.
+    1297: "820279cb27c3d0417f3a06cc4c333a276d8abd1f79efcf87b4c9d5685ef95df3",
+    1298: "2484f2c32302111380e0cecc0102611e61470b2dbfce7013c5cab7eab814584b",
+    1299: "2fb36bd7f92f53843dde121f5dcb9ae818cecec9c3b186394c9be1a494e9446e",
+    1300: "d92701cb275070fb676ac3abe7764e2880a6abd155c00bf80da8388dcd488735",
     1320: "a28c3e7452442d0a0dcd92f5ffa24b2ec3be9a09a87cc6e86c34873723ef98e2",
     1440: "43a3c225bc5a7a1793474c761e1250b895811c630d4e54c3417d7b3f7f7fbfd9",
 }
@@ -43,7 +49,7 @@ def load_pack(path):
     if len(data) < 16 or data[:8] != b"NBA95PAK":
         raise AssertionError("invalid asset pack")
     version, count = struct.unpack_from("<II", data, 8)
-    if version != 17 or 16 + count * 24 > len(data):
+    if version != 18 or 16 + count * 24 > len(data):
         raise AssertionError("invalid asset directory")
     assets = {}
     for index in range(count):
@@ -103,6 +109,8 @@ def check_pack(pack_path, repo):
     for retired_text in ("NBTITLE1", "post_ea_title_sequence.wav", "NBA Live 95 (USA).avi"):
         if retired_text in source_text:
             raise AssertionError(f"retired title shortcut remains in source: {retired_text}")
+    if "credit_x > 4" not in source_text:
+        raise AssertionError("credit role endpoint clamp is missing")
 
 
 def check_frames(exe, rom, pack):

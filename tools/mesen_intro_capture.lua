@@ -18,6 +18,8 @@ local motion_enabled = os.getenv("NBA95_CAPTURE_MOTION") == "1"
 local motion_frame = -1
 local a_vram_captured = false
 local e_vram_captured = false
+local sports_vram_captured = false
+local sports_cgram_captured = false
 local mode7_log = nil
 
 local function dump_mem(name, mem_type, size)
@@ -78,8 +80,28 @@ emu.addMemoryCallback(function()
 end, emu.callbackType.exec, 0x82F52D, 0x82F52D,
     emu.cpuType.snes, emu.memType.snesMemory)
 
+-- $82:F52E invokes $80:8FA3 twice with the ROM descriptor at $82:F6D8,
+-- placing the two halves at tile rows $38 and $3D.  $82:F56C is the return
+-- after both writes and before the Mode 7 entrance loop begins.  Preserve the
+-- indexed hardware layer; the port must not infer SPORTS by subtracting two
+-- flattened screenshots.
+emu.addMemoryCallback(function()
+    if not sports_vram_captured then
+        dump_mem("ea_sports_mode7_vram.bin", emu.memType.snesVideoRam, 0x10000)
+        sports_vram_captured = true
+    end
+end, emu.callbackType.exec, 0x82F56C, 0x82F56C,
+    emu.cpuType.snes, emu.memType.snesMemory)
+
 emu.addEventCallback(function()
     if motion_frame >= 0 and motion_frame < 303 then
+        -- F52E installs the tilegroup before F408 arms the palette transfer.
+        -- By motion frame 70 the first F56D wait has committed $AF:F0DC to
+        -- CGRAM, while the indexed SPORTS VRAM layer is unchanged.
+        if motion_frame == 70 and not sports_cgram_captured then
+            dump_mem("ea_sports_mode7_cgram.bin", emu.memType.snesCgRam, 0x200)
+            sports_cgram_captured = true
+        end
         if not mode7_log then
             mode7_log = assert(io.open(out .. "/ea_mode7_state.txt", "wb"))
             mode7_log:write("frame,m7a,m7b,m7c,m7d,m7x,m7y,hscroll,vscroll\n")

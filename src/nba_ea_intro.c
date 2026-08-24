@@ -13,23 +13,32 @@ static int nba_ea_intro_local_frame(float local_t) {
     return frame < 0 ? 0 : frame;
 }
 
-static float nba_ea_intro_mode7_scale(int frame) {
-    /* $82:F56D presents $0001 for two end-of-frame captures before the
-     * first $000C increment.  Mesen then records $000D..$00FD and finally
-     * $0100.  Keeping that initial duplicate is important: without it every
-     * incoming letter is one zoom step too small. */
-    if (frame <= 1) return (float)NBA_INTRO_MODE7_UNIT /
-                           (float)NBA_INTRO_MODE7_START;
-    if (frame >= NBA_INTRO_ZOOM_FRAMES + 1) return 1.0f;
-    int matrix = NBA_INTRO_MODE7_START + NBA_INTRO_MODE7_STEP * (frame - 1);
-    return (float)NBA_INTRO_MODE7_UNIT / (float)matrix;
+static int nba_ea_intro_mode7_matrix(int frame) {
+    if (frame <= 1) return NBA_INTRO_MODE7_START;
+    if (frame >= NBA_INTRO_ZOOM_FRAMES + 1) return NBA_INTRO_MODE7_UNIT;
+    return NBA_INTRO_MODE7_START + NBA_INTRO_MODE7_STEP * (frame - 1);
+}
+
+static int nba_ea_intro_mode7_source(int screen_coordinate, int matrix,
+                                     int scroll, int center) {
+    /* The recomp PPU's Mode 7 path preserves the SNES's low-six-bit
+     * truncation before the final 8.8 shift.  Callers provide the hardware
+     * scroll; the decoded canvas separately maps source (382,402) to (0,0). */
+    int clipped = scroll - center;
+    int start = ((matrix * clipped) & ~63) + (center << 8);
+    return (start + matrix * screen_coordinate) >> 8;
 }
 
 /* $82:F64A advances every BGR555 channel six levels before each flash frame. */
 static uint32_t nba_ea_intro_flash_color(uint32_t color, int flash_frame) {
-    if (flash_frame < 0 || flash_frame >= NBA_INTRO_FLASH_FRAMES) return color;
+    if (flash_frame < 0) return color;
 
-    int steps = (flash_frame + 1) * 6;
+    /* F4C4 calls F64A twice per wait and F64A advances at most three
+     * channel steps.  The observed palette cadence is base,+6,+12,+18,+24,
+     * +30,base,+6,+12: saturation reloads the source palette and starts the
+     * next highlight sweep instead of remaining solid white. */
+    int steps = (flash_frame % 6) * 6;
+    if (steps == 0) return color;
     uint32_t a = (color >> 24) & 0xFF;
     int r5 = (int)(((color >> 16) & 0xFF) * 31u / 255u);
     int g5 = (int)(((color >> 8) & 0xFF) * 31u / 255u);
@@ -44,12 +53,11 @@ static uint32_t nba_ea_intro_flash_color(uint32_t color, int flash_frame) {
     return (a << 24) | (r << 16) | (g << 8) | b;
 }
 
-/* Captured stage images contain a few near-black antialias/background pixels. */
 static int nba_ea_intro_pixel_visible(uint32_t color) {
-    uint32_t r = (color >> 16) & 0xFF;
-    uint32_t g = (color >> 8) & 0xFF;
-    uint32_t b = color & 0xFF;
-    return r > 24 || g > 24 || b > 24;
+    /* Asset extraction marks transparency explicitly.  Authentic dark
+     * BGR555 pixels are artwork and must not be discarded by a brightness
+     * heuristic; doing so punches holes in E/A edge shading. */
+    return (color >> 24) != 0u;
 }
 
 static void nba_ea_intro_render_captured_stage(const NbaAssetItem *item,
@@ -79,33 +87,28 @@ static void nba_ea_intro_render_captured_stage(const NbaAssetItem *item,
 void nba_ea_intro_render_stage1(const NbaAssetPack *assets, NbaRenderer *ren, float local_t,
                                int start_x, int start_y, uint32_t width, uint32_t height) {
     if (!assets || !ren) return;
-    const NbaAssetItem *item1 = nba_assets_get(assets, NBA_ASSET_EA_LOGO_STAGE1);
     const NbaAssetItem *e_item = nba_assets_get(assets, NBA_ASSET_EA_E_LAYER);
-    if (!item1 || !item1->data || !e_item || !e_item->data ||
+    if (!e_item || !e_item->data ||
         e_item->size < width * height * 4u) return;
 
     const uint32_t *e_layer = (const uint32_t *)e_item->data;
     int frame = nba_ea_intro_local_frame(local_t);
-    if (frame >= NBA_INTRO_ZOOM_FRAMES + 1 + NBA_INTRO_FLASH_FRAMES) {
-        nba_ea_intro_render_captured_stage(item1, ren, start_x, start_y);
-        return;
-    }
-    float scale = nba_ea_intro_mode7_scale(frame);
+    /* The PPU register callback observes the next F56D matrix before that
+     * matrix appears in the completed picture. Preserve the one-frame
+     * presentation delay: motion 3 remains offscreen and motion 4 is the
+     * first visible E slice. */
+    int matrix_frame = frame > 0 ? frame - 1 : 0;
+    int matrix = nba_ea_intro_mode7_matrix(matrix_frame);
     int flash_frame = frame - (NBA_INTRO_ZOOM_FRAMES + 2);
 
-    /* M7X/M7Y are fixed at $0200: every component shares the screen center. */
-    float pcx = (float)NBA_SNES_WIDTH * 0.5f;
-    float pcy = (float)NBA_SNES_HEIGHT * 0.5f;
-    float inv_scale = 1.0f / scale;
-
     for (int py = 0; py < NBA_SNES_HEIGHT; py++) {
-        int ty = (int)floorf(pcy - 2.0f + (float)(py - pcy) * inv_scale -
-                             (float)start_y + 0.5f);
+        int source_y = nba_ea_intro_mode7_source(py, matrix, 401, 512);
+        int ty = source_y - 402 - start_y;
         if (ty < 0 || ty >= (int)height) continue;
 
         for (int px = 0; px < NBA_SNES_WIDTH; px++) {
-            int tx = (int)floorf(pcx + 2.0f + (float)(px - pcx) * inv_scale -
-                                 (float)start_x + 0.5f);
+            int source_x = nba_ea_intro_mode7_source(px, matrix, 384, 512);
+            int tx = source_x - 382 - start_x;
             if (tx < 0 || tx >= (int)width) continue;
 
             uint32_t index = (uint32_t)ty * width + (uint32_t)tx;
@@ -128,14 +131,14 @@ void nba_ea_intro_render_stage2(const NbaAssetPack *assets, NbaRenderer *ren, fl
                                int start_x, int start_y, uint32_t width, uint32_t height) {
     if (!assets || !ren) return;
     const NbaAssetItem *item2 = nba_assets_get(assets, NBA_ASSET_EA_LOGO_STAGE2);
-    const NbaAssetItem *item1 = nba_assets_get(assets, NBA_ASSET_EA_LOGO_STAGE1);
+    const NbaAssetItem *e_item = nba_assets_get(assets, NBA_ASSET_EA_E_LAYER);
     const NbaAssetItem *a_item = nba_assets_get(assets, NBA_ASSET_EA_A_LAYER);
     const NbaAssetItem *fixed = nba_assets_get(assets, NBA_ASSET_EA_A_FIXED_SEQUENCE);
-    if (!item1 || !item1->data || !item2 || !item2->data ||
+    if (!e_item || !e_item->data || !item2 || !item2->data ||
         !a_item || !a_item->data || a_item->size < width * height * 4u ||
         !fixed || !fixed->data || fixed->size < width * height * 4u * 11u) return;
 
-    const uint32_t *p1 = (const uint32_t *)item1->data;
+    const uint32_t *e_layer = (const uint32_t *)e_item->data;
     const uint32_t *a_layer = (const uint32_t *)a_item->data;
     int frame = nba_ea_intro_local_frame(local_t);
     if (frame >= NBA_INTRO_ZOOM_FRAMES + 1) {
@@ -150,41 +153,32 @@ void nba_ea_intro_render_stage2(const NbaAssetPack *assets, NbaRenderer *ren, fl
         nba_ea_intro_render_captured_stage(&view, ren, start_x, start_y);
         return;
     }
-    float scale = nba_ea_intro_mode7_scale(frame);
-
-    /* The previous E has already settled. Draw it first so the incoming A can occlude it. */
-    for (uint32_t r = 0; r < height; r++) {
-        int py = start_y + (int)r;
-        if (py < 0 || py >= NBA_SNES_HEIGHT) continue;
-        for (uint32_t c = 0; c < width; c++) {
-            uint32_t index = r * width + c;
-            uint32_t source_color = p1[index];
-            if (nba_ea_intro_pixel_visible(source_color)) {
-                int px = start_x + (int)c;
-                if (px >= 0 && px < NBA_SNES_WIDTH) {
-                    /* $82:F3E9 selects A's palette block for F4C4, not this settled E. */
-                    ren->pixels[py * NBA_SNES_WIDTH + px] = source_color;
-                }
-            }
-        }
-    }
-
-    /* F512 draws A as an independent indexed Mode 7 tilegroup over the
-     * settled E. Transparent A cells do not erase E. */
-    float pcx = (float)NBA_SNES_WIDTH * 0.5f;
-    float pcy = (float)NBA_SNES_HEIGHT * 0.5f;
-    float inv_scale = 1.0f / scale;
-    float origin_fix = 2.0f * (1.0f - inv_scale);
+    /* Motion 33 installs A's matrix/tiles but its completed picture still
+     * contains only the settled E. The A presentation begins on motion 34. */
+    int a_matrix_frame = frame > 0 ? frame - 1 : 0;
+    int a_matrix = nba_ea_intro_mode7_matrix(a_matrix_frame);
 
     for (int py = 0; py < NBA_SNES_HEIGHT; py++) {
-        int ty = (int)floorf(pcy - origin_fix + (float)(py - pcy) * inv_scale -
-                             (float)start_y + 0.5f);
-        if (ty < 0 || ty >= (int)height) continue;
-
         for (int px = 0; px < NBA_SNES_WIDTH; px++) {
-            int tx = (int)floorf(pcx + origin_fix + (float)(px - pcx) * inv_scale -
-                                 (float)start_x + 0.5f);
-            if (tx < 0 || tx >= (int)width) continue;
+            /* The settled E remains at the identity transform throughout A's
+             * entrance; $82:F512 never repositions or rebuilds it. */
+            int e_source_y = nba_ea_intro_mode7_source(py, NBA_INTRO_MODE7_UNIT, 401, 512);
+            int e_source_x = nba_ea_intro_mode7_source(px, NBA_INTRO_MODE7_UNIT, 384, 512);
+            int e_ty = e_source_y - 402 - start_y;
+            int e_tx = e_source_x - 382 - start_x;
+            if (e_tx >= 0 && e_tx < (int)width && e_ty >= 0 && e_ty < (int)height) {
+                uint32_t e_color = e_layer[(uint32_t)e_ty * width + (uint32_t)e_tx];
+                if (nba_ea_intro_pixel_visible(e_color)) {
+                    ren->pixels[py * NBA_SNES_WIDTH + px] = e_color;
+                }
+            }
+
+            if (frame == 0) continue;
+            int source_y = nba_ea_intro_mode7_source(py, a_matrix, 401, 512);
+            int source_x = nba_ea_intro_mode7_source(px, a_matrix, 384, 512);
+            int ty = source_y - 402 - start_y;
+            int tx = source_x - 382 - start_x;
+            if (tx < 0 || tx >= (int)width || ty < 0 || ty >= (int)height) continue;
 
             uint32_t index = (uint32_t)ty * width + (uint32_t)tx;
             uint32_t a_color = a_layer[index];
@@ -203,34 +197,47 @@ void nba_ea_intro_render_stage2(const NbaAssetPack *assets, NbaRenderer *ren, fl
 void nba_ea_intro_render_stage3(const NbaAssetPack *assets, NbaRenderer *ren, float local_t,
                                int start_x, int start_y, uint32_t width, uint32_t height) {
     if (!assets || !ren) return;
-    const NbaAssetItem *item2 = nba_assets_get(assets, NBA_ASSET_EA_LOGO_STAGE2);
     const NbaAssetItem *item3 = nba_assets_get(assets, NBA_ASSET_EA_LOGO_STAGE3);
-    if (!item3 || !item3->data) return;
+    const NbaAssetItem *sports_item = nba_assets_get(assets, NBA_ASSET_EA_SPORTS_LAYER);
+    const NbaAssetItem *fixed = nba_assets_get(assets, NBA_ASSET_EA_A_FIXED_SEQUENCE);
+    size_t frame_pixels = (size_t)width * height;
+    if (!item3 || !item3->data || !sports_item || !sports_item->data ||
+        sports_item->size < frame_pixels * sizeof(uint32_t) ||
+        !fixed || !fixed->data ||
+        fixed->size < frame_pixels * sizeof(uint32_t) * 11u) return;
 
-    const uint32_t *p2 = (item2 && item2->data) ? (const uint32_t *)item2->data : NULL;
-    const uint32_t *p3 = (const uint32_t *)item3->data;
+    /* F408/F52E do not reconstruct EA. The fixed OAM group produced by the
+     * preceding F4C4 path remains resident, so carry its final captured frame
+     * forward verbatim. NBA_ASSET_EA_LOGO_STAGE2 predates that ownership
+     * switch and causes a visible palette/art jump at the stage boundary. */
+    const uint32_t *settled_ea = (const uint32_t *)fixed->data + frame_pixels * 10u;
+    const uint32_t *sports_layer = (const uint32_t *)sports_item->data;
     int frame = nba_ea_intro_local_frame(local_t);
-    if (frame >= NBA_INTRO_ZOOM_FRAMES + 1 + NBA_INTRO_FLASH_FRAMES) {
+    if (frame >= NBA_INTRO_STAGE3_FRAMES) {
         nba_ea_intro_render_captured_stage(item3, ren, start_x, start_y);
         return;
     }
-    float scale = nba_ea_intro_mode7_scale(frame);
+    /* SPORTS has one preparation frame at motion 67 before F56D begins.
+     * The register trace observes the next matrix during the frame, while the
+     * completed picture presents that update on the following frame.  Delay
+     * the rendered matrix once more so motion 73 remains offscreen and motion
+     * 74 is the first visible SPORTS slice, matching the Mesen frame oracle. */
+    int matrix_frame = frame > 1 ? frame - 2 : 0;
+    int matrix = nba_ea_intro_mode7_matrix(matrix_frame);
     int flash_frame = frame - (NBA_INTRO_ZOOM_FRAMES + 2);
 
     /* Draw the settled EA first; the incoming SPORTS layer is composited over it. */
-    if (p2) {
-        for (uint32_t r = 0; r < height; r++) {
-            int py = start_y + (int)r;
-            if (py < 0 || py >= NBA_SNES_HEIGHT) continue;
-            for (uint32_t c = 0; c < width; c++) {
-                uint32_t index = r * width + c;
-                uint32_t source_color = p2[index];
-                if (nba_ea_intro_pixel_visible(source_color)) {
-                    int px = start_x + (int)c;
-                    if (px >= 0 && px < NBA_SNES_WIDTH) {
-                        /* $82:F43A selects SPORTS' palette block for F4C4, not settled EA. */
-                        ren->pixels[py * NBA_SNES_WIDTH + px] = source_color;
-                    }
+    for (uint32_t r = 0; r < height; r++) {
+        int py = start_y + (int)r;
+        if (py < 0 || py >= NBA_SNES_HEIGHT) continue;
+        for (uint32_t c = 0; c < width; c++) {
+            uint32_t index = r * width + c;
+            uint32_t source_color = settled_ea[index];
+            if (nba_ea_intro_pixel_visible(source_color)) {
+                int px = start_x + (int)c;
+                if (px >= 0 && px < NBA_SNES_WIDTH) {
+                    /* $82:F43A selects SPORTS' palette block for F4C4, not settled EA. */
+                    ren->pixels[py * NBA_SNES_WIDTH + px] = source_color;
                 }
             }
         }
@@ -240,26 +247,24 @@ void nba_ea_intro_render_stage3(const NbaAssetPack *assets, NbaRenderer *ren, fl
      * matrix update; the entry frame still presents the settled EA image. */
     if (frame == 0) return;
 
-    /* F52E likewise overwrites its whole changed tilegroup, including cells
-     * which replace or clear pixels from the settled EA artwork. */
-    float pcx = (float)NBA_SNES_WIDTH * 0.5f;
-    float pcy = (float)NBA_SNES_HEIGHT * 0.5f;
-    float inv_scale = 1.0f / scale;
-
+    /* `$82:F52E` draws the `$82:F6D8` ROM tilegroup twice, at tile rows $38
+     * and $3D.  This indexed asset is that combined hardware layer.  SPORTS
+     * is independent of the settled OAM EA; transparent cells never erase or
+     * manufacture EA pixels. */
     for (int py = 0; py < NBA_SNES_HEIGHT; py++) {
-        int ty = (int)floorf(pcy + (float)(py - pcy) * inv_scale - (float)start_y + 0.5f);
+        int source_y = nba_ea_intro_mode7_source(py, matrix, 401, 512);
+        int ty = source_y - 402 - start_y;
         if (ty < 0 || ty >= (int)height) continue;
 
         for (int px = 0; px < NBA_SNES_WIDTH; px++) {
-            int tx = (int)floorf(pcx + (float)(px - pcx) * inv_scale - (float)start_x + 0.5f);
+            int source_x = nba_ea_intro_mode7_source(px, matrix, 384, 512);
+            int tx = source_x - 382 - start_x;
             if (tx < 0 || tx >= (int)width) continue;
 
             uint32_t index = (uint32_t)ty * width + (uint32_t)tx;
-            uint32_t col3 = p3[index];
-            uint32_t col2 = p2 ? p2[index] : 0;
-            if (col3 != col2) {
-                uint32_t color = nba_ea_intro_pixel_visible(col3) ?
-                    nba_ea_intro_flash_color(col3, flash_frame) : 0xFF000000u;
+            uint32_t source_color = sports_layer[index];
+            if (nba_ea_intro_pixel_visible(source_color)) {
+                uint32_t color = nba_ea_intro_flash_color(source_color, flash_frame);
                 ren->pixels[py * NBA_SNES_WIDTH + px] = color;
             }
         }

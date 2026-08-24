@@ -31,6 +31,7 @@ local title_frame = -1
 local title_seen = false
 local dumped_initial = false
 local title_frame_limit = 2160
+local credit_oracle_enabled = os.getenv("NBA95_TITLE_CREDIT_ORACLE") == "1"
 local previous_vram = {}
 local previous_cgram = {}
 
@@ -164,6 +165,13 @@ emu.addEventCallback(function()
         -- oracle only; the extractor never packs the PNGs or a video stream.
         if title_frame % 120 == 0 then
             local f = assert(io.open(out .. string.format("/reference_%04d.png", title_frame), "wb"))
+            f:write(emu.takeScreenshot()); f:close()
+        end
+        -- Optional lossless oracle around $87:80CB's first role/name entrance.
+        -- These diagnostic screenshots are never packed as runtime assets.
+        if credit_oracle_enabled and title_frame >= 1288 and title_frame <= 1332 then
+            local f = assert(io.open(out .. string.format(
+                "/credit_%04d.png", title_frame), "wb"))
             f:write(emu.takeScreenshot()); f:close()
         end
         title_frame = title_frame + 1

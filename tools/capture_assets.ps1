@@ -31,7 +31,11 @@ if ([string]::IsNullOrEmpty($MesenPath) -or !(Test-Path -LiteralPath $MesenPath)
 }
 
 $Captures = @(
-    @{ Name = 'intro_capture'; Script = 'mesen_intro_capture.lua' },
+    @{ Name = 'intro_capture'; Script = 'mesen_intro_capture.lua';
+       Env = @{ NBA95_CAPTURE_MOTION = '1' };
+       Required = @('ea_e_mode7_vram.bin', 'ea_e_mode7_cgram.bin',
+                    'ea_a_mode7_vram.bin', 'ea_a_mode7_cgram.bin',
+                    'ea_sports_mode7_vram.bin', 'ea_sports_mode7_cgram.bin') },
     @{ Name = 'title_capture'; Script = 'mesen_title_capture.lua' },
     @{ Name = 'setup_capture'; Script = 'mesen_setup_capture.lua' },
     @{ Name = 'setup_transition'; Script = 'mesen_setup_transition_capture.lua' },
@@ -86,7 +90,8 @@ foreach ($Capture in $Captures) {
     foreach ($Name in @('NBA95_CAPTURE_MENU', 'NBA95_CAPTURE_SCROLL',
                          'NBA95_CAPTURE_VARIANTS', 'NBA95_CAPTURE_VALUES',
                          'NBA95_CAPTURE_CALLS', 'NBA95_TEAM_CONFIRM',
-                         'NBA95_TEAM_LOGOS', 'NBA95_TEAM_LOGO_STEP')) {
+                         'NBA95_TEAM_LOGOS', 'NBA95_TEAM_LOGO_STEP',
+                         'NBA95_CAPTURE_MOTION')) {
         [Environment]::SetEnvironmentVariable($Name, $null, 'Process')
     }
     if ($Capture.Env) {
@@ -137,6 +142,6 @@ foreach ($Capture in $Captures) {
 }
 } finally {
     Remove-Item Env:NBA95_CAPTURE_DIR -ErrorAction SilentlyContinue
-    Remove-Item Env:NBA95_CAPTURE_MENU,Env:NBA95_CAPTURE_SCROLL,Env:NBA95_CAPTURE_VARIANTS,Env:NBA95_CAPTURE_VALUES,Env:NBA95_CAPTURE_CALLS,Env:NBA95_TEAM_CONFIRM,Env:NBA95_TEAM_LOGOS,Env:NBA95_TEAM_LOGO_STEP -ErrorAction SilentlyContinue
+    Remove-Item Env:NBA95_CAPTURE_MENU,Env:NBA95_CAPTURE_SCROLL,Env:NBA95_CAPTURE_VARIANTS,Env:NBA95_CAPTURE_VALUES,Env:NBA95_CAPTURE_CALLS,Env:NBA95_TEAM_CONFIRM,Env:NBA95_TEAM_LOGOS,Env:NBA95_TEAM_LOGO_STEP,Env:NBA95_CAPTURE_MOTION -ErrorAction SilentlyContinue
 }
 Write-Host 'All asset captures completed.' -ForegroundColor Green

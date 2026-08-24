@@ -7,7 +7,7 @@
 
 | Script | Output |
 |---|---|
-| `mesen_intro_capture.lua` | legal and four EA intro reference frames; set `NBA95_CAPTURE_MOTION=1` for the 123-frame motion oracle |
+| `mesen_intro_capture.lua` | legal and four EA intro reference frames, 303-frame motion oracle, and raw indexed E/A/SPORTS Mode 7 VRAM/CGRAM layers |
 | `mesen_title_capture.lua` | title PPU/APU/cue state |
 | `mesen_setup_capture.lua` | settled Setup VRAM/CGRAM and PPU state |
 | `mesen_setup_transition_capture.lua` | Setup entrance VRAM deltas and cycle-timed APU writes; `NBA95_CAPTURE_MOTION=1` also saves frame oracles |

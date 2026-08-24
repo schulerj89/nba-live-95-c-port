@@ -69,7 +69,7 @@ per-frame actor state, routine hits, sprite origins, raw PPU states, and frames.
 
 ## Regression lock
 
-`tools/test_tipoff.py` locks pack version 17, the raw ball/court assets, the
+`tools/test_tipoff.py` locks pack version 18, the raw ball/court assets, the
 formation/jump/contact cadence, Ghidra-address diagnostics, and RGB hashes at
 frames 90, 170, and 220. `tools/test_cpu_gameplay.py` runs through frame 2000
 and rejects stationary teams, detached hand possession, missing pass/shot/

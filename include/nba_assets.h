@@ -36,6 +36,8 @@ typedef enum {
     NBA_ASSET_EA_E_LAYER            = 71,
     NBA_ASSET_EA_LOGO_FINAL         = 72,
     NBA_ASSET_EA_A_FIXED_SEQUENCE   = 73,
+    /* $82:F52E's two $80:8FA3 draws of the $82:F6D8 Mode 7 tilegroup. */
+    NBA_ASSET_EA_SPORTS_LAYER       = 74,
     NBA_ASSET_TITLE_VRAM            = 80,
     NBA_ASSET_TITLE_CGRAM           = 81,
     NBA_ASSET_TITLE_PPU_TRACE       = 82,
