@@ -8,6 +8,17 @@ import tempfile
 from pathlib import Path
 
 from PIL import Image
+from audio_fingerprint import assert_wav_fingerprint
+
+EXPECTED_AUDIO_RMS = [
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2311, 251, 2219, 1657, 2673, 387,
+    3879, 5371, 4376, 4198, 3915, 5455, 3747, 4886, 5206, 3277, 1072,
+    3229, 3239, 3041, 2540, 3237, 4635, 6171, 3933, 4531, 3302, 5465,
+    3876, 4935, 4494, 5133, 2970, 4870, 1765, 4246, 4441, 4546, 4252,
+    3594, 5256, 4022, 4298, 3492, 5665, 3697, 4972, 5431, 3304, 880,
+    3274, 1215, 2301, 2471, 3250, 4823, 5574, 3877, 5127, 4287, 5471,
+    4037, 4818, 4938, 4950, 2877, 4432, 1028, 3745, 4208,
+]
 
 EXPECTED_ASSETS = {
     260: (229376, "372c50ea64dc4180637c1666d123d3c018012a5c65b31823fc943be28358440b"),
@@ -21,7 +32,7 @@ def load_pack(path):
     if raw[:8] != b"NBA95PAK":
         raise AssertionError("invalid pack magic")
     version, count = struct.unpack_from("<II", raw, 8)
-    if version != 19 or 16 + count * 24 > len(raw):
+    if version != 20 or 16 + count * 24 > len(raw):
         raise AssertionError("invalid asset directory")
     assets = {}
     for index in range(count):
@@ -52,6 +63,23 @@ def main():
     pack, exe, rom = Path(args.pack), Path(args.exe), Path(args.rom)
     assets = load_pack(pack)
 
+    for asset_id, size, magic in (
+            (265, 0x10000, None), (266, 0x80, None),
+            (267, 20, b"NBPISPC1"), (268, None, b"NBPIDSP1")):
+        payload = assets[asset_id][0]
+        if (size is not None and len(payload) != size) or \
+                (magic is not None and payload[:8] != magic):
+            raise AssertionError(f"Player Introduction audio asset {asset_id} changed")
+    trace = assets[268][0]
+    version, frames, event_count = struct.unpack_from("<III", trace, 8)
+    if version != 1 or not 5000 <= frames <= 6000 or \
+            len(trace) != 20 + event_count * 6 or event_count < 100:
+        raise AssertionError("Player Introduction DSP program dimensions changed")
+    font, width, height, flags = assets[269]
+    if len(font) != 0x1000 or (width, height, flags) != (8, 16, 0xA98000) or \
+            font[:6] != b"\x10\x00\x0e\x00\x01\x02":
+        raise AssertionError("Player Introduction ROM font descriptor changed")
+
     for asset_id, (size, digest) in EXPECTED_ASSETS.items():
         payload, width, height, flags = assets[asset_id]
         expected_dimensions = {260: (256, 224), 261: (72, 72), 264: (16, 16)}[asset_id]
@@ -76,10 +104,19 @@ def main():
 
     with tempfile.TemporaryDirectory() as directory:
         matchup = Path(directory) / "matchup.bmp"
-        run(exe, "--headless", "--rom", rom, "--assets", pack,
-            "--player-setup-only", "--player-setup-confirm",
-            "--frames", 500, "--dump-frame", matchup)
-        if rgb_hash(matchup) != "6a67f9baa1b4f8d350cb184371db8133ebc4cafe4e111dfcc3289c0fdd1ca1bd":
+        audio = Path(directory) / "player_intro.wav"
+        output = run(exe, "--headless", "--rom", rom, "--assets", pack,
+                     "--player-setup-only", "--player-setup-confirm",
+                     "--frames", 500, "--dump-frame", matchup,
+                     "--dump-audio", audio)
+        if "Synthesized Player Introduction through ROM BRR/S-DSP: " \
+                "5560 frames, 48271 cycle-timed DSP writes, peak=25983" not in output:
+            raise AssertionError("Player Introduction did not start its ROM SPC path")
+        assert_wav_fingerprint(
+            audio, 2965333, EXPECTED_AUDIO_RMS,
+            [921799, 34924, 13747, 8129, 19548, 1564, 290],
+            [3760, 3760], 1.0, 25000, 27000)
+        if rgb_hash(matchup) != "55fee4c1f2ba099b0682abd830beda56b144c5c1cade00914dde760ecaf25973":
             raise AssertionError("ROM-layout visitor/VS/home presentation changed")
 
         ratings = Path(directory) / "ratings.bmp"
@@ -90,8 +127,8 @@ def main():
         run(exe, "--headless", "--rom", rom, "--assets", pack,
             "--player-setup-only", "--player-setup-confirm",
             "--frames", 812, "--dump-frame", ratings_next)
-        if rgb_hash(ratings) != "98342ebcc2bc04490fc34f4b34f5e56d53f9664cc88578bf8eab9be4c8a75616" or \
-           rgb_hash(ratings_next) != "b93d5129aec0c07e42e54dcbd1eaecda4565421a64698ab2db61b22f5d8446ab":
+        if rgb_hash(ratings) != "a358ee549b0f06d5ddf3d98ea2a4cf8016501fd1ad113c4ee990cd665eca1eae" or \
+           rgb_hash(ratings_next) != "956729d5656ffa97e46d2c27e54859f155ef2463053577eb8b5b986ea2ba548b":
             raise AssertionError("rating-ball thresholds, placement, or 12-frame animation changed")
 
         frame = Path(directory) / "lineup.bmp"

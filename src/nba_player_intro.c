@@ -77,8 +77,11 @@ bool nba_player_intro_init(NbaPlayerIntro *screen, const NbaAssetPack *assets,
     const NbaAssetItem *court = nba_assets_get(assets, NBA_ASSET_PLAYER_INTRO_COURT);
     const NbaAssetItem *portraits = nba_assets_get(
         assets, NBA_ASSET_PLAYER_INTRO_PORTRAITS);
+    const NbaAssetItem *font = nba_assets_get(
+        assets, NBA_ASSET_PLAYER_INTRO_FONT);
     if (!court || court->size != 256u * 224u * sizeof(uint32_t) ||
-        !portraits || portraits->size < PORTRAIT_HEADER_SIZE) return false;
+        !portraits || portraits->size < PORTRAIT_HEADER_SIZE ||
+        !font || font->size < 0x1000u) return false;
     screen->outgoing_pixels = (uint32_t *)malloc(
         256u * 224u * sizeof(uint32_t));
     if (!screen->outgoing_pixels) return false;
@@ -233,50 +236,55 @@ static void centered(NbaRenderer *ren, int y, const char *value) {
                                   0xFFFFFFFFu, 0xFF101010u, 1);
 }
 
-static int presentation_glyph_bounds(const uint8_t *glyph,
-                                     int *first, int *last) {
-    *first = 8; *last = -1;
-    for (int y = 0; y < 8; ++y) for (int x = 0; x < 8; ++x)
-        if (glyph[y] & (0x80 >> x)) {
-            if (x < *first) *first = x;
-            if (x > *last) *last = x;
-        }
-    return *last >= *first ? *last - *first + 1 : 3;
+static const uint8_t *presentation_font(const NbaPlayerIntro *screen) {
+    const NbaAssetItem *font = nba_assets_get(
+        screen->assets, NBA_ASSET_PLAYER_INTRO_FONT);
+    return font && font->size >= 0x1000u ? (const uint8_t *)font->data : NULL;
 }
 
-static int presentation_width(const char *value) {
-    int width = 0;
-    for (const char *p = value; *p; ++p) {
-        int first, last;
-        width += presentation_glyph_bounds(
-            nba_font_get_glyph_8x8(*p), &first, &last) + 1;
-    }
-    return width ? width - 1 : 0;
-}
-
-/* The ROM presentation font is proportionally packed. Trim the debug glyphs'
- * blank bearings and retain their pixels; this matches the measured narrow
- * labels without distorting or overlapping the letter shapes. */
-static void presentation_text(NbaRenderer *ren, int x, int y,
+static int presentation_width(const NbaPlayerIntro *screen,
                               const char *value) {
-    for (const char *p = value; *p; ++p) {
-        const uint8_t *glyph = nba_font_get_glyph_8x8(*p);
-        int first, last, width = presentation_glyph_bounds(glyph, &first, &last);
-        for (int dy = 0; dy < 8; ++dy) for (int sx = first; sx <= last; ++sx) {
-            int dx = sx - first;
-            if (!(glyph[dy] & (0x80 >> sx))) continue;
-            if (x + dx + 1 < 256 && y + dy + 1 < 224)
-                ren->pixels[(y + dy + 1) * 256 + x + dx + 1] = 0xff101010u;
-            if (x + dx >= 0 && x + dx < 256 && y + dy >= 0 && y + dy < 224)
-                ren->pixels[(y + dy) * 256 + x + dx] = 0xffffffffu;
+    const uint8_t *font = presentation_font(screen);
+    if (!font) return 0;
+    int width = 0;
+    for (const unsigned char *p = (const unsigned char *)value; *p; ++p)
+        width += font[0x106u + (*p & 0x7Fu)];
+    return width;
+}
+
+/* $81:9756 consumes descriptor $A9:8000. Each glyph is an 8x16 SNES 2bpp
+ * bitmap (two plane bytes per row); $81:9F54 gets its proportional advance
+ * from descriptor+$106+character. Frame 2100 BG3 palette 0 establishes
+ * colors 1/2/3 as black/$5294 gray/$7FFF white. */
+static void presentation_text(const NbaPlayerIntro *screen, NbaRenderer *ren,
+                              int x, int y, const char *value) {
+    static const uint32_t colors[4] = {
+        0, 0xFF000000u, 0xFFA5A5A5u, 0xFFFFFFFFu
+    };
+    const uint8_t *font = presentation_font(screen);
+    if (!font) return;
+    for (const unsigned char *p = (const unsigned char *)value; *p; ++p) {
+        unsigned character = *p & 0x7Fu;
+        uint16_t offset = (uint16_t)(font[6u + character * 2u] |
+                                    ((uint16_t)font[7u + character * 2u] << 8));
+        if ((size_t)offset + 32u > 0x1000u) continue;
+        const uint8_t *glyph = font + offset;
+        for (int dy = 0; dy < 16; ++dy) for (int dx = 0; dx < 8; ++dx) {
+            int bit = 7 - dx;
+            int color = ((glyph[dy * 2] >> bit) & 1) |
+                        (((glyph[dy * 2 + 1] >> bit) & 1) << 1);
+            int px = x + dx, py = y + dy;
+            if (color && px >= 0 && px < 256 && py >= 0 && py < 224)
+                ren->pixels[py * 256 + px] = colors[color];
         }
-        x += width + 1;
+        x += font[0x106u + character];
     }
 }
 
-static void presentation_centered(NbaRenderer *ren, int y,
-                                  const char *value) {
-    presentation_text(ren, (256 - presentation_width(value)) / 2, y, value);
+static void presentation_centered(const NbaPlayerIntro *screen,
+                                  NbaRenderer *ren, int y, const char *value) {
+    presentation_text(screen, ren,
+                      (256 - presentation_width(screen, value)) / 2, y, value);
 }
 
 static void draw_matchup(const NbaPlayerIntro *screen, NbaRenderer *ren) {
@@ -286,15 +294,15 @@ static void draw_matchup(const NbaPlayerIntro *screen, NbaRenderer *ren) {
     draw_team_plate(screen, ren, screen->session->left_team, 66, 30);
     draw_team_plate(screen, ren, screen->session->right_team, 66, 118);
     if (away) {
-        presentation_text(ren, 120, 40, away->name);
-        presentation_text(ren, 120, 54, away->nickname);
+        presentation_text(screen, ren, 120, 40, away->name);
+        presentation_text(screen, ren, 120, 54, away->nickname);
     }
-    presentation_centered(ren, 98, "VS");
+    presentation_centered(screen, ren, 98, "VS");
     if (home) {
-        presentation_text(ren, 120, 128, home->name);
-        presentation_text(ren, 120, 142, home->nickname);
+        presentation_text(screen, ren, 120, 128, home->name);
+        presentation_text(screen, ren, 120, 142, home->nickname);
         snprintf(arena, sizeof(arena), "AT %s ARENA", home->name);
-        presentation_centered(ren, 184, arena);
+        presentation_centered(screen, ren, 184, arena);
     }
 }
 
@@ -326,7 +334,7 @@ static void draw_ratings(const NbaPlayerIntro *screen, NbaRenderer *ren) {
         int pose = (screen->phase_frame / 12 + row) % 6;
         int away_count = rating_ball_count(away ? away->rank[row] : 27);
         int home_count = rating_ball_count(home ? home->rank[row] : 27);
-        presentation_centered(ren, y + 1, labels[row]);
+        presentation_centered(screen, ren, y + 1, labels[row]);
         for (int ball = 0; ball < away_count; ++ball)
             draw_rating_ball(screen, ren, pose,
                              68 - (away_count - 1 - ball) * 20, y);

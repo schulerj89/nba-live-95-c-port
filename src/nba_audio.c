@@ -519,6 +519,73 @@ bool nba_audio_play_setup_dsp(NbaAudio *audio, const NbaAssetPack *assets) {
     return true;
 }
 
+/**
+ * Offset/Address/Size: $80:9829 -> $80:A9E3/$80:AACD | Player Introduction
+ * Subroutines: $80:9829 ($98CD transfer loop; ARAM/BRR upload),
+ *              $80:A9E3 (command $0BFC),
+ *              $80:AACD (APU queue/update)
+ * Purpose: Replays the presentation's independent ROM sample bank and exact
+ *          cycle-timed S-DSP program.  This is synthesized from BRR at runtime;
+ *          asset 268 contains register control data, not mixed PCM.
+ */
+bool nba_audio_play_player_intro_dsp(NbaAudio *audio,
+                                     const NbaAssetPack *assets) {
+    static const NbaSpcTrackSpec spec = {
+        NBA_ASSET_PLAYER_INTRO_SPC_RAM, NBA_ASSET_PLAYER_INTRO_SPC_DSP,
+        NBA_ASSET_PLAYER_INTRO_SPC_STATE, NBA_ASSET_PLAYER_INTRO_DSP_TRACE,
+        "NBPISPC1", "NBPIDSP1", "Player Introduction", 7200, 6
+    };
+    if (!audio || !assets) return false;
+    NbaSpcTrackRender render;
+    if (!audio_prepare_spc_track(assets, &spec, &render)) return false;
+
+    uint32_t rendered = 0;
+    uint32_t previous_cycle = 0;
+    for (uint32_t i = 0; i < render.event_count; ++i) {
+        const uint8_t *event = render.trace + 20u + i * 6u;
+        uint32_t cycle = audio_u32(event);
+        if (cycle < previous_cycle || event[4] >= NBA_SPC_DSP_REGS) {
+            audio_discard_render(&render);
+            fprintf(stderr, "[AUDIO] Invalid Player Introduction DSP cycle event.\n");
+            return false;
+        }
+        previous_cycle = cycle;
+        uint32_t target = cycle / NBA_SPC_CYCLES_PER_SAMPLE;
+        if (target > render.sample_count) target = render.sample_count;
+        if (target > rendered) {
+            nba_spc_render_dsp(render.spc, render.pcm + rendered * 2u,
+                               (int)(target - rendered));
+            rendered = target;
+        }
+        nba_spc_write_dsp(render.spc, event[4], event[5]);
+    }
+    if (rendered < render.sample_count) {
+        nba_spc_render_dsp(render.spc, render.pcm + rendered * 2u,
+                           (int)(render.sample_count - rendered));
+    }
+
+    int peak = 0;
+    for (uint32_t i = 0; i < render.sample_count * 2u; ++i) {
+        int magnitude = render.pcm[i] < 0 ? -(int)render.pcm[i] :
+                                           (int)render.pcm[i];
+        if (magnitude > peak) peak = magnitude;
+    }
+    if (peak == 0) {
+        audio_discard_render(&render);
+        fprintf(stderr, "[AUDIO] Player Introduction SPC synthesis produced silence.\n");
+        return false;
+    }
+
+    uint32_t frame_count = render.frame_count;
+    uint32_t event_count = render.event_count;
+    if (!audio_play_generated(audio, &render, false,
+                              NBA_AUDIO_TRACK_PLAYER_INTRO_SPC)) return false;
+    printf("[AUDIO] Synthesized Player Introduction through ROM BRR/S-DSP: "
+           "%u frames, %u cycle-timed DSP writes, peak=%d.\n",
+           frame_count, event_count, peak);
+    return true;
+}
+
 bool nba_audio_save_generated_wav(const NbaAudio *audio, const char *path) {
     if (!audio || !path || !audio->generated_wav ||
         audio->generated_wav_size < 44) return false;

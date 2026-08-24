@@ -27,6 +27,14 @@ public class DumpPlayerIntroduction extends GhidraScript {
 
     private Range[] rangesFor(int bank) {
         if (bank == 0x80) return new Range[] {
+            new Range(0x9829, 0x98E8, "intro_upload_apu_bank",
+                "Bulk Player Introduction ARAM/BRR upload. Live execution remains in its $80:98CD transfer loop from setup-relative frames 1955-2039 before the presentation music command."),
+            new Range(0x9DF3, 0x9F20, "intro_request_sound",
+                "Common sound request dispatcher. Player Setup confirmation enters with A=$004B before the independent introduction bank is loaded."),
+            new Range(0xA9E3, 0xAA59, "intro_send_apu_command",
+                "APU command writer. Live Player Introduction entry reaches this routine with A=$0BFC at setup-relative frame 2042."),
+            new Range(0xAACD, 0xAB35, "intro_update_apu_queue",
+                "APU queue/handshake update reached after command $0BFC; its downstream SPC program keys the presentation voices."),
             new Range(0xB344, 0xB378, "intro_build_screen_object",
                 "Shared object builder reached while the matchup comparison and lineup labels are assembled."),
             new Range(0xBBA8, 0xBD1A, "intro_decode_planar_graphics",
@@ -39,10 +47,12 @@ public class DumpPlayerIntroduction extends GhidraScript {
                 "Shared PPU transition-script interpreter used when leaving Player Setup.")
         };
         if (bank == 0x81) return new Range[] {
-            new Range(0x9756, 0x979C, "intro_update_object_position",
-                "Shared post-setup presentation positioning helper reached by matchup/lineup object scripts."),
-            new Range(0x9F54, 0xA03C, "intro_object_motion_wrappers",
-                "Object-script wrappers that feed the presentation position helper."),
+            new Range(0x9756, 0x9FD3, "intro_draw_proportional_text",
+                "ROM proportional BG3 text renderer used by matchup names and comparison labels. The internal $81:9F54 entry measures glyph advances from the same font descriptor."),
+            new Range(0x9FDF, 0xA05E, "intro_draw_centered_text",
+                "Centered presentation-text wrapper: calls $81:9F54 to measure the string, adjusts the origin, then calls $81:9756 to render it."),
+            new Range(0xA05F, 0xA1ED, "intro_seed_text_tile_grid",
+                "Seeds the dynamic BG3 tile grid consumed by $81:9756; presentation glyph pixels are rendered into these tiles rather than static debug-font OAM."),
             new Range(0xA1E7, 0xA241, "intro_copy_portrait_palette",
                 "Copies the three portrait palette groups; live at the first card and every starter swap."),
             new Range(0xA489, 0xA520, "post_setup_scene_dispatch",

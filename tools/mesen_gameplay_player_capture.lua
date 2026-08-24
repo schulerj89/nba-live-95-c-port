@@ -12,6 +12,7 @@ local LAST_SETUP_FRAME = tonumber(os.getenv("NBA95_GAMEPLAY_LAST_FRAME")) or 600
 local ANIMATION_TRACE = os.getenv("NBA95_PLAYER_ANIMATION_TRACE") == "1"
 local FAST_ANIMATION_TRACE = os.getenv("NBA95_PLAYER_FAST_ANIMATION") == "1"
 local PLAYER_INTRO_TRACE = os.getenv("NBA95_PLAYER_INTRO_TRACE") == "1"
+local PLAYER_INTRO_AUDIO_TRACE = os.getenv("NBA95_PLAYER_INTRO_AUDIO_TRACE") == "1"
 local ANIMATION_INPUT_START = tonumber(os.getenv("NBA95_PLAYER_ANIMATION_INPUT_START")) or 3180
 local advance_frames = { 650, 850, 1050, 1250, 1450, 1650, 1850, 2050, 2250 }
 if PLAYER_INTRO_TRACE then
@@ -37,7 +38,67 @@ local trace_animation = {}
 local trace_palette_calls = {}
 local trace_scene_hits = {}
 local trace_intro = {}
+local trace_intro_font = {}
+local trace_intro_audio = {}
 local state_dumped, register_pc_frame = false, -1
+local intro_audio_capturing, intro_audio_base_cycle = false, 0
+local intro_audio_dsp_addr = 0
+local intro_audio_dsp_events = {}
+
+local function flush_intro_audio_dsp_events()
+    if not intro_audio_dsp_file or #intro_audio_dsp_events == 0 then return end
+    intro_audio_dsp_file:write(table.concat(intro_audio_dsp_events, "\n") .. "\n")
+    intro_audio_dsp_events = {}
+end
+
+if PLAYER_INTRO_AUDIO_TRACE then
+    local function on_apu_write(address, value)
+        if setup_frame >= 1400 and setup_frame <= 2800 then
+            local state = emu.getState()
+            trace_intro_audio[#trace_intro_audio + 1] = string.format(
+                "frame=%d APU port=%d value=%02X pc=%02X:%04X\n",
+                setup_frame, address & 3, value, state["cpu.k"] or 0,
+                state["cpu.pc"] or 0)
+        end
+    end
+    for bank = 0, 0xBF do
+        if bank <= 0x3F or bank >= 0x80 then
+            local first = bank * 0x10000 + 0x2140
+            emu.addMemoryCallback(on_apu_write, emu.callbackType.write,
+                first, first + 3, emu.cpuType.snes, emu.memType.snesMemory)
+        end
+    end
+    for _, address in ipairs({ 0x809DF3, 0x80A9E3, 0x80AACD }) do
+        emu.addMemoryCallback(function(hit)
+            if setup_frame >= 1400 and setup_frame <= 2800 then
+                local state = emu.getState()
+                trace_intro_audio[#trace_intro_audio + 1] = string.format(
+                    "frame=%d EXEC=%06X a=%04X x=%04X y=%04X\n",
+                    setup_frame, hit, state["cpu.a"] or 0,
+                    state["cpu.x"] or 0, state["cpu.y"] or 0)
+            end
+        end, emu.callbackType.exec, address, address,
+            emu.cpuType.snes, emu.memType.snesMemory)
+    end
+
+    emu.addMemoryCallback(function(_, value)
+        intro_audio_dsp_addr = value & 0x7F
+    end, emu.callbackType.write, 0x00F2, 0x00F2,
+        emu.cpuType.spc, emu.memType.spcMemory)
+
+    emu.addMemoryCallback(function(_, value)
+        if not intro_audio_capturing then return end
+        local state = emu.getState()
+        local cycle = state["spc.cycle"]
+        if type(cycle) ~= "number" then return end
+        local delta = cycle - intro_audio_base_cycle
+        if delta < 0 then return end
+        intro_audio_dsp_events[#intro_audio_dsp_events + 1] = string.format(
+            "%d %02X %02X", delta, intro_audio_dsp_addr, value)
+        if #intro_audio_dsp_events >= 2048 then flush_intro_audio_dsp_events() end
+    end, emu.callbackType.write, 0x00F3, 0x00F3,
+        emu.cpuType.spc, emu.memType.spcMemory)
+end
 
 local function pulse(frame, at)
     return frame >= at and frame < at + 3
@@ -122,6 +183,22 @@ if PLAYER_INTRO_TRACE then
         end, emu.callbackType.exec, range[1], range[2],
             emu.cpuType.snes, emu.memType.snesMemory)
     end
+    emu.addMemoryCallback(function(address)
+        if setup_frame < 2040 or setup_frame > 2500 then return end
+        local state = emu.getState()
+        local direct = state["cpu.d"] or 0
+        local function byte(at)
+            return emu.read((direct + at) & 0x1ffff,
+                emu.memType.snesWorkRam, false) or 0
+        end
+        local function word(at) return byte(at) | (byte(at + 1) << 8) end
+        trace_intro_font[#trace_intro_font + 1] = string.format(
+            "frame=%d pc=%06X font=%02X:%04X text=%02X:%04X x=%04X y=%04X " ..
+            "style=%04X\n", setup_frame, address, byte(0x0e), word(0x0c),
+            byte(0x1a), word(0x18), state["cpu.x"] or 0,
+            state["cpu.y"] or 0, word(0x02))
+    end, emu.callbackType.exec, 0x819756, 0x819756,
+        emu.cpuType.snes, emu.memType.snesMemory)
 end
 
 if not FAST_ANIMATION_TRACE then for bank = 0x80, 0xBF do
@@ -303,6 +380,45 @@ emu.addEventCallback(function()
     local frame = setup_frame
     setup_frame = setup_frame + 1
 
+    -- The Player Introduction upload through $80:98CD completes immediately
+    -- before this frame.  Snapshot the ROM's completed ARAM bank and resident
+    -- SPC state before $80:A9E3 sends command $0BFC two frames later, then
+    -- retain the exact cycle-timed S-DSP program for asset-pack replay.
+    if PLAYER_INTRO_AUDIO_TRACE and frame == 2040 then
+        local state = emu.getState()
+        intro_audio_base_cycle = assert(state["spc.cycle"], "SPC cycle unavailable")
+        dump_mem("player_intro_spc_ram.bin", emu.memType.spcRam, 0x10000)
+        dump_mem("player_intro_spc_dsp.bin", emu.memType.spcDspRegisters, 0x80)
+        local spc_state = assert(io.open(out .. "/player_intro_spc_state.txt", "wb"))
+        spc_state:write(string.format(
+            "pc=%s a=%s x=%s y=%s sp=%s ps=%s cycle=%s frames=%d\n",
+            tostring(state["spc.pc"]), tostring(state["spc.a"]),
+            tostring(state["spc.x"]), tostring(state["spc.y"]),
+            tostring(state["spc.sp"]), tostring(state["spc.ps"]),
+            tostring(intro_audio_base_cycle), LAST_SETUP_FRAME - frame))
+        spc_state:close()
+        intro_audio_dsp_file = assert(io.open(
+            out .. "/player_intro_dsp_cycle_trace.txt", "wb"))
+        intro_audio_dsp_file:write("# cycle_delta register value\n")
+        intro_audio_capturing = true
+    end
+
+    if PLAYER_INTRO_AUDIO_TRACE and frame >= 1400 and frame <= 2800 and
+       frame % 30 == 0 then
+        local voices = {}
+        for voice = 0, 7 do
+            local base = voice * 0x10
+            voices[#voices + 1] = string.format("v%d:s%02X/e%02X", voice,
+                emu.read(base + 4, emu.memType.spcDspRegisters, false) or 0,
+                emu.read(base + 8, emu.memType.spcDspRegisters, false) or 0)
+        end
+        trace_intro_audio[#trace_intro_audio + 1] = string.format(
+            "frame=%d DSP kon=%02X koff=%02X %s\n", frame,
+            emu.read(0x4c, emu.memType.spcDspRegisters, false) or 0,
+            emu.read(0x5c, emu.memType.spcDspRegisters, false) or 0,
+            table.concat(voices, " "))
+    end
+
     if ANIMATION_TRACE and frame >= TRACE_FIRST and frame <= TRACE_LAST then
         local function word(at)
             return (emu.read(at, emu.memType.snesWorkRam, false) or 0) |
@@ -392,6 +508,14 @@ emu.addEventCallback(function()
         if PLAYER_INTRO_TRACE then
             local intro = assert(io.open(out .. "/player_intro_exec_trace.txt", "wb"))
             intro:write(table.concat(trace_intro)); intro:close()
+            local font = assert(io.open(out .. "/player_intro_font_trace.txt", "wb"))
+            font:write(table.concat(trace_intro_font)); font:close()
+        end
+        if PLAYER_INTRO_AUDIO_TRACE then
+            flush_intro_audio_dsp_events()
+            if intro_audio_dsp_file then intro_audio_dsp_file:close() end
+            local audio = assert(io.open(out .. "/player_intro_audio_trace.txt", "wb"))
+            audio:write(table.concat(trace_intro_audio)); audio:close()
         end
         if ANIMATION_TRACE then
             local animation = assert(io.open(out .. "/player_animation_states.txt", "wb"))

@@ -30,7 +30,8 @@ typedef enum {
     NBA_AUDIO_TRACK_NONE = 0,
     NBA_AUDIO_TRACK_WAV,
     NBA_AUDIO_TRACK_TITLE_SPC,
-    NBA_AUDIO_TRACK_SETUP_SPC
+    NBA_AUDIO_TRACK_SETUP_SPC,
+    NBA_AUDIO_TRACK_PLAYER_INTRO_SPC
 } NbaAudioTrack;
 
 typedef enum {
@@ -50,6 +51,7 @@ void nba_audio_set_setup_music_volume(NbaAudio *audio, uint16_t value, uint16_t 
 void nba_audio_set_setup_sfx_volume(NbaAudio *audio, uint16_t value, uint16_t maximum);
 bool nba_audio_play_title_spc(NbaAudio *audio, const NbaAssetPack *assets);
 bool nba_audio_play_setup_dsp(NbaAudio *audio, const NbaAssetPack *assets);
+bool nba_audio_play_player_intro_dsp(NbaAudio *audio, const NbaAssetPack *assets);
 bool nba_audio_save_generated_wav(const NbaAudio *audio, const char *path);
 bool nba_audio_save_setup_sfx_wav(const NbaAudio *audio, const char *path);
 void nba_audio_stop(NbaAudio *audio);

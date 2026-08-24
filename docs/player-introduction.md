@@ -15,6 +15,12 @@ Start/A.
   card swap reaches `$80:C633`; command `FB46` branches to the `$80:BD1B`
   expansion handler.
 - `$81:A1E7-$81:A241` copies the three portrait palette groups after each swap.
+- `$81:9756-$81:9FD3` renders the proportional BG3 presentation font described
+  at `$A9:8000`; `$81:9FDF-$81:A05E` measures/centers strings and
+  `$81:A05F-$81:A1ED` seeds the dynamic text-tile grid.
+- `$80:9829` uploads the independent pregame ARAM/BRR bank (the live transfer
+  loop is `$80:98CD`). `$80:A9E3` sends command `$0BFC`, then `$80:AACD`
+  advances the APU queue. The first introduction voices key on after that path.
 - Live Mesen changes occurred 434 frames apart. The visitor/home boundary came
   after roster slot four, and roster table `$84:E640` confirms that slots 0..4
   are the five starters.
@@ -38,8 +44,14 @@ navigates Team Select until the requested ID is observed, and verifies that ID
 again when `$87:BE92` begins the lineup loop. It saves raw PPU state only after
 the ROM has built each home-team card.
 
+Assets 265-268 contain the Player Introduction's 64 KiB ARAM bank, S-DSP
+register snapshot, SPC state, and 5,560-frame cycle-timed DSP program. Asset
+269 is the `$A9:8000` ROM font descriptor and its original 8x16 2bpp glyphs.
+The C runtime synthesizes the BRR samples and does not store a mixed song WAV.
+
 ## Regression
 
-`tools/test_player_intro.py` locks the two asset payloads, all 290 portrait
-keys, Player Setup handoff, first-card frame, visitor/home boundary, and
-final-card cadence.
+`tools/test_player_intro.py` locks the visual assets, all 290 portrait keys,
+ROM font format, SPC/DSP asset dimensions, a phase-tolerant runtime-audio
+fingerprint, Player Setup handoff, first-card frame, visitor/home boundary,
+and final-card cadence.

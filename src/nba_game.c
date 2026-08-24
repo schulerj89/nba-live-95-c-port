@@ -51,7 +51,9 @@ static const char *nba_debug_setup_action_name(NbaSetupAction action) {
 }
 
 static const char *nba_debug_audio_name(uint8_t track) {
-    static const char *const names[] = { "NONE", "WAV", "TITLE_SPC", "SETUP_SPC" };
+    static const char *const names[] = {
+        "NONE", "WAV", "TITLE_SPC", "SETUP_SPC", "PLAYER_INTRO_SPC"
+    };
     return track < sizeof(names) / sizeof(names[0]) ? names[track] : "?";
 }
 
@@ -315,6 +317,12 @@ bool nba_game_enter_state(NbaGame *game, NbaGameState state) {
         if (!nba_player_intro_init(&game->scene.player_intro, &game->assets,
                                    &game->session, game->renderer.pixels)) {
             fprintf(stderr, "[GAME] Player Introduction asset initialization failed.\n");
+            return false;
+        }
+        if (!nba_audio_play_player_intro_dsp(&game->audio, &game->assets)) {
+            game->audio.status = NBA_AUDIO_STATUS_SYNTH_FAILED;
+            fprintf(stderr, "[AUDIO] Player Introduction synthesis failed; "
+                            "continuing silently.\n");
             return false;
         }
     } else if (state == NBA_STATE_TIPOFF) {

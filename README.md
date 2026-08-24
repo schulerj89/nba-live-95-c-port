@@ -4,9 +4,9 @@ An in-progress native C99 port of the US SNES release of NBA Live '95. The
 current playable path covers the Nintendo license, NBA legal screen, EA SPORTS
 intro, animated title, Game Setup, Exhibition Team Select, and Player Setup.
 
-Graphics and audio come from a user-supplied ROM-derived asset pack. The title
-and Game Setup music run the original SPC700 driver and BRR samples; the pack
-does not contain rendered title video or mixed title/Setup songs.
+Graphics and audio come from a user-supplied ROM-derived asset pack. The title,
+Game Setup, and Player Introduction music use the original SPC700/S-DSP state
+and BRR samples; the pack does not contain rendered video or mixed music WAVs.
 
 ## Requirements
 

@@ -112,7 +112,12 @@ typedef enum {
     NBA_ASSET_GAMEPLAY_COURT                   = 263,
     /* Six ROM OBJ poses used by $83:F901's team-rating basketball rows. */
     NBA_ASSET_PLAYER_INTRO_RATING_BALLS        = 264,
-    NBA_ASSET_MAX                   = 265
+    NBA_ASSET_PLAYER_INTRO_SPC_RAM              = 265,
+    NBA_ASSET_PLAYER_INTRO_SPC_DSP              = 266,
+    NBA_ASSET_PLAYER_INTRO_SPC_STATE            = 267,
+    NBA_ASSET_PLAYER_INTRO_DSP_TRACE            = 268,
+    NBA_ASSET_PLAYER_INTRO_FONT                 = 269,
+    NBA_ASSET_MAX                   = 270
 } NbaAssetId;
 
 typedef struct {

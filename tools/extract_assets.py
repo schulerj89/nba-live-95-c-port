@@ -1334,6 +1334,71 @@ def create_asset_pack(rom_path, output_path):
         player_intro_portrait_dir)
     player_intro_rating_balls = build_player_intro_rating_balls(
         player_intro_capture_dir)
+    # Live $81:9756 calls identify the presentation font descriptor as
+    # $A9:8000 (normalized LoROM offset $148000).  It contains the pointer
+    # table, proportional advances, and original 8x16 2bpp glyphs.
+    player_intro_font = rom_data[0x148000:0x149000]
+    if len(player_intro_font) != 0x1000 or player_intro_font[:6] != \
+            b"\x10\x00\x0e\x00\x01\x02":
+        raise RuntimeError("Player Introduction ROM font descriptor is invalid")
+    player_intro_audio_dir = os.environ.get(
+        "NBA95_PLAYER_INTRO_AUDIO_DIR") or os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "..", ".analysis",
+            "player-intro-audio-assets-20260823")
+
+    def read_player_intro_audio(name, expected_size=None):
+        path = os.path.join(player_intro_audio_dir, name)
+        if not os.path.exists(path):
+            raise RuntimeError(f"Missing Player Introduction audio capture: {path}. "
+                               "Run mesen_gameplay_player_capture.lua with "
+                               "NBA95_PLAYER_INTRO_AUDIO_TRACE=1.")
+        payload = open(path, "rb").read()
+        if expected_size is not None and len(payload) != expected_size:
+            raise RuntimeError(f"Invalid Player Introduction audio asset {path}: "
+                               f"expected {expected_size} bytes, got {len(payload)}")
+        return payload
+
+    player_intro_spc_ram = read_player_intro_audio("player_intro_spc_ram.bin", 0x10000)
+    player_intro_spc_dsp = read_player_intro_audio("player_intro_spc_dsp.bin", 0x80)
+    player_intro_state_text = read_player_intro_audio(
+        "player_intro_spc_state.txt").decode("ascii")
+
+    def player_intro_state_int(key):
+        match = re.search(r"(?:^|\s)" + re.escape(key) +
+                          r"=(-?\d+)(?:\s|$)", player_intro_state_text)
+        if not match:
+            raise RuntimeError(f"Player Introduction capture is missing state key {key}")
+        return int(match.group(1))
+
+    player_intro_frames = player_intro_state_int("frames")
+    player_intro_spc_state = b"NBPISPC1" + struct.pack(
+        "<IH6B", 1, player_intro_state_int("pc"), player_intro_state_int("a"),
+        player_intro_state_int("x"), player_intro_state_int("y"),
+        player_intro_state_int("sp"), player_intro_state_int("ps"), 0)
+    player_intro_dsp_events = []
+    previous_cycle = -1
+    for raw in read_player_intro_audio(
+            "player_intro_dsp_cycle_trace.txt").decode("ascii").splitlines():
+        if not raw or raw.startswith("#"):
+            continue
+        cycle_text, register_text, value_text = raw.split()
+        event = (int(cycle_text) // 2, int(register_text, 16), int(value_text, 16))
+        if (event[0] < previous_cycle or not 0 <= event[1] < 0x80 or \
+                not 0 <= event[2] <= 255):
+            raise RuntimeError(f"Invalid Player Introduction DSP event: {event}")
+        previous_cycle = event[0]
+        player_intro_dsp_events.append(event)
+    max_player_intro_cycles = player_intro_frames * 1024000 // 60
+    if not player_intro_dsp_events or \
+            player_intro_dsp_events[-1][0] > max_player_intro_cycles:
+        raise RuntimeError("Player Introduction DSP trace exceeds its declared duration")
+    player_intro_dsp_trace = bytearray(struct.pack(
+        "<8sIII", b"NBPIDSP1", 1, player_intro_frames,
+        len(player_intro_dsp_events)))
+    for cycle, register, value in player_intro_dsp_events:
+        player_intro_dsp_trace.extend(struct.pack("<IBB", cycle, register, value))
+    print(f"[ASSET EXTRACTOR] Packed Player Introduction ROM BRR/S-DSP program: "
+          f"{player_intro_frames} frames, {len(player_intro_dsp_events)} writes")
     # OBJ tile $EA has one byte-for-byte match in the ROM. Colors 5..10 are
     # the hardware palette entries selected by the tile during the jump ball.
     tipoff_ball = struct.pack(
@@ -1413,6 +1478,11 @@ def create_asset_pack(rom_path, output_path):
         (262, 8, 8, 0x0D9C27, tipoff_ball),
         (263, 256, 224, 0, gameplay_court),
         (264, 16, 16, 6, player_intro_rating_balls),
+        (265, 0, 0, 0, player_intro_spc_ram),
+        (266, 0, 0, 0, player_intro_spc_dsp),
+        (267, 0, 0, 0, player_intro_spc_state),
+        (268, 0, 0, 0, bytes(player_intro_dsp_trace)),
+        (269, 8, 16, 0xA98000, player_intro_font),
     ])
     assets.extend([
         (124, 0, 0, 0, rules_vram_bytes),
@@ -1472,7 +1542,7 @@ def create_asset_pack(rom_path, output_path):
                     extra_audio_id += 1
 
     header_magic = b"NBA95PAK"
-    version = 19
+    version = 20
     asset_count = len(assets)
     entry_size = 24 # 6 * 4 bytes
 
