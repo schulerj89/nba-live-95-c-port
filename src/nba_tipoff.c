@@ -1209,7 +1209,11 @@ static void cpu_update_possession(NbaTipoff *tipoff) {
                      actor_index < NBA_GAMEPLAY_ACTOR_COUNT; ++actor_index)
                     tipoff->actors[actor_index].controller_assignment_raw = -1;
                 handler->control_mode = 12u;
-                actor_set_animation(handler, 0x31u, 0x03u);
+                /* `$86:B769` mode 12 uses upper resource `$16` and lower
+                 * resource `$32` for the complete live-covered shot window.
+                 * The former `$31/$03` pair belonged to the provisional host
+                 * animation path, not the ROM shot executor. */
+                actor_set_animation(handler, 0x16u, 0x32u);
                 tipoff->possession_actor = -1;
             }
             break;

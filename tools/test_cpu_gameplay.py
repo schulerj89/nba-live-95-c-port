@@ -297,7 +297,7 @@ def main():
         mismatch_pairs = {(actor["animation"], actor["lower_animation"])
                           for row in rows[219:] for actor in row["actors"]
                           if actor["animation"] != actor["lower_animation"]}
-        if not {(0x0B, 0x03), (0x31, 0x03)}.issubset(mismatch_pairs):
+        if not {(0x0B, 0x03), (0x16, 0x32)}.issubset(mismatch_pairs):
             raise AssertionError(f"independent animation pairs missing: {mismatch_pairs}")
         if any(row["possession"]["rng_state_raw"] in (0, 0xFFFF)
                for row in rows[219:]):
