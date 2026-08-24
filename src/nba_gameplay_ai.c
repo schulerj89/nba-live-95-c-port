@@ -552,6 +552,81 @@ bool nba_gameplay_defense_mode_target(
     return true;
 }
 
+/* `$85:AFC2-$B103` uses the same major-plus-minor-quarter metric for its
+ * predicted-ball scan as the rest of the formation planner. Arithmetic is
+ * deliberately wrapped to a 16-bit word. */
+uint16_t nba_gameplay_weighted_distance(int16_t dx, int16_t dy) {
+    uint16_t x = magnitude16(dx), y = magnitude16(dy);
+    uint16_t high = x >= y ? x : y;
+    uint16_t low = x >= y ? y : x;
+    return (uint16_t)(high + (low >> 2));
+}
+
+/* `$85:AFB2-$B128`: AF5C first normalizes only this side's modes below
+ * seven to mode 1. With no owner/receiver, it scans the five records against
+ * predicted ball `$0918/$091A`; a strictly smaller distance replaces the
+ * winner, so equal distances retain the earliest record. */
+int8_t nba_gameplay_select_no_owner_pursuer(
+    const NbaGameplayLoosePursuitActor actors[5],
+    int16_t predicted_ball_x, int16_t predicted_ball_y,
+    uint8_t normalized_modes[5]) {
+    if (!actors) return -1;
+    uint16_t best = 0x7FFFu;
+    int8_t selected = -1;
+    for (unsigned i = 0; i < 5u; ++i) {
+        uint8_t mode = actors[i].control_mode;
+        if (normalized_modes) normalized_modes[i] = mode < 7u ? 1u : mode;
+        if (mode >= 7u) continue;
+        uint16_t distance = nba_gameplay_weighted_distance(
+            wrap16((int32_t)actors[i].x - predicted_ball_x),
+            wrap16((int32_t)actors[i].y - predicted_ball_y));
+        /* Native `CMP best / BPL` is a wrapped N-bit test, not unsigned `<`. */
+        if ((int16_t)(uint16_t)(distance - best) < 0) {
+            best = distance;
+            selected = (int8_t)i;
+        }
+    }
+    if (normalized_modes && selected >= 0)
+        normalized_modes[(unsigned)selected] = 3u;
+    return selected;
+}
+
+/* Pure allow/decline result from `$86:F0FD-$F1AF`. The caller owns F134's
+ * dead-ball clock/facing writes and B3AA's actual steering side effects. */
+bool nba_gameplay_loose_ball_pursuit_allowed(
+    const NbaGameplayLoosePursuitGateInput *in) {
+    if (!in) return false;
+
+    if (in->live_state_raw_0936 == 0x82u) {
+        if (in->actor_team_group_raw_6e != in->inbound_group_raw_0952)
+            return false;
+        if (!(in->play_code_raw_0996 < 6u &&
+              in->actor_control_mode == 3u) &&
+            in->free_throw_state_raw_0978 == 0u &&
+            in->actor_id != 2u && in->actor_id != 7u)
+            return false;
+    }
+
+    /* `$F140-$F14F`: an active foul/free-throw state bypasses the ordinary
+     * mode gate, but only the recorded `$7E492F` actor may pursue. */
+    if (in->free_throw_state_raw_0978 != 0u)
+        return (uint16_t)in->actor_id ==
+               (uint16_t)in->foul_actor_raw_7e492f;
+
+    if (in->live_state_raw_0936 != 0x82u &&
+        in->actor_control_mode != 3u && in->actor_control_mode != 4u)
+        return false;
+
+    if (in->ball_activity_raw_0948 == 0u)
+        return in->bounce_age_raw_094a == 0u ||
+               in->bounce_age_raw_094a >= 0x1Eu;
+
+    if (in->actor_team_group_raw_6e == in->offense_group_raw_093a)
+        return true;
+    return (int16_t)(uint16_t)(in->actor_id -
+           in->actor_team_group_raw_6e) < 3;
+}
+
 /* `$85:B714-$B833`: exact symmetric mode-11 direct-shot rectangle. The
  * negative X path explicitly computes two's-complement magnitude. */
 bool nba_gameplay_mode11_shot_rectangle(int16_t rom_x, int16_t y, int16_t z) {
@@ -667,6 +742,73 @@ bool nba_gameplay_court_clamp(int32_t *x_fp, int32_t *y_fp,
 
 bool nba_gameplay_ai_self_test(void) {
     int16_t x = 0, y = 0;
+    if (nba_gameplay_weighted_distance(16, -16) != 20u ||
+        nba_gameplay_weighted_distance(-20, 10) != 22u ||
+        nba_gameplay_weighted_distance(INT16_MIN, INT16_MIN) != 0xA000u)
+        return false;
+    NbaGameplayLoosePursuitActor loose[5] = {
+        {10, 0, 6u}, {5, 0, 4u}, {0, 0, 7u},
+        {0, 0, 8u}, {-5, 0, 0u}
+    };
+    uint8_t loose_modes[5] = {0};
+    if (nba_gameplay_select_no_owner_pursuer(
+            loose, 0, 0, loose_modes) != 1 ||
+        loose_modes[0] != 1u || loose_modes[1] != 3u ||
+        loose_modes[2] != 7u || loose_modes[3] != 8u ||
+        loose_modes[4] != 1u) return false; /* strict tie keeps side slot 1 */
+    for (unsigned i = 0; i < 5u; ++i) loose[i].control_mode = 7u;
+    if (nba_gameplay_select_no_owner_pursuer(
+            loose, 0, 0, loose_modes) != -1)
+        return false;
+    for (unsigned i = 0; i < 5u; ++i)
+        if (loose_modes[i] != 7u) return false;
+
+    NbaGameplayLoosePursuitGateInput pursuit = {
+        .live_state_raw_0936 = 0u,
+        .actor_id = 3u,
+        .actor_control_mode = 3u,
+        .actor_team_group_raw_6e = 0u,
+        .offense_group_raw_093a = 5u,
+        .inbound_group_raw_0952 = 0u,
+        .foul_actor_raw_7e492f = -1
+    };
+    if (!nba_gameplay_loose_ball_pursuit_allowed(&pursuit)) return false;
+    pursuit.bounce_age_raw_094a = 0x1Du;
+    if (nba_gameplay_loose_ball_pursuit_allowed(&pursuit)) return false;
+    pursuit.bounce_age_raw_094a = 0x1Eu;
+    if (!nba_gameplay_loose_ball_pursuit_allowed(&pursuit)) return false;
+    pursuit.actor_control_mode = 2u;
+    if (nba_gameplay_loose_ball_pursuit_allowed(&pursuit)) return false;
+    pursuit.actor_control_mode = 4u;
+    pursuit.ball_activity_raw_0948 = 1u;
+    pursuit.actor_id = 2u;
+    if (!nba_gameplay_loose_ball_pursuit_allowed(&pursuit)) return false;
+    pursuit.actor_id = 3u;
+    if (nba_gameplay_loose_ball_pursuit_allowed(&pursuit)) return false;
+    pursuit.actor_team_group_raw_6e = 5u;
+    if (!nba_gameplay_loose_ball_pursuit_allowed(&pursuit)) return false;
+    pursuit.free_throw_state_raw_0978 = 1u;
+    pursuit.foul_actor_raw_7e492f = 7;
+    if (nba_gameplay_loose_ball_pursuit_allowed(&pursuit)) return false;
+    pursuit.actor_id = 7u;
+    if (!nba_gameplay_loose_ball_pursuit_allowed(&pursuit)) return false;
+
+    pursuit = (NbaGameplayLoosePursuitGateInput){
+        .live_state_raw_0936 = 0x82u,
+        .play_code_raw_0996 = 5u,
+        .actor_id = 4u,
+        .actor_control_mode = 3u,
+        .actor_team_group_raw_6e = 0u,
+        .inbound_group_raw_0952 = 0u
+    };
+    if (!nba_gameplay_loose_ball_pursuit_allowed(&pursuit)) return false;
+    pursuit.actor_control_mode = 2u;
+    if (nba_gameplay_loose_ball_pursuit_allowed(&pursuit)) return false;
+    pursuit.actor_id = 2u;
+    if (!nba_gameplay_loose_ball_pursuit_allowed(&pursuit)) return false;
+    pursuit.actor_team_group_raw_6e = 5u;
+    if (nba_gameplay_loose_ball_pursuit_allowed(&pursuit)) return false;
+
     nba_gameplay_target_from_pair(100, -50, 31, -31, -20, 12, &x, &y);
     if (x != 83 || y != -42) return false;
     nba_gameplay_target_from_pair(32760, -32760, 64, -64, 16, -16, &x, &y);

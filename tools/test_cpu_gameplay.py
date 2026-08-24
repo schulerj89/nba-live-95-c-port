@@ -16,8 +16,8 @@ FORMATION = [
     (-8, -3), (16, 83), (24, -80), (-104, 56), (-96, -59),
 ]
 EXPECTED_RGB = {
-    600: "05b935929df77f575fe2f711416d4afcbf6ebb3b68681151375b1e4b8d047f20",
-    1300: "119f87a2d253eff34c4f5076db108a8cee9c3632c74540eeca6a4ad0fcaecae0",
+    600: "a844d79b805b98275d325f145be8d1d1d77bec18967d1d7fb417fd9e34b77929",
+    1300: "e1c04b78b50c2995e86297af73379fce30f6eb6178a7b0ba29188034217b3f55",
 }
 
 
@@ -147,17 +147,24 @@ def main():
             raise AssertionError("active actor-to-roster mapping changed")
         free_camera_states = set()
         actor_camera_states = set()
+        expected_camera_subject = frame(219)["camera"]["subject_raw"]
         for row in rows[219:]:
             possession_actor = row["possession"]["actor"]
             camera = row["camera"]
-            expected_subject = possession_actor if possession_actor >= 0 else -1
-            if camera["subject_raw"] != expected_subject:
+            # `$87:95BB-$95D8` samples signed `$093E` only on the 30-Hz
+            # logical pass. The intervening outer frame must preserve the
+            # previous proxy even if possession changed during that frame.
+            if row["simulation_tick"] & 1:
+                expected_camera_subject = (
+                    possession_actor if possession_actor >= 0 else -1)
+            if camera["subject_raw"] != expected_camera_subject:
                 raise AssertionError(
                     f"camera subject diverged from signed $093E: {camera}")
-            if possession_actor >= 0:
-                expected_group = 5 if possession_actor >= 5 else 0
-                if camera["side_group_raw"] != expected_group:
-                    raise AssertionError("actor camera did not refresh persistent $093A")
+            # `$093A` is persistent offense-side context, not an output of
+            # camera subject selection. Camera code must never rewrite it.
+            if camera["side_group_raw"] not in (0, 5):
+                raise AssertionError("camera corrupted persistent $093A")
+            if expected_camera_subject >= 0:
                 actor_camera_states.add(row["ball"]["state"])
             else:
                 free_camera_states.add(row["ball"]["state"])
@@ -175,10 +182,14 @@ def main():
         if [actor["raw"]["assignment_base"] for actor in live["actors"]] != \
                 expected_assignments:
             raise AssertionError("lineup-permuted `$86:D86C` assignments changed")
-        current_assignments = [
-            actor["raw"]["assignment_current"] for actor in live["actors"]]
-        if current_assignments == expected_assignments:
+        replanned = next((row for row in rows[219:] if [
+            actor["raw"]["assignment_current"] for actor in row["actors"]
+        ] != expected_assignments), None)
+        if replanned is None:
             raise AssertionError("`$85:BE06-$C0F5` never replanned assignments")
+        current_assignments = [
+            actor["raw"]["assignment_current"]
+            for actor in replanned["actors"]]
         if any(value != 0xFFFF and
                (value & 1 or value > 18) for value in current_assignments):
             raise AssertionError("defensive planner emitted an invalid actor offset")
@@ -540,9 +551,12 @@ def main():
                             f"$86:A9D0 close-finish release changed: {after} {ball}")
                     mode13_finishes += 1
                 if old_mode == 11 and new_mode == 12:
+                    # `$86:B625` installs +$12=$0210 after the current
+                    # `$85:963D` integration. The first $30 gravity
+                    # decrement belongs to the next pass.
                     if after["animation"] != 0x16 or \
                             after["lower_animation"] != 0x32 or \
-                            after["vz"] != 0x1E0 or ball["state"] != 4 or \
+                            after["vz"] != 0x210 or ball["state"] != 4 or \
                             ball["owner"] != actor_id or \
                             ball["activity_raw"] != 0xFFFF:
                         raise AssertionError(
@@ -567,8 +581,11 @@ def main():
                         raise AssertionError(
                             f"$86:9D6E shot release changed: {current}")
                     shot_releases += 1
-                elif old_mode == 11 and new_mode == 1 and \
+                elif old_mode == 11 and new_mode in (1, 3) and \
                         previous["possession"]["actor"] == -1:
+                    # `$86:F3F6` restores mode 1; the same logical pass's
+                    # ownerless-role rebuild may immediately promote that
+                    # actor to the sole mode-3 pursuer.
                     mode11_fallbacks += 1
         if min(shot_starts, shot_releases, mode11_fallbacks) < 2:
             raise AssertionError(
@@ -677,7 +694,12 @@ def main():
             if first_ready["match"]["dead_ball_raw_0968"] != 2:
                 raise AssertionError(
                     "$86:F54F inbound arrival did not write $0968=2")
-            actor_id = first_ready["match"]["inbound_actor_raw"]
+            # `$86:F3D2/F43A` executes through current actor X/$96. After an
+            # A613 cancellation, D353->BAA2 can replace ownership `$093E`
+            # without rewriting provisional `$0954`; validate the carrier.
+            actor_id = first_ready["possession"]["actor"]
+            if actor_id < 0:
+                raise AssertionError("ready inbound has no $093E carrier")
             actor = first_ready["actors"][actor_id]
             dx = first_ready["match"]["inbound_target_x_raw"] - actor["x"]
             dy = first_ready["match"]["inbound_target_y_raw"] - actor["y"]
@@ -702,17 +724,20 @@ def main():
                 # make `$86:F654` reload 300 for the same actor.
                 side_reset = before["match"]["inbound_state_raw"] != \
                     after["match"]["inbound_state_raw"]
+                # A reload during the 30-Hz pass can be observed after the
+                # same pass's fixed two-unit timer consumption.
                 displaced_reload = \
-                    before["match"]["inbound_actor_raw"] == \
-                        after["match"]["inbound_actor_raw"] and \
-                    after["match"]["inbound_timer_raw"] in (299, 300)
+                    after["match"]["inbound_timer_raw"] in (298, 299, 300) and \
+                    after["possession"]["actor"] >= 0 and \
+                    after["actors"][after["possession"]["actor"]]["raw"][
+                        "control_mode"] == 11
                 if not (side_reset or displaced_reload) or \
                         after["match"]["inbound_transfer_raw"] != 0 or \
                         after["possession"]["actor"] < 0:
                     raise AssertionError("arrived inbound timer increased")
             transfer = [row for row in ready
                         if row["match"]["inbound_transfer_raw"]]
-            transfer_actor = transfer[0]["match"]["inbound_actor_raw"] \
+            transfer_actor = transfer[0]["possession"]["actor"] \
                 if transfer else -1
             if not transfer or transfer[0]["match"]["inbound_timer_raw"] >= 240 or \
                     transfer[0]["possession"]["pass_actor_raw"] != transfer_actor or \
@@ -839,9 +864,9 @@ def main():
                 repr(next((pair for pair in attached
                            if not attachment_matches(pair)), None)))
 
-        # `$86:AB2D-$AF65/$86:A6B3-$A790`: mode 15 installs one of the
-        # live-covered pass states, keeps the ball attached through the
-        # resource phase threshold, then releases it via the ROM table.
+        # `$86:AB2D-$B04A/$86:A6B3-$A790`: mode 15 installs a grounded or
+        # boosted pass state, keeps the ball attached through the native
+        # phase/apex gate, then releases it via the ROM table.
         pass_rows = []
         release_rows = []
         for index, row in enumerate(rows[219:], 219):
@@ -883,7 +908,8 @@ def main():
                     raw["saved_mode_84"] != raw["control_mode_saved"] or \
                     (not raw["pass_released"] and
                      actor["animation"] not in
-                     (0x2D, 0x2E, 0x2F, 0x30, 0x31)):
+                     (0x18, 0x2A, 0x2B, 0x2C,
+                      0x2D, 0x2E, 0x2F, 0x30, 0x31)):
                 raise AssertionError(
                     f"mode-15 pass metadata diverged: possession={possession} "
                     f"actor={actor}")
@@ -898,9 +924,12 @@ def main():
             same_frame_catch = row["ball"]["state"] == 4 and \
                 0 <= row["ball"]["owner"] < 10 and \
                 row["possession"]["actor"] == row["ball"]["owner"]
+            boundary_dead_ball = row["ball"]["state"] == 4 and \
+                row["ball"]["owner"] == -1 and \
+                row["match"]["live_state_raw"] == 0x82
             if before_actor["raw"]["upper_phase"] <= \
                     raw["pass_release_threshold"] or \
-                    not (detached or same_frame_catch) or \
+                    not (detached or same_frame_catch or boundary_dead_ball) or \
                     row["possession"]["pass_active_raw"] != 0:
                 raise AssertionError("pass released before `$86:A736-$A747` phase gate")
         pass_animations = {actor["animation"] for _, _, actor in pass_rows}

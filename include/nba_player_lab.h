@@ -52,6 +52,13 @@ bool nba_player_animation_resources(const NbaAssetPack *assets,
                                     uint32_t lower_tick,
                                     uint16_t *upper_resource,
                                     uint16_t *lower_resource);
+/* Descriptor-driven actor +$3A/+$3C frame phases used by native action
+ * gates. These are frame indices, not elapsed logical-pass counters. */
+bool nba_player_animation_phases(const NbaAssetPack *assets,
+                                 uint8_t upper_state, uint8_t lower_state,
+                                 uint32_t upper_tick, uint32_t lower_tick,
+                                 uint16_t *upper_phase,
+                                 uint16_t *lower_phase);
 bool nba_player_animation_contact_height(const NbaAssetPack *assets,
                                          uint8_t team, uint8_t roster_slot,
                                          uint16_t upper_resource,

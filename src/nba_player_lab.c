@@ -695,7 +695,34 @@ bool nba_player_animation_resources(const NbaAssetPack *assets,
                                                 lower_frame);
     *upper_resource = animation_frame_resource(upper, bank, direction,
                                                 upper_frame);
-    return *lower_resource != 0u && *upper_resource != 0u;
+    /* Recomp `$87:B572-$B648` selects state descriptors at `$84:C2FC` and
+     * `$84:C218` without treating resource word zero as failure. Resource
+     * zero is a real upper-body frame (for example state 5, direction 3,
+     * descriptor `$84:D546`, frame 6), not a null sentinel. The asset-pack
+     * descriptor/pointer validation above is the validity boundary. */
+    return true;
+}
+
+bool nba_player_animation_phases(const NbaAssetPack *assets,
+                                 uint8_t upper_state, uint8_t lower_state,
+                                 uint32_t upper_tick, uint32_t lower_tick,
+                                 uint16_t *upper_phase,
+                                 uint16_t *lower_phase) {
+    const uint8_t *bank = animation_bank84(assets, NULL);
+    const uint8_t *upper = animation_descriptor(
+        assets, PLAYER_UPPER_STATE_TABLE, upper_state);
+    const uint8_t *lower = animation_descriptor(
+        assets, PLAYER_LOWER_STATE_TABLE, lower_state);
+    if (!bank || !upper || !lower || !upper_phase || !lower_phase)
+        return false;
+    uint8_t lower_frame = animation_frame_index(lower, bank, lower_tick);
+    uint16_t upper_count = read_u16(upper + 6);
+    uint8_t upper_frame = (int16_t)read_u16(upper) < 0 && upper_count != 0u
+        ? (uint8_t)(lower_frame % upper_count)
+        : animation_frame_index(upper, bank, upper_tick);
+    *upper_phase = upper_frame;
+    *lower_phase = lower_frame;
+    return true;
 }
 
 static bool animation_resource_top(const NbaAssetPack *assets,

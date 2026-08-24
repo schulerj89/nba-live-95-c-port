@@ -74,6 +74,29 @@ typedef struct {
     bool stop_velocity;
 } NbaGameplayDefenseTargetOutput;
 
+/* Five-player side input consumed by the no-owner role pass at
+ * `$85:AFB2-$B128`. */
+typedef struct {
+    int16_t x, y;
+    uint8_t control_mode;
+} NbaGameplayLoosePursuitActor;
+
+/* Pure branch inputs for `$86:F0FD-$F1AF`. Actor IDs are the ROM's 0..9
+ * logical slots; team groups use raw values 0/5. */
+typedef struct {
+    uint16_t live_state_raw_0936;
+    uint16_t ball_activity_raw_0948;
+    uint16_t bounce_age_raw_094a;
+    uint16_t free_throw_state_raw_0978;
+    uint16_t play_code_raw_0996;
+    int16_t foul_actor_raw_7e492f;
+    uint8_t actor_id;
+    uint8_t actor_control_mode;
+    uint8_t actor_team_group_raw_6e;
+    uint8_t offense_group_raw_093a;
+    uint8_t inbound_group_raw_0952;
+} NbaGameplayLoosePursuitGateInput;
+
 void nba_gameplay_rng_seed(NbaGameplayRng *rng, uint16_t seed);
 uint16_t nba_gameplay_rng_next(NbaGameplayRng *rng);
 bool nba_gameplay_rng_self_test(void);
@@ -96,6 +119,13 @@ void nba_gameplay_defense_pair_target(
 bool nba_gameplay_defense_mode_target(
     uint8_t actor_mode, const NbaGameplayDefenseTargetInput *input,
     NbaGameplayDefenseTargetOutput *output);
+uint16_t nba_gameplay_weighted_distance(int16_t dx, int16_t dy);
+int8_t nba_gameplay_select_no_owner_pursuer(
+    const NbaGameplayLoosePursuitActor actors[5],
+    int16_t predicted_ball_x, int16_t predicted_ball_y,
+    uint8_t normalized_modes[5]);
+bool nba_gameplay_loose_ball_pursuit_allowed(
+    const NbaGameplayLoosePursuitGateInput *input);
 bool nba_gameplay_decision_timer_step(uint16_t *timer, uint8_t profile_byte,
                                       uint16_t reload_base,
                                       bool add_half_court_delay);

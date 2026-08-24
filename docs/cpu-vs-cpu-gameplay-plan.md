@@ -1281,3 +1281,32 @@ side effect; prove the pre-launch A777 abort; and cover both inbound witness
 outcomes. The endurance trace separately requires valid launches to expose
 `$09C4=0`, sustained scoring and movement, and no completed dead-ball sequence
 over 2,400 frames.
+
+### Increment 5Q: native pass families, carrier dispatch, and stale-mode cleanup
+
+The analysis-only recomp roots now include `$86:AB2D-$B04B` and
+`$86:A6B3-$A7A0`. The aligned initializer selects `$2B`/family `-1` for
+inbound layouts 2-4, otherwise `$2C`/family `1`, promoted to `$2F` below
+distance `$F1`. Receiver `+$60` is `$28` normally and `$3C` for the side/back
+case. `$86:99C4` chooses the negative, positive, or zero launch table at
+`$9C6F/$9C93/$9CB7` and clamps the predicted endpoint to X `[-362,362]`, Y
+`[-192,192]`. `$86:AFC4` installs the boosted family with receiver timer
+`$46`, animations `$18/$1F`, halved planar velocity, then `$86:A629/A6B3`
+changes descending family 2 to family 4 with `$2C/$24` before release.
+
+The long trace exposed two host-only ownership assumptions. `$86:F3D2/F43A`
+executes through current actor `X/$96`; it never requires provisional `$0954`
+to equal ownership `$093E`. Its `$F4F2-$F520` arrival geometry is recalculated
+on every dispatch, so the synthetic ready latch cannot freeze a recovered
+carrier outside the target box. After an A613-canceled pass, `$86:D353->BAA2`
+may therefore install a teammate as the mode-11 retry carrier while leaving
+`$0954` unchanged.
+
+Non-owner mode-15 actors follow `$86:A6B3-$A6C7`: decrement `+$60`, then
+`$86:A772->$86:9846/$9861` restores mode 1, sets `+$64=$2F`, and clears
+`+$60/+$7E/+$28`. This prevents stale passers from permanently blocking the
+`$85:B271-$B288` five-player formation barrier. A post-release BAA2 recovery
+also preserves the running `$092E` timer and reached-arrival state; only the
+first dead-ball pickup seeds 300. The 63,800-frame regression now completes
+with sustained CPU decisions, movement, passes, shots, scores, inbound
+retries, and no dead-ball interval above 2,400 frames.

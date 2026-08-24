@@ -63,6 +63,9 @@ typedef struct {
     uint16_t upper_animation_tick;
     uint16_t lower_animation_tick;
     uint16_t upper_animation_phase_raw; /* actor `+$3A` */
+    uint8_t base_animation_state_raw_38; /* actor `+$38`, locomotion intent */
+    uint16_t upper_animation_lock_raw_46; /* actor `+$46` */
+    uint16_t lower_animation_lock_raw_48; /* actor `+$48` */
     uint16_t actor_status_raw_28;       /* actor `+$28`, `$86:C476` */
     uint8_t control_mode;
     uint8_t saved_control_mode;         /* actor `+$84` */
@@ -75,6 +78,8 @@ typedef struct {
     bool pass_released_raw;
     uint8_t requested_direction;
     uint8_t movement_direction;
+    uint8_t velocity_direction_raw_a2; /* actor `+$A2` */
+    uint8_t facing_ease_timer_raw_be;  /* actor `+$BE` */
     uint8_t assignment_actor;
     uint8_t assignment_direction;
     uint8_t anchor_direction_raw;       /* actor `+$88` */
@@ -95,6 +100,7 @@ typedef struct {
     uint16_t contact_inhibit_raw_5a;  /* actor `+$5A`, `$86:CD03/D460` */
     uint16_t contact_action_timer_raw_60; /* actor `+$60`, `$86:C0DF/C12F` */
     uint16_t contact_height_raw_aa;   /* actor `+$AA`, `$87:A6A9-A6B2` */
+    uint16_t catcher_latch_raw_ae;    /* actor `+$AE`, `$86:BAE0` */
     uint16_t free_throw_launch_half_raw_a8; /* actor `+$A8`, `$86:A2A7` */
     uint16_t recovery_inhibit_raw;    /* actor `+$7A` */
     uint16_t behavior_flags_raw;      /* actor `+$7E` */
@@ -144,6 +150,7 @@ typedef struct {
     uint16_t play_cycle_raw;     /* `$09A4` */
     uint16_t play_hold_raw;      /* `$09D0` */
     uint16_t role_rebuild_raw_09d6;
+    uint16_t role_ownerless_raw_09d8;
     uint16_t special_actor_raw;  /* `$09A2`, clear-lane cutter or `$FFFF` */
     int16_t play_selector_raw[3];/* `$09AA/$09AC/$09AE` */
     uint32_t simulation_tick;
@@ -184,6 +191,7 @@ typedef struct {
     uint16_t dead_ball_raw_0966;
     uint16_t dead_ball_raw_0968;
     uint16_t dead_ball_raw_096c;
+    uint16_t dead_ball_raw_097e;
     int16_t dead_ball_x_raw_09b0;
     int16_t dead_ball_y_raw_09b2;
     uint16_t rim_force_raw_1866;

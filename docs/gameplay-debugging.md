@@ -156,8 +156,12 @@ CPU behavior, score monotonicity, made-ball Z, `$0952/$0954`, the 300-tick
 inbound gates, and resumed possessions for both teams.
 It also verifies that pose collision may replace provisional slot 2/7, that
 the installed dead-ball `$093E` actor coexists with logical ball owner `-1`,
-and that the current inbound actor owns arrival and transfer rather than the
-initial provisional slot.
+and that current ownership `$093E` drives `$86:F3D2/F43A` arrival and transfer
+even when provisional `$0954` still names the initial slot. Recovered carriers
+must pass the live `[-9,+8]` arrival box; the ready latch alone cannot freeze
+them. The regression also locks `$86:A6B3-$A6C7->$86:9846` cleanup of stale
+non-owner mode-15 passers and preservation of the running `$092E` timer across
+post-release BAA2 recovery.
 Actor JSON includes raw contact inhibit `+$5A` and the asset-composed body
 height `+$AA`. The sustained regression also locks `$87:9C3A->$86:A5B0`:
 once `$0946` becomes negative, mode 10 must normalize through `$86:9846`

@@ -64,7 +64,8 @@ void nba_gameplay_camera_init(NbaGameplayCamera *camera, int16_t x, int16_t y) {
 }
 
 void nba_gameplay_camera_update(NbaGameplayCamera *camera, int16_t subject_x,
-                                int16_t subject_y, uint8_t side_group) {
+                                int16_t subject_y, int16_t subject_z,
+                                uint8_t side_group, bool ball_height_path) {
     int old_x = camera->x, old_y = camera->y;
     camera->prior_displacement_x = (uint16_t)abs(camera->x - camera->previous_x);
     camera->prior_displacement_y = (uint16_t)abs(camera->y - camera->previous_y);
@@ -72,10 +73,18 @@ void nba_gameplay_camera_update(NbaGameplayCamera *camera, int16_t subject_x,
     camera->previous_y = camera->y;
     camera->target_x = (int16_t)horizontal_target(subject_x + subject_y,
                                                   side_group);
-    /* Normal live-play vertical path at `$85:92F9-$930D`. */
-    camera->target_y = (int16_t)clamp_int(
-        ((subject_y - subject_x) >> 2) - ((subject_y + 272) >> 2) - 56,
-        -242, -53);
+    int base_y = (subject_y - subject_x) >> 2;
+    if (ball_height_path) {
+        /* `$85:92E4-$932C`: tip/ball-height camera. Heights below 56 are
+         * treated as zero before the projected base is raised by Z. */
+        int height = subject_z >= 56 ? subject_z : 0;
+        camera->target_y = (int16_t)clamp_int(
+            base_y - height - 56, -242, -53);
+    } else {
+        /* Normal live-play vertical path at `$85:92F9-$930D`. */
+        camera->target_y = (int16_t)clamp_int(
+            base_y - ((subject_y + 272) >> 2) - 56, -242, -53);
+    }
     camera->x = (int16_t)approach_axis(old_x, camera->target_x,
                                       camera->prior_displacement_x,
                                       &camera->commanded_step_x);
