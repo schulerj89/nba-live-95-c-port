@@ -90,7 +90,7 @@ def main():
                 "--debug-state",
             ], capture_output=True, text=True, check=False)
             if result.returncode or phase not in result.stdout or \
-                    "INT:$85:9700" not in result.stdout or \
+                    "INT:$85:963D" not in result.stdout or \
                     "BALL M:" not in result.stdout:
                 raise AssertionError(result.stdout + result.stderr)
             digest = hashlib.sha256(Image.open(output).convert("RGB").tobytes()).hexdigest()
@@ -117,7 +117,7 @@ def main():
             Image.open(selected_home).convert("RGB").tobytes()).hexdigest() \
             if selected_home.exists() else ""
         if result.returncode or "SCN:TIPOFF" not in result.stdout or \
-                digest != "66b743433c73d9e5b70efd73d3b0750ccfbf1e498adf0653e8bd86d6dcf6b57d":
+                digest != "96332dbe1ca51b4cd240f3a85daaa6d72eb5f3d8c0ef24c203338b31e2351382":
             raise AssertionError("selected home court did not persist into tip-off\n" +
                                  result.stdout + result.stderr)
 

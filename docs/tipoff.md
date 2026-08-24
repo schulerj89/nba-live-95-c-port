@@ -39,22 +39,25 @@ correlates instructions and calls in those windows:
 - `$85:F34F` quantizes a target delta to one of eight directions and
   `$87:B832–$B952` applies its movement vector. The C scene uses that same
   target/direction/update split rather than a list of captured screen points.
-- `$87:A160–$A2CE` is the CPU/human steering split. CPU-vs-CPU leaves every
+- `$87:9245/$9BD0` dispatches actor `+$5E` behavior modes. CPU-vs-CPU leaves every
   actor on its CPU branch; actor 8 being selected as ballhandler does not make
   it a human-controlled player.
-- `$85:8EE6–$9191` updates the camera from the ball subject. Player and ball
+- `$85:9192–$93F4` follows the selected actor proxy; `$85:8EE6–$90C3`
+  separately streams the court. Player and ball
   screen coordinates are consequently projected from world coordinates with
   `screen_x = world_x + world_y - camera_x` and
   `screen_y = (world_y - world_x)/4 - camera_y - z`.
 
-Asset 272 (`NBCOURT1`) supplies the gameplay-bright home courts. It replays the
+Asset 273 (`NBCOURT2`) supplies complete gameplay-bright home-court panoramas.
+It decodes the 114x52-tile ROM map at `$A0:8006`; asset 272 retains the legacy
+fixed viewports. The team selection path replays the
 ROM path rather than pasting Team Select logos: `$84:E55D-$E57A` indexes the
 graphics table at `$84:E6B5/$84:E6B7`, `$80:C62B` expands its exact 0x8c0-byte
 tile block, and `$84:E5BD` supplies the matching palette record. An independent
 Chicago capture at the live `$87:A47A` player compositor matches the offline
 reconstruction pixel-for-pixel; home team 18 remains byte-identical to the
 established Orlando frame-140 oracle.
-- The extended 1,801-frame CPU-only run identifies `$85:9700–$985F` as the
+- The extended CPU-only run identifies `$85:963D–$985F` as the
   recurring player-coordinate integrator. Per-actor signed motion at `+$0E`
   and `+$10` is added to the 32-bit X/Y pairs at `+$02/+$04` and `+$06/+$08`.
   Coordinate-write probes reach `$85:980B/$985F` throughout the capture,
@@ -64,8 +67,9 @@ established Orlando frame-140 oracle.
   attachment. Passes and shots switch to free integration and bank-86
   contact/rim paths before the next attachment.
 - The same ROM run changes play `$35 → $01 → $0F → $26`, changes offense,
-  rotates actor mode `11` between ballhandlers, and continues player-coordinate
-  writes through frame 1800. The C dispatcher mirrors those recurring layers:
+  and continues player-coordinate writes through frame 1800. Mode `$0B` in
+  that capture belongs to the human-selected actor and is deliberately absent
+  from C's CPU-vs-CPU control map. The C dispatcher mirrors the recurring layers:
   possession/play selection, actor roles, motion integration, ball mode, then
   camera projection. It contains no captured coordinate playback.
 

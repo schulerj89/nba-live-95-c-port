@@ -6,6 +6,7 @@
 #include "nba_session.h"
 #include "nba_gameplay_debugger.h"
 #include "nba_gameplay_camera.h"
+#include "nba_gameplay_ai.h"
 
 /* ROM routines correlated with live Mesen execution. */
 #define SNES_ADDR_TIPOFF_PLAYER_FORMATION 0x86DDA7
@@ -53,9 +54,19 @@ typedef struct {
     int16_t target_x, target_y;
     uint8_t direction;
     uint8_t animation_state;
+    uint8_t lower_animation_state;
+    uint16_t upper_animation_tick;
+    uint16_t lower_animation_tick;
     uint8_t control_mode;
     uint8_t assignment_actor;
+    uint8_t assignment_direction;
+    uint16_t assignment_base_raw;
+    uint16_t assignment_current_raw;
+    uint16_t assignment_alternate_raw;
+    uint16_t assignment_distance;
+    uint16_t pair_distance;
     uint16_t reaction_threshold;
+    uint16_t behavior_timer;
     uint16_t action_state;
     bool visible;
 } NbaTipoffActor;
@@ -76,11 +87,14 @@ typedef struct {
     NbaTipoffBall ball;
     int16_t camera_x, camera_y;
     NbaGameplayCamera camera;
+    NbaGameplayRng rng;
     int8_t possession_actor;
     int8_t possession_team;
     uint16_t play_code;
     uint32_t simulation_tick;
+    uint32_t actor_update_tick;
     uint16_t possession_frame;
+    uint16_t play_state_frame;
     uint16_t possession_number;
     uint8_t offense_side;
     uint8_t handler_actor;

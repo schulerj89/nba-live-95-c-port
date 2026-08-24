@@ -436,14 +436,14 @@ static bool compose_jersey_tile(const NbaAssetPack *assets, uint8_t jersey,
 static bool draw_player_animation_at(NbaRenderer *ren, const NbaAssetPack *assets,
                                      const PlayerLabRecord *player, uint8_t team,
                                      uint8_t side, uint8_t upper_state,
-                                     uint8_t direction, uint32_t animation_tick,
+                                     uint8_t lower_state, uint8_t direction,
+                                     uint32_t upper_tick, uint32_t lower_tick,
                                      int lower_x, int lower_y, int scale) {
     const uint8_t *bank = animation_bank84(assets, NULL);
     const uint8_t *upper = animation_descriptor(
         assets, PLAYER_UPPER_STATE_TABLE, upper_state);
     const uint8_t *lower = animation_descriptor(
-        assets, PLAYER_LOWER_STATE_TABLE,
-        animation_lower_state(upper_state));
+        assets, PLAYER_LOWER_STATE_TABLE, lower_state);
     if (!bank || !upper) return false;
     if (!lower) lower = animation_descriptor(assets, PLAYER_LOWER_STATE_TABLE, 0);
     if (!lower) return false;
@@ -451,10 +451,10 @@ static bool draw_player_animation_at(NbaRenderer *ren, const NbaAssetPack *asset
                                             player->palette_variant);
     if (!palette) return false;
 
-    uint8_t lower_frame = animation_frame_index(lower, bank, animation_tick);
+    uint8_t lower_frame = animation_frame_index(lower, bank, lower_tick);
     uint8_t upper_frame = (int16_t)read_u16(upper) < 0
         ? (uint8_t)(lower_frame % read_u16(upper + 6))
-        : animation_frame_index(upper, bank, animation_tick);
+        : animation_frame_index(upper, bank, upper_tick);
     uint16_t lower_resource = animation_frame_resource(
         lower, bank, direction, lower_frame);
     uint16_t upper_resource = animation_frame_resource(
@@ -526,12 +526,49 @@ bool nba_player_sprite_render(NbaRenderer *renderer, const NbaAssetPack *assets,
                               uint8_t upper_state, uint8_t direction,
                               uint32_t animation_tick, int origin_x,
                               int origin_y, int scale) {
+    return nba_player_sprite_render_split(renderer, assets, team, roster_slot,
+        side, upper_state, animation_lower_state(upper_state), direction,
+        animation_tick, animation_tick, origin_x, origin_y, scale);
+}
+
+bool nba_player_sprite_render_split(NbaRenderer *renderer,
+                                    const NbaAssetPack *assets, uint8_t team,
+                                    uint8_t roster_slot, uint8_t side,
+                                    uint8_t upper_state, uint8_t lower_state,
+                                    uint8_t direction, uint32_t upper_tick,
+                                    uint32_t lower_tick, int origin_x,
+                                    int origin_y, int scale) {
     PlayerLabRecord player;
     if (!renderer || !assets || side > 1u || scale < 1 ||
         !player_record(assets, team, roster_slot, &player)) return false;
     return draw_player_animation_at(renderer, assets, &player, team, side,
-                                    upper_state, direction, animation_tick,
-                                    origin_x, origin_y, scale);
+                                    upper_state, lower_state, direction,
+                                    upper_tick, lower_tick, origin_x, origin_y,
+                                    scale);
+}
+
+bool nba_player_animation_resources(const NbaAssetPack *assets,
+                                    uint8_t upper_state, uint8_t lower_state,
+                                    uint8_t direction, uint32_t upper_tick,
+                                    uint32_t lower_tick,
+                                    uint16_t *upper_resource,
+                                    uint16_t *lower_resource) {
+    const uint8_t *bank = animation_bank84(assets, NULL);
+    const uint8_t *upper = animation_descriptor(
+        assets, PLAYER_UPPER_STATE_TABLE, upper_state);
+    const uint8_t *lower = animation_descriptor(
+        assets, PLAYER_LOWER_STATE_TABLE, lower_state);
+    if (!bank || !upper || !lower || !upper_resource || !lower_resource)
+        return false;
+    uint8_t lower_frame = animation_frame_index(lower, bank, lower_tick);
+    uint8_t upper_frame = (int16_t)read_u16(upper) < 0
+        ? (uint8_t)(lower_frame % read_u16(upper + 6))
+        : animation_frame_index(upper, bank, upper_tick);
+    *lower_resource = animation_frame_resource(lower, bank, direction,
+                                                lower_frame);
+    *upper_resource = animation_frame_resource(upper, bank, direction,
+                                                upper_frame);
+    return *lower_resource != 0u && *upper_resource != 0u;
 }
 
 static void fill(NbaRenderer *ren, int x, int y, int w, int h, uint32_t color) {
@@ -679,7 +716,9 @@ void nba_player_lab_render(const NbaPlayerLab *lab, const NbaAssetPack *assets,
 
     fill(ren, 176, 40, 68, 156, 0xFF091522u);
     if (!draw_player_animation_at(ren, assets, &p, lab->team, 0,
-                                  lab->animation_state, lab->direction,
+                                  lab->animation_state,
+                                  animation_lower_state(lab->animation_state),
+                                  lab->direction, lab->animation_tick,
                                   lab->animation_tick, 210, 174, 2))
         draw_player_pose(ren, assets, &p, lab->team);
     snprintf(line, sizeof(line), "ANIM U$%02X L$%02X D%u %s", lab->animation_state,

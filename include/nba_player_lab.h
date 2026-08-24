@@ -39,5 +39,18 @@ bool nba_player_sprite_render(NbaRenderer *renderer, const NbaAssetPack *assets,
                               uint8_t upper_state, uint8_t direction,
                               uint32_t animation_tick, int origin_x,
                               int origin_y, int scale);
+bool nba_player_sprite_render_split(NbaRenderer *renderer,
+                                    const NbaAssetPack *assets, uint8_t team,
+                                    uint8_t roster_slot, uint8_t side,
+                                    uint8_t upper_state, uint8_t lower_state,
+                                    uint8_t direction, uint32_t upper_tick,
+                                    uint32_t lower_tick, int origin_x,
+                                    int origin_y, int scale);
+bool nba_player_animation_resources(const NbaAssetPack *assets,
+                                    uint8_t upper_state, uint8_t lower_state,
+                                    uint8_t direction, uint32_t upper_tick,
+                                    uint32_t lower_tick,
+                                    uint16_t *upper_resource,
+                                    uint16_t *lower_resource);
 
 #endif

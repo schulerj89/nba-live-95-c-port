@@ -11,7 +11,7 @@ from pathlib import Path
 from PIL import Image
 
 
-EXPECTED_LAB_RGB = "fc90e01eb661ed7ebced94e37c4feb89c02071520520eb6e953d80f8b16c6899"
+EXPECTED_LAB_RGB = "f1b3d766d66992ce32bc579f8818b2f7d90cf145c441f527bb5916400f7eb484"
 
 
 def run(command, label):
@@ -50,7 +50,7 @@ def main():
             raise AssertionError("settled tip-off visibility telemetry changed")
         if sample["control"] != {
                 "actor": 255, "side_raw": -1, "initial_slot_raw": 0,
-                "selected_slot_raw": 0, "actor_pointer_raw": 0}:
+                "selected_slot_raw": -1, "actor_pointer_raw": 0}:
             raise AssertionError(f"CPU-only control mapping changed: {sample['control']}")
         if any(actor["control"] != 0 for actor in sample["actors"]):
             raise AssertionError("tip-off introduced a human-controlled actor")
@@ -105,7 +105,7 @@ def main():
         if marker not in debugger:
             raise AssertionError(f"Gameplay Lab implementation lost {marker}")
     mesen = (source / "tools" / "mesen_tipoff_capture.lua").read_text()
-    for marker in ("gameplay_rom.jsonl", "0x80cb8f", "0x87a160",
+    for marker in ("gameplay_rom.jsonl", "0x80cb8f", "0x879245",
                    "assignment_current", "raw_087a"):
         if marker not in mesen:
             raise AssertionError(f"Mesen gameplay oracle lost {marker}")

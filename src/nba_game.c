@@ -172,10 +172,10 @@ static void nba_game_debug_lines(const NbaGame *game, NbaDebugLines *out) {
                  (unsigned)s->phase < 4u ? phases[s->phase] : "?", s->frame,
                  NBA_TIPOFF_TOSS_FRAME, NBA_TIPOFF_CONTACT_FRAME);
         snprintf(out->line[out->count++], NBA_DEBUG_LINE_SIZE,
-                 "CPU %s P:%u PF:%u H:%u R:%u INT:$85:9700",
+                 "CPU %s P:%u PF:%u H:%u R:%u RNG:$%04X INT:$85:963D",
                  s->cpu_play_state < 6u ? cpu_phases[s->cpu_play_state] : "?",
                  s->possession_number, s->possession_frame,
-                 s->handler_actor, s->receiver_actor);
+                 s->handler_actor, s->receiver_actor, s->rng.state);
         snprintf(out->line[out->count++], NBA_DEBUG_LINE_SIZE,
                  "BALL M:%u O:%d W:%d,%d,%d V:%d,%d,%d PLAY:$%02X",
                  s->ball.state, s->ball.owner_actor,

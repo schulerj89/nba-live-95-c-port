@@ -92,11 +92,11 @@ void nba_gameplay_debugger_render(const NbaGameplayDebugger *debugger,
              actor->control == NBA_GAMEPLAY_CONTROL_PLAYER_1 ? "P1" : "CPU");
     text(renderer, 6, 168, line, 0xFFFFD760u);
     if (debugger->page == 0u) {
-        snprintf(line, sizeof(line), "W:%d,%d,%d S:%d,%d V:%d,%d,%d D:%u AN:%02X",
+        snprintf(line, sizeof(line), "W:%d,%d,%d S:%d,%d V:%d,%d D:%u U:%02X L:%02X",
                  actor->world_x, actor->world_y, actor->world_z,
                  actor->screen_x, actor->screen_y, actor->velocity_x,
-                 actor->velocity_y, actor->velocity_z, actor->direction,
-                 actor->animation_state);
+                 actor->velocity_y, actor->direction,
+                 actor->animation_state, actor->lower_animation_state);
         text(renderer, 6, 180, line, 0xFFFFFFFFu);
         snprintf(line, sizeof(line), "BALL:%d,%d,%d V:%d,%d,%d O:%d M:%02X",
                  telemetry->ball.world_x, telemetry->ball.world_y,
@@ -111,9 +111,9 @@ void nba_gameplay_debugger_render(const NbaGameplayDebugger *debugger,
                  actor->ai_target_actor, actor->assignment_direction_raw,
                  actor->velocity_x, actor->velocity_y);
         text(renderer, 6, 180, line, 0xFFFFFFFFu);
-        snprintf(line, sizeof(line), "H:%u POS:%d TEAM:%d ASG:%u REACT:%u",
+        snprintf(line, sizeof(line), "H:%u POS:%d ASG:%u DST:%u REACT:%u",
                  telemetry->controlled_actor, telemetry->possession_actor,
-                 telemetry->possession_team, actor->assignment_current_raw,
+                 actor->assignment_current_raw, actor->assignment_distance_raw,
                  actor->reaction_threshold_raw);
         text(renderer, 6, 192, line, 0xFF9EF7A9u);
     } else {
@@ -122,10 +122,10 @@ void nba_gameplay_debugger_render(const NbaGameplayDebugger *debugger,
                  telemetry->camera_routine, telemetry->collision_routine,
                  telemetry->possession_routine);
         text(renderer, 6, 180, line, 0xFFFFFFFFu);
-        snprintf(line, sizeof(line), "IN P:%03X H:%03X R:%03X F:%u",
-                 telemetry->input_pressed & 0xFFFu,
-                 telemetry->input_held & 0xFFFu,
-                 telemetry->input_released & 0xFFFu, telemetry->scene_frame);
+        snprintf(line, sizeof(line), "COARSE:%u,%u SRC:$A0:%04X RNG:$%04X F:%u",
+                 telemetry->camera_086c_raw, telemetry->camera_086e_raw,
+                 telemetry->camera_0876_raw, telemetry->rng_state_raw,
+                 telemetry->scene_frame);
         text(renderer, 6, 192, line, 0xFF9EF7A9u);
     }
     text(renderer, 6, 207, "UP/DN ACTOR  LT/RT PAGE  A PAUSE  X STEP",

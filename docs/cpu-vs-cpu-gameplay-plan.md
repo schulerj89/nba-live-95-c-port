@@ -33,9 +33,9 @@ semantic name is not yet proven.
 
 | Area | Known original locations | Required proof before porting |
 |---|---|---|
-| World integration | `$85:9700-$985F`, actor records `$34EB + slot*$100` | actor write-PC trace and fixed-point before/after values |
+| World integration | `$85:963D-$990F` (`$9700` airborne subpath), actor records `$34EB + slot*$100` | actor write-PC trace and fixed-point before/after values |
 | Direction/movement | `$85:F34F`, `$87:B832-$B952` | delta inputs, direction result, velocity/output cadence |
-| Assignment/CPU branch | `$85:BC43-$BD7D`, `$85:B95C-$B9D1`, `$87:A160-$A2CE` | actor target, mode, action and reaction fields across both teams |
+| Assignment/CPU branch | `$85:BC43-$BD7D`, `$85:B95C-$B9D1`, dispatch `$87:9245/$9BD0` | actor target, mode, action and reaction fields across both teams |
 | Play selection | `$85:B100-$B28B`, globals `$0996-$099C` | fixed RNG-state trace through at least two possessions |
 | Camera | `$85:9192-$93F4`; streamer `$85:8EE6-$90C3`; ROM map `$A0:8006` | subject proxy, bounds, step/easing, projection, source/destination mapping |
 | Ball/possession | ball record `$3EEB`, owner/candidate `$0946`, `$86:CED6-$D43C`, `$87:B649/$B66A` | owner transitions and XYZ/velocity at attachment, pass and loose-ball edges |
@@ -82,6 +82,18 @@ non-default home court.
 Exit gate: an extended trace shows both teams continuously making decisions,
 changing assignments and selecting the same action/animation families as the
 ROM under the same seed. Commit and push.
+
+Implementation evidence (increment 2A): `$87:A160` was disproven as a routine;
+it is the high operand byte of `$A15E LDA actor+$5E`. The real 18-mode dispatch
+is `$87:9245 -> $87:9BD3 -> $87:9BD0`. `$87:8F01-$8F8D` calls `$85:963D`
+for all ten actors in one logical pass with `dt=2`; `$85:9700` is only its
+airborne/Z subpath. Actor `+$64` is a modulo-47 cadence timer, not an action
+ID. C now preserves those facts, the exact `$80:CEE7` LFSR and golden vector,
+`$85:B95C` reaction thresholds, doubled assignment indices and paired facing,
+and independent `$30/$32` animation states, clocks and ROM resource IDs.
+Spatial actor/ball conditions replace the former fixed phase boundaries. The
+90-tick rebound recovery remains explicitly temporary until Checkpoint 3 ports
+the proven hoop/dead-ball/inbound path.
 
 ### 3. Ball, shooting and scoring
 

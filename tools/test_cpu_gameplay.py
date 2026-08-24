@@ -17,8 +17,8 @@ FORMATION = [
     (-8, -3), (16, 83), (24, -80), (-104, 56), (-96, -59),
 ]
 EXPECTED_RGB = {
-    600: "7c4a8e81cf354ef3eff358e8ccc7d0eafc2b631e86de853784e0e45bd9e61301",
-    1300: "7e47b104411142d532be5b71c29d2f3dfe51c189aa6b89c4cfaac914e56a3250",
+    600: "360d3daee6e864a067b082ec976927bb076809f3d10dba483da16230a6a43e83",
+    1300: "be5cd8c2ef4234369b095f55bff2fd788e2e4a2201cd024fb8b8030668e2d074",
 }
 
 
@@ -34,16 +34,16 @@ def main():
         trace = root / "cpu_gameplay.jsonl"
         command = [
             args.exe, "--headless", "--rom", args.rom, "--assets", args.pack,
-            "--tipoff-only", "--frames", "2000", "--gameplay-trace", str(trace),
+            "--tipoff-only", "--frames", "5000", "--gameplay-trace", str(trace),
             "--debug-state",
         ]
         result = subprocess.run(command, capture_output=True, text=True, check=False)
-        if result.returncode or "INT:$85:9700" not in result.stdout or \
+        if result.returncode or "INT:$85:963D" not in result.stdout or \
                 "BALL M:" not in result.stdout:
             raise AssertionError(result.stdout + result.stderr)
         rows = [json.loads(line) for line in trace.read_text().splitlines()]
-        if len(rows) != 2000:
-            raise AssertionError(f"expected 2000 CPU frames, got {len(rows)}")
+        if len(rows) != 5000:
+            raise AssertionError(f"expected 5000 CPU frames, got {len(rows)}")
 
         def frame(number):
             return rows[number - 1]
@@ -51,6 +51,8 @@ def main():
         live = frame(240)
         if any(actor["control"] != 0 for actor in frame(1900)["actors"]):
             raise AssertionError("CPU-versus-CPU mode assigned a human actor")
+        if any(row["control"]["actor"] != 0xFF for row in rows[219:]):
+            raise AssertionError("CPU-versus-CPU installed a human-selected actor")
         moved = sum((actor["x"], actor["y"]) != FORMATION[index]
                     for index, actor in enumerate(live["actors"]))
         if moved < 8:
@@ -70,6 +72,39 @@ def main():
         owners = {row["ball"]["owner"] for row in rows[219:]}
         if len(owners - {-1}) < 4:
             raise AssertionError(f"ballhandler did not rotate: {owners}")
+
+        behavior_targets = [
+            0x879C1B, 0x86F1B0, 0x86F6CD, 0x86F23F, 0x86F794,
+            0x86F2CA, 0x86F8CD, 0x86994C, 0x86C6AD, 0x86F0B7,
+            0x86A5B0, 0x86F34F, 0x86B769, 0x86A7DA, 0x86B154,
+            0x86A6B3, 0x86B0F7, 0x86B979,
+        ]
+        for row in rows[219:]:
+            changed_timers = 0
+            previous = rows[row["frame"] - 2] if row["frame"] > 220 else None
+            for actor in row["actors"]:
+                mode = actor["raw"]["control_mode"]
+                if mode >= len(behavior_targets) or \
+                        actor["ai_routine"] != behavior_targets[mode]:
+                    raise AssertionError(f"$87:9245 mode dispatch changed: {actor}")
+                if actor["actor_routine"] != 0x85963D:
+                    raise AssertionError("actor integration lost $85:963D")
+                if actor["raw"]["upper_resource"] == 0xFFFF or \
+                        actor["raw"]["lower_resource"] == 0xFFFF:
+                    raise AssertionError("independent animation resource missing")
+                if previous and actor["raw"]["action"] != \
+                        previous["actors"][actor["id"]]["raw"]["action"]:
+                    changed_timers += 1
+            if changed_timers not in (0, 10):
+                raise AssertionError("$87:8F01 actor pass split across C actors")
+        mismatch_pairs = {(actor["animation"], actor["lower_animation"])
+                          for row in rows[219:] for actor in row["actors"]
+                          if actor["animation"] != actor["lower_animation"]}
+        if not {(0x0B, 0x03), (0x31, 0x03)}.issubset(mismatch_pairs):
+            raise AssertionError(f"independent animation pairs missing: {mismatch_pairs}")
+        if any(row["possession"]["rng_state_raw"] in (0, 0xFFFF)
+               for row in rows[219:]):
+            raise AssertionError("$80:CEE7 RNG state was not retained")
 
         def signed16(value):
             return value - 0x10000 if value & 0x8000 else value
@@ -144,14 +179,15 @@ def main():
 
     source = Path(__file__).parents[1]
     implementation = (source / "src" / "nba_tipoff.c").read_text()
-    for marker in ("$85:9700-$985F", "$85:BC43-$BC81", "$85:B95C",
+    for marker in ("$85:963D-$985F", "$85:BC43-$BC81", "$85:B95C",
                    "$87:B832", "$87:B649", "$87:B66A", "$85:9192",
-                   "nba_gameplay_camera_update",
+                   "$87:8F01-$8F8D", "nba_gameplay_camera_update",
                    "cpu_begin_possession", "cpu_update_possession",
                    "ball_attach_to_actor", "ball_launch"):
         if marker not in implementation:
             raise AssertionError(f"CPU gameplay implementation lost {marker}")
-    for relative in ("tools/ghidra/DumpCpuGameplay.java",
+    for relative in ("include/nba_gameplay_ai.h", "src/nba_gameplay_ai.c",
+                     "tools/ghidra/DumpCpuGameplay.java",
                      "tools/ghidra/Run-CpuGameplayAnalysis.ps1"):
         if not (source / relative).is_file():
             raise AssertionError(f"CPU Ghidra evidence tool missing: {relative}")

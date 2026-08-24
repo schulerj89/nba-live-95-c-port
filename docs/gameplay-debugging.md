@@ -34,13 +34,14 @@ without changing the comparison contract.
 | `$34EB + slot*$100` | ten player actor records |
 | `$3EEB` | ball actor; position `$3EEF/$3EF3/$3EF7` |
 | `$0946` | transient possession/ball-owner player index |
-| `$87:A160–$A2CE` | human-versus-CPU steering split |
+| `$87:9245/$9BD0` | actor `+$5E` behavior-mode dispatch |
 | `$85:BC43–$BD7D` | assignment target, direction, distance, control mode |
 | `$85:B95C–$B9D1` | AI reaction threshold using ball distance and RNG |
 | `$87:B832–$B952` | directional movement calculation |
 | `$86:CED6–$D43C` | tip contact and possession resolution |
 | `$85:B100–$B28B` | randomized initial possession/play decision |
-| `$85:8EE6–$9191` | provisional camera/court streaming state |
+| `$85:9192–$93F4` | camera subject transform and adaptive approach |
+| `$85:8EE6–$90C3` | circular court streamer sourced from `$A0:8006` |
 
 The extended CPU-only capture covers 1,801 frames. It confirms the `$35`
 post-tip play, CPU reaction staggering, live matchup reassignment, the
