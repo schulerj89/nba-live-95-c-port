@@ -17,8 +17,8 @@ FORMATION = [
     (-8, -3), (16, 83), (24, -80), (-104, 56), (-96, -59),
 ]
 EXPECTED_RGB = {
-    600: "ec732fb21d0050ffacec521f1f6f8ebb826a9b03ef79cde57efa279402431973",
-    1300: "185f90270f4428a1ce383335535be9075060f30865d7bf603f01b7614996a333",
+    600: "f58b65772217b26002168f419c2bf0d19cc5be781f99ade0880d506902245009",
+    1300: "196dbe3be65417a111df2bd3af087a2439e31673d89f97f435b84d2121433eb7",
 }
 
 
@@ -49,6 +49,9 @@ def main():
             return rows[number - 1]
 
         live = frame(240)
+        if [actor["roster"] for actor in live["actors"]] != \
+                [2, 0, 1, 3, 4, 2, 0, 1, 3, 4]:
+            raise AssertionError("active actor-to-roster mapping changed")
         if any(actor["control"] != 0 for actor in frame(1900)["actors"]):
             raise AssertionError("CPU-versus-CPU mode assigned a human actor")
         if any(row["control"]["actor"] != 0xFF for row in rows[219:]):
@@ -299,7 +302,9 @@ def main():
                    "ball_attach_to_actor", "ball_launch",
                    "$85:A079-$A345", "$4711/$4791", "score_made_basket",
                    "$86:A110", "$86:A17D", "$86:BAA2/$86:BAEE",
-                   "$86:E923-$E96E", "$86:B0F7-$B153",
+                    "$86:E923-$E96E", "$86:B0F7-$B153",
+                   "$85:A82C-$AB16", "nba_gameplay_velocity_step",
+                   "nba_player_gameplay_movement_profile",
                    "nba_player_gameplay_shot_ratings", "cpu_commit_rebound"):
         if marker not in implementation:
             raise AssertionError(f"CPU gameplay implementation lost {marker}")

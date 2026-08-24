@@ -446,6 +446,9 @@ def build_player_roster_asset(rom_data):
             # +$40 when reloading their +$60 decision cadence.
             packed[20] = record[0x3f]
             packed[21] = record[0x40]
+            # `$85:A87F-$A88C` selects movement acceleration/cap profile from
+            # the high nibble of roster/config byte +$42.
+            packed[22] = record[0x42]
             packed[32:64] = fixed_name
             payload.extend(packed)
     return bytes(payload)

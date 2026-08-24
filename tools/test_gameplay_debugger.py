@@ -11,7 +11,7 @@ from pathlib import Path
 from PIL import Image
 
 
-EXPECTED_LAB_RGB = "d60dd977e516f48bdc7867ca08d031712dab08466e54b15f93ba506d58be4f8f"
+EXPECTED_LAB_RGB = "e0d0a016bd6f2488b0d99143f714950a5d528d2aed42aa9db4f8e90faff6a537"
 
 
 def run(command, label):
@@ -56,7 +56,8 @@ def main():
             raise AssertionError("tip-off introduced a human-controlled actor")
         required = {"base", "action", "flags", "control_mode", "side_group",
                     "target_x_56", "target_y_58", "mode_saved_62",
-                    "assignment_current", "reaction_threshold", "upper_restart",
+                    "assignment_current", "reaction_threshold",
+                    "movement_boost_72", "upper_restart",
                     "lower_restart", "behavior_flags"}
         if not required.issubset(sample["actors"][0]["raw"]):
             raise AssertionError("AI/actor raw telemetry schema is incomplete")

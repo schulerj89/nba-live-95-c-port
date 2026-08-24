@@ -59,5 +59,8 @@ bool nba_player_gameplay_decision_profiles(const NbaAssetPack *assets,
                                            uint8_t team, uint8_t roster_slot,
                                            uint8_t *profile_3f,
                                            uint8_t *profile_40);
+bool nba_player_gameplay_movement_profile(const NbaAssetPack *assets,
+                                          uint8_t team, uint8_t roster_slot,
+                                          uint8_t *profile_42);
 
 #endif

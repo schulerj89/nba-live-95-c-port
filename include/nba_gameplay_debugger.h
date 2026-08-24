@@ -56,6 +56,7 @@ typedef struct {
     uint16_t assignment_direction_raw;
     uint16_t pair_distance_raw;
     uint16_t reaction_threshold_raw;
+    uint16_t movement_boost_raw;
     uint16_t upper_restart_raw;
     uint16_t lower_restart_raw;
     uint16_t upper_phase_raw;

@@ -47,23 +47,6 @@ static int16_t fp_round(int32_t value) {
     return (int16_t)(value >= 0 ? (value + 128) >> 8 : -((-value + 128) >> 8));
 }
 
-static int approach(int value, int target, int amount) {
-    if (value < target) return value + amount > target ? target : value + amount;
-    if (value > target) return value - amount < target ? target : value - amount;
-    return value;
-}
-
-/* $85:F34F quantizes target deltas into the eight direction resources used by
- * $87:B832. Direction 0 is +Y, then the sectors rotate clockwise. */
-static uint8_t cpu_direction(int dx, int dy) {
-    int ax = dx < 0 ? -dx : dx, ay = dy < 0 ? -dy : dy;
-    if (ax == 0 && ay == 0) return 8;
-    if (ax * 2 < ay) return dy > 0 ? 0u : 4u;
-    if (ay * 2 < ax) return dx > 0 ? 2u : 6u;
-    if (dx > 0) return dy > 0 ? 1u : 3u;
-    return dy > 0 ? 7u : 5u;
-}
-
 static int mirror_court_x(int x) {
     return 280 - x;
 }
@@ -169,8 +152,9 @@ static void cpu_set_role_targets(NbaTipoff *tipoff) {
             matchup == tipoff->handler_actor ? 4u : 2u;
         int dx = fp_round(opponent->x_fp) - fp_round(tipoff->actors[actor].x_fp);
         int dy = fp_round(opponent->y_fp) - fp_round(tipoff->actors[actor].y_fp);
-        uint8_t direction = cpu_direction(dx, dy);
-        uint16_t distance = actor_distance(dx, dy);
+        uint16_t distance = 0u;
+        uint8_t direction = nba_gameplay_target_direction(
+            (int16_t)dx, (int16_t)dy, &distance);
         tipoff->actors[actor].assignment_direction = direction;
         tipoff->actors[actor].assignment_distance = distance;
         tipoff->actors[actor].pair_distance = distance;
@@ -264,7 +248,7 @@ static bool cpu_active_decision_due(NbaTipoff *tipoff, unsigned slot) {
                                tipoff->session->left_team;
     uint8_t profile_3f = 0u, profile_40 = 0u;
     (void)nba_player_gameplay_decision_profiles(
-        tipoff->assets, team, (uint8_t)(slot % 5u),
+        tipoff->assets, team, actor->roster_slot,
         &profile_3f, &profile_40);
     int16_t actor_x = fp_round(actor->x_fp);
     int16_t ball_x = fp_round(tipoff->ball.x_fp);
@@ -291,8 +275,8 @@ static void cpu_move_actor(NbaTipoff *tipoff, unsigned slot) {
     int x = fp_round(actor->x_fp), y = fp_round(actor->y_fp);
     int dx = actor->target_x - x, dy = actor->target_y - y;
     bool decision_due = cpu_active_decision_due(tipoff, slot);
-    /* Temporary parity guard until the live-covered mode-2 E7 target and
-     * `$85:A82C` velocity resolver replace the remaining host target shape. */
+    /* Temporary parity guard until the live-covered mode-2 E7 target branch
+     * replaces the remaining host target shape. `$85:A82C` itself is exact. */
     static const uint16_t first_move_start[10] = {
         100, 7, 2, 4, 2, 14, 5, 7, 2, 12
     };
@@ -303,42 +287,37 @@ static void cpu_move_actor(NbaTipoff *tipoff, unsigned slot) {
     }
     uint8_t direction = actor->movement_direction;
     if (decision_due) {
-        direction = cpu_direction(dx, dy);
+        direction = nba_gameplay_target_direction((int16_t)dx, (int16_t)dy,
+                                                    NULL);
         actor->movement_direction = direction;
         if (direction < 8u) actor->requested_direction = direction;
     }
-    if (direction >= 8u) {
-        if (decision_due) {
-            actor->velocity_x = (int16_t)approach(actor->velocity_x, 0, 16);
-            actor->velocity_y = (int16_t)approach(actor->velocity_y, 0, 16);
-        }
-        actor->x_fp += (int32_t)actor->velocity_x * 2;
-        actor->y_fp += (int32_t)actor->velocity_y * 2;
-        actor_set_animation(actor, 0u, 0u);
-        return;
-    }
-    int speed = slot == tipoff->handler_actor ? 112 :
-                actor->control_mode == 4u ? 104 : 88;
-    int sx = direction == 1u || direction == 2u || direction == 3u ? 1 :
-             direction == 5u || direction == 6u || direction == 7u ? -1 : 0;
-    int sy = direction == 7u || direction == 0u || direction == 1u ? 1 :
-             direction == 3u || direction == 4u || direction == 5u ? -1 : 0;
-    if (decision_due) {
-        actor->velocity_x = (int16_t)approach(actor->velocity_x, sx * speed, 20);
-        actor->velocity_y = (int16_t)approach(actor->velocity_y, sy * speed, 20);
-    }
+    uint8_t team = slot >= 5u ? tipoff->session->right_team :
+                               tipoff->session->left_team;
+    uint8_t profile_42 = 0x58u;
+    (void)nba_player_gameplay_movement_profile(
+        tipoff->assets, team, actor->roster_slot, &profile_42);
+    /* `$85:A82C-$AB16` runs every actor dispatch. The +$60 decision timer
+     * controls target refresh, not integer acceleration/integration cadence. */
+    nba_gameplay_velocity_step(
+        &actor->velocity_x, &actor->velocity_y,
+        &actor->movement_boost_timer, direction, profile_42, 2u,
+        tipoff->live_state_raw == 0x81u || fp_round(actor->z_fp) != 0,
+        (int16_t)tipoff->possession_actor);
     /* `$8E86-$8E9C` turns `$0938=2` into fixed multiplier `$0200` before
      * `$85:AB17`; in the host 24.8 bridge this is velocity8.8 * dt. */
     actor->x_fp += (int32_t)actor->velocity_x * 2;
     actor->y_fp += (int32_t)actor->velocity_y * 2;
-    if ((sx > 0 && fp_round(actor->x_fp) > actor->target_x) ||
-        (sx < 0 && fp_round(actor->x_fp) < actor->target_x))
+    if ((dx > 0 && fp_round(actor->x_fp) > actor->target_x) ||
+        (dx < 0 && fp_round(actor->x_fp) < actor->target_x))
         actor->x_fp = (int32_t)actor->target_x * 256;
-    if ((sy > 0 && fp_round(actor->y_fp) > actor->target_y) ||
-        (sy < 0 && fp_round(actor->y_fp) < actor->target_y))
+    if ((dy > 0 && fp_round(actor->y_fp) > actor->target_y) ||
+        (dy < 0 && fp_round(actor->y_fp) < actor->target_y))
         actor->y_fp = (int32_t)actor->target_y * 256;
     actor->direction = actor->requested_direction;
-    actor_set_animation(actor, slot == tipoff->handler_actor ? 11u : 3u, 3u);
+    actor_set_animation(actor, direction >= 8u ? 0u :
+                        slot == tipoff->handler_actor ? 11u : 3u,
+                        direction >= 8u ? 0u : 3u);
     actor->action_state = tipoff->cpu_play_state;
 }
 
@@ -654,7 +633,8 @@ static void cpu_update_possession(NbaTipoff *tipoff) {
                     tipoff->session->right_team : tipoff->session->left_team;
                 uint8_t rating_2pt = 0xA8u, rating_3pt = 0xA8u;
                 (void)nba_player_gameplay_shot_ratings(
-                    tipoff->assets, team, tipoff->handler_actor % 5u,
+                    tipoff->assets, team,
+                    tipoff->actors[tipoff->handler_actor].roster_slot,
                     &rating_2pt, &rating_3pt);
                 uint8_t rating = tipoff->shot_value_raw == 3u ?
                                  rating_3pt : rating_2pt;
@@ -780,11 +760,13 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
     tipoff->ball.y_fp = 0;
     tipoff->ball.z_fp = 80 * 256;
     tipoff->ball.owner_actor = -1;
+    static const uint8_t active_lineup[5] = {2u, 0u, 1u, 3u, 4u};
     for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
         NbaTipoffActor *state = &tipoff->actors[actor];
         state->x_fp = (int32_t)formation[actor].world_x * 256;
         state->y_fp = (int32_t)formation[actor].world_y * 256;
         state->direction = formation[actor].direction;
+        state->roster_slot = active_lineup[actor % 5u];
         state->requested_direction = formation[actor].direction;
         state->movement_direction = formation[actor].direction;
         state->saved_control_mode = 0u;
@@ -969,10 +951,10 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
 
     for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
         NbaGameplayActorTelemetry *out = &telemetry->actors[actor];
+        const NbaTipoffActor *state = &tipoff->actors[actor];
         out->index = (uint8_t)actor;
         out->team_side = actor >= 5u;
-        out->roster_slot = (uint8_t)(actor % 5u);
-        const NbaTipoffActor *state = &tipoff->actors[actor];
+        out->roster_slot = state->roster_slot;
         bool live = tipoff->frame >= NBA_TIPOFF_BREAK_FRAME;
         out->control = NBA_GAMEPLAY_CONTROL_CPU;
         out->world_x = live ? fp_round(state->x_fp) : formation[actor].world_x;
@@ -986,9 +968,11 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
             (int16_t)(formation[actor].screen_y - out->world_z);
         out->visible = live ? out->screen_x > -32 && out->screen_x < 288 &&
             out->screen_y > -48 && out->screen_y < 240 : actor_visible(actor);
-        out->velocity_x = live ? fp_round(state->velocity_x) : 0;
-        out->velocity_y = live ? fp_round(state->velocity_y) : 0;
-        out->velocity_z = live ? fp_round(state->velocity_z) : 0;
+        /* Actor +$0E/+$10 are already signed 8.8 ROM velocity words. Keep
+         * them raw so CLI/JSON can compare directly with the Mesen oracle. */
+        out->velocity_x = live ? state->velocity_x : 0;
+        out->velocity_y = live ? state->velocity_y : 0;
+        out->velocity_z = live ? state->velocity_z : 0;
         out->direction = live ? state->direction : formation[actor].direction;
         out->animation_state = live ? state->animation_state :
             actor_animation(tipoff, actor);
@@ -1033,6 +1017,7 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
         out->assignment_direction_raw = state->assignment_direction;
         out->pair_distance_raw = state->pair_distance;
         out->reaction_threshold_raw = state->reaction_threshold;
+        out->movement_boost_raw = state->movement_boost_timer;
         out->upper_restart_raw = out->lower_restart_raw = 0;
         out->upper_phase_raw = live ? state->upper_animation_tick : 0u;
         out->lower_phase_raw = live ? state->lower_animation_tick : 0u;
@@ -1097,7 +1082,7 @@ void nba_tipoff_render(const NbaTipoff *tipoff, NbaRenderer *ren) {
         unsigned actor = render_order[order];
         uint8_t team_side = actor >= 5u;
         uint8_t uniform_side = team_side;
-        uint8_t slot = (uint8_t)(actor % 5u);
+        uint8_t slot = tipoff->actors[actor].roster_slot;
         uint8_t team = team_side ? tipoff->session->right_team :
                                    tipoff->session->left_team;
         uint8_t state = tipoff->frame >= NBA_TIPOFF_BREAK_FRAME ?

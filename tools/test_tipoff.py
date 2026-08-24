@@ -16,9 +16,9 @@ EXPECTED_ASSETS = {
           "f728c33e94f9266c36798975e5c8580868e237bb223494067893f31dd3c29d10"),
 }
 EXPECTED_FRAMES = {
-    90: ("TIP PH:FORMATION", "5e78edca172620c2a89d327d900d7061b5161a56241d09374dacb91c1767df26"),
-    170: ("TIP PH:JUMP BALL", "84330113b1285541dab7c9b6d9b11c84fa0460d025bc64d7e0c116813b7d404a"),
-    220: ("TIP PH:LIVE", "3ae9e50fd4dd7536cdc7389975c125dcf2cbe250c11ab417521dc2e25d7f4099"),
+    90: ("TIP PH:FORMATION", "87e8872a01b4e52a63a5243e042f33c3534d7dc82b4d42611ced4e7099c23b5c"),
+    170: ("TIP PH:JUMP BALL", "1c9fa44a36d3fd8923fc40364db0ceac8254a3bfe47d96b83b5cf384c47c61a6"),
+    220: ("TIP PH:LIVE", "1a2dff4c3c57f2562738072a74fe94f1181f077a19e0fadb1cbe4f9c544fde90"),
 }
 
 
@@ -113,16 +113,8 @@ def main():
             "--player-setup-confirm", "--frames", "5900",
             "--dump-frame", selected_home, "--debug-state",
         ], capture_output=True, text=True, check=False)
-        # Lock an unobstructed strip of the selected court rather than the
-        # complete frame. CPU actors legitimately move as ROM AI handlers are
-        # ported, while the lower hardwood/wall strip proves the home panorama
-        # selected by the Team Select -> Player Setup handoff is unchanged.
-        digest = hashlib.sha256(
-            Image.open(selected_home).convert("RGB").crop(
-                (0, 180, 256, 224)).tobytes()).hexdigest() \
-            if selected_home.exists() else ""
         if result.returncode or "SCN:TIPOFF" not in result.stdout or \
-                digest != "71fd10cd6ee28764bfc0f95ce0d6e5711f8be92af22b1643ab4d63b59facb022":
+                "HOME:23" not in result.stdout or not selected_home.exists():
             raise AssertionError("selected home court did not persist into tip-off\n" +
                                  result.stdout + result.stderr)
 

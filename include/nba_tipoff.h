@@ -56,6 +56,7 @@ typedef struct {
     int16_t velocity_x, velocity_y, velocity_z;
     int16_t target_x, target_y;
     uint8_t direction;
+    uint8_t roster_slot; /* active `$46F9/$4779` lineup entry */
     uint8_t animation_state;
     uint8_t lower_animation_state;
     uint16_t upper_animation_tick;
@@ -72,6 +73,7 @@ typedef struct {
     uint16_t assignment_distance;
     uint16_t pair_distance;
     uint16_t reaction_threshold;
+    uint16_t movement_boost_timer; /* actor `+$72`, consumed by `$85:A82C` */
     uint16_t behavior_timer;
     uint16_t action_state;
     bool visible;

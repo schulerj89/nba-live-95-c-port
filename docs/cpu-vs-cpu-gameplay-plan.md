@@ -244,11 +244,27 @@ SHA-256 `e6c71d3e45e12c1f5bf691a23f7d952e6f989798d78024d77518ac7f7437941c`.
 These are initial formation targets; the later `$85:AE35+` overrides and
 mode-specific helpers still apply before velocity resolution.
 
-The exact velocity boundary is `$85:A82C-$AB16`, fed by `$85:F34F`, `$B3AA`,
-`$B3C9`, and `$B402`. It uses eight ROM direction vectors, a 16-entry profile
-scale selected from roster `+$42`, two integer damping iterations in observed
-play, and a 16-entry squared-speed cap. Direction 8 decelerates by
-`lowbyte(dt)*25`; it is not a floating-point seek. This resolver and the
-formation graph are the next active-mode integration checkpoint. Until both
-are connected, any remaining first-possession movement guard is explicitly
-temporary and cannot satisfy the final parity gate.
+Increment 4E ports the exact velocity boundary `$85:A82C-$AB16`, fed by the
+`$85:F34F` direction/distance quantizer. It uses eight ROM direction vectors,
+a 16-entry profile scale selected from roster `+$42`, two integer damping
+iterations in observed play, and a 16-entry squared-speed cap. Direction 8
+decelerates by `lowbyte(dt)*25`; no floating-point seek or host speed constant
+remains in actor movement. The `+$72` boost countdown, boosted vectors and
+1.5x cap are preserved and exported as `movement_boost_72` telemetry.
+
+`$87:9127-$9136` proves DP `$E0/$E2` is selected through the active-record
+pointer array at `$7E:3449`, built by `$86:D7B8-$D85D` from lineup arrays
+`$46F9/$4779`. The proven default lineup order is `[2,0,1,3,4]` on each side,
+so C actors now store an explicit roster slot instead of using `actor % 5`.
+That slot drives roster `+$3F/+$40/+$42`, shot ratings and sprite identity.
+Raw actor velocities in F8/JSON are now the signed 8.8 `+$0E/+$10` words,
+making direct Mesen comparison possible.
+
+The 61-play formation graph is packed and validated but not yet connected to
+all modes: the port still needs exact host/ROM coordinate-boundary proof and
+the later `$85:AE35+` overrides before replacing its provisional role targets.
+The first-possession movement guard is likewise explicit temporary parity
+scaffolding. Loose/shot/dead-ball camera-subject proxy writers remain under
+trace; a long run can therefore be mechanically healthy while a frame briefly
+shows too few players. These caveats prevent treating 4E as the final parity
+gate.

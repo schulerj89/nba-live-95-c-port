@@ -6,6 +6,125 @@ static int16_t arithmetic_shift_right_3(int16_t value) {
     return (int16_t)(-(((-(int)value) + 7) >> 3));
 }
 
+static int16_t wrap16(int32_t value) {
+    return (int16_t)(uint16_t)value;
+}
+
+static int16_t trunc_div_pow2(int16_t value, unsigned shift) {
+    uint16_t magnitude = value < 0 ?
+        (uint16_t)(0u - (uint16_t)value) : (uint16_t)value;
+    int16_t quotient = (int16_t)(magnitude >> shift);
+    return value < 0 ? (int16_t)(uint16_t)(0u - (uint16_t)quotient) : quotient;
+}
+
+static uint16_t magnitude16(int16_t value) {
+    return value < 0 ? (uint16_t)(0u - (uint16_t)value) : (uint16_t)value;
+}
+
+/* `$85:F34F-$F3B7`: exact direction key consumed by `$87:B832`, plus the
+ * major+minor/4 distance. The
+ * y<=x+1 swap and diagonal boundary intentionally differ from a conventional
+ * octant quantizer. */
+uint8_t nba_gameplay_target_direction(int16_t dx, int16_t dy,
+                                      uint16_t *distance) {
+    static const uint8_t direction_map[16] = {
+        0,1,2,1, 4,3,2,3, 0,7,6,7, 4,5,6,5
+    };
+    if (dx == 0 && dy == 0) {
+        if (distance) *distance = 0u;
+        return 8u;
+    }
+    uint16_t key = 0u;
+    uint16_t x = (uint16_t)dx, y = (uint16_t)dy;
+    if (dx < 0) { x = (uint16_t)(0u - x); key |= 8u; }
+    if (dy < 0) { y = (uint16_t)(0u - y); key |= 4u; }
+    if ((int16_t)(uint16_t)(y - 1u) <= (int16_t)x) {
+        uint16_t swap = x; x = y; y = swap; key |= 2u;
+    }
+    uint16_t doubled_x = (uint16_t)(x << 1);
+    if ((int16_t)(uint16_t)(y - 1u) < (int16_t)doubled_x) key |= 1u;
+    if (distance) *distance = (uint16_t)(y + (doubled_x >> 3));
+    return direction_map[key];
+}
+
+/* `$85:A82C-$AB16`: profile-scaled integer acceleration, damping and cap
+ * rejection. Inputs and outputs remain signed 8.8 actor velocity words. */
+void nba_gameplay_velocity_step(int16_t *velocity_x, int16_t *velocity_y,
+                                uint16_t *boost_timer, uint8_t direction,
+                                uint8_t profile_42, uint16_t dispatch_dt,
+                                bool movement_blocked,
+                                int16_t global_093e) {
+    static const int16_t normal[8][2] = {
+        {0,60},{42,42},{60,0},{42,-42},
+        {0,-60},{-42,-42},{-60,0},{-42,42}
+    };
+    static const int16_t boosted_vectors[8][2] = {
+        {0,75},{53,53},{75,0},{53,-53},
+        {0,-75},{-53,-53},{-75,0},{-53,53}
+    };
+    static const uint8_t scales[16] = {
+        196,200,204,208,212,216,220,224,
+        228,232,236,240,244,248,252,252
+    };
+    static const uint32_t caps[16] = {
+        338000u,348480u,359120u,369920u,
+        380880u,392000u,403280u,414720u,
+        426320u,438080u,450000u,462080u,
+        474320u,486720u,499280u,512000u
+    };
+    if (!velocity_x || !velocity_y || !boost_timer) return;
+    bool boosted = *boost_timer != 0u;
+    int16_t old_x = *velocity_x, old_y = *velocity_y;
+    if (!movement_blocked && direction < 8u) {
+        unsigned profile = (profile_42 >> 4) & 15u;
+        const int16_t (*vectors)[2] = boosted ? boosted_vectors : normal;
+        uint8_t scale = scales[profile];
+        int16_t raw_x = vectors[direction][0], raw_y = vectors[direction][1];
+        int16_t accel_x = (int16_t)(((uint8_t)(raw_x < 0 ? -raw_x : raw_x) *
+                                     scale) >> 8);
+        int16_t accel_y = (int16_t)(((uint8_t)(raw_y < 0 ? -raw_y : raw_y) *
+                                     scale) >> 8);
+        if (raw_x < 0) accel_x = (int16_t)-accel_x;
+        if (raw_y < 0) accel_y = (int16_t)-accel_y;
+        int16_t candidate_x = old_x, candidate_y = old_y;
+        int16_t counter = (int16_t)(uint16_t)(dispatch_dt - 1u);
+        do {
+            candidate_x = wrap16((int32_t)candidate_x -
+                                  trunc_div_pow2(candidate_x, 4u) + accel_x);
+            candidate_y = wrap16((int32_t)candidate_y -
+                                  trunc_div_pow2(candidate_y, 4u) + accel_y);
+            counter = wrap16((int32_t)counter - 1);
+        } while (counter >= 0);
+        uint16_t qx = magnitude16(candidate_x) >> 2;
+        uint16_t qy = magnitude16(candidate_y) >> 2;
+        uint8_t mx = (uint8_t)(qx | (qx >> 8));
+        uint8_t my = (uint8_t)(qy | (qy >> 8));
+        uint32_t metric = ((uint32_t)mx * mx << 2) +
+                          ((uint32_t)my * my << 2);
+        unsigned cap_profile = profile;
+        if (counter == global_093e) cap_profile = profile >= 2u ? profile - 2u : 0u;
+        uint32_t cap = caps[cap_profile];
+        if (boosted) cap += cap >> 1;
+        if (metric <= cap) {
+            *velocity_x = candidate_x;
+            *velocity_y = candidate_y;
+            goto finish;
+        }
+    }
+    if (!movement_blocked) {
+        uint16_t amount = (uint16_t)((uint8_t)dispatch_dt * 25u);
+        *velocity_x = old_x >= (int16_t)amount ? wrap16(old_x - amount) :
+            old_x < -(int16_t)amount ? wrap16(old_x + amount) : 0;
+        *velocity_y = old_y >= (int16_t)amount ? wrap16(old_y - amount) :
+            old_y < -(int16_t)amount ? wrap16(old_y + amount) : 0;
+    }
+finish:
+    if (*boost_timer != 0u) {
+        int16_t remaining = wrap16((int32_t)(int16_t)*boost_timer - dispatch_dt);
+        *boost_timer = remaining >= 0 ? (uint16_t)remaining : 0u;
+    }
+}
+
 void nba_gameplay_rng_seed(NbaGameplayRng *rng, uint16_t seed) {
     rng->state = seed;
 }
@@ -91,8 +210,32 @@ bool nba_gameplay_ai_self_test(void) {
     if (!nba_gameplay_decision_timer_step(&timer, 11u, 0x20u, true) ||
         timer != 63u) return false;
     timer = 20u;
-    return nba_gameplay_decision_timer_step(&timer, 11u, 0x30u, false) &&
-           timer == 47u;
+    if (!nba_gameplay_decision_timer_step(&timer, 11u, 0x30u, false) ||
+        timer != 47u) return false;
+    static const struct { int16_t x, y; uint8_t direction; uint16_t distance; } cases[] = {
+        {0,0,8,0},{10,0,2,10},{0,10,0,10},{-10,-10,5,12},
+        {10,20,1,22},{10,21,0,23},{10,11,1,12}
+    };
+    for (unsigned i = 0; i < sizeof(cases) / sizeof(cases[0]); ++i) {
+        uint16_t distance = 0u;
+        if (nba_gameplay_target_direction(cases[i].x, cases[i].y, &distance) !=
+                cases[i].direction || distance != cases[i].distance) return false;
+    }
+    uint16_t boost = 0u; x = 0; y = 0;
+    nba_gameplay_velocity_step(&x, &y, &boost, 2u, 0x58u, 2u, false, 8);
+    if (x != 97 || y != 0) return false;
+    x = 100; y = -100;
+    nba_gameplay_velocity_step(&x, &y, &boost, 1u, 0x58u, 2u, false, 8);
+    if (x != 156 || y != -21) return false;
+    x = 100; y = -100;
+    nba_gameplay_velocity_step(&x, &y, &boost, 8u, 0x58u, 2u, false, 8);
+    if (x != 50 || y != -50) return false;
+    x = 0; y = 0; boost = 2u;
+    nba_gameplay_velocity_step(&x, &y, &boost, 0u, 0x58u, 2u, false, 8);
+    if (x != 0 || y != 123 || boost != 0u) return false;
+    x = 910; y = 910;
+    nba_gameplay_velocity_step(&x, &y, &boost, 1u, 0x58u, 2u, false, -1);
+    return x == 860 && y == 860;
 }
 
 /* Modes 1-6 at `$86:F1CF/$F25E/$F6EE/$F7AA/$F8D8` subtract DP `$C8`.

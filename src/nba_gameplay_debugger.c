@@ -111,10 +111,10 @@ void nba_gameplay_debugger_render(const NbaGameplayDebugger *debugger,
                  actor->ai_target_actor, actor->assignment_direction_raw,
                  actor->velocity_x, actor->velocity_y);
         text(renderer, 6, 180, line, 0xFFFFFFFFu);
-        snprintf(line, sizeof(line), "H:%u POS:%d ASG:%u DST:%u REACT:%u",
+        snprintf(line, sizeof(line), "H:%u POS:%d ASG:%u DST:%u R:%u B:%u",
                  telemetry->controlled_actor, telemetry->possession_actor,
                  actor->assignment_current_raw, actor->assignment_distance_raw,
-                 actor->reaction_threshold_raw);
+                 actor->reaction_threshold_raw, actor->movement_boost_raw);
         text(renderer, 6, 192, line, 0xFF9EF7A9u);
     } else {
         snprintf(line, sizeof(line), "CAM:%d,%d R:$%06X COLL:$%06X POS:$%06X",
@@ -242,7 +242,8 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
                 "\"assignment_base\":%u,\"assignment_current\":%u,"
                 "\"assignment_alternate\":%u,\"assignment_distance\":%u,"
                 "\"assignment_direction\":%u,\"pair_distance\":%u,"
-                "\"reaction_threshold\":%u,\"upper_restart\":%u,"
+                "\"reaction_threshold\":%u,\"movement_boost_72\":%u,"
+                "\"upper_restart\":%u,"
                 "\"lower_restart\":%u,\"upper_phase\":%u,"
                 "\"lower_phase\":%u,\"behavior_flags\":%u,"
                 "\"palette\":%u}}",
@@ -262,7 +263,8 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
                 a->assignment_base_raw, a->assignment_current_raw,
                 a->assignment_alternate_raw, a->assignment_distance_raw,
                 a->assignment_direction_raw, a->pair_distance_raw,
-                a->reaction_threshold_raw, a->upper_restart_raw,
+                a->reaction_threshold_raw, a->movement_boost_raw,
+                a->upper_restart_raw,
                 a->lower_restart_raw, a->upper_phase_raw, a->lower_phase_raw,
                 a->behavior_flags_raw, a->palette_raw);
     }

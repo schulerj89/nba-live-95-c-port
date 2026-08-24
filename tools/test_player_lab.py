@@ -57,14 +57,14 @@ def main():
     if chicago != (0xADA074, 24, 0, 85, 145, 0x99, 0x80, 0x19, 2, "Cartwright"):
         raise AssertionError(f"Chicago ROM record changed: {chicago}")
     chicago_offset = 24 + (3 * 12 + 2) * 64
-    if roster[chicago_offset + 20:chicago_offset + 22] != bytes((15, 11)):
-        raise AssertionError("Chicago +$3F/+$40 AI profiles changed")
+    if roster[chicago_offset + 20:chicago_offset + 23] != bytes((15, 11, 78)):
+        raise AssertionError("Chicago +$3F/+$40/+$42 AI profiles changed")
     west = record(28, 10)
     if west[-1] != "D. Robinson" or west[5:8] != (0xF5, 0x99, 0x8E):
         raise AssertionError(f"West ROM record changed: {west}")
     west_offset = 24 + (28 * 12 + 10) * 64
-    if roster[west_offset + 20:west_offset + 22] != bytes((1, 2)):
-        raise AssertionError("West +$3F/+$40 AI profiles changed")
+    if roster[west_offset + 20:west_offset + 23] != bytes((1, 2, 89)):
+        raise AssertionError("West +$3F/+$40/+$42 AI profiles changed")
 
     pose, pose_w, pose_h, _ = assets[252]
     if (pose_w, pose_h, len(pose)) != (24, 64, 24 * 64 * 4):
