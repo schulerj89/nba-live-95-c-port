@@ -587,6 +587,8 @@ def main():
                    "$86:AB2D-$AF65", "$86:A6B3-$A790",
                    "$86:9DDB-$9DE4", "$86:9B84-$9B8F",
                    "nba_gameplay_pass_direction", "cpu_begin_rom_pass",
+                   "nba_gameplay_select_pass_receiver",
+                   "$85:B50E-$B60A", "$85:B60B-$B677",
                    "cpu_update_rom_passer",
                    "nba_player_gameplay_movement_profile",
                    "nba_player_gameplay_shot_ratings", "cpu_commit_rebound"):

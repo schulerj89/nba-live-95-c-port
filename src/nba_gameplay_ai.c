@@ -83,6 +83,64 @@ uint8_t nba_gameplay_pass_direction(int16_t dx, int16_t dy,
     return direction_map[key];
 }
 
+/* `$85:B60B-$B677`: reject self, passive/special executor modes, a zero
+ * direction vector, and the two head-on low-motion conflicts. Carry clear
+ * is the accepting return in the original routine. */
+bool nba_gameplay_receiver_candidate_valid(
+    uint8_t passer_actor, uint8_t candidate_actor,
+    const NbaGameplayReceiverState *actors, uint8_t actor_count) {
+    if (!actors || passer_actor >= actor_count ||
+        candidate_actor >= actor_count || candidate_actor == passer_actor)
+        return false;
+    const NbaGameplayReceiverState *passer = &actors[passer_actor];
+    const NbaGameplayReceiverState *candidate = &actors[candidate_actor];
+    if (candidate->control_mode >= 7u) return false;
+    uint8_t direction = nba_gameplay_target_direction(
+        (int16_t)(candidate->x - passer->x),
+        (int16_t)(candidate->y - passer->y), NULL);
+    if (direction == 8u) return false;
+    if (direction == passer->travel_direction &&
+        passer->travel_distance < 0x20u) return false;
+    if ((uint8_t)(direction ^ 4u) == candidate->travel_direction &&
+        candidate->travel_distance < 0x20u) return false;
+    return true;
+}
+
+static bool receiver_is_in_forward_window(
+    const NbaGameplayReceiverState *passer,
+    const NbaGameplayReceiverState *receiver, bool attack_right) {
+    /* `$85:B5B0-$B5D9`: normalize X by team direction and reject only a
+     * receiver 201 or more units ahead. Signed values behind the passer are
+     * deliberately retained, matching CMP #$00C9/BPL. */
+    int16_t delta = attack_right ? (int16_t)(receiver->x - passer->x) :
+                                   (int16_t)(passer->x - receiver->x);
+    return delta < 0x00C9;
+}
+
+/* `$85:B50E-$B60A`: `$09A2` has priority. Otherwise `$09AA` is tried first
+ * and `$09AC` only when the validator rejects it. `$09AE` belongs to later
+ * play policy and is not part of this receiver-selection slice. */
+int8_t nba_gameplay_select_pass_receiver(
+    uint8_t passer_actor, int16_t special_actor,
+    const int16_t selectors[3], const NbaGameplayReceiverState *actors,
+    uint8_t actor_count, bool attack_right) {
+    if (!actors || !selectors || passer_actor >= actor_count) return -1;
+    if (special_actor >= 0 && special_actor < actor_count &&
+        receiver_is_in_forward_window(&actors[passer_actor],
+                                      &actors[special_actor], attack_right))
+        return (int8_t)special_actor;
+    for (unsigned i = 0; i < 2u; ++i) {
+        int16_t candidate = selectors[i];
+        if (candidate < 0 || candidate >= actor_count) continue;
+        if (nba_gameplay_receiver_candidate_valid(
+                passer_actor, (uint8_t)candidate, actors, actor_count) &&
+            receiver_is_in_forward_window(&actors[passer_actor],
+                                          &actors[candidate], attack_right))
+            return (int8_t)candidate;
+    }
+    return -1;
+}
+
 /* `$85:B402-$B4B8`: predict target residual by velocity/8 with the ROM's
  * negative-quotient +1 bias, then use the inclusive caller tolerance. */
 bool nba_gameplay_predictive_arrival(int16_t actor_x, int16_t actor_y,
@@ -295,6 +353,33 @@ bool nba_gameplay_ai_self_test(void) {
                 &distance) != pass_cases[i].direction ||
             distance != pass_cases[i].distance) return false;
     }
+    NbaGameplayReceiverState receivers[10] = {0};
+    for (unsigned i = 0; i < 10u; ++i) {
+        receivers[i].x = (int16_t)(i * 20);
+        receivers[i].y = (int16_t)(i * 3);
+        receivers[i].control_mode = 1u;
+        receivers[i].travel_direction = 8u;
+        receivers[i].travel_distance = 0x40u;
+    }
+    int16_t selectors[3] = {9, 7, -1};
+    if (nba_gameplay_select_pass_receiver(
+            8u, -1, selectors, receivers, 10u, true) != 9) return false;
+    receivers[9].control_mode = 7u;
+    if (nba_gameplay_select_pass_receiver(
+            8u, -1, selectors, receivers, 10u, true) != 7) return false;
+    receivers[9].control_mode = 1u;
+    receivers[9].travel_direction = 6u;
+    receivers[9].travel_distance = 0x1Fu;
+    if (nba_gameplay_select_pass_receiver(
+            8u, -1, selectors, receivers, 10u, true) != 7) return false;
+    receivers[9].travel_direction = 8u;
+    receivers[9].travel_distance = 0x40u;
+    receivers[5].x = 500;
+    if (nba_gameplay_select_pass_receiver(
+            8u, 5, selectors, receivers, 10u, true) != 9) return false;
+    receivers[5].x = 190;
+    if (nba_gameplay_select_pass_receiver(
+            8u, 5, selectors, receivers, 10u, true) != 5) return false;
     uint8_t steering = 0u;
     uint16_t predicted = 0u;
     if (!nba_gameplay_predictive_arrival(

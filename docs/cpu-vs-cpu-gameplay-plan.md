@@ -493,3 +493,22 @@ live activation remains gated on a focused trace that observes codes 1, 2,
 The hook also receives the offender team explicitly, matching actor `+$70`
 rather than assuming slot/5. Literal `$86:C66E-$C684` uses threshold five
 when `$0926<4` and threshold four otherwise.
+
+Increment 4Q replaces two more host-authored animation/policy choices with
+live ROM behavior. Mode 12 now holds upper/lower resources `$16/$32`, matching
+all 26 observed CPU shot frames and the `$86:B769` executor, instead of the
+provisional `$31/$03` pair. Receiver selection now follows
+`$85:B50E-$B60A`: `$09A2` receives priority, then `$09AA`, with `$09AC` used
+only if `$85:B60B-$B677` rejects the first candidate. The isolated validator
+rejects self-selection, candidate modes seven and above, the direction-eight
+zero vector, and both low-motion head-on conflicts using actor `+$86/+$8A`.
+It also preserves the signed, team-normalized `<$00C9` forward-X window.
+Pure golden cases lock primary, alternate, head-on rejection, distance, and
+special-cutter priority. Live integration no longer fabricates the former
+`handler+2` next receiver. A play record with no valid receiver returns from
+the pass boundary without invoking `$86:AB2D`; the provisional global planner
+then resumes its attack branch rather than deadlocking. That bridge remains
+explicitly temporary until the complete mode-11 executor replaces the global
+BREAK/DRIVE/ATTACK state machine. The 50,000-frame CPU regression continues
+to cover recurring possessions, both-team scoring, passes, shots, rebounds,
+inbounds, and bounded `$09A2` cutter lifetimes.

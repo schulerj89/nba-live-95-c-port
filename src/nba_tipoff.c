@@ -66,6 +66,23 @@ static void ball_launch(NbaTipoff *tipoff, int target_x, int target_y,
                         NbaBallMode mode);
 static bool cpu_update_rom_passer(NbaTipoff *tipoff, unsigned slot);
 
+static int cpu_select_rom_receiver(const NbaTipoff *tipoff,
+                                   uint8_t passer_slot) {
+    NbaGameplayReceiverState actors[NBA_GAMEPLAY_ACTOR_COUNT];
+    for (unsigned i = 0; i < NBA_GAMEPLAY_ACTOR_COUNT; ++i) {
+        actors[i].x = fp_round(tipoff->actors[i].x_fp);
+        actors[i].y = fp_round(tipoff->actors[i].y_fp);
+        actors[i].control_mode = tipoff->actors[i].control_mode;
+        actors[i].travel_direction = tipoff->actors[i].assignment_direction;
+        actors[i].travel_distance = tipoff->actors[i].pair_distance;
+    }
+    int16_t special = tipoff->special_actor_raw == NBA_GAMEPLAY_UNKNOWN_WORD ?
+                      -1 : (int16_t)tipoff->special_actor_raw;
+    return nba_gameplay_select_pass_receiver(
+        passer_slot, special, tipoff->play_selector_raw, actors,
+        NBA_GAMEPLAY_ACTOR_COUNT, tipoff->offense_side != 0u);
+}
+
 static uint16_t actor_distance(int dx, int dy) {
     unsigned ax = (unsigned)(dx < 0 ? -dx : dx);
     unsigned ay = (unsigned)(dy < 0 ? -dy : dy);
@@ -383,7 +400,8 @@ static void cpu_set_role_targets(NbaTipoff *tipoff) {
      * handler 11, receiver 10, passer 15, shot 12, recovery 16. */
     if (tipoff->cpu_play_state == NBA_CPU_PLAY_PASS) {
         handler->control_mode = 15u;
-        tipoff->actors[tipoff->receiver_actor].control_mode = 10u;
+        tipoff->actors[tipoff->receiver_actor].control_mode =
+            tipoff->receiver_actor == tipoff->special_actor_raw ? 14u : 10u;
     } else if (tipoff->cpu_play_state == NBA_CPU_PLAY_SHOT) {
         if (tipoff->play_state_frame == 0u) {
             handler->control_mode = 12u;
@@ -1132,17 +1150,32 @@ static void cpu_update_possession(NbaTipoff *tipoff) {
             break;
         case NBA_CPU_PLAY_DRIVE:
             if (handler_distance < 18) {
-                if (cpu_begin_rom_pass(tipoff, tipoff->handler_actor,
-                                       tipoff->receiver_actor))
+                int selected = cpu_select_rom_receiver(
+                    tipoff, tipoff->handler_actor);
+                if (selected < 0) {
+                    /* `$85:B50E` returns without calling `$86:AB2D` when
+                     * neither selector is usable. The still-provisional
+                     * global planner must not wait forever: resume its attack
+                     * branch. Full mode-11 dispatch will replace this bridge. */
+                    cpu_enter_play_state(tipoff, NBA_CPU_PLAY_ATTACK);
+                    break;
+                }
+                tipoff->receiver_actor = (uint8_t)selected;
+                if (cpu_begin_rom_pass(
+                        tipoff, tipoff->handler_actor, tipoff->receiver_actor)) {
+                    tipoff->actors[tipoff->receiver_actor].control_mode =
+                        tipoff->receiver_actor == tipoff->special_actor_raw ?
+                        14u : 10u;
                     cpu_enter_play_state(tipoff, NBA_CPU_PLAY_PASS);
+                }
             }
             break;
         case NBA_CPU_PLAY_PASS:
             if (receiver_distance < 14 || tipoff->ball.z_fp <= 0) {
                 tipoff->handler_actor = tipoff->receiver_actor;
-                tipoff->receiver_actor = (uint8_t)(
-                    (tipoff->handler_actor / 5u) * 5u +
-                    ((tipoff->handler_actor + 2u) % 5u));
+                /* Mode 11 selects the next target from `$09A2/$09AA/$09AC`;
+                 * do not synthesize the former handler+2 receiver here. */
+                tipoff->receiver_actor = tipoff->handler_actor;
                 ball_attach_to_actor(tipoff, tipoff->handler_actor);
                 tipoff->possession_actor = (int8_t)tipoff->handler_actor;
                 tipoff->pass_actor_raw = -1;
