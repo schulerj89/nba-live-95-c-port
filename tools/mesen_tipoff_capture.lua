@@ -5,6 +5,21 @@
 -- no captured art is used by the C port.
 local out = os.getenv("NBA95_CAPTURE_DIR")
 assert(out and out ~= "", "NBA95_CAPTURE_DIR is not set")
+local force_cpu_vs_cpu = os.getenv("NBA95_CPU_VS_CPU") == "1"
+
+local function write_word(address, value)
+    emu.write(address, value & 0xff, emu.memType.snesWorkRam)
+    emu.write(address + 1, (value >> 8) & 0xff, emu.memType.snesWorkRam)
+end
+
+local function clear_human_assignments()
+    for address = 0x08d4, 0x08dc, 2 do write_word(address, 0xffff) end
+    write_word(0x093a, 0xffff) -- controlled side
+    write_word(0x093e, 0xffff) -- selected actor
+    write_word(0x0940, 0x0000) -- selected actor pointer
+    write_word(0x095e, 0xffff) -- selected controller
+    write_word(0x1615, 0xffff) -- active controller
+end
 
 local log = assert(io.open(out .. "/capture_log.txt", "wb"))
 local global_frame, title_frame, setup_frame = 0, -1, -1
@@ -192,6 +207,8 @@ local function dump_actor_states(frame)
 end
 
 local function dump_gameplay_jsonl(frame)
+    local possession_actor = signed_word(0x093e)
+    local exported_control_actor = force_cpu_vs_cpu and -1 or possession_actor
     local held, pressed, released = {}, {}, {}
     for pad = 0, 4 do
         held[pad] = word(0x0576 + pad * 2)
@@ -230,8 +247,9 @@ local function dump_gameplay_jsonl(frame)
         "\"subject_x_low_raw\":%u,\"subject_x_raw\":%d," ..
         "\"subject_y_low_raw\":%u,\"subject_y_raw\":%d," ..
         "\"stream_source_bank_raw\":%u},",
-        signed_word(0x093e), signed_word(0x093a), signed_word(0x0954),
-        signed_word(0x093e), word(0x0940), signed_word(0x0946),
+        exported_control_actor, force_cpu_vs_cpu and -1 or signed_word(0x093a),
+        signed_word(0x0954), exported_control_actor,
+        force_cpu_vs_cpu and 0 or word(0x0940), possession_actor,
         signed_word(0x093a), signed_word(0x0946), word(0x0996),
         signed_word(0x085c), signed_word(0x0860), 0x859192,
         word(0x085c), word(0x085e), word(0x0860), word(0x0862),
@@ -302,7 +320,8 @@ local function dump_gameplay_jsonl(frame)
             "\"lower_phase\":%u,\"behavior_flags\":%u," ..
             "\"palette\":%u}}",
             actor > 0 and "," or "", actor, actor >= 5 and 1 or 0,
-            actor % 5, signed_word(0x093e) == actor and 1 or 0,
+            actor % 5,
+            (not force_cpu_vs_cpu and possession_actor == actor) and 1 or 0,
             screen and "true" or "false", actor_x, actor_y, actor_z,
             screen and screen.x or -32768, screen and screen.y or -32768,
             actor_vx, actor_vy, actor_vz,
@@ -433,6 +452,7 @@ emu.addEventCallback(function()
     end
 
     if gameplay_frame < 0 then
+        if force_cpu_vs_cpu and player_load_seen then clear_human_assignments() end
         assert(setup_frame < 8000, "Timed out before gameplay player initialization")
         return
     end

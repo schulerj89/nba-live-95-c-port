@@ -117,8 +117,9 @@ static void cpu_set_role_targets(NbaTipoff *tipoff) {
         }
         tipoff->actors[actor].target_x = (int16_t)target_x;
         tipoff->actors[actor].target_y = (int16_t)target_y;
-        /* CPU-vs-CPU keeps the attacking five on behavior dispatch 1. Mode
-         * `$0B` is the human-selected actor path and must not be installed. */
+        /* Functional policy currently keeps the attacking five on mode 1.
+         * The genuine controller-free ROM oracle proves mode `$0B` is also
+         * used by CPU actors, so it must not be labeled human-only. */
         tipoff->actors[actor].control_mode = 1u;
         tipoff->actors[actor].assignment_actor = (uint8_t)(defense_base + slot);
         tipoff->actors[actor].assignment_current_raw =
@@ -400,6 +401,8 @@ static void cpu_update_possession(NbaTipoff *tipoff) {
         /* `$85:A262-$A268` seeds `$092E/$0A04=300`. The inbound steering
          * path `$86:F43A+` changes behavior at 240/120/60 and does not stop
          * the made ball from falling through the net. */
+        if (tipoff->inbound_actor_raw >= NBA_GAMEPLAY_ACTOR_COUNT)
+            return;
         cpu_set_role_targets(tipoff);
         NbaTipoffActor *inbounder = &tipoff->actors[tipoff->inbound_actor_raw];
         bool right_baseline = tipoff->ball.x_fp >= 0;
@@ -414,9 +417,8 @@ static void cpu_update_possession(NbaTipoff *tipoff) {
             unsigned inbound = tipoff->inbound_actor_raw;
             int dx = inbounder->target_x - fp_round(inbounder->x_fp);
             int dy = inbounder->target_y - fp_round(inbounder->y_fp);
-            if (inbound < NBA_GAMEPLAY_ACTOR_COUNT &&
-                (actor_distance(dx, dy) <= 8u ||
-                 tipoff->inbound_timer_raw == 0u)) {
+            if (actor_distance(dx, dy) <= 8u ||
+                tipoff->inbound_timer_raw == 0u) {
                 ball_attach_to_actor(tipoff, inbound);
                 tipoff->ball.state = NBA_BALL_INBOUND;
             }

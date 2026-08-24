@@ -63,7 +63,8 @@ def main():
         team_counts = (sum(counts[:5]), sum(counts[5:]))
         print(f"[CPU TRACE] movement f{first}-{last} teams={team_counts[0]}/{team_counts[1]} "
               f"actors={'/'.join(map(str, counts))}")
-        if min(team_counts) < max(12, args.window // 4):
+        span = last - first + 1
+        if min(team_counts) < max(4, span // 4):
             weak_windows.append((first, last, team_counts))
 
     attached_distances = []

@@ -29,8 +29,8 @@ without changing the comparison contract.
 | `$80:CB8F–$CD7D` | controller auto-read into held masks `$0576–$0580` |
 | `$86:8000–$8212` | controller ownership, assignment, and repeat timers |
 | `$87:9B38` | gameplay controller-mask accessor |
-| `$093E/$0940` | controlled player index and resolved actor pointer |
-| `$0952/$0954` | human side group and initial controlled slot (2 or 7) |
+| `$093E/$0940` | current possession/catcher actor index and resolved actor pointer |
+| `$0952/$0954` | context-dependent side group/slot; after a make, opponent inbound group and actor 2 or 7 |
 | `$34EB + slot*$100` | ten player actor records |
 | `$3EEB` | ball actor; position `$3EEF/$3EF3/$3EF7` |
 | `$0946` | transient possession/ball-owner player index |

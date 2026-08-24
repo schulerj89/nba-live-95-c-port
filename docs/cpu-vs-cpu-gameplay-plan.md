@@ -141,3 +141,34 @@ has focused regression tests plus at least one visual oracle, runs the complete
 build/test suite, and leaves `main` clean and synchronized with `origin/main`.
 Unknown behavior is recorded as unknown rather than filled with a plausible
 basketball shortcut.
+
+## Independent audit and corrected CPU oracle (2026-08-24)
+
+The first independent audit returned **FAIL** for the complete objective. The
+older directories named `cpu-vs-cpu-live-20260823` and
+`cpu-ai-extended-20260823` were actually player-vs-CPU: controller assignment
+0 remained `2`. They remain useful for routine discovery but are not accepted
+as CPU-only policy parity evidence.
+
+`tools/mesen_tipoff_capture.lua` now supports `NBA95_CPU_VS_CPU=1`, clearing
+all five assignments before actor initialization and exporting `$093E` as the
+possession actor rather than a human-control marker. The fresh 1,201-frame
+oracle in `.analysis/cpu-vs-cpu-oracle-20260824` has five `FFFF` assignments,
+control actor `-1`, and zero human actor frames throughout. It also disproves
+the former claim that behavior mode 11 is human-only: mode 11 appears in 704
+CPU actor-frames.
+
+The first core differential against checkpoint `eddc88c` fails with 106 field
+mismatches in 202 comparable frames. Remaining blockers are therefore explicit:
+
+- port the 18 behavior handlers rather than reporting their target addresses;
+- replace render-parity scheduling and handcrafted target/speed/phase policy;
+- replace fixed hand offsets and ballistic pass/shot constants;
+- integrate the proven shot-quality/miss offset pipeline and collision-owned
+  offensive/defensive rebounds;
+- finish the event-driven inbound pass/catch executor; and
+- trace the camera subject proxy writers for loose, shot and dead-ball states.
+
+The exact score field path and isolated hoop/arc helpers remain valid partial
+ports. No foul enum or callback is added because no foul event writer, handler,
+or state mutation has been proven.
