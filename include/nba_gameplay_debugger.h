@@ -117,6 +117,8 @@ typedef struct {
     int8_t collision_actor_a;
     int8_t collision_actor_b;
     int16_t camera_x, camera_y;
+    int16_t camera_subject_raw;
+    uint16_t camera_side_group_raw;
     uint16_t camera_085c_raw;
     uint16_t camera_085e_raw;
     uint16_t camera_0860_raw;

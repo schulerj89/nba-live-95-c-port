@@ -98,6 +98,7 @@ typedef struct {
     NbaGameplayRng rng;
     int8_t possession_actor;
     int8_t possession_team;
+    uint8_t camera_side_group_raw; /* persistent `$093A`: 0 or 5 */
     uint16_t play_code;
     uint32_t simulation_tick;
     uint32_t actor_update_tick;

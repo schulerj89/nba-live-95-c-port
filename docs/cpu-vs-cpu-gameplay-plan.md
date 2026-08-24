@@ -260,11 +260,20 @@ That slot drives roster `+$3F/+$40/+$42`, shot ratings and sprite identity.
 Raw actor velocities in F8/JSON are now the signed 8.8 `+$0E/+$10` words,
 making direct Mesen comparison possible.
 
+The camera proxy is now exact at its subject-selection boundary.
+`$87:A9D0-$A9E2` resolves signed `$093E`; `$87:95BB-$95D8` copies that actor
+or substitutes the ball record when `$093E=FFFF`. Passes, shots, loose balls,
+misses and made/dead states therefore follow the ball until `$86:BAA2-$BAEE`
+commits a catcher; attached play follows that actor. The independent `$093A`
+side group persists while the ball is free and only refreshes on actor/team
+acquisition. F8/JSON expose both `camera.subject_raw` and
+`camera.side_group_raw`, and the long test covers actor and free-ball paths.
+
 The 61-play formation graph is packed and validated but not yet connected to
-all modes: the port still needs exact host/ROM coordinate-boundary proof and
-the later `$85:AE35+` overrides before replacing its provisional role targets.
-The first-possession movement guard is likewise explicit temporary parity
-scaffolding. Loose/shot/dead-ball camera-subject proxy writers remain under
-trace; a long run can therefore be mechanically healthy while a frame briefly
-shows too few players. These caveats prevent treating 4E as the final parity
-gate.
+all modes. Live proof establishes that its coordinates already use C's world
+origin—there is no `+140` or `280-x` host transform—and that index zero is the
+first step. The port still needs `$B377/$B2DC-$B309` ownership of `$0998`,
+the raw AD6B call gates, and later `$85:AE35+` overrides before replacing its
+provisional role targets. The first-possession movement guard is likewise
+explicit temporary parity scaffolding. These caveats prevent treating 4E as
+the final parity gate.

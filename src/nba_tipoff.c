@@ -482,6 +482,7 @@ static void cpu_begin_possession(NbaTipoff *tipoff, uint8_t offense_side) {
     static const uint8_t handler_slots[4] = {3u, 3u, 2u, 2u};
     tipoff->offense_side = offense_side;
     tipoff->possession_team = (int8_t)offense_side;
+    tipoff->camera_side_group_raw = offense_side ? 5u : 0u;
     tipoff->possession_frame = 0;
     tipoff->play_state_frame = 0;
     tipoff->play_code = play_codes[tipoff->possession_number % 4u];
@@ -706,16 +707,25 @@ static void cpu_update_possession(NbaTipoff *tipoff) {
 }
 
 static void cpu_update_camera(NbaTipoff *tipoff) {
-    /* `$85:9192-$93F4` follows the selected actor proxy at $4A56-$4A5C;
-     * `$85:8EE6` separately streams the court from the resulting camera. */
+    /* `$87:A9D0-$A9E2/$87:95BB-$95D8`: signed `$093E` selects an actor;
+     * FFFF substitutes the ball record before `$85:9192-$93F4` consumes the
+     * proxy. `$093A` is persistent and independent from the free ball. */
     if (tipoff->frame < NBA_TIPOFF_POSSESSION_FRAME) return;
-    unsigned subject = tipoff->handler_actor < NBA_GAMEPLAY_ACTOR_COUNT ?
-                       tipoff->handler_actor : 0u;
-    tipoff->camera.subject_actor = (uint8_t)subject;
-    nba_gameplay_camera_update(&tipoff->camera,
-        fp_round(tipoff->actors[subject].x_fp),
-        fp_round(tipoff->actors[subject].y_fp),
-        subject >= 5u ? 5u : 0u);
+    if (tipoff->possession_actor >= 0 &&
+        tipoff->possession_actor < NBA_GAMEPLAY_ACTOR_COUNT) {
+        unsigned subject = (unsigned)tipoff->possession_actor;
+        tipoff->camera.subject_actor = (uint8_t)subject;
+        tipoff->camera_side_group_raw = subject >= 5u ? 5u : 0u;
+        nba_gameplay_camera_update(&tipoff->camera,
+            fp_round(tipoff->actors[subject].x_fp),
+            fp_round(tipoff->actors[subject].y_fp),
+            tipoff->camera_side_group_raw);
+    } else {
+        tipoff->camera.subject_actor = NBA_GAMEPLAY_NO_ACTOR;
+        nba_gameplay_camera_update(&tipoff->camera,
+            fp_round(tipoff->ball.x_fp), fp_round(tipoff->ball.y_fp),
+            tipoff->camera_side_group_raw);
+    }
     tipoff->camera_x = tipoff->camera.x;
     tipoff->camera_y = tipoff->camera.y;
 }
@@ -801,6 +811,7 @@ void nba_tipoff_update(NbaTipoff *tipoff, const NbaInput *input) {
          * `$87:9244/$9BD0` then dispatches actor +$5E behavior modes. */
         tipoff->possession_actor = 8;
         tipoff->possession_team = 1;
+        tipoff->camera_side_group_raw = 5u;
         tipoff->play_code = 0x35u;
         for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor)
             tipoff->actors[actor].control_mode = actor >= 5u ? 1u : 2u;
@@ -919,6 +930,9 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
                                     SNES_ADDR_TIPOFF_POSSESSION : 0u;
     telemetry->camera_x = tipoff->camera_x;
     telemetry->camera_y = tipoff->camera_y;
+    telemetry->camera_subject_raw = tipoff->camera.subject_actor ==
+        NBA_GAMEPLAY_NO_ACTOR ? -1 : (int16_t)tipoff->camera.subject_actor;
+    telemetry->camera_side_group_raw = tipoff->camera_side_group_raw;
     telemetry->camera_085c_raw = (uint16_t)tipoff->camera.x;
     telemetry->camera_085e_raw = (uint16_t)tipoff->camera.previous_x;
     telemetry->camera_0860_raw = (uint16_t)tipoff->camera.y;

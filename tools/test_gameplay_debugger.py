@@ -62,7 +62,8 @@ def main():
         if not required.issubset(sample["actors"][0]["raw"]):
             raise AssertionError("AI/actor raw telemetry schema is incomplete")
         if len(sample["controllers"]["held_raw"]) != 5 or \
-                "raw_087a" not in sample["camera"] or "flags_raw" not in sample["ball"]:
+                not {"raw_087a", "subject_raw", "side_group_raw"}.issubset(
+                    sample["camera"]) or "flags_raw" not in sample["ball"]:
             raise AssertionError("controller/camera/ball telemetry schema is incomplete")
         scheduler = sample["scheduler"]
         if set(scheduler) != {"due_raw", "actor_pass_dt_raw",

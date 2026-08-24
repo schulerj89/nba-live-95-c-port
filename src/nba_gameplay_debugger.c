@@ -117,10 +117,11 @@ void nba_gameplay_debugger_render(const NbaGameplayDebugger *debugger,
                  actor->reaction_threshold_raw, actor->movement_boost_raw);
         text(renderer, 6, 192, line, 0xFF9EF7A9u);
     } else {
-        snprintf(line, sizeof(line), "CAM:%d,%d R:$%06X COLL:$%06X POS:$%06X",
+        snprintf(line, sizeof(line), "CAM:%d,%d S:%d G:%u R:$%06X",
                  telemetry->camera_x, telemetry->camera_y,
-                 telemetry->camera_routine, telemetry->collision_routine,
-                 telemetry->possession_routine);
+                 telemetry->camera_subject_raw,
+                 telemetry->camera_side_group_raw,
+                 telemetry->camera_routine);
         text(renderer, 6, 180, line, 0xFFFFFFFFu);
         snprintf(line, sizeof(line), "SCORE:%u-%u VAL:%u C:%u M:%u/%u",
                  telemetry->score_left_raw, telemetry->score_right_raw,
@@ -183,6 +184,7 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
             "\"live_state_raw\":%u,\"inbound_state_raw\":%u,"
             "\"inbound_actor_raw\":%u,\"inbound_timer_raw\":%u},"
             "\"camera\":{\"x\":%d,\"y\":%d,"
+            "\"subject_raw\":%d,\"side_group_raw\":%u,"
             "\"routine\":%u,\"raw_085c\":%u,\"raw_085e\":%u,"
             "\"raw_0860\":%u,\"raw_0862\":%u,\"raw_086c\":%u,"
             "\"raw_086e\":%u,\"raw_0874\":%u,\"raw_0876\":%u,"
@@ -205,7 +207,9 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
             telemetry->live_state_raw,
             telemetry->inbound_state_raw, telemetry->inbound_actor_raw,
             telemetry->inbound_timer_raw,
-            telemetry->camera_x, telemetry->camera_y, telemetry->camera_routine,
+            telemetry->camera_x, telemetry->camera_y,
+            telemetry->camera_subject_raw, telemetry->camera_side_group_raw,
+            telemetry->camera_routine,
             telemetry->camera_085c_raw, telemetry->camera_085e_raw,
             telemetry->camera_0860_raw, telemetry->camera_0862_raw,
             telemetry->camera_086c_raw, telemetry->camera_086e_raw,

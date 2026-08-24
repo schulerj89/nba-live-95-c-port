@@ -17,8 +17,8 @@ FORMATION = [
     (-8, -3), (16, 83), (24, -80), (-104, 56), (-96, -59),
 ]
 EXPECTED_RGB = {
-    600: "f58b65772217b26002168f419c2bf0d19cc5be781f99ade0880d506902245009",
-    1300: "196dbe3be65417a111df2bd3af087a2439e31673d89f97f435b84d2121433eb7",
+    600: "97a615faabe1a8645005136ba9454cc38601239e84d0d298d19697e8fe0cd1cc",
+    1300: "9004ee44e076d2622d2d7ffaded927981084114cec2364b44df6daf53cb20339",
 }
 
 
@@ -52,6 +52,24 @@ def main():
         if [actor["roster"] for actor in live["actors"]] != \
                 [2, 0, 1, 3, 4, 2, 0, 1, 3, 4]:
             raise AssertionError("active actor-to-roster mapping changed")
+        free_camera_states = set()
+        actor_camera_states = set()
+        for row in rows[219:]:
+            possession_actor = row["possession"]["actor"]
+            camera = row["camera"]
+            expected_subject = possession_actor if possession_actor >= 0 else -1
+            if camera["subject_raw"] != expected_subject:
+                raise AssertionError(
+                    f"camera subject diverged from signed $093E: {camera}")
+            if possession_actor >= 0:
+                expected_group = 5 if possession_actor >= 5 else 0
+                if camera["side_group_raw"] != expected_group:
+                    raise AssertionError("actor camera did not refresh persistent $093A")
+                actor_camera_states.add(row["ball"]["state"])
+            else:
+                free_camera_states.add(row["ball"]["state"])
+        if not {3, 5, 6}.issubset(free_camera_states) or not actor_camera_states:
+            raise AssertionError("camera did not cover actor and free-ball proxy paths")
         if any(actor["control"] != 0 for actor in frame(1900)["actors"]):
             raise AssertionError("CPU-versus-CPU mode assigned a human actor")
         if any(row["control"]["actor"] != 0xFF for row in rows[219:]):
