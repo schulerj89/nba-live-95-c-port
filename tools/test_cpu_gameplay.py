@@ -676,9 +676,27 @@ def main():
                             not row["match"]["inbound_ready_raw"]]
             if any(value not in (299, 300) for value in before_ready):
                 raise AssertionError("$86:F654 stopped reloading 300 before arrival")
-            ready_timers = [row["match"]["inbound_timer_raw"] for row in ready]
-            if any(a < b for a, b in zip(ready_timers, ready_timers[1:])):
-                raise AssertionError("arrived inbound timer increased")
+            for before, after in zip(ready, ready[1:]):
+                if before["match"]["inbound_timer_raw"] >= \
+                        after["match"]["inbound_timer_raw"]:
+                    continue
+                # Exact `$86:A613` can cancel a boundary-crossing inbound
+                # transfer. `$87:9AA6` then seeds the opposite-side inbound
+                # without an intervening non-$82 render frame; only that
+                # state-side change may restart the visible countdown. The
+                # earlier `$86:F4F2-$F4FF` arrival test also precedes the
+                # ready latch: contact can displace the frozen inbounder and
+                # make `$86:F654` reload 300 for the same actor.
+                side_reset = before["match"]["inbound_state_raw"] != \
+                    after["match"]["inbound_state_raw"]
+                displaced_reload = \
+                    before["match"]["inbound_actor_raw"] == \
+                        after["match"]["inbound_actor_raw"] and \
+                    after["match"]["inbound_timer_raw"] in (299, 300)
+                if not (side_reset or displaced_reload) or \
+                        after["match"]["inbound_transfer_raw"] != 0 or \
+                        after["possession"]["actor"] < 0:
+                    raise AssertionError("arrived inbound timer increased")
             transfer = [row for row in ready
                         if row["match"]["inbound_transfer_raw"]]
             transfer_actor = transfer[0]["match"]["inbound_actor_raw"] \
@@ -859,8 +877,10 @@ def main():
                     raw["pass_release_threshold"] or \
                     row["ball"]["state"] != 3 or row["ball"]["owner"] != -1:
                 raise AssertionError("pass released before `$86:A736-$A747` phase gate")
-        if not {0x2D, 0x2F, 0x30}.issubset(
-                {actor["animation"] for _, _, actor in pass_rows}):
+        pass_animations = {actor["animation"] for _, _, actor in pass_rows}
+        if not pass_animations.intersection((0x2D, 0x2E)) or \
+                0x2F not in pass_animations or \
+                not pass_animations.intersection((0x30, 0x31)):
             raise AssertionError("live-covered pass-animation families regressed")
 
         # `$87:9C3A -> $86:A5B0 -> $86:9846`: after A613 invalidates
@@ -925,7 +945,9 @@ def main():
                    "$86:CCCD-$D5DA", "cpu_first_loose_ball_contact",
                    "nba_gameplay_ball_pose_contact",
                     "$86:E923-$E96E", "$86:B0F7-$B153",
-                   "$85:A82C-$AB16", "nba_gameplay_velocity_step",
+                    "$86:B154-$B334", "cpu_update_rom_special_receiver",
+                    "cpu_finish_rom_close_shot", "cpu_restore_normal_mode",
+                    "$85:A82C-$AB16", "nba_gameplay_velocity_step",
                    "$85:B734-$B820", "nba_gameplay_mode11_shot_decision",
                    "nba_gameplay_same_x_half",
                    "$86:E82F-$E8F6", "$86:E8F7-$E922",

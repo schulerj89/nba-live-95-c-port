@@ -1186,3 +1186,35 @@ and either converts to the common `$86:9D6E` shot release or finishes through
 `$86:A9D0-$AA69`. The uninterrupted path detaches a two-point ball into the
 shared rim physics; it does not award points directly. The CPU regression now
 requires multiple carried mode-13 frames and a verified mode-13-to-rim release.
+
+### Increment 5O: mode-14 special-receiver close finishes
+
+The recomp-guided trace and refreshed headless dump identify the missing
+special-receiver executor as `$87:9BD3[14] -> $87:9C4E ->
+$86:B154-$B334`. The prior C placeholder only integrated velocity and reduced
+a timer, leaving no ownership validation, jump, carried-ball attachment,
+interrupted release, or terminal finish.
+
+Mode 14 now decrements the canonical actor `+$60` pass timer first, preserves
+the exact grounded/airborne branch order, reloads the `$18-$1E` upper and
+`$1F` lower asset-pack animation resources, and launches with `$0270` or
+`$0264` vertical velocity. Airborne velocity deltas are tested at the ROM's
+inclusive `[-$50,+$50]` boundary. A disturbance converts through the ordinary
+`$86:9D6E` release; an uninterrupted owned catch finishes through the shared
+`$86:A9D0-$AA69` two-point ball launch and common rim engine. The executor
+itself and the direct finish consume no RNG.
+
+`$86:BAA2-$BB14` also proves that mode 14 is the only ball-acquisition mode
+preserved instead of being overwritten by mode 11. Its `$B320` cleanup now
+uses exact `$86:9846-$986C` state restoration followed by the represented
+`$86:A613-$A628` pass-global clear. Mode 10 shares the corrected state restore:
+`+$64` reloads to `$2F`, actor status clears, and vertical velocity is
+preserved. Applying the full A613 clear to every generic court-clamp caller
+exposed an unported companion recovery and a reproducible long dead-ball
+stall, so that broader caller deliberately retains its previously verified
+subset until the recovery writer is translated.
+
+Forced component vectors cover timer expiry, direct normal/special finish
+velocities, both grounded launches, the disturbance boundary, ownerless and
+mode-15-passer retention, full cancellation, and zero-RNG paths. The Ghidra
+generator now emits the complete `$86:B0F7-$B34E` receiver/action region.

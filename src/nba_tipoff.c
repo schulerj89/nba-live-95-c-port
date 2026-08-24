@@ -86,6 +86,7 @@ static CpuMode11Outcome cpu_dispatch_rom_mode11(NbaTipoff *tipoff,
                                                  uint8_t *direction);
 static bool cpu_update_rom_shooter(NbaTipoff *tipoff, unsigned slot);
 static bool cpu_update_rom_layup(NbaTipoff *tipoff, unsigned slot);
+static bool cpu_update_rom_special_receiver(NbaTipoff *tipoff, unsigned slot);
 static void cpu_commit_ball_acquisition(NbaTipoff *tipoff, uint8_t catcher);
 static void cpu_dispatch_pending_event(NbaTipoff *tipoff);
 static bool cpu_update_free_throw_scene(NbaTipoff *tipoff);
@@ -97,6 +98,28 @@ static void cpu_cancel_boundary_activity(NbaTipoff *tipoff) {
     tipoff->pass_actor_raw = -1;
     tipoff->pass_receiver_raw = -1;
     tipoff->ball_activity_raw = 0u;
+}
+
+/* Complete represented `$86:A613-$A628` mutation. Keep this scoped to call
+ * sites whose following recovery is ported; the generic court-clamp caller
+ * still lacks the ROM's companion dead-ball recovery path. */
+static void cpu_cancel_rom_pass_activity(NbaTipoff *tipoff) {
+    cpu_cancel_boundary_activity(tipoff);
+    tipoff->pass_aux_raw = -1;
+    tipoff->rim_raw_094a = 0u;
+    tipoff->inbound_transfer_raw = 0u;
+}
+
+/* `$86:9846-$986C`: restore an actor from a transient receiver/action mode.
+ * Native +$60 is represented by reaction_threshold for modes 10/14. */
+static void cpu_restore_normal_mode(NbaTipoff *tipoff, unsigned slot) {
+    NbaTipoffActor *actor = &tipoff->actors[slot];
+    uint8_t side_group = slot >= 5u ? 5u : 0u;
+    actor->control_mode = side_group == tipoff->camera_side_group_raw ? 1u : 2u;
+    actor->behavior_timer = 0x2Fu;
+    actor->reaction_threshold = 0u;
+    actor->behavior_flags_raw = 0u;
+    actor->actor_status_raw_28 = 0u;
 }
 
 static void cpu_clamp_record_to_court(NbaTipoff *tipoff,
@@ -516,11 +539,7 @@ static bool cpu_update_rom_receiver(NbaTipoff *tipoff, unsigned slot) {
     }
     /* `$86:9846`: offense group `$093A` receives mode 1; the other group
      * receives mode 2. It also clears +$60, +$7E and +$28. */
-    uint8_t side_group = slot >= 5u ? 5u : 0u;
-    actor->control_mode = side_group == tipoff->camera_side_group_raw ? 1u : 2u;
-    actor->reaction_threshold = 0u;
-    actor->behavior_flags_raw = 0u;
-    actor->velocity_z = 0;
+    cpu_restore_normal_mode(tipoff, slot);
     return false;
 }
 
@@ -780,18 +799,8 @@ static void cpu_move_actor(NbaTipoff *tipoff, unsigned slot) {
         cpu_integrate_actor_vertical(actor);
         return;
     }
-    if (actor->control_mode == 14u) {
-        /* `$86:B154` special receiver follows its separately gated handler;
-         * its complete lifecycle remains outside the normal `$86:A5B0` path. */
-        actor->x_fp += (int32_t)actor->velocity_x * 2;
-        actor->y_fp += (int32_t)actor->velocity_y * 2;
-        actor->movement_magnitude_raw = actor_distance(
-            actor->velocity_x, actor->velocity_y);
-        if (actor->reaction_threshold >= 2u)
-            actor->reaction_threshold -= 2u;
-        cpu_integrate_actor_vertical(actor);
-        return;
-    }
+    if (actor->control_mode == 14u &&
+        cpu_update_rom_special_receiver(tipoff, slot)) return;
     if (cpu_update_knockdown_actor(tipoff, slot)) return;
     if (cpu_apply_passive_mode(actor)) {
         cpu_integrate_actor_vertical(actor);
@@ -845,6 +854,14 @@ static void cpu_move_actor(NbaTipoff *tipoff, unsigned slot) {
                         tipoff->receiver_actor = (uint8_t)selected;
                         tipoff->actors[selected].control_mode =
                             special_receiver ? 14u : 10u;
+                        if (special_receiver) {
+                            NbaTipoffActor *receiver =
+                                &tipoff->actors[selected];
+                            receiver->mode13_baseline_velocity_x =
+                                receiver->velocity_x;
+                            receiver->mode13_baseline_velocity_y =
+                                receiver->velocity_y;
+                        }
                         cpu_enter_play_state(tipoff, NBA_CPU_PLAY_PASS);
                         pass_started = true;
                     }
@@ -2280,6 +2297,39 @@ static void cpu_release_rom_shot(NbaTipoff *tipoff, unsigned slot) {
     actor_set_upper_animation(shooter, 0x17u);
 }
 
+/* `$86:A9D0-$AA69`: shared terminal close-finish release used by behavior
+ * modes 13 and 14. It seeds a two-point detached ball; the ordinary rim
+ * engine remains solely responsible for awarding the basket. */
+static void cpu_finish_rom_close_shot(NbaTipoff *tipoff, unsigned slot) {
+    NbaTipoffActor *actor = &tipoff->actors[slot];
+    tipoff->shot_actor_raw_09c8 = (int16_t)slot;
+    tipoff->shot_origin_x = fp_round(actor->x_fp);
+    tipoff->shot_origin_y = fp_round(actor->y_fp);
+    tipoff->shot_value_raw = 2u;
+    tipoff->rim_raw_096a = 2u;
+    tipoff->shot_inner_veto_raw = false;
+    tipoff->shot_miss_index_raw = 0xFFu;
+    tipoff->shot_result_resolved = false;
+    tipoff->live_state_raw = 1u;
+    tipoff->ball_activity_raw = 1u;
+    tipoff->ball.owner_actor = -1;
+    tipoff->ball.state = NBA_BALL_SHOT;
+    tipoff->possession_actor = -1;
+    cpu_enter_play_state(tipoff, NBA_CPU_PLAY_SHOT);
+    actor->control_mode = 1u;
+    actor->contact_inhibit_raw_5a = 0x14u;
+    actor->behavior_flags_raw = 0u;
+    if (actor->special_contact_raw_56 == 6) {
+        tipoff->ball.velocity_x = tipoff->ball.x_fp < 0 ? -0x01A0 : 0x01A0;
+        tipoff->ball.velocity_y = tipoff->ball.y_fp < 0 ? 0x0080 : -0x0080;
+        tipoff->ball.velocity_z = 0x0048;
+    } else {
+        tipoff->ball.velocity_x = 0;
+        tipoff->ball.velocity_y = 0;
+        tipoff->ball.velocity_z = (int16_t)0xFE98u;
+    }
+}
+
 /* `$87:9BD3[13] -> $87:9C49 -> $86:A7DA-$AA69`: carried-ball close
  * finish. It owns movement, vertical physics, pose attachment and both
  * release exits, so generic mode-11 steering must never run over it. */
@@ -2348,33 +2398,243 @@ static bool cpu_update_rom_layup(NbaTipoff *tipoff, unsigned slot) {
     tipoff->ball.velocity_z = (int16_t)0xFE98u;
     if (timer != 0u) return true;
 
-    /* `$86:A9D0-$AA69`: detach into the ordinary rim engine. Scoring is
-     * still awarded only by the shared `$85:9D3E->$A079` make path. */
-    tipoff->shot_actor_raw_09c8 = (int16_t)slot;
-    tipoff->shot_origin_x = fp_round(actor->x_fp);
-    tipoff->shot_origin_y = fp_round(actor->y_fp);
-    tipoff->shot_value_raw = 2u;
-    tipoff->rim_raw_096a = 2u;
-    tipoff->shot_inner_veto_raw = false;
-    tipoff->shot_miss_index_raw = 0xFFu;
-    tipoff->shot_result_resolved = false;
-    tipoff->live_state_raw = 1u;
-    tipoff->ball_activity_raw = 1u;
-    tipoff->ball.owner_actor = -1;
-    tipoff->ball.state = NBA_BALL_SHOT;
-    tipoff->possession_actor = -1;
-    actor->control_mode = 1u;
-    actor->contact_inhibit_raw_5a = 0x14u;
-    actor->behavior_flags_raw = 0u;
-    if (actor->special_contact_raw_56 == 6) {
-        tipoff->ball.velocity_x = tipoff->ball.x_fp < 0 ? -0x01A0 : 0x01A0;
-        tipoff->ball.velocity_y = tipoff->ball.y_fp < 0 ? 0x0080 : -0x0080;
-        tipoff->ball.velocity_z = 0x0048;
-    } else {
-        tipoff->ball.velocity_x = 0;
-        tipoff->ball.velocity_y = 0;
-        tipoff->ball.velocity_z = (int16_t)0xFE98u;
+    cpu_finish_rom_close_shot(tipoff, slot);
+    return true;
+}
+
+/* `$87:9BD3[14] -> $87:9C4E -> $86:B154-$B334`: special receiver close
+ * finish. Unlike mode 10, this receiver preserves its pass relationship,
+ * jumps before the catch, and can finish directly after ownership changes.
+ * The executor itself consumes no RNG. */
+static bool cpu_update_rom_special_receiver(NbaTipoff *tipoff, unsigned slot) {
+    static const uint8_t upper_table[8] = {
+        0x18u, 0x1Cu, 0x18u, 0x1Au, 0x19u, 0x1Bu, 0x1Du, 0x1Eu
+    };
+    static const int8_t facing_table[13] = {
+        4, 4, 3, 3, 2, 2, 2, 1, 1, 1, 0, 0, 0
+    };
+    NbaTipoffActor *actor = &tipoff->actors[slot];
+
+    /* `$85:963D` commits common planar/Z physics before the behavior jump. */
+    actor->x_fp += (int32_t)actor->velocity_x * 2;
+    actor->y_fp += (int32_t)actor->velocity_y * 2;
+    cpu_integrate_actor_vertical(actor);
+    actor->movement_magnitude_raw = actor_distance(
+        actor->velocity_x, actor->velocity_y);
+
+    uint16_t timer = (uint16_t)(actor->reaction_threshold - 2u);
+    actor->reaction_threshold = timer;
+    if (timer == 0u || (timer & 0x8000u) != 0u) {
+        if (tipoff->possession_actor == (int8_t)slot) {
+            tipoff->ball_activity_raw = 1u;
+            ball_position_at_actor(tipoff, slot);
+            cpu_finish_rom_close_shot(tipoff, slot);
+        } else {
+            tipoff->rim_force_raw_1866 = 0u;
+            cpu_restore_normal_mode(tipoff, slot);
+            cpu_cancel_rom_pass_activity(tipoff);
+        }
+        return true;
     }
+
+    bool airborne = fp_integer_word(actor->z_fp) != 0;
+    if (airborne && tipoff->possession_actor == (int8_t)slot) {
+        bool wrong_upper = actor->animation_state < 0x18u ||
+                           actor->animation_state >= 0x1Fu;
+        int dx = actor->velocity_x - actor->mode13_baseline_velocity_x;
+        int dy = actor->velocity_y - actor->mode13_baseline_velocity_y;
+        bool disturbed = timer >= 0x12u &&
+            (dx < -0x50 || dx > 0x50 || dy < -0x50 || dy > 0x50);
+        if (wrong_upper || disturbed) {
+            cpu_restore_normal_mode(tipoff, slot);
+            actor->direction = (uint8_t)((actor->anchor_direction_raw >> 1) & 7u);
+            actor_set_upper_animation(actor, 0x17u);
+            ball_attach_to_actor(tipoff, slot);
+            tipoff->ball_activity_raw = 0xFFFFu;
+            tipoff->shot_origin_x = fp_round(actor->x_fp);
+            tipoff->shot_origin_y = fp_round(actor->y_fp);
+            cpu_enter_play_state(tipoff, NBA_CPU_PLAY_SHOT);
+            cpu_release_rom_shot(tipoff, slot);
+            return true;
+        }
+    }
+
+    if (!airborne) {
+        if (timer >= 0x28u) return true;
+        if (actor->animation_state < 0x18u || actor->animation_state >= 0x1Fu) {
+            int selector = actor->special_contact_raw_56 + 1;
+            if (selector < 0 || selector > 7) selector = 0;
+            actor->pass_direction_raw = upper_table[selector];
+            actor_set_animation(actor, (uint8_t)actor->pass_direction_raw,
+                                0x1Fu);
+            return true;
+        }
+        if (actor->animation_state < 0x24u) {
+            actor->velocity_z =
+                (actor->special_contact_raw_56 == 0 ||
+                 (actor->special_contact_raw_56 == 6 &&
+                  actor->direction == 3u)) ? 0x0270 : 0x0264;
+        }
+        return true;
+    }
+
+    if (actor->special_contact_raw_56 != 0) {
+        actor->direction = actor->requested_direction;
+    } else if (timer <= 8u) {
+        actor->direction = (uint8_t)(actor->requested_direction ^ 4u);
+    } else {
+        unsigned index = (unsigned)((timer - 10u) / 2u);
+        if (index > 12u) index = 12u;
+        actor->direction = (uint8_t)(
+            (actor->requested_direction + facing_table[index]) & 7u);
+    }
+
+    bool relationship_valid;
+    if (tipoff->possession_actor < 0) {
+        relationship_valid = tipoff->pass_receiver_raw == (int16_t)slot;
+    } else if (tipoff->possession_actor == (int8_t)slot) {
+        relationship_valid = true;
+    } else {
+        unsigned owner = (unsigned)tipoff->possession_actor;
+        relationship_valid = owner < NBA_GAMEPLAY_ACTOR_COUNT &&
+            tipoff->actors[owner].control_mode == 15u &&
+            tipoff->pass_receiver_raw == (int16_t)slot;
+    }
+    if (!relationship_valid) {
+        tipoff->rim_force_raw_1866 = 0u;
+        cpu_restore_normal_mode(tipoff, slot);
+        cpu_cancel_rom_pass_activity(tipoff);
+        return true;
+    }
+    if (tipoff->possession_actor == (int8_t)slot) {
+        tipoff->live_state_raw = 2u;
+        if (actor->special_contact_raw_56 != 6)
+            tipoff->rim_force_raw_1866 =
+                (uint16_t)(0x34EBu + slot * 0x100u);
+        ball_attach_to_actor(tipoff, slot);
+    }
+    return true;
+}
+
+static bool cpu_special_receiver_self_test(void) {
+    NbaTipoff state;
+    NbaSession session;
+    uint16_t seed;
+
+    memset(&state, 0, sizeof(state));
+    memset(&session, 0, sizeof(session));
+    state.session = &session;
+    state.possession_actor = -1;
+    state.pass_actor_raw = 3;
+    state.pass_aux_raw = 4;
+    state.pass_receiver_raw = 1;
+    state.ball_activity_raw = 1u;
+    state.rim_raw_094a = 1u;
+    state.inbound_transfer_raw = 1u;
+    state.actors[0].control_mode = 14u;
+    state.actors[0].reaction_threshold = 2u;
+    nba_gameplay_rng_seed(&state.rng, 0x9146u);
+    seed = state.rng.state;
+    if (!cpu_update_rom_special_receiver(&state, 0u) ||
+        state.actors[0].control_mode != 1u ||
+        state.actors[0].behavior_timer != 0x2Fu ||
+        state.pass_actor_raw != -1 || state.pass_aux_raw != -1 ||
+        state.pass_receiver_raw != -1 || state.ball_activity_raw != 0u ||
+        state.rim_raw_094a != 0u || state.inbound_transfer_raw != 0u ||
+        state.rng.state != seed) return false;
+
+    memset(&state, 0, sizeof(state));
+    state.session = &session;
+    state.possession_actor = 0;
+    state.actors[0].control_mode = 14u;
+    state.actors[0].reaction_threshold = 2u;
+    state.actors[0].special_contact_raw_56 = 1;
+    state.ball.owner_actor = 0;
+    nba_gameplay_rng_seed(&state.rng, 0x9146u);
+    seed = state.rng.state;
+    if (!cpu_update_rom_special_receiver(&state, 0u) ||
+        state.actors[0].control_mode != 1u ||
+        state.possession_actor != -1 || state.ball.owner_actor != -1 ||
+        state.ball.state != NBA_BALL_SHOT || state.shot_value_raw != 2u ||
+        state.ball.velocity_x != 0 || state.ball.velocity_y != 0 ||
+        state.ball.velocity_z != (int16_t)0xFE98u ||
+        state.rng.state != seed) return false;
+
+    memset(&state, 0, sizeof(state));
+    state.session = &session;
+    state.possession_actor = 0;
+    state.actors[0].control_mode = 14u;
+    state.actors[0].reaction_threshold = 2u;
+    state.actors[0].special_contact_raw_56 = 6;
+    state.actors[0].x_fp = -256;
+    state.ball.owner_actor = 0;
+    if (!cpu_update_rom_special_receiver(&state, 0u) ||
+        state.ball.velocity_x != -0x01A0 ||
+        state.ball.velocity_y != -0x0080 ||
+        state.ball.velocity_z != 0x0048) return false;
+
+    memset(&state, 0, sizeof(state));
+    state.session = &session;
+    state.possession_actor = -1;
+    state.pass_receiver_raw = 0;
+    state.actors[0].control_mode = 14u;
+    state.actors[0].reaction_threshold = 40u;
+    state.actors[0].animation_state = 0x18u;
+    state.actors[0].special_contact_raw_56 = 0;
+    if (!cpu_update_rom_special_receiver(&state, 0u) ||
+        state.actors[0].reaction_threshold != 38u ||
+        state.actors[0].velocity_z != 0x0270) return false;
+    state.actors[0].velocity_z = 0;
+    state.actors[0].z_fp = 0;
+    state.actors[0].reaction_threshold = 40u;
+    state.actors[0].special_contact_raw_56 = 1;
+    if (!cpu_update_rom_special_receiver(&state, 0u) ||
+        state.actors[0].velocity_z != 0x0264) return false;
+
+    /* `$86:B1E2-$B202`: inclusive +/-80 retains; 81 converts to 9D6E. */
+    memset(&state, 0, sizeof(state));
+    state.session = &session;
+    state.possession_actor = 0;
+    state.pass_receiver_raw = 0;
+    state.actors[0].control_mode = 14u;
+    state.actors[0].reaction_threshold = 22u;
+    state.actors[0].animation_state = 0x18u;
+    state.actors[0].z_fp = 10 * 256;
+    state.actors[0].velocity_x = 80;
+    state.actors[0].mode13_baseline_velocity_x = 0;
+    if (!cpu_update_rom_special_receiver(&state, 0u) ||
+        state.actors[0].control_mode != 14u ||
+        state.ball.owner_actor != 0) return false;
+    state.actors[0].control_mode = 14u;
+    state.actors[0].reaction_threshold = 22u;
+    state.actors[0].animation_state = 0x18u;
+    state.actors[0].z_fp = 10 * 256;
+    state.actors[0].velocity_z = 0;
+    state.actors[0].velocity_x = 81;
+    state.possession_actor = 0;
+    state.ball.owner_actor = 0;
+    if (!cpu_update_rom_special_receiver(&state, 0u) ||
+        state.actors[0].control_mode != 11u ||
+        state.ball.owner_actor != -1 || state.ball.state != NBA_BALL_SHOT)
+        return false;
+
+    memset(&state, 0, sizeof(state));
+    state.session = &session;
+    state.possession_actor = 1;
+    state.pass_receiver_raw = 0;
+    state.actors[1].control_mode = 15u;
+    state.actors[0].control_mode = 14u;
+    state.actors[0].reaction_threshold = 22u;
+    state.actors[0].animation_state = 0x18u;
+    state.actors[0].z_fp = 10 * 256;
+    if (!cpu_update_rom_special_receiver(&state, 0u) ||
+        state.actors[0].control_mode != 14u) return false;
+    state.actors[0].reaction_threshold = 22u;
+    state.actors[0].z_fp = 10 * 256;
+    state.pass_receiver_raw = 2;
+    if (!cpu_update_rom_special_receiver(&state, 0u) ||
+        state.actors[0].control_mode != 1u ||
+        state.pass_receiver_raw != -1) return false;
     return true;
 }
 
@@ -3257,6 +3517,7 @@ static void cpu_commit_ball_acquisition(NbaTipoff *tipoff, uint8_t catcher) {
     unsigned previous_side = tipoff->offense_side;
     unsigned side = catcher / 5u;
     NbaTipoffActor *catcher_state = &tipoff->actors[catcher];
+    bool special_finish = catcher_state->control_mode == 14u;
     /* `$86:BAB9-$BAC7`: only a slow catcher loses lateral momentum. */
     if (catcher_state->movement_magnitude_raw < 0x0080u) {
         catcher_state->velocity_x = 0;
@@ -3289,10 +3550,14 @@ static void cpu_commit_ball_acquisition(NbaTipoff *tipoff, uint8_t catcher) {
     tipoff->receiver_actor = catcher;
     ball_attach_to_actor(tipoff, catcher);
     tipoff->possession_actor = (int8_t)catcher;
-    catcher_state->control_mode = 11u;
-    catcher_state->reaction_threshold = 0u;
-    catcher_state->behavior_flags_raw = 0u;
-    catcher_state->velocity_z = 0;
+    /* `$86:BB03-$BB14`: mode 14 is the sole acquisition mode preserved by
+     * BAA2. Every ordinary catch becomes mode 11 and clears +$60/+$7E. */
+    if (!special_finish) {
+        catcher_state->control_mode = 11u;
+        catcher_state->reaction_threshold = 0u;
+        catcher_state->behavior_flags_raw = 0u;
+        catcher_state->velocity_z = 0;
+    }
     tipoff->play_request_raw = 1u;
     tipoff->special_actor_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
     tipoff->play_selector_raw[0] = -1;
@@ -3302,7 +3567,8 @@ static void cpu_commit_ball_acquisition(NbaTipoff *tipoff, uint8_t catcher) {
     tipoff->pass_receiver_raw = -1;
     tipoff->pass_active_raw = 0u;
     tipoff->pass_distance_raw = 0u;
-    tipoff->cpu_play_state = NBA_CPU_PLAY_ATTACK;
+    tipoff->cpu_play_state = special_finish ?
+        NBA_CPU_PLAY_SHOT : NBA_CPU_PLAY_ATTACK;
     tipoff->shot_result_resolved = false;
     tipoff->shot_inner_veto_raw = false;
     tipoff->shot_miss_index_raw = 0xFFu;
@@ -4487,6 +4753,7 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
         !cpu_rim_contact_tick_self_test() ||
         !cpu_deferred_shooting_foul_self_test() ||
         !cpu_free_throw_scene_self_test() ||
+        !cpu_special_receiver_self_test() ||
         !cpu_dead_ball_dispatch_self_test() ||
         !cpu_contact_orchestration_self_test() ||
         !cpu_player_contact_self_test() ||
@@ -4980,15 +5247,18 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
         out->controller_assignment_16_raw =
             state->controller_assignment_raw;
         out->movement_magnitude_4c_raw = state->movement_magnitude_raw;
+        bool close_finish = state->control_mode == 13u ||
+                            state->control_mode == 14u;
         out->mode13_timer_60_raw = state->control_mode == 13u ?
-            state->contact_action_timer_raw_60 : 0u;
-        out->mode13_selector_56_raw = state->control_mode == 13u ?
+            state->contact_action_timer_raw_60 :
+            state->control_mode == 14u ? state->reaction_threshold : 0u;
+        out->mode13_selector_56_raw = close_finish ?
             state->special_contact_raw_56 : -1;
-        out->mode13_variant_58_raw = state->control_mode == 13u ?
+        out->mode13_variant_58_raw = close_finish ?
             state->mode13_variant_raw_58 : 0u;
-        out->mode13_baseline_vx_ba_raw = state->control_mode == 13u ?
+        out->mode13_baseline_vx_ba_raw = close_finish ?
             state->mode13_baseline_velocity_x : 0;
-        out->mode13_baseline_vy_bc_raw = state->control_mode == 13u ?
+        out->mode13_baseline_vy_bc_raw = close_finish ?
             state->mode13_baseline_velocity_y : 0;
         out->contact_inhibit_5a_raw = state->contact_inhibit_raw_5a;
         out->contact_height_aa_raw = state->contact_height_raw_aa;

@@ -80,6 +80,7 @@ without changing the comparison contract.
 | `$85:A656–$A755`, `$86:A613–$A628` | shared actor/ball rectangular and isometric court clamp plus boundary-state cancellation |
 | `$85:B50E–$B677` | persistent A2/AA/AC/AE receiver selection and candidate validation |
 | `$86:B625–$B978`, `$86:9D6E–$A45E` | pose-attached mode-12 shot jump, velocity release gate, and launch |
+| `$86:B154–$B334`, `$86:A9D0–$AA69` | mode-14 special-receiver jump, ownership validation, interrupted release, and close finish |
 | `$86:BAA2–$BC99` | shared catch/rebound ownership install, `$0994` request, and final shot-context reset |
 | `$86:C4FE–$C6AC`, `$86:D12D–$D1D0` | foul/contact classification feeding pending `$0964` and actor IDs `$492D/$492F` |
 | `$86:CD97–$CE65`, `$86:D078–$D128` | descending-shot pose contact, code-6 interference award, and detached catch RNG |

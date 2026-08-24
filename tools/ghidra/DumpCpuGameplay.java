@@ -202,6 +202,14 @@ public class DumpCpuGameplay extends GhidraScript {
                 }
             }
             if (bank.equals("86")) {
+                out.println("\n--- Complete mode-14 special-receiver executor ---");
+                addEntryPoint(toAddr(0xb0f7)); disassemble(toAddr(0xb0f7));
+                addEntryPoint(toAddr(0xb154)); disassemble(toAddr(0xb154));
+                for (long address = 0xb0f7; address <= 0xb34e; ++address) {
+                    Instruction instruction = listing.getInstructionAt(toAddr(address));
+                    if (instruction != null)
+                        out.printf("$86:%04X  %s%n", address, instruction.toString());
+                }
                 out.println("\n--- Complete CPU clear-lane layup/dunk initializer ---");
                 addEntryPoint(toAddr(0xb34f)); disassemble(toAddr(0xb34f));
                 addEntryPoint(toAddr(0xb424)); disassemble(toAddr(0xb424));
