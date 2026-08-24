@@ -472,9 +472,9 @@ static bool cpu_active_decision_due(NbaTipoff *tipoff, unsigned slot) {
     int16_t actor_x = fp_round(actor->x_fp);
     /* Modes 2/4/6 compare signed-word actor +$04 against side context +$0A.
      * `$87:8EFE/$8F11` keeps DP $9E at $46EB for slots 0..4 and $476B for
-     * slots 5..9; live values are stable anchors $B0 (-80) and $50 (+80).
-     * This is deliberately not a ball-position or matchup comparison. */
-    int16_t side_anchor = slot < 5u ? -80 : 80;
+     * slots 5..9; full words `$FEB0/$0150` are -336/+336. This is
+     * deliberately not a ball-position or matchup comparison. */
+    int16_t side_anchor = slot < 5u ? -336 : 336;
     bool same_half = nba_gameplay_same_x_half(actor_x, side_anchor);
     if (mode == 1u || mode == 3u || mode == 5u || mode == 11u)
         return nba_gameplay_decision_timer_step(
@@ -502,7 +502,7 @@ static uint8_t cpu_formation_target_direction(NbaTipoff *tipoff,
         actor->target_y = 0;
     } else if ((actor->behavior_flags_raw & 0x0008u) == 0u) {
         int16_t target_x = actor->target_x, target_y = actor->target_y;
-        int16_t side_anchor_x = slot < 5u ? -80 : 80;
+        int16_t side_anchor_x = slot < 5u ? -336 : 336;
         if (nba_assets_gameplay_formation_offset(
                 tipoff->assets, (uint8_t)tipoff->play_code, role,
                 (uint8_t)tipoff->play_step_raw,
@@ -933,7 +933,7 @@ static bool cpu_try_rom_mode11_shot(NbaTipoff *tipoff, unsigned slot) {
             return cpu_start_rom_shot(tipoff, slot);
     }
 
-    int16_t side_anchor = slot < 5u ? -80 : 80;
+    int16_t side_anchor = slot < 5u ? -336 : 336;
     bool same_attack_half = (int16_t)(rom_x ^ side_anchor) >= 0;
     if (same_attack_half &&
         nba_gameplay_mode11_shot_rectangle(rom_x, y, z))
@@ -1098,7 +1098,7 @@ static void score_made_basket(NbaTipoff *tipoff) {
     tipoff->handler_actor = (uint8_t)tipoff->inbound_actor_raw;
     tipoff->receiver_actor = (uint8_t)(inbound_side * 5u + 4u);
     NbaGameplayInboundTarget target;
-    int16_t context_anchor = inbound_side ? 80 : -80;
+    int16_t context_anchor = inbound_side ? 336 : -336;
     if (nba_gameplay_inbound_target(
             tipoff->inbound_layout_raw, fp_round(tipoff->ball.x_fp),
             fp_round(tipoff->ball.y_fp), context_anchor,
@@ -1436,8 +1436,16 @@ static void cpu_reset_play_control(NbaTipoff *tipoff) {
 
 static void cpu_reselect_play_control(NbaTipoff *tipoff) {
     /* `$85:B128-$B24B`: `$0994` is consumed only at the completed logical
-     * pass boundary. The first RNG result is intentionally discarded. */
-    (void)nba_gameplay_rng_next(&tipoff->rng);
+     * pass boundary. The first RNG result updates the opposite/defending
+     * team context at `$46EB/$476B +$30`. */
+    uint16_t context_random = nba_gameplay_rng_next(&tipoff->rng);
+    unsigned offense = tipoff->offense_side != 0u ? 1u : 0u;
+    unsigned defense = offense ^ 1u;
+    (void)nba_gameplay_defense_context_reselect(
+        tipoff->session->score[offense], tipoff->session->score[defense],
+        tipoff->period_raw_0926,
+        tipoff->team_context[defense].activity_raw_39, context_random,
+        &tipoff->team_context[defense].mode_raw_30);
     tipoff->play_request_raw = 0u;
     tipoff->play_event_wait_raw = 0u;
     tipoff->play_cycle_raw = 0u;
@@ -1707,7 +1715,7 @@ static void cpu_reset_expired_inbound(NbaTipoff *tipoff) {
     tipoff->inbound_transfer_raw = 0u;
     tipoff->ball.owner_actor = -1;
     NbaGameplayInboundTarget target;
-    int16_t context_anchor = side ? 80 : -80;
+    int16_t context_anchor = side ? 336 : -336;
     if (nba_gameplay_inbound_target(
             5, fp_round(tipoff->ball.x_fp), fp_round(tipoff->ball.y_fp),
             context_anchor, fp_round(tipoff->ball.x_fp), &tipoff->rng,
@@ -2011,6 +2019,12 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
     nba_gameplay_camera_init(&tipoff->camera, -128, -124);
     nba_gameplay_rng_seed(&tipoff->rng, 0x9146u);
     nba_gameplay_foul_init(&tipoff->fouls);
+    for (unsigned side = 0; side < 2u; ++side) {
+        tipoff->team_context[side].mode_raw_30 = 4u;
+        tipoff->team_context[side].flags_raw_32 = 1u;
+        tipoff->team_context[side].activity_raw_39 = 1u;
+    }
+    tipoff->period_raw_0926 = 0u;
     tipoff->possession_actor = -1;
     tipoff->possession_team = -1;
     session->score[0] = session->score[1] = 0u;
@@ -2177,6 +2191,15 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
     telemetry->rng_state_raw = tipoff->rng.state;
     telemetry->score_left_raw = tipoff->session->score[0];
     telemetry->score_right_raw = tipoff->session->score[1];
+    telemetry->period_raw_0926 = tipoff->period_raw_0926;
+    for (unsigned side = 0; side < 2u; ++side) {
+        telemetry->team_context_mode_raw_30[side] =
+            tipoff->team_context[side].mode_raw_30;
+        telemetry->team_context_flags_raw_32[side] =
+            tipoff->team_context[side].flags_raw_32;
+        telemetry->team_context_activity_raw_39[side] =
+            tipoff->team_context[side].activity_raw_39;
+    }
     telemetry->shot_clock_raw_092c = tipoff->rim_raw_092c;
     telemetry->shot_value_raw = tipoff->shot_value_raw;
     telemetry->shot_chance_raw = tipoff->shot_chance_raw;

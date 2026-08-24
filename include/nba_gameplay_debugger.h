@@ -124,6 +124,10 @@ typedef struct {
     uint16_t rng_state_raw;
     uint16_t score_left_raw;
     uint16_t score_right_raw;
+    uint16_t period_raw_0926;
+    uint16_t team_context_mode_raw_30[2];
+    uint16_t team_context_flags_raw_32[2];
+    uint16_t team_context_activity_raw_39[2];
     uint16_t shot_clock_raw_092c;
     uint16_t shot_value_raw;
     uint8_t shot_chance_raw;

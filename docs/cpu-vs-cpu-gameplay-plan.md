@@ -291,9 +291,9 @@ boundary classifications, mutations, and bitwise preservation of `$13E7`.
 The same trace corrects the conditional think-delay input for modes 2/4/6.
 DP `$9E` is not the ball or a paired actor: `$87:8EFE/$8F11` selects the left
 team context `$46EB` for slots 0..4 and right context `$476B` for slots 5..9.
-Those routines compare signed-byte actor `+$04` with stable context `+$0A`
-anchors `$B0` (-80) and `$50` (+80) before adding `$20`; C now performs that
-exact comparison. Remaining mapped fields are actor `+$16` signed controller
+Those routines compare signed-word actor `+$04` with stable context `+$0A`
+anchors `$FEB0` (-336) and `$0150` (+336) before adding `$20`; C now performs
+that exact comparison. Remaining mapped fields are actor `+$16` signed controller
 assignment, `+$7A` recovery inhibit, `+$4C` movement magnitude, and `+$92`
 lineup rank. Their planner branches remain pending rather than guessed.
 
@@ -347,7 +347,7 @@ magnitude `+$4C`, recovery inhibit `+$7A`, and behavior flags `+$7E` so this
 boundary is directly comparable with a ROM trace.
 
 The same audit corrects the formation mirror contract: `$85:AD6B` tests the
-team-context anchor at DP `$9E + $0A` (`-80` left, `+80` right), not ball X.
+team-context anchor at DP `$9E + $0A` (`-336` left, `+336` right), not ball X.
 Modes 1/3/5 refresh persistent `+$56/+58` only after their signed timer and
 `+$16/+$7A/+$7E` gates; `$85:AE35+` then distinguishes persistent targets
 from local midcourt steering. This checkpoint fixes the asset API naming and
@@ -747,11 +747,10 @@ Increment 5B fixes a width error found by translating the native mode-2/4/6
 countdown entries `$86:F6CD/$F794/$F8CD`. Their half-court delay test executes
 with M=0 and XORs the full signed 16-bit actor X (`+$04`) with the full context
 anchor (`+$0A`). The port had cast both to signed bytes, so actor X `+200`
-against anchor `-80` incorrectly looked same-half and added `$20` to its next
+against anchor `-336` incorrectly looked same-half and added `$20` to its next
 decision interval. The shared predicate now preserves the native word XOR;
-four sign combinations and the reproducing `+200/-80` case are locked by the
-AI component self-test. The deeper target-table dispatch remains gated until
-its context `+$30/+$32` owners are represented explicitly.
+four sign combinations and the reproducing `+200/-336` case are locked by the
+AI component self-test.
 
 Increment 5C translates the portable target geometry shared by defensive
 modes 2/4/6 without prematurely wiring guessed context. The five exact
@@ -763,3 +762,15 @@ selected X/Y offsets to paired position plus arithmetic velocity/8, with
 now owns this exact behavior and forced vectors lock ordinary radius-64,
 forced-close, and context-`+$30==2` targets. It remains deliberately unhooked
 from live defenders until those two context words are added to the runtime.
+
+Increment 5D adds the persistent left/right team-AI contexts rooted at
+`$46EB/$476B`. Recomp initialization `$86:DBF1-$DC03` sets both represented
+contexts to `+$30=4`, `+$32=1`, and activity `+$39=1`. Play-request handling
+at `$85:B128-$B176` consumes its first `$80:CEE7` result to update the
+opposing context's `+$30`: a signed 16-bit subtraction-N test selects mode 1
+when trailing before period 3, otherwise RNG bit 0 selects mode 3 or 1. The
+C runtime and JSON telemetry now retain these raw fields and `$0926`, and all
+true team-context anchor consumers use the full `$FEB0/$0150` words. Forced
+unit vectors cover the inactive-context guard, trailing branch, period gate,
+and both RNG outcomes. The gameplay lab, tip-off, and sustained 50,000-frame
+CPU regression pass with the new state lifecycle.

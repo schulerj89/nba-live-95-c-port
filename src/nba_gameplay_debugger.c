@@ -196,7 +196,11 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
             "\"pass_active_raw\":%u,\"pass_distance_raw\":%u,"
             "\"play_selector_raw\":[%d,%d,%d],"
             "\"rng_state_raw\":%u},\"match\":{\"score_left_raw\":%u,"
-            "\"score_right_raw\":%u,\"shot_clock_raw_092c\":%u,"
+            "\"score_right_raw\":%u,\"period_raw_0926\":%u,"
+            "\"team_context_mode_raw_30\":[%u,%u],"
+            "\"team_context_flags_raw_32\":[%u,%u],"
+            "\"team_context_activity_raw_39\":[%u,%u],"
+            "\"shot_clock_raw_092c\":%u,"
             "\"shot_value_raw\":%u,"
             "\"shot_chance_raw\":%u,\"shot_miss_index_raw\":%u,"
             "\"shot_inner_veto_raw\":%u,"
@@ -250,6 +254,13 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
             telemetry->play_selector_raw[1], telemetry->play_selector_raw[2],
             telemetry->rng_state_raw,
             telemetry->score_left_raw, telemetry->score_right_raw,
+            telemetry->period_raw_0926,
+            telemetry->team_context_mode_raw_30[0],
+            telemetry->team_context_mode_raw_30[1],
+            telemetry->team_context_flags_raw_32[0],
+            telemetry->team_context_flags_raw_32[1],
+            telemetry->team_context_activity_raw_39[0],
+            telemetry->team_context_activity_raw_39[1],
             telemetry->shot_clock_raw_092c,
             telemetry->shot_value_raw, telemetry->shot_chance_raw,
             telemetry->shot_miss_index_raw, telemetry->shot_inner_veto_raw,

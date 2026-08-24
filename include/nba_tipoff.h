@@ -108,6 +108,8 @@ typedef struct {
     NbaGameplayCamera camera;
     NbaGameplayRng rng;
     NbaGameplayFoulState fouls;
+    NbaGameplayTeamContext team_context[2]; /* `$46EB/$476B` +$30/+32/+39 */
+    uint16_t period_raw_0926;
     int8_t possession_actor;
     int8_t possession_team;
     uint8_t camera_side_group_raw; /* persistent `$093A`: 0 or 5 */

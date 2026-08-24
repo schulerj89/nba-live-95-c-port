@@ -477,7 +477,7 @@ bool nba_assets_gameplay_formation_offset(const NbaAssetPack *pack,
     uint16_t raw_y = asset_u16(pair + 2u);
     if (mirror_y) raw_y = (uint16_t)(0u - raw_y);
     /* `$85:ADF5-$AE03`: mirror from DP `$9E` team context `+$0A`
-     * (-80 left/+80 right), never from the moving ball X coordinate. */
+     * (-336 left/+336 right), never from the moving ball X coordinate. */
     if (side_anchor_x < 0) {
         raw_x = (uint16_t)(0u - raw_x);
         if (play >= 0x0Eu) raw_y = (uint16_t)(0u - raw_y);

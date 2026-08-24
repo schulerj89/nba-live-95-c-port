@@ -8,6 +8,12 @@ typedef struct {
     uint16_t state;
 } NbaGameplayRng;
 
+typedef struct {
+    uint16_t mode_raw_30;
+    uint16_t flags_raw_32;
+    uint16_t activity_raw_39;
+} NbaGameplayTeamContext;
+
 /* Actor fields consumed by `$85:B60B-$B677`. `travel_direction` and
  * `travel_distance` correspond to actor +$86/+8A, not rendered facing or
  * instantaneous velocity. */
@@ -48,6 +54,10 @@ bool nba_gameplay_decision_timer_step(uint16_t *timer, uint8_t profile_byte,
                                       uint16_t reload_base,
                                       bool add_half_court_delay);
 bool nba_gameplay_same_x_half(int16_t actor_x, int16_t context_anchor_x);
+bool nba_gameplay_defense_context_reselect(
+    uint16_t current_score, uint16_t opponent_score,
+    uint16_t period_raw_0926, uint16_t opponent_activity_raw_39,
+    uint16_t random_word, uint16_t *opponent_mode_raw_30);
 uint8_t nba_gameplay_target_direction(int16_t dx, int16_t dy,
                                       uint16_t *distance);
 uint8_t nba_gameplay_pass_direction(int16_t dx, int16_t dy,
