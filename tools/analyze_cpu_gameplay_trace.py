@@ -86,7 +86,10 @@ def main():
         team_counts = (sum(counts[:5]), sum(counts[5:]))
         print(f"[CPU TRACE] movement f{first}-{last} teams={team_counts[0]}/{team_counts[1]} "
               f"live_pairs={live_pairs} actors={'/'.join(map(str, counts))}")
-        if not live_pairs:
+        # A window containing only the one-frame boundary between dead-ball
+        # and ordinary play is not a meaningful sustained-movement sample.
+        # Require at least 16 comparable pairs before grading both teams.
+        if live_pairs < 16:
             skipped_dead_ball_windows.append((first, last))
         elif min(team_counts) < max(4, live_pairs // 4):
             weak_windows.append((first, last, team_counts))

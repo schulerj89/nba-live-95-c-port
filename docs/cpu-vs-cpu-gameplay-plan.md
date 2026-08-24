@@ -1128,3 +1128,36 @@ At boundary arrival, `$86:F54F-$F577` writes `$0968=2` (and `$09F6=2`, whose
 independent consumer is not yet represented), freezes the inbounder, clears
 `$09B6` then `$0964`, and finally raises `$09BA`. The represented `$0968`
 write and its ordering are regression-tested through the gameplay trace.
+
+### Increment 5M: CPU mode-11 rating and range shot policy
+
+The recomp execution oracle and refreshed headless bank-$85 listing identify
+`$85:B734-$B820` as the live CPU ballhandler's missing shot-choice tail. It is
+called from owner mode 11 at `$86:F428` after the same-attack-half and direct
+rectangle tests. The routine uses the exact difficulty distance table
+`[$0018,$0020,$0020]`, rating floor `$94 + ($17AF << 5)`, matchup distances
+actor `+$8A/+$8C`, play words `$0998/$09A4/$09D0`, committed shot-clock rule
+`$17E1`, and dead-ball phase `$0968`. Conditional `$80:CEE7/$80:CEFD` calls
+remain in their original order, including rejected decisions, so later CPU,
+collision, and shot randomness stays aligned with the ROM.
+
+Roster byte `+$49` is now preserved in the existing 64-byte `NBPROST2`
+asset-pack record. `$85:B7D9-$B801` compares it with actor `+$8C`: a shorter
+range selects the player's `+$37` three-point rating; otherwise it selects
+`+$36`. No captured frame or emulator memory is used at runtime. The audit
+also corrected `$85:BC6C-$BC71`: the computed matchup distance is written to
+both actors' `+$8A`; C had updated the paired offense actor's debug distance
+but left its decision field stale.
+
+Forced vectors cover the one-in-16 distant shot, the play-cycle one-in-32
+rating gate, `+$49` equality and side selection, the `$0968` fallback cadence,
+hold-step acceptance, nonzero-Z rejection, and exact LFSR end states. The
+public endurance horizon is 61,990 frames so the deterministic run ends after
+a completed inbound rather than truncating the next valid `$82` sequence.
+Movement windows with fewer than 16 ordinary-live frame pairs are reported as
+transition windows instead of being mislabeled as a stationary team.
+
+The surrounding `$85:B678-$B8CA` audit also identifies the next portable
+slice: clock-urgency dispatch consumption and the `$85:F5E4 -> $86:B34F`
+corridor/drive/dunk branch. Those paths are not replaced with a host shortcut
+in this increment.

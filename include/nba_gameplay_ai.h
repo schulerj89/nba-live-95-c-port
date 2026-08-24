@@ -34,6 +34,24 @@ typedef struct {
     bool play_requested;
 } NbaGameplayInboundTarget;
 
+/* Portable inputs consumed by the live-covered `$85:B734-$B820` tail of
+ * the CPU ballhandler's mode-11 shot decision. */
+typedef struct {
+    int16_t play_step_raw_0998;
+    uint16_t play_cycle_raw_09a4;
+    uint16_t play_hold_raw_09d0;
+    uint16_t dead_ball_raw_0968;
+    uint16_t shot_clock_rule_raw_17e1;
+    uint16_t difficulty_raw_17af;
+    uint16_t assignment_distance_raw_8a;
+    uint16_t anchor_distance_raw_8c;
+    uint8_t two_point_rating_raw_36;
+    uint8_t three_point_rating_raw_37;
+    uint8_t shot_range_raw_49;
+    int16_t actor_z;
+    bool same_attack_half;
+} NbaGameplayMode11ShotInput;
+
 typedef struct {
     int16_t actor_x, actor_y;
     uint8_t actor_pair_direction_raw_86;
@@ -104,6 +122,8 @@ bool nba_gameplay_predictive_arrival(int16_t actor_x, int16_t actor_y,
                                      uint8_t *steering_direction,
                                      uint16_t *distance);
 bool nba_gameplay_mode11_shot_rectangle(int16_t rom_x, int16_t y, int16_t z);
+bool nba_gameplay_mode11_shot_decision(
+    const NbaGameplayMode11ShotInput *input, NbaGameplayRng *rng);
 bool nba_gameplay_court_clamp(int32_t *x_fp, int32_t *y_fp,
                               int16_t *velocity_x, int16_t *velocity_y);
 bool nba_gameplay_inbound_target(

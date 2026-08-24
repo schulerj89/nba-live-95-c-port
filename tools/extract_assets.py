@@ -459,6 +459,9 @@ def build_player_roster_asset(rom_data):
             # `$87:9DD4-$9DEA` and `$86:A255-$A291` grade CPU free throws
             # from roster byte +$38 before their two independent RNG gates.
             packed[26] = record[0x38]
+            # `$85:B7D9-$B801` compares roster +$49 with actor +$8C before
+            # selecting the +$36 or +$37 CPU shot-decision rating.
+            packed[27] = record[0x49]
             packed[32:64] = fixed_name
             payload.extend(packed)
     return bytes(payload)

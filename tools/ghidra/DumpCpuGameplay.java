@@ -52,7 +52,8 @@ public class DumpCpuGameplay extends GhidraScript {
             0x8d19, 0x8ee6, 0x9192, 0x963d, 0x9700, 0x9a24,
             0x9d40, 0x9f01, 0xa079, 0xa1e9, 0xa21f, 0xa357, 0xa518, 0xa5cc,
             0xa3b7, 0xa5f4, 0xa656, 0xa755,
-            0xab17, 0xae3b, 0xaf5c, 0xb402, 0xb50e, 0xb60b, 0xb678, 0xb9d2,
+            0xab17, 0xae3b, 0xaf5c, 0xb402, 0xb50e, 0xb60b, 0xb678,
+            0xb83e, 0xb88d, 0xb9d2,
             0xba1d, 0xbab7, 0xbae4, 0xbc07, 0x93f5,
             0x9530, 0xc37d, 0xc5fb, 0xef3a, 0xf02d,
             0xf1c1, 0xf34f, 0xf3c3, 0xf5e4, 0xf78b, 0xf7c9, 0xf867, 0xf8d9
@@ -150,11 +151,17 @@ public class DumpCpuGameplay extends GhidraScript {
                 out.println("\n--- Complete mode-11 shot/formation/pass dispatcher ---");
                 addEntryPoint(toAddr(0xb50e)); disassemble(toAddr(0xb50e));
                 addEntryPoint(toAddr(0xb678)); disassemble(toAddr(0xb678));
-                for (long address = 0xb50e; address <= 0xb833; ++address) {
+                addEntryPoint(toAddr(0xb83e)); disassemble(toAddr(0xb83e));
+                addEntryPoint(toAddr(0xb88d)); disassemble(toAddr(0xb88d));
+                for (long address = 0xb50e; address <= 0xb8ca; ++address) {
                     Instruction instruction = listing.getInstructionAt(toAddr(address));
                     if (instruction != null)
                         out.printf("$85:%04X  %s%n", address, instruction.toString());
                 }
+                out.print("Shot-decision distance table $85:B804 =");
+                for (long address = 0xb804; address < 0xb80a; ++address)
+                    out.printf(" %02X", getByte(toAddr(address)) & 0xff);
+                out.println();
                 out.println("\n--- Complete post-score inbound placement/steering ---");
                 addEntryPoint(toAddr(0xc37d)); disassemble(toAddr(0xc37d));
                 addEntryPoint(toAddr(0xc450)); disassemble(toAddr(0xc450));

@@ -17,7 +17,7 @@ FORMATION = [
 ]
 EXPECTED_RGB = {
     600: "6c103ff0fe22b29384806281dd9a04f61e0ed867eb732f36bb32c168b4eda900",
-    1300: "41850300d48ac3447bf1a17a956d26043a3ecf185b9052423646563c0cc1321e",
+    1300: "fc080f038afb70fe10a543ea360f2714d4e400a6a6b8d44570beb122fa7c89bb",
 }
 
 
@@ -50,7 +50,7 @@ def main():
         trace = root / "cpu_gameplay.jsonl"
         command = [
             args.exe, "--headless", "--rom", args.rom, "--assets", args.pack,
-            "--tipoff-only", "--frames", "60000", "--gameplay-trace", str(trace),
+            "--tipoff-only", "--frames", "61990", "--gameplay-trace", str(trace),
             "--debug-state",
         ]
         result = subprocess.run(command, capture_output=True, text=True, check=False)
@@ -58,8 +58,8 @@ def main():
                 "BALL M:" not in result.stdout:
             raise AssertionError(result.stdout + result.stderr)
         rows = [json.loads(line) for line in trace.read_text().splitlines()]
-        if len(rows) != 60000:
-            raise AssertionError(f"expected 60000 CPU frames, got {len(rows)}")
+        if len(rows) != 61990:
+            raise AssertionError(f"expected 61990 CPU frames, got {len(rows)}")
         initial_fouls = {
             "event_raw": 0, "shooting_raw": 0,
             "offender_raw": -1, "victim_raw": -1,
@@ -390,9 +390,16 @@ def main():
                          row["fouls"]["free_throw_state_raw"] != 0)
                     for row in rows):
             raise AssertionError("$0948 canonical shot/attach lifecycle changed")
-        detached_shots = [row for row in rows
-                          if row["ball"]["state"] == 5 and
-                          row["ball"]["activity_raw"] == 0xFFFF]
+        # `$86:9DBF/$9DFF` install these latches at the mode-12 release
+        # boundary. Later ROM rim/impact branches may clear `$096A` while the
+        # ball still retains its shot-mode renderer state, so validate the
+        # transition rather than every subsequent flight row.
+        detached_shots = [rows[index] for index in range(1, len(rows))
+                          if rows[index]["ball"]["state"] == 5 and
+                          rows[index]["ball"]["activity_raw"] == 0xFFFF and
+                          rows[index - 1]["ball"]["state"] == 4 and
+                          any(actor["raw"]["control_mode"] == 12
+                              for actor in rows[index - 1]["actors"])]
         if not detached_shots or any(
                 not 0 <= row["match"]["shot_actor_raw_09c8"] < 10 or
                 row["match"]["interference_value_raw_096a"] not in (1, 2, 3)
@@ -892,6 +899,7 @@ def main():
                    "nba_gameplay_ball_pose_contact",
                     "$86:E923-$E96E", "$86:B0F7-$B153",
                    "$85:A82C-$AB16", "nba_gameplay_velocity_step",
+                   "$85:B734-$B820", "nba_gameplay_mode11_shot_decision",
                    "nba_gameplay_same_x_half",
                    "$86:E82F-$E8F6", "$86:E8F7-$E922",
                    "nba_gameplay_defense_pair_target",

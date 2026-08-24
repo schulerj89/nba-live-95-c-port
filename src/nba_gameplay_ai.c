@@ -561,6 +561,56 @@ bool nba_gameplay_mode11_shot_rectangle(int16_t rom_x, int16_t y, int16_t z) {
     return abs_x >= 0x00E2u && y >= -0x0040 && y < 0x0040;
 }
 
+/* `$85:B734-$B820`: rating/distance tail of the CPU-owned mode-11 shot
+ * decision. Calls to `$80:CEE7/$80:CEFD` are conditional and ordered; even a
+ * rejected shot must leave the shared LFSR at the same state as the ROM. */
+bool nba_gameplay_mode11_shot_decision(
+    const NbaGameplayMode11ShotInput *in, NbaGameplayRng *rng) {
+    static const uint16_t distance_minimum[3] = {0x18u, 0x20u, 0x20u};
+    if (!in || !rng || !in->same_attack_half || in->difficulty_raw_17af > 2u)
+        return false;
+
+    bool accepted = in->play_hold_raw_09d0 != 0u &&
+                    in->play_step_raw_0998 == 4;
+    uint16_t difficulty = in->difficulty_raw_17af;
+    uint16_t distance = distance_minimum[difficulty];
+    uint16_t rating = (uint16_t)(0x94u + (difficulty << 5));
+
+    if (!accepted && in->play_step_raw_0998 >= 2) {
+        uint16_t random = nba_gameplay_rng_next(rng);
+        accepted = (random & 0x000Fu) == 0u &&
+                   in->anchor_distance_raw_8c >= 0x00A0u &&
+                   in->assignment_distance_raw_8a >= distance &&
+                   in->three_point_rating_raw_37 >= rating;
+    }
+
+    bool rating_gate = false;
+    if (!accepted && in->shot_clock_rule_raw_17e1 == 0u &&
+            in->play_cycle_raw_09a4 != 0u) {
+        uint16_t random = nba_gameplay_rng_next(rng);
+        rating_gate = (random & 0x001Fu) == 0u;
+    }
+    if (!accepted && !rating_gate) {
+        uint16_t random = nba_gameplay_rng_next(rng);
+        rating_gate = (random & 0x003Fu) == 0u &&
+                      in->play_step_raw_0998 >= 3;
+    }
+    if (!accepted && rating_gate &&
+            in->assignment_distance_raw_8a >= distance) {
+        uint8_t selected_rating =
+            in->shot_range_raw_49 < in->anchor_distance_raw_8c ?
+            in->three_point_rating_raw_37 : in->two_point_rating_raw_36;
+        accepted = selected_rating >= rating;
+    }
+
+    if (!accepted && in->dead_ball_raw_0968 != 0u) {
+        uint16_t random = nba_gameplay_rng_next(rng) & 0x7FFFu;
+        accepted = (random & 0x0020u) != 0u;
+    }
+    /* `$85:B820-$B825` checks actor +$0C only after a policy branch wins. */
+    return accepted && in->actor_z == 0;
+}
+
 static int32_t fixed_integer_floor(int32_t value) {
     return value >= 0 ? value / 256 : -(((-value) + 255) / 256);
 }
@@ -710,6 +760,56 @@ bool nba_gameplay_ai_self_test(void) {
         if (nba_gameplay_mode11_shot_rectangle(
                 shot_edges[i].x, shot_edges[i].y, shot_edges[i].z) !=
             shot_edges[i].expected) return false;
+    NbaGameplayMode11ShotInput shot = {
+        .play_step_raw_0998 = 2,
+        .shot_clock_rule_raw_17e1 = 1u,
+        .difficulty_raw_17af = 0u,
+        .assignment_distance_raw_8a = 0x18u,
+        .anchor_distance_raw_8c = 0xA0u,
+        .two_point_rating_raw_36 = 0x94u,
+        .three_point_rating_raw_37 = 0x94u,
+        .shot_range_raw_49 = 0xA0u,
+        .same_attack_half = true
+    };
+    NbaGameplayRng shot_rng = {0x0008u};
+    if (!nba_gameplay_mode11_shot_decision(&shot, &shot_rng) ||
+        shot_rng.state != 0x0010u) return false;
+    shot.anchor_distance_raw_8c = 0x009Fu;
+    shot_rng.state = 0x0008u;
+    if (nba_gameplay_mode11_shot_decision(&shot, &shot_rng) ||
+        shot_rng.state != 0x0020u) return false;
+    shot.play_step_raw_0998 = 3;
+    shot.anchor_distance_raw_8c = 100u;
+    shot.play_cycle_raw_09a4 = 1u;
+    shot.shot_clock_rule_raw_17e1 = 0u;
+    shot.shot_range_raw_49 = 100u;
+    shot_rng.state = 0x0008u;
+    if (!nba_gameplay_mode11_shot_decision(&shot, &shot_rng) ||
+        shot_rng.state != 0x0020u) return false;
+    shot.shot_range_raw_49 = 99u;
+    shot.two_point_rating_raw_36 = 0u;
+    shot.three_point_rating_raw_37 = 0x94u;
+    shot_rng.state = 0x0008u;
+    if (!nba_gameplay_mode11_shot_decision(&shot, &shot_rng)) return false;
+    shot.shot_clock_rule_raw_17e1 = 1u;
+    shot.play_cycle_raw_09a4 = 0u;
+    shot.dead_ball_raw_0968 = 2u;
+    shot.assignment_distance_raw_8a = 0u;
+    shot_rng.state = 0x0004u;
+    if (!nba_gameplay_mode11_shot_decision(&shot, &shot_rng) ||
+        shot_rng.state != 0x0020u) return false;
+    shot.dead_ball_raw_0968 = 0u;
+    shot_rng.state = 0x0004u;
+    if (nba_gameplay_mode11_shot_decision(&shot, &shot_rng) ||
+        shot_rng.state != 0x0010u) return false;
+    shot.play_hold_raw_09d0 = 1u;
+    shot.play_step_raw_0998 = 4;
+    shot_rng.state = 0x1234u;
+    if (!nba_gameplay_mode11_shot_decision(&shot, &shot_rng) ||
+        shot_rng.state != 0x1234u) return false;
+    shot.actor_z = 1;
+    if (nba_gameplay_mode11_shot_decision(&shot, &shot_rng) ||
+        shot_rng.state != 0x1234u) return false;
     static const struct {
         int32_t x, y;
         int16_t vx, vy;

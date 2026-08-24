@@ -63,6 +63,8 @@ def main():
         raise AssertionError("Chicago +$39/+$3E pass profiles changed")
     if roster[chicago_offset + 25] != 60:
         raise AssertionError("Chicago +$3A contact rating changed")
+    if roster[chicago_offset + 27] != 112:
+        raise AssertionError("Chicago +$49 CPU shot range changed")
     west = record(28, 10)
     if west[-1] != "D. Robinson" or west[5:8] != (0xF5, 0x99, 0x8E):
         raise AssertionError(f"West ROM record changed: {west}")
@@ -73,6 +75,8 @@ def main():
         raise AssertionError("West +$39/+$3E pass profiles changed")
     if roster[west_offset + 25] != 95:
         raise AssertionError("West +$3A contact rating changed")
+    if roster[west_offset + 27] != 144:
+        raise AssertionError("West +$49 CPU shot range changed")
 
     pose, pose_w, pose_h, _ = assets[252]
     if (pose_w, pose_h, len(pose)) != (24, 64, 24 * 64 * 4):

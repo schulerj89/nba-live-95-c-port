@@ -22,6 +22,7 @@ typedef struct {
     uint8_t decision_profile_39, decision_profile_3e;
     uint8_t contact_rating_3a;
     uint8_t free_throw_rating_38;
+    uint8_t shot_range_49;
     uint8_t decision_profile_3f, decision_profile_40;
     uint8_t movement_profile_42;
     char name[33];
@@ -542,6 +543,7 @@ static bool player_record(const NbaAssetPack *assets, int team, int player,
     out->decision_profile_3e = p[24];
     out->contact_rating_3a = p[25];
     out->free_throw_rating_38 = p[26];
+    out->shot_range_49 = p[27];
     memcpy(out->name, p + 32, 32); out->name[32] = '\0';
     return true;
 }
@@ -555,6 +557,16 @@ bool nba_player_gameplay_shot_ratings(const NbaAssetPack *assets,
     /* Roster profile `+$36/+$37`, selected by `$86:A4A5` for 2/3 points. */
     *two_point = player.appearance_a;
     *three_point = player.appearance_b;
+    return true;
+}
+
+bool nba_player_gameplay_shot_range(const NbaAssetPack *assets,
+                                    uint8_t team, uint8_t roster_slot,
+                                    uint8_t *range_49) {
+    PlayerLabRecord player;
+    if (!range_49 || !player_record(assets, team, roster_slot, &player))
+        return false;
+    *range_49 = player.shot_range_49;
     return true;
 }
 

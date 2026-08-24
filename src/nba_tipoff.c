@@ -396,6 +396,7 @@ static bool cpu_refresh_defense_target(NbaTipoff *tipoff, unsigned slot,
     actor->pair_distance = pair_distance;
     paired->assignment_direction = pair_direction < 8u ?
         (uint8_t)(pair_direction ^ 4u) : pair_direction;
+    paired->assignment_distance = pair_distance;
     paired->pair_distance = pair_distance;
 
     /* `$85:AFC2-$AFE5`: actor +$88/+8C are fine direction and distance to
@@ -2032,11 +2033,10 @@ static bool cpu_start_rom_shot(NbaTipoff *tipoff, unsigned slot) {
     return true;
 }
 
-/* Live-covered `$85:B678` normal-clock path. `$092C` is the 24-second
- * possession clock (1440 60-Hz ticks), not a rim-only flag. With both clocks
- * above 120 the captured oracle reaches B6B7 and then the exact symmetric
- * B714 rectangle. The deeper rating/RNG routes below B734 remain separate
- * until their actor +$8A/+$8C writers are represented. */
+/* Live-covered `$85:B678-$B88D` normal-clock path. `$092C` is the 24-second
+ * possession clock (1440 60-Hz ticks), not a rim-only flag. The direct
+ * rectangle and the portable `$B734-$B820` rating/distance tail preserve the
+ * ROM's conditional RNG cadence before `$86:B625` starts the shot. */
 static bool cpu_try_rom_mode11_shot(NbaTipoff *tipoff, unsigned slot) {
     if (!tipoff || slot >= NBA_GAMEPLAY_ACTOR_COUNT) return false;
     const NbaTipoffActor *actor = &tipoff->actors[slot];
@@ -2057,7 +2057,32 @@ static bool cpu_try_rom_mode11_shot(NbaTipoff *tipoff, unsigned slot) {
     if (same_attack_half &&
         nba_gameplay_mode11_shot_rectangle(rom_x, y, z))
         return cpu_start_rom_shot(tipoff, slot);
-    if (tipoff->play_hold_raw != 0u && tipoff->play_step_raw == 4 && z == 0)
+
+    uint8_t team = slot >= 5u ? tipoff->session->right_team :
+                               tipoff->session->left_team;
+    uint8_t rating_36 = 0u, rating_37 = 0u, range_49 = 0u;
+    if (!nba_player_gameplay_shot_ratings(
+            tipoff->assets, team, actor->roster_slot,
+            &rating_36, &rating_37) ||
+        !nba_player_gameplay_shot_range(
+            tipoff->assets, team, actor->roster_slot, &range_49))
+        return false;
+    NbaGameplayMode11ShotInput decision = {
+        .play_step_raw_0998 = tipoff->play_step_raw,
+        .play_cycle_raw_09a4 = tipoff->play_cycle_raw,
+        .play_hold_raw_09d0 = tipoff->play_hold_raw,
+        .dead_ball_raw_0968 = tipoff->dead_ball_raw_0968,
+        .shot_clock_rule_raw_17e1 = tipoff->session->config.rules[8],
+        .difficulty_raw_17af = tipoff->session->config.main_values[2],
+        .assignment_distance_raw_8a = actor->assignment_distance,
+        .anchor_distance_raw_8c = actor->anchor_distance_raw,
+        .two_point_rating_raw_36 = rating_36,
+        .three_point_rating_raw_37 = rating_37,
+        .shot_range_raw_49 = range_49,
+        .actor_z = z,
+        .same_attack_half = same_attack_half
+    };
+    if (nba_gameplay_mode11_shot_decision(&decision, &tipoff->rng))
         return cpu_start_rom_shot(tipoff, slot);
     return false;
 }
@@ -3097,6 +3122,7 @@ static void cpu_refresh_pair_geometry(NbaTipoff *tipoff, unsigned actor) {
     state->pair_distance = distance;
     if (direction != 8u)
         other->assignment_direction = (uint8_t)(direction ^ 4u);
+    other->assignment_distance = distance;
     other->pair_distance = distance;
 }
 

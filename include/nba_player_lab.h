@@ -76,6 +76,9 @@ bool nba_player_ball_attachment_point_offsets(const NbaAssetPack *assets,
 bool nba_player_gameplay_shot_ratings(const NbaAssetPack *assets,
                                       uint8_t team, uint8_t roster_slot,
                                       uint8_t *two_point, uint8_t *three_point);
+bool nba_player_gameplay_shot_range(const NbaAssetPack *assets,
+                                    uint8_t team, uint8_t roster_slot,
+                                    uint8_t *range_49);
 bool nba_player_gameplay_free_throw_rating(const NbaAssetPack *assets,
                                            uint8_t team,
                                            uint8_t roster_slot,
