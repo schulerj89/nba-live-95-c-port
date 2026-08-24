@@ -74,7 +74,9 @@ Team logo assets also render directly in F12 as their decoded ROM OBJ pixels.
 Gameplay Lab marks all ten actor slots and exposes actor/ball physics,
 controller ownership, camera, collision, possession, animation, and raw CPU/AI
 state. It supports pause and single-frame stepping; see
-[`docs/gameplay-debugging.md`](docs/gameplay-debugging.md).
+[`docs/gameplay-debugging.md`](docs/gameplay-debugging.md). The staged,
+evidence-gated CPU-versus-CPU implementation is tracked in
+[`docs/cpu-vs-cpu-gameplay-plan.md`](docs/cpu-vs-cpu-gameplay-plan.md).
 
 F10 cycles through off, a compact scene/timing/input/audio overview, and a
 compact scene-detail page. Together they report Setup page/row/transition and
