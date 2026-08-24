@@ -277,3 +277,31 @@ the raw AD6B call gates, and later `$85:AE35+` overrides before replacing its
 provisional role targets. The first-possession movement guard is likewise
 explicit temporary parity scaffolding. These caveats prevent treating 4E as
 the final parity gate.
+
+Increment 4F connects the already-isolated `$85:9ACB-$A081` rim/backboard
+shell to live shot integration. Gravity and XYZ integration run first, then a
+unit-scale local bridge maps the rendered right/left hoop centers to the ROM's
+signed `+336/-336` domain. Outer contacts copy the routine's exact position
+and velocity mutations back once; makes enter `$85:A079-$A345`; classified
+edge/miss contacts enter loose-ball recovery without inventing the still
+unresolved contact impulse. Persistent `$092C/$0962/$096A/$097C/$096E/$13E7`
+side effects now survive between frames. Pure self-tests lock both baskets,
+boundary classifications, mutations, and bitwise preservation of `$13E7`.
+
+The same trace corrects the conditional think-delay input for modes 2/4/6.
+DP `$9E` is not the ball or a paired actor: `$87:8EFE/$8F11` selects the left
+team context `$46EB` for slots 0..4 and right context `$476B` for slots 5..9.
+Those routines compare signed-byte actor `+$04` with stable context `+$0A`
+anchors `$B0` (-80) and `$50` (+80) before adding `$20`; C now performs that
+exact comparison. Remaining mapped fields are actor `+$16` signed controller
+assignment, `+$7A` recovery inhibit, `+$4C` movement magnitude, and `+$92`
+lineup rank. Their planner branches remain pending rather than guessed.
+
+The play-step audit also identifies `$85:C6AF` as a separate 61-entry control
+stream graph. Its 320 eight-byte records end per play with a two-byte `$23BA`
+sentinel and cannot reuse formation counts. `$85:B377` initializes
+`$0998/$099A/$099C`; `$85:B2DC-$B352` loads countdown/event words and three
+side-relative player selectors. `$87:8FA1 -> $85:AF5C` advances it once after
+each completed ten-actor logical pass with `C6=2`, advancing only after the
+countdown underflows. Packing this independent graph and replacing the host
+play-state timeline is the next checkpoint.

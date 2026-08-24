@@ -33,6 +33,10 @@ NbaGameplayRimResult nba_gameplay_rim_step(NbaGameplayRimState *state,
                                            bool alternate_height,
                                            bool inner_veto,
                                            bool correct_basket_side);
+NbaGameplayRimResult nba_gameplay_rim_world_step(
+    NbaGameplayRimState *state, int16_t hoop_x, int16_t hoop_y,
+    bool right_basket, uint16_t live_state, bool alternate_height,
+    bool inner_veto, bool correct_basket_side);
 bool nba_gameplay_ball_is_make(uint16_t live_state, bool alternate_height,
                                bool inner_veto, bool correct_basket_side,
                                int16_t dx, int16_t dy, int16_t z);

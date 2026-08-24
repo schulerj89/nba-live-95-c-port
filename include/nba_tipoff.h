@@ -110,6 +110,14 @@ typedef struct {
     uint16_t live_state_raw;       /* `$0936` */
     uint16_t inbound_state_raw;    /* `$0952` */
     uint16_t inbound_actor_raw;    /* `$0954` */
+    /* Persistent globals consumed/mutated by `$85:9ACB-$A081`. Keep their
+     * raw names until the surrounding writers establish narrower labels. */
+    uint16_t rim_raw_092c;
+    uint16_t rim_raw_0962;
+    uint16_t rim_raw_096a;
+    uint16_t rim_raw_097c;
+    uint16_t rim_raw_096e;
+    uint16_t rim_raw_13e7;
     int16_t shot_origin_x, shot_origin_y;
     uint8_t shot_chance_raw;
     uint8_t shot_miss_index_raw;

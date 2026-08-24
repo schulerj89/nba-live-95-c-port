@@ -158,6 +158,26 @@ NbaGameplayRimResult nba_gameplay_rim_step(NbaGameplayRimState *state,
     return NBA_GAMEPLAY_RIM_OUTER_CONTACT;
 }
 
+/* Host gameplay keeps the original per-axis units but centers each court at
+ * its rendered hoop coordinates. This local translation is the complete
+ * bridge into `$85:9ACB`'s signed +/-336 hoop domain; it does not use the
+ * separate full-court scaling required by the three-point arc lookup. */
+NbaGameplayRimResult nba_gameplay_rim_world_step(
+    NbaGameplayRimState *state, int16_t hoop_x, int16_t hoop_y,
+    bool right_basket, uint16_t live_state, bool alternate_height,
+    bool inner_veto, bool correct_basket_side) {
+    if (!state) return NBA_GAMEPLAY_RIM_FLIGHT;
+    int16_t shell_center = right_basket ? 336 : -336;
+    state->x = (int16_t)(shell_center + state->x - hoop_x);
+    state->y = (int16_t)(state->y - hoop_y);
+    NbaGameplayRimResult result = nba_gameplay_rim_step(
+        state, live_state, alternate_height, inner_veto,
+        correct_basket_side);
+    state->x = (int16_t)(hoop_x + state->x - shell_center);
+    state->y = (int16_t)(hoop_y + state->y);
+    return result;
+}
+
 /* Final made-basket predicate, expressed through the complete ROM shell. The
  * caller's dx/dy are hoop-relative, so +336 reconstructs the right-rim raw X. */
 bool nba_gameplay_ball_is_make(uint16_t live_state, bool alternate_height,
@@ -292,6 +312,16 @@ bool nba_gameplay_ball_self_test(void) {
     bool outer_high = nba_gameplay_rim_step(&rim, 1u, false, false, true) ==
                       NBA_GAMEPLAY_RIM_OUTER_CONTACT && rim.x == -348 &&
                       rim.velocity_z == 16;
+    rim = (NbaGameplayRimState){394,0,80,20,20,150,1,2,3,4,5,0x20};
+    bool right_world_bridge = nba_gameplay_rim_world_step(
+        &rim, 386, 0, true, 1u, false, false, true) ==
+            NBA_GAMEPLAY_RIM_OUTER_CONTACT && rim.x == 393 &&
+        rim.raw_092c == 0x05A0u && rim.raw_13e7 == 0x28u;
+    rim = (NbaGameplayRimState){-114,0,80,-20,20,150,1,2,3,4,5,0x40};
+    bool left_world_bridge = nba_gameplay_rim_world_step(
+        &rim, -106, 0, false, 1u, false, false, true) ==
+            NBA_GAMEPLAY_RIM_OUTER_CONTACT && rim.x == -113 &&
+        rim.raw_092c == 0x05A0u && rim.raw_13e7 == 0x48u;
     rim = (NbaGameplayRimState){344, -24, 80, 20, 31, 150, 0, 0, 0, 0};
     bool outer_negative_y_edge =
         nba_gameplay_rim_step(&rim, 1u, false, false, true) ==
@@ -331,6 +361,7 @@ bool nba_gameplay_ball_self_test(void) {
         nba_gameplay_rim_step(&(NbaGameplayRimState){344,0,123,20,20,150,0,0,0,0},
                                1u, false, false, true) == NBA_GAMEPLAY_RIM_FLIGHT;
     return launch_ok && shell_gates && outer_generic && outer_y &&
+           right_world_bridge && left_world_bridge &&
            outer_negative_y_edge &&
            outer_low && outer_high &&
            nba_gameplay_rim_step(&(NbaGameplayRimState){343,0,74,0,0,0,0,0,0,0},
