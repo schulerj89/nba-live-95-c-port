@@ -192,6 +192,7 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
             "\"play_mirror_raw\":%u,\"play_event_wait_raw\":%u,"
             "\"play_request_raw\":%u,\"play_cycle_raw\":%u,"
             "\"play_hold_raw\":%u,\"special_actor_raw\":%u,"
+            "\"role_rebuild_raw_09d6\":%u,"
             "\"pass_actor_raw\":%d,\"pass_receiver_raw\":%d,"
             "\"pass_active_raw\":%u,\"pass_distance_raw\":%u,"
             "\"play_selector_raw\":[%d,%d,%d],"
@@ -248,6 +249,7 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
             telemetry->play_event_wait_raw, telemetry->play_request_raw,
             telemetry->play_cycle_raw,
             telemetry->play_hold_raw, telemetry->special_actor_raw,
+            telemetry->role_rebuild_raw_09d6,
             telemetry->pass_actor_raw, telemetry->pass_receiver_raw,
             telemetry->pass_active_raw, telemetry->pass_distance_raw,
             telemetry->play_selector_raw[0],
@@ -338,7 +340,9 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
                 "\"pass_released\":%u,\"side_group\":%u,"
                 "\"assignment_base\":%u,\"assignment_current\":%u,"
                 "\"assignment_alternate\":%u,\"assignment_distance\":%u,"
-                "\"assignment_direction\":%u,\"pair_distance\":%u,"
+                "\"assignment_direction\":%u,\"anchor_direction_88\":%u,"
+                "\"assignment_role_92\":%u,\"pair_distance\":%u,"
+                "\"anchor_distance_8c\":%u,"
                 "\"reaction_threshold\":%u,\"movement_boost_72\":%u,"
                 "\"controller_assignment_16\":%d,"
                 "\"movement_magnitude_4c\":%u,"
@@ -365,7 +369,9 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
                 a->pass_released_raw, a->side_group_raw,
                 a->assignment_base_raw, a->assignment_current_raw,
                 a->assignment_alternate_raw, a->assignment_distance_raw,
-                a->assignment_direction_raw, a->pair_distance_raw,
+                a->assignment_direction_raw, a->anchor_direction_raw_88,
+                a->assignment_role_raw_92, a->pair_distance_raw,
+                a->anchor_distance_raw_8c,
                 a->reaction_threshold_raw, a->movement_boost_raw,
                 a->controller_assignment_16_raw,
                 a->movement_magnitude_4c_raw, a->recovery_inhibit_7a_raw,

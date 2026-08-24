@@ -60,7 +60,10 @@ typedef struct {
     uint16_t assignment_alternate_raw;
     uint16_t assignment_distance_raw;
     uint16_t assignment_direction_raw;
+    uint16_t anchor_direction_raw_88;
+    uint16_t assignment_role_raw_92;
     uint16_t pair_distance_raw;
+    uint16_t anchor_distance_raw_8c;
     uint16_t reaction_threshold_raw;
     uint16_t movement_boost_raw;
     int16_t controller_assignment_16_raw;
@@ -119,6 +122,7 @@ typedef struct {
     uint16_t play_request_raw;
     uint16_t play_cycle_raw;
     uint16_t play_hold_raw;
+    uint16_t role_rebuild_raw_09d6;
     uint16_t special_actor_raw;
     int16_t play_selector_raw[3];
     uint16_t rng_state_raw;

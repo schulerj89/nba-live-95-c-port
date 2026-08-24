@@ -16,8 +16,8 @@ FORMATION = [
     (-8, -3), (16, 83), (24, -80), (-104, 56), (-96, -59),
 ]
 EXPECTED_RGB = {
-    600: "ba9705028162ad134fcb76f5c0dce8adadf248f0c59a59e68333ae7d372fb707",
-    1300: "0be740272c80086da448906aacefcffaa6b9a8f483ea823f604bf9f523b5462a",
+    600: "1ecd88f7be25e13da24cb472beecc5ad400157002511f56e9f1d1cf7a594ec30",
+    1300: "b71e71d066c0247ae8985582285b5d77305bd18ba03fdc6f6074452b98b94f85",
 }
 
 
@@ -90,8 +90,17 @@ def main():
                     for index, actor in enumerate(live["actors"]))
         if moved < 8:
             raise AssertionError(f"only {moved}/10 CPU actors broke formation")
-        if (live["actors"][0]["x"], live["actors"][0]["y"]) != FORMATION[0]:
-            raise AssertionError("center reaction delay no longer matches the ROM trace")
+        expected_assignments = [14, 10, 12, 16, 18, 4, 0, 2, 6, 8]
+        if [actor["raw"]["assignment_base"] for actor in live["actors"]] != \
+                expected_assignments or \
+                [actor["raw"]["assignment_current"] for actor in live["actors"]] != \
+                expected_assignments:
+            raise AssertionError("lineup-permuted `$86:D86C` assignments changed")
+        match = live["match"]
+        if match["team_context_mode_raw_30"] != [4, 4] or \
+                match["team_context_flags_raw_32"] != [1, 1] or \
+                match["team_context_activity_raw_39"] != [1, 1]:
+            raise AssertionError("`$46EB/$476B` team context initialization changed")
 
         pack_raw = Path(args.pack).read_bytes()
         pack_count = int.from_bytes(pack_raw[12:16], "little")
@@ -706,7 +715,7 @@ def main():
         "src/nba_tipoff.c", "src/nba_gameplay_ai.c",
         "src/nba_gameplay_ball.c", "src/nba_gameplay_effect.c",
         "src/nba_player_lab.c"))
-    for marker in ("$85:963D-$985F", "$85:BC43-$BC81", "$85:B95C",
+    for marker in ("$85:963D-$985F", "$85:BC52-$BC81", "$85:B95C",
                    "$87:B832", "$87:B649", "$87:B66A", "$85:9192",
                    "$87:8F01-$8F8D", "nba_gameplay_camera_update",
                    "cpu_begin_possession", "cpu_update_possession",
@@ -720,6 +729,8 @@ def main():
                    "nba_gameplay_same_x_half",
                    "$86:E82F-$E8F6", "$86:E8F7-$E922",
                    "nba_gameplay_defense_pair_target",
+                   "nba_gameplay_defense_mode_target",
+                   "$87:8FA1-$8FA9", "cpu_refresh_team_roles_end_frame",
                    "$85:A5F4-$A655", "nba_gameplay_ball_apply_settle",
                    "$85:A43A-$A44B",
                    "nba_gameplay_ball_apply_ground_impact",

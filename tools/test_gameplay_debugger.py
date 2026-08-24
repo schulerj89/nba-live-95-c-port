@@ -11,7 +11,7 @@ from pathlib import Path
 from PIL import Image
 
 
-EXPECTED_LAB_RGB = "e0d0a016bd6f2488b0d99143f714950a5d528d2aed42aa9db4f8e90faff6a537"
+EXPECTED_LAB_RGB = "b5a57739f864e9f0b4497b3d02100fb637349dab30c7532c0b275813843bced7"
 
 
 def run(command, label):
@@ -59,6 +59,8 @@ def main():
                     "pass_band_62", "pass_direction_66", "saved_mode_84",
                     "pass_family_c0", "pass_release_threshold", "pass_released",
                     "assignment_current", "reaction_threshold",
+                    "anchor_direction_88", "assignment_role_92",
+                    "anchor_distance_8c",
                     "movement_boost_72", "controller_assignment_16",
                     "movement_magnitude_4c", "recovery_inhibit_7a", "upper_restart",
                     "lower_restart", "behavior_flags"}

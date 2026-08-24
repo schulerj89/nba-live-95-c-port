@@ -31,6 +31,28 @@ typedef struct {
     bool play_requested;
 } NbaGameplayInboundTarget;
 
+typedef struct {
+    int16_t actor_x, actor_y;
+    uint8_t actor_pair_direction_raw_86;
+    uint16_t actor_pair_distance_raw_8a;
+    int16_t paired_x, paired_y;
+    int16_t paired_velocity_x, paired_velocity_y;
+    uint8_t paired_anchor_direction_raw_88;
+    uint16_t paired_anchor_distance_raw_8c;
+    uint8_t paired_position_raw_92;
+    int16_t context_anchor_x;
+    uint16_t context_mode_raw_30;
+    uint16_t context_flags_raw_32;
+    bool paired_on_three_point_arc;
+    uint8_t paired_three_point_rating;
+} NbaGameplayDefenseTargetInput;
+
+typedef struct {
+    int16_t target_x, target_y;
+    bool target_written;
+    bool stop_velocity;
+} NbaGameplayDefenseTargetOutput;
+
 void nba_gameplay_rng_seed(NbaGameplayRng *rng, uint16_t seed);
 uint16_t nba_gameplay_rng_next(NbaGameplayRng *rng);
 bool nba_gameplay_rng_self_test(void);
@@ -50,6 +72,9 @@ void nba_gameplay_defense_pair_target(
     uint8_t paired_direction, uint16_t context_raw_30,
     uint16_t context_raw_32, bool force_close_table,
     int16_t *target_x, int16_t *target_y);
+bool nba_gameplay_defense_mode_target(
+    uint8_t actor_mode, const NbaGameplayDefenseTargetInput *input,
+    NbaGameplayDefenseTargetOutput *output);
 bool nba_gameplay_decision_timer_step(uint16_t *timer, uint8_t profile_byte,
                                       uint16_t reload_base,
                                       bool add_half_court_delay);

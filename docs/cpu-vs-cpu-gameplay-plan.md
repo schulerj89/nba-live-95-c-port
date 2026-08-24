@@ -774,3 +774,25 @@ true team-context anchor consumers use the full `$FEB0/$0150` words. Forced
 unit vectors cover the inactive-context guard, trailing branch, period gate,
 and both RNG outcomes. The gameplay lab, tip-off, and sustained 50,000-frame
 CPU regression pass with the new state lifecycle.
+
+Increment 5E replaces the continuously executed host defensive shortcut with
+the portable recomp target dispatcher. Actor `+$74` now remains a mutable even
+offset into `$87:9C7B`, initialized from the active-lineup permutation rather
+than same-index pairing; `+$76` base and reciprocal `+$78` remain distinct.
+`$85:BC52-$BC81` coarse pair direction/distance (`+$86/$8A`) and
+`$85:AFC2-$AFE5` fine basket direction/distance (`+$88/$8C`) feed exact C
+translations of `$86:E7B3`, `$E7DC`, `$E96F`, `$E6B7`, and `$E9B3`, including
+the five ROM spacing tables, three-point arc/rating branch, velocity eighths,
+close-basket overrides, and mode-6 direction maps. The fixed `+/-18` shoulder
+offset and host `first_move_start[10]` table are gone.
+
+The same checkpoint restores the ROM's ownership boundary: `$86:BB3B-$BB4E`
+copies every base `+$76` into current `+$74` and raises represented `$09D6`;
+the end-of-ten-actor `$87:8FA1-$8FA9` hook then runs the represented
+`$85:AF5C/$85:BC07` order, preserving modes 7+ while normalizing offense to
+mode 1, defense to mode 2, and the owner's assigned primary defender to mode
+4. Optional `$85:C018-$C036` help-defender selection that promotes mode 6 is
+still pending; mode 6's target geometry itself is translated and unit-tested.
+Gameplay JSON exposes team contexts, `$09D6`, `+$88/$8C`, and roster `+$92`.
+Visually reviewed frame goldens 220/600/1300 and the Gameplay Lab were updated
+after the 50,000-frame sustained CPU trace passed.

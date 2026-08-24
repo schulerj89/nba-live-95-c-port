@@ -588,6 +588,16 @@ bool nba_player_gameplay_pass_profiles(const NbaAssetPack *assets,
     return true;
 }
 
+bool nba_player_gameplay_position(const NbaAssetPack *assets,
+                                  uint8_t team, uint8_t roster_slot,
+                                  uint8_t *position_raw_92) {
+    PlayerLabRecord player;
+    if (!position_raw_92 ||
+        !player_record(assets, team, roster_slot, &player)) return false;
+    *position_raw_92 = player.position;
+    return true;
+}
+
 bool nba_player_sprite_render(NbaRenderer *renderer, const NbaAssetPack *assets,
                               uint8_t team, uint8_t roster_slot, uint8_t side,
                               uint8_t upper_state, uint8_t direction,

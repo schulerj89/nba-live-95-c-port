@@ -74,10 +74,13 @@ typedef struct {
     uint8_t movement_direction;
     uint8_t assignment_actor;
     uint8_t assignment_direction;
+    uint8_t anchor_direction_raw;       /* actor `+$88` */
+    uint8_t assignment_role_raw_92;     /* actor `+$92` */
     uint16_t assignment_base_raw;
     uint16_t assignment_current_raw;
     uint16_t assignment_alternate_raw;
     uint16_t assignment_distance;
+    uint16_t anchor_distance_raw;       /* actor `+$8C` */
     uint16_t pair_distance;
     uint16_t reaction_threshold;
     uint16_t movement_boost_timer; /* actor `+$72`, consumed by `$85:A82C` */
@@ -121,6 +124,7 @@ typedef struct {
     uint16_t play_request_raw;   /* `$0994` */
     uint16_t play_cycle_raw;     /* `$09A4` */
     uint16_t play_hold_raw;      /* `$09D0` */
+    uint16_t role_rebuild_raw_09d6;
     uint16_t special_actor_raw;  /* `$09A2`, clear-lane cutter or `$FFFF` */
     int16_t play_selector_raw[3];/* `$09AA/$09AC/$09AE` */
     uint32_t simulation_tick;

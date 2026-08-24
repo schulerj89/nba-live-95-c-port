@@ -347,10 +347,6 @@ static bool cpu_begin_rom_pass(NbaTipoff *tipoff, unsigned passer_slot,
 }
 
 static void cpu_set_role_targets(NbaTipoff *tipoff) {
-    unsigned offense_base = tipoff->offense_side ? 5u : 0u;
-    unsigned defense_base = tipoff->offense_side ? 0u : 5u;
-    bool attack_right = tipoff->offense_side != 0u;
-
     if (tipoff->cpu_play_state == NBA_CPU_PLAY_REBOUND &&
         tipoff->live_state_raw != 0x82u) {
         int16_t ball_x = fp_round(tipoff->ball.x_fp);
@@ -365,52 +361,82 @@ static void cpu_set_role_targets(NbaTipoff *tipoff) {
             tipoff->actors[actor].control_mode =
                 actor / 5u == tipoff->offense_side ? 1u : 2u;
         }
-        return;
     }
+}
 
-    for (unsigned slot = 0; slot < 5; ++slot) {
-        unsigned actor = offense_base + slot;
-        /* Modes 1/3/5 own persistent +$56/+$58 through `$85:AD6B` and the
-         * actor +$7E bit-$08 install latch. */
-        /* Functional policy currently keeps the attacking five on mode 1.
-         * The genuine controller-free ROM oracle proves mode `$0B` is also
-         * used by CPU actors, so it must not be labeled human-only. */
-        if (actor != tipoff->handler_actor)
-            tipoff->actors[actor].control_mode = 1u;
-        tipoff->actors[actor].assignment_actor = (uint8_t)(defense_base + slot);
-        tipoff->actors[actor].assignment_current_raw =
-            (uint16_t)((defense_base + slot) * 2u);
+static bool cpu_refresh_defense_target(NbaTipoff *tipoff, unsigned slot,
+                                       bool *stop_velocity) {
+    NbaTipoffActor *actor = &tipoff->actors[slot];
+    unsigned paired_slot = actor->assignment_current_raw >> 1;
+    if (paired_slot >= NBA_GAMEPLAY_ACTOR_COUNT ||
+        paired_slot / 5u == slot / 5u) {
+        paired_slot = actor->assignment_base_raw >> 1;
+        if (paired_slot >= NBA_GAMEPLAY_ACTOR_COUNT ||
+            paired_slot / 5u == slot / 5u) return false;
+        actor->assignment_current_raw = actor->assignment_base_raw;
     }
+    actor->assignment_actor = (uint8_t)paired_slot;
+    NbaTipoffActor *paired = &tipoff->actors[paired_slot];
+    int16_t actor_x = fp_round(actor->x_fp);
+    int16_t actor_y = fp_round(actor->y_fp);
+    int16_t paired_x = fp_round(paired->x_fp);
+    int16_t paired_y = fp_round(paired->y_fp);
 
-    /* `$85:BC43-$BC81` continuously resolves a defender's assigned actor;
-     * defenders target the ball-side shoulder rather than a static spot. */
-    int defend_offset = attack_right ? -18 : 18;
-    for (unsigned slot = 0; slot < 5; ++slot) {
-        unsigned actor = defense_base + slot;
-        unsigned matchup = offense_base + slot;
-        NbaTipoffActor *opponent = &tipoff->actors[matchup];
-        tipoff->actors[actor].assignment_actor = (uint8_t)matchup;
-        tipoff->actors[actor].assignment_current_raw = (uint16_t)(matchup * 2u);
-        tipoff->actors[actor].target_x = (int16_t)(fp_round(opponent->x_fp) +
-                                                   defend_offset);
-        tipoff->actors[actor].target_y = fp_round(opponent->y_fp);
-        tipoff->actors[actor].control_mode =
-            matchup == tipoff->handler_actor ? 4u : 2u;
-        int dx = fp_round(opponent->x_fp) - fp_round(tipoff->actors[actor].x_fp);
-        int dy = fp_round(opponent->y_fp) - fp_round(tipoff->actors[actor].y_fp);
-        uint16_t distance = 0u;
-        uint8_t direction = nba_gameplay_target_direction(
-            (int16_t)dx, (int16_t)dy, &distance);
-        tipoff->actors[actor].assignment_direction = direction;
-        tipoff->actors[actor].assignment_distance = distance;
-        tipoff->actors[actor].pair_distance = distance;
-        opponent->assignment_direction = direction < 8u ? direction ^ 4u : direction;
-        opponent->pair_distance = distance;
+    /* `$85:BC52-$BC81`: refresh coarse +$86 and shared +$8A only at the
+     * bound-pair decision boundary, not by rebuilding assignments per frame. */
+    uint16_t pair_distance = 0u;
+    uint8_t pair_direction = nba_gameplay_target_direction(
+        (int16_t)(paired_x - actor_x), (int16_t)(paired_y - actor_y),
+        &pair_distance);
+    actor->assignment_direction = pair_direction;
+    actor->assignment_distance = pair_distance;
+    actor->pair_distance = pair_distance;
+    paired->assignment_direction = pair_direction < 8u ?
+        (uint8_t)(pair_direction ^ 4u) : pair_direction;
+    paired->pair_distance = pair_distance;
+
+    /* `$85:AFC2-$AFE5`: actor +$88/+8C are fine direction and distance to
+     * that actor's own team-context basket anchor. */
+    int16_t paired_anchor = paired_slot < 5u ? -336 : 336;
+    paired->anchor_direction_raw = nba_gameplay_pass_direction(
+        (int16_t)(paired_anchor - paired_x), (int16_t)(-paired_y),
+        &paired->anchor_distance_raw);
+
+    uint8_t paired_team = paired_slot >= 5u ?
+        tipoff->session->right_team : tipoff->session->left_team;
+    uint8_t rating_2pt = 0u, rating_3pt = 0u;
+    (void)nba_player_gameplay_shot_ratings(
+        tipoff->assets, paired_team, paired->roster_slot,
+        &rating_2pt, &rating_3pt);
+    (void)rating_2pt;
+    unsigned side = slot / 5u;
+    int16_t context_anchor = side == 0u ? -336 : 336;
+    NbaGameplayDefenseTargetInput input = {
+        .actor_x = actor_x, .actor_y = actor_y,
+        .actor_pair_direction_raw_86 = actor->assignment_direction,
+        .actor_pair_distance_raw_8a = actor->assignment_distance,
+        .paired_x = paired_x, .paired_y = paired_y,
+        .paired_velocity_x = paired->velocity_x,
+        .paired_velocity_y = paired->velocity_y,
+        .paired_anchor_direction_raw_88 = paired->anchor_direction_raw,
+        .paired_anchor_distance_raw_8c = paired->anchor_distance_raw,
+        .paired_position_raw_92 = paired->assignment_role_raw_92,
+        .context_anchor_x = context_anchor,
+        .context_mode_raw_30 = tipoff->team_context[side].mode_raw_30,
+        .context_flags_raw_32 = tipoff->team_context[side].flags_raw_32,
+        .paired_on_three_point_arc = nba_gameplay_shot_value(
+            false, paired_x, paired_y, paired_slot >= 5u) == 3u,
+        .paired_three_point_rating = rating_3pt
+    };
+    NbaGameplayDefenseTargetOutput output = {0};
+    if (!nba_gameplay_defense_mode_target(
+            actor->control_mode, &input, &output)) return false;
+    if (output.target_written) {
+        actor->target_x = output.target_x;
+        actor->target_y = output.target_y;
     }
-
-    /* Actor +$5E is owned by its executor transitions. Do not derive it from
-     * the C telemetry phase: mode 11 itself enters 15 (pass) or 12 (shot),
-     * and `$86:A45E` returns a released shooter to 11. */
+    if (stop_velocity) *stop_velocity = output.stop_velocity;
+    return true;
 }
 
 /* Proven passive behavior executors from `$87:9244/$87:9BD3`. Returning
@@ -669,20 +695,10 @@ static void cpu_move_actor(NbaTipoff *tipoff, unsigned slot) {
      * update. Integer coordinates change irregularly from subpixel carry;
      * there is no ROM evidence for the former odd/even slot shortcut. */
     int x = fp_round(actor->x_fp), y = fp_round(actor->y_fp);
-    int dx = actor->target_x - x, dy = actor->target_y - y;
     bool decision_due = cpu_active_decision_due(tipoff, slot);
     bool pass_started = false;
-    /* Temporary parity guard until the live-covered mode-2 E7 target branch
-     * replaces the remaining host target shape. `$85:A82C` itself is exact. */
-    static const uint16_t first_move_start[10] = {
-        100, 7, 2, 4, 2, 14, 5, 7, 2, 12
-    };
-    if (tipoff->possession_number == 0u &&
-        tipoff->possession_frame < first_move_start[slot]) {
-        actor->velocity_x = actor->velocity_y = 0;
-        return;
-    }
     uint8_t direction = actor->movement_direction;
+    bool stop_velocity = false;
     if (decision_due && actor->recovery_inhibit_raw == 0u) {
         uint8_t mode = actor->control_mode;
         if (mode == 11u && slot == (unsigned)tipoff->possession_actor &&
@@ -715,12 +731,21 @@ static void cpu_move_actor(NbaTipoff *tipoff, unsigned slot) {
         } else if ((mode == 1u || mode == 3u || mode == 5u) &&
                 actor->controller_assignment_raw < 0)
             direction = cpu_formation_target_direction(tipoff, slot);
-        else
+        else if (tipoff->cpu_play_state != NBA_CPU_PLAY_REBOUND &&
+                 (mode == 2u || mode == 4u || mode == 6u)) {
+            (void)cpu_refresh_defense_target(
+                tipoff, slot, &stop_velocity);
+            direction = stop_velocity ? 8u : nba_gameplay_target_direction(
+                (int16_t)(actor->target_x - x),
+                (int16_t)(actor->target_y - y), NULL);
+        } else
             direction = nba_gameplay_target_direction(
-                (int16_t)dx, (int16_t)dy, NULL);
+                (int16_t)(actor->target_x - x),
+                (int16_t)(actor->target_y - y), NULL);
         actor->movement_direction = direction;
         if (direction < 8u) actor->requested_direction = direction;
     }
+    if (stop_velocity) actor->velocity_x = actor->velocity_y = 0;
     uint8_t team = slot >= 5u ? tipoff->session->right_team :
                                tipoff->session->left_team;
     uint8_t profile_42 = 0x58u;
@@ -1581,6 +1606,16 @@ static void cpu_commit_ball_acquisition(NbaTipoff *tipoff, uint8_t catcher) {
     if (side != previous_side || inbound_completion) {
         ++tipoff->possession_number;
         tipoff->rim_raw_092c = 0x05A0u; /* `$86:BB76-$BB81` */
+        /* `$86:BB3B-$BB6E` restores all actor +$74 assignments from +$76
+         * and raises `$09D6`; the end-frame AF5C/BC07 pair owns modes. */
+        for (unsigned actor = 0;
+             actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
+            NbaTipoffActor *state = &tipoff->actors[actor];
+            state->assignment_current_raw = state->assignment_base_raw;
+            state->assignment_actor =
+                (uint8_t)(state->assignment_current_raw >> 1);
+        }
+        tipoff->role_rebuild_raw_09d6 = NBA_GAMEPLAY_UNKNOWN_WORD;
     }
     if (tipoff->handler_actor != catcher &&
         tipoff->handler_actor < NBA_GAMEPLAY_ACTOR_COUNT)
@@ -1637,6 +1672,37 @@ static void cpu_enter_play_state(NbaTipoff *tipoff, NbaCpuPlayState state) {
     tipoff->play_state_frame = 0u;
 }
 
+static void cpu_refresh_team_roles_end_frame(NbaTipoff *tipoff) {
+    /* `$87:8FA1-$8FA9` calls `$85:AF5C`, then `$85:BC07`, once after all
+     * ten actor dispatches. AF5C normalizes only modes below 7 on offense;
+     * BC07 does the same for defense, then promotes the owner's assigned
+     * primary defender to mode 4. Modes 7+ remain owned by their executors. */
+    unsigned offense = tipoff->offense_side != 0u ? 1u : 0u;
+    unsigned defense = offense ^ 1u;
+    for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
+        NbaTipoffActor *state = &tipoff->actors[actor];
+        unsigned side = actor / 5u;
+        if (state->control_mode < 7u)
+            state->control_mode = side == offense ? 1u : 2u;
+        int16_t anchor = side == 0u ? -336 : 336;
+        state->anchor_direction_raw = nba_gameplay_pass_direction(
+            (int16_t)(anchor - fp_round(state->x_fp)),
+            (int16_t)-fp_round(state->y_fp),
+            &state->anchor_distance_raw);
+    }
+    if (tipoff->possession_actor >= 0 &&
+        tipoff->possession_actor < NBA_GAMEPLAY_ACTOR_COUNT) {
+        NbaTipoffActor *owner =
+            &tipoff->actors[(unsigned)tipoff->possession_actor];
+        unsigned primary = owner->assignment_current_raw >> 1;
+        if (primary < NBA_GAMEPLAY_ACTOR_COUNT &&
+            primary / 5u == defense &&
+            tipoff->actors[primary].control_mode < 7u)
+            tipoff->actors[primary].control_mode = 4u;
+    }
+    tipoff->role_rebuild_raw_09d6 = 0u;
+}
+
 static void cpu_update_all_actors(NbaTipoff *tipoff) {
     /* `$87:8F01-$8F8D` updates all ten actors as one logical pass with
      * `$C6/$0938=2`. */
@@ -1662,6 +1728,7 @@ static void cpu_update_all_actors(NbaTipoff *tipoff) {
             tipoff->ball.owner_actor == (int8_t)actor)
             ball_attach_to_actor(tipoff, actor);
     }
+    cpu_refresh_team_roles_end_frame(tipoff);
 }
 
 static int cpu_select_inbound_receiver(const NbaTipoff *tipoff,
@@ -2045,21 +2112,59 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
         state->direction = formation[actor].direction;
         state->roster_slot = active_lineup[actor % 5u];
         state->requested_direction = formation[actor].direction;
-        state->movement_direction = formation[actor].direction;
+        state->movement_direction = 8u;
         state->saved_control_mode = 0u;
         state->pass_family_raw = -1;
         state->controller_assignment_raw = -1;
         state->lower_animation_state = 0u;
-        state->assignment_actor = (uint8_t)((actor + 5u) % 10u);
+        /* `$86:D86C-$D89B`: +$76 is derived from the active-lineup
+         * permutation, then copied to mutable +$74. It is an even byte
+         * offset into `$87:9C7B`, not a same-index matchup. */
+        state->assignment_actor = actor < 5u ?
+            (uint8_t)(5u + state->roster_slot) : state->roster_slot;
         state->assignment_base_raw = (uint16_t)(state->assignment_actor * 2u);
         state->assignment_current_raw = state->assignment_base_raw;
-        state->assignment_alternate_raw = state->assignment_base_raw;
+        state->assignment_alternate_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
+        uint8_t team = actor >= 5u ? session->right_team : session->left_team;
+        state->assignment_role_raw_92 = (uint8_t)(actor % 5u);
+        (void)nba_player_gameplay_position(
+            assets, team, state->roster_slot, &state->assignment_role_raw_92);
         state->reaction_threshold = nba_gameplay_reaction_threshold(
             &tipoff->rng, formation[actor].world_x, formation[actor].world_y,
             0, 0);
         state->behavior_timer = 0x2Fu;
         state->control_mode = actor == 0u || actor == 5u ? 4u : 2u;
         state->visible = actor != 4u && actor != 9u;
+    }
+    /* `$86:D8D3-$D8E2`: +$78 names the reciprocal actor whose base points
+     * back at this actor. Keep it separate from mutable current +$74. */
+    for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
+        for (unsigned candidate = 0;
+             candidate < NBA_GAMEPLAY_ACTOR_COUNT; ++candidate) {
+            if (tipoff->actors[candidate].assignment_actor == actor) {
+                tipoff->actors[actor].assignment_alternate_raw =
+                    (uint16_t)(candidate * 2u);
+                break;
+            }
+        }
+    }
+    /* `$85:BC52-$BC81` and `$85:AFC2-$AFE5`: initialize pair and basket
+     * geometry independently of rendered facing and neutral movement intent. */
+    for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
+        NbaTipoffActor *state = &tipoff->actors[actor];
+        unsigned paired_slot = state->assignment_current_raw >> 1;
+        if (paired_slot >= NBA_GAMEPLAY_ACTOR_COUNT) continue;
+        NbaTipoffActor *paired = &tipoff->actors[paired_slot];
+        state->assignment_direction = nba_gameplay_target_direction(
+            (int16_t)(fp_round(paired->x_fp) - fp_round(state->x_fp)),
+            (int16_t)(fp_round(paired->y_fp) - fp_round(state->y_fp)),
+            &state->assignment_distance);
+        state->pair_distance = state->assignment_distance;
+        int16_t anchor = actor < 5u ? -336 : 336;
+        state->anchor_direction_raw = nba_gameplay_pass_direction(
+            (int16_t)(anchor - fp_round(state->x_fp)),
+            (int16_t)-fp_round(state->y_fp),
+            &state->anchor_distance_raw);
     }
     tipoff->is_initialized = true;
     printf("[TIPOFF] $86:DDA7 formation -> $86:E054 ball -> "
@@ -2185,6 +2290,7 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
     telemetry->play_request_raw = tipoff->play_request_raw;
     telemetry->play_cycle_raw = tipoff->play_cycle_raw;
     telemetry->play_hold_raw = tipoff->play_hold_raw;
+    telemetry->role_rebuild_raw_09d6 = tipoff->role_rebuild_raw_09d6;
     telemetry->special_actor_raw = tipoff->special_actor_raw;
     for (unsigned i = 0; i < 3u; ++i)
         telemetry->play_selector_raw[i] = tipoff->play_selector_raw[i];
@@ -2361,7 +2467,10 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
         out->assignment_alternate_raw = state->assignment_alternate_raw;
         out->assignment_distance_raw = state->assignment_distance;
         out->assignment_direction_raw = state->assignment_direction;
+        out->anchor_direction_raw_88 = state->anchor_direction_raw;
+        out->assignment_role_raw_92 = state->assignment_role_raw_92;
         out->pair_distance_raw = state->pair_distance;
+        out->anchor_distance_raw_8c = state->anchor_distance_raw;
         out->reaction_threshold_raw = state->reaction_threshold;
         out->movement_boost_raw = state->movement_boost_timer;
         out->controller_assignment_16_raw =

@@ -21,6 +21,37 @@ static uint16_t magnitude16(int16_t value) {
     return value < 0 ? (uint16_t)(0u - (uint16_t)value) : (uint16_t)value;
 }
 
+static const int16_t defense_tables[5][20] = {
+    {0,64,118,155,168,155,118,64,0,-64,-118,-155,-168,-155,-118,-64,0,64,118,155},
+    {0,24,45,59,64,59,45,24,0,-24,-45,-59,-64,-59,-45,-24,0,24,45,59},
+    {0,18,33,44,48,44,33,18,0,-18,-33,-44,-48,-44,-33,-18,0,18,33,44},
+    {0,9,16,22,24,22,16,9,0,-9,-16,-22,-24,-22,-16,-9,0,9,16,22},
+    {0,7,13,17,19,17,13,7,0,-7,-13,-17,-19,-17,-13,-7,0,7,13,17}
+};
+
+static unsigned defense_table_index(uint16_t mode_raw_30,
+                                    uint16_t flags_raw_32) {
+    if (mode_raw_30 == 2u) return 4u;
+    switch (flags_raw_32 & 3u) {
+        case 0u: return 1u;
+        case 1u: return 2u;
+        default: return 3u;
+    }
+}
+
+static void defense_target_with_table(
+    const NbaGameplayDefenseTargetInput *in, unsigned table,
+    uint8_t direction, NbaGameplayDefenseTargetOutput *out) {
+    if (direction >= 16u) return;
+    nba_gameplay_target_from_pair(
+        in->paired_x, in->paired_y,
+        in->paired_velocity_x, in->paired_velocity_y,
+        defense_tables[table][direction],
+        defense_tables[table][direction + 4u],
+        &out->target_x, &out->target_y);
+    out->target_written = true;
+}
+
 static bool subtract16_is_negative(uint16_t left, uint16_t right) {
     return ((uint16_t)(left - right) & 0x8000u) != 0u;
 }
@@ -430,25 +461,95 @@ void nba_gameplay_defense_pair_target(
     uint8_t paired_direction, uint16_t context_raw_30,
     uint16_t context_raw_32, bool force_close_table,
     int16_t *target_x, int16_t *target_y) {
-    static const int16_t tables[5][20] = {
-        {0,64,118,155,168,155,118,64,0,-64,-118,-155,-168,-155,-118,-64,0,64,118,155},
-        {0,24,45,59,64,59,45,24,0,-24,-45,-59,-64,-59,-45,-24,0,24,45,59},
-        {0,18,33,44,48,44,33,18,0,-18,-33,-44,-48,-44,-33,-18,0,18,33,44},
-        {0,9,16,22,24,22,16,9,0,-9,-16,-22,-24,-22,-16,-9,0,9,16,22},
-        {0,7,13,17,19,17,13,7,0,-7,-13,-17,-19,-17,-13,-7,0,7,13,17}
-    };
     unsigned table_index;
     if (force_close_table || context_raw_30 == 2u) table_index = 4u;
-    else {
-        uint16_t selector = context_raw_32 & 3u;
-        table_index = selector == 0u ? 1u : selector == 1u ? 2u : 3u;
-    }
+    else table_index = defense_table_index(context_raw_30, context_raw_32);
     if (paired_direction >= 16u) return;
     unsigned direction = paired_direction;
     nba_gameplay_target_from_pair(
         paired_x, paired_y, paired_velocity_x, paired_velocity_y,
-        tables[table_index][direction], tables[table_index][direction + 4u],
+        defense_tables[table_index][direction],
+        defense_tables[table_index][direction + 4u],
         target_x, target_y);
+}
+
+/* Portable target-writing core of defensive modes `$86:F6CD/$F794/$F8CD`.
+ * Caller owns their timer/lock/action gates; this function translates the
+ * exact `$E7B3/$E7DC/$E96F/$E6B7/$E9B3` geometry dispatcher. */
+bool nba_gameplay_defense_mode_target(
+    uint8_t actor_mode, const NbaGameplayDefenseTargetInput *in,
+    NbaGameplayDefenseTargetOutput *out) {
+    if (!in || !out || (actor_mode != 2u && actor_mode != 4u &&
+                        actor_mode != 6u)) return false;
+    out->target_written = false;
+    out->stop_velocity = false;
+    uint8_t d = in->paired_anchor_direction_raw_88;
+    if (d >= 16u) return true;
+
+    if (actor_mode == 6u) { /* `$86:E9B3-$EA03` */
+        static const uint8_t negative_map[16] = {
+            14,15,0,1,2,7,8,9,10,11,12,13,10,11,12,13
+        };
+        static const uint8_t positive_map[16] = {
+            2,3,4,5,6,3,4,5,6,7,8,9,14,15,0,1
+        };
+        uint8_t mapped = in->context_anchor_x < 0 ?
+            negative_map[d] : positive_map[d];
+        unsigned table = in->paired_anchor_distance_raw_8c < 0x50u ? 4u : 3u;
+        defense_target_with_table(in, table, mapped, out);
+        return true;
+    }
+
+    unsigned ordinary = defense_table_index(
+        in->context_mode_raw_30, in->context_flags_raw_32);
+    if (in->context_mode_raw_30 == 3u) { /* `$86:E6B7-$E7B0` */
+        defense_target_with_table(in, ordinary, d, out);
+        bool opposite_half =
+            (int16_t)(in->context_anchor_x ^ in->paired_x) < 0;
+        if (in->paired_on_three_point_arc &&
+            !(opposite_half && in->paired_three_point_rating >= 0xC2u)) {
+            if (d < 16u) {
+                out->target_x = wrap16(
+                    -(int32_t)in->context_anchor_x - defense_tables[0][d] +
+                    arithmetic_shift_right_3(in->paired_velocity_x));
+                out->target_y = wrap16(
+                    -(int32_t)defense_tables[0][d + 4u] +
+                    arithmetic_shift_right_3(in->paired_velocity_y));
+                out->target_written = true;
+            }
+        }
+        return true;
+    }
+
+    if (in->context_mode_raw_30 != 0u &&
+        (int16_t)(in->context_anchor_x ^ in->paired_x) >= 0) {
+        /* `$86:E7B3`: normal Y geometry, absolute weak-side X override. */
+        defense_target_with_table(in, ordinary, d, out);
+        if (out->target_written)
+            out->target_x = in->context_anchor_x < 0 ? 48 : -48;
+        return true;
+    }
+
+    if (in->paired_position_raw_92 >= 3u) { /* `$86:E96F` */
+        if (in->paired_anchor_distance_raw_8c < 0x60u &&
+            in->actor_pair_distance_raw_8a < 0x28u) {
+            uint8_t relative = (uint8_t)((
+                (((uint16_t)in->actor_pair_direction_raw_86 << 1) ^ 8u) -
+                d + 1u) & 15u);
+            if (relative < 3u) {
+                out->stop_velocity = true;
+                return true;
+            }
+        }
+        unsigned table = in->paired_anchor_distance_raw_8c < 0x50u ? 4u : 3u;
+        defense_target_with_table(in, table, d, out);
+        return true;
+    }
+
+    /* `$86:E7DC`: E8F7 selection with close-basket radius override. */
+    if (in->paired_anchor_distance_raw_8c < 0x50u) ordinary = 4u;
+    defense_target_with_table(in, ordinary, d, out);
+    return true;
 }
 
 /* `$85:B714-$B833`: exact symmetric mode-11 direct-shot rectangle. The
@@ -527,6 +628,47 @@ bool nba_gameplay_ai_self_test(void) {
     nba_gameplay_defense_pair_target(
         100, -50, 31, -31, 4u, 2u, 3u, false, &x, &y);
     if (x != 122 || y != -54) return false;
+    NbaGameplayDefenseTargetInput defense = {
+        .actor_pair_direction_raw_86 = 0u,
+        .actor_pair_distance_raw_8a = 0x50u,
+        .paired_x = 100, .paired_y = -50,
+        .paired_velocity_x = 31, .paired_velocity_y = -31,
+        .paired_anchor_direction_raw_88 = 4u,
+        .paired_anchor_distance_raw_8c = 0x100u,
+        .paired_position_raw_92 = 2u,
+        .context_anchor_x = 336,
+        .context_mode_raw_30 = 4u,
+        .context_flags_raw_32 = 0u
+    };
+    NbaGameplayDefenseTargetOutput defense_out = {0};
+    if (!nba_gameplay_defense_mode_target(2u, &defense, &defense_out) ||
+        !defense_out.target_written || defense_out.stop_velocity ||
+        defense_out.target_x != -48 || defense_out.target_y != -54)
+        return false;
+    defense.context_mode_raw_30 = 0u;
+    defense.context_flags_raw_32 = 1u;
+    if (!nba_gameplay_defense_mode_target(4u, &defense, &defense_out) ||
+        defense_out.target_x != 151 || defense_out.target_y != -54)
+        return false;
+    defense.paired_position_raw_92 = 3u;
+    defense.paired_anchor_direction_raw_88 = 9u;
+    defense.paired_anchor_distance_raw_8c = 0x40u;
+    defense.actor_pair_distance_raw_8a = 0x20u;
+    if (!nba_gameplay_defense_mode_target(2u, &defense, &defense_out) ||
+        defense_out.target_written || !defense_out.stop_velocity)
+        return false;
+    defense.paired_anchor_direction_raw_88 = 0u;
+    defense.paired_anchor_distance_raw_8c = 0x100u;
+    if (!nba_gameplay_defense_mode_target(6u, &defense, &defense_out) ||
+        !defense_out.target_written || defense_out.target_x != 119 ||
+        defense_out.target_y != -38) return false;
+    defense.context_mode_raw_30 = 3u;
+    defense.paired_anchor_direction_raw_88 = 4u;
+    defense.paired_on_three_point_arc = true;
+    defense.paired_three_point_rating = 0x80u;
+    if (!nba_gameplay_defense_mode_target(2u, &defense, &defense_out) ||
+        defense_out.target_x != -501 || defense_out.target_y != -4)
+        return false;
     uint16_t timer = 49u;
     if (nba_gameplay_decision_timer_step(&timer, 15u, 0x40u, false) ||
         timer != 17u) return false;
