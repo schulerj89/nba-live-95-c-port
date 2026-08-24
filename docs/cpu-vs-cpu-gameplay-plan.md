@@ -537,3 +537,44 @@ pass acquisition chain until mode-11 formation and `$86:99C4` flight parity
 remove that fallback. The repeatable headless dump now includes the complete
 `$86:BAA2-$BF0B` possession-install boundary, and the 50,000-frame regression
 passes with updated visual hashes.
+
+Increment 4S replaces the remaining escaped-ball and selector shortcuts with
+their live ROM contracts. `$85:A3B7-$A656` now applies gravity before Z
+integration, 7/8 ground restitution capped at `$0400`, signed 15/16 lateral
+impact damping, and the small-bounce settle threshold `$18`. The shared
+`$85:A656-$A755` record clamp is used by actors and free balls: integer X is
+bounded to `-394..394`, Y to `-224..224`, only outward rectangular velocity is
+cancelled, and the asymmetric isometric edge enforces `x >= -556-y` for
+negative Y or `x <= 561-y` otherwise. Fractional coordinates survive every
+clamp. Rectangular contact also takes `$86:A613-$A628` and clears the represented
+`$0942/$0946/$0948` state; the mode-15 executor therefore retains its actor-local
+pass authority rather than incorrectly treating those telemetry words as
+durable ownership.
+
+The complete `$85:B50E-$B60A` audit corrects Increment 4Q: `$09A2` has
+priority, a negative or self `$09AA` returns immediately, and rejected normal
+candidates fall through AA, AC, then AE. B50E and `$86:AB2D` never consume
+`$09A2/$09AA/$09AC/$09AE`; play-record loading or ball acquisition replaces
+them. A normal validated selector writes owner `+$60=1`. A C-only unsupported
+AB2D animation family now retains mode 11 and the selectors for retry instead
+of destroying the opportunity. Play `$0F`'s first two all-FFFF records are
+therefore intentional formation barriers, followed by role-3 and role-1/0
+receiver records.
+
+`$86:B625/$B769/$B8CA-$B978` now owns the shot jump: mode 12 installs upper
+`$16`, lower `$32`, velocity `$0210`, pose-attaches the ball, and releases only
+through the signed/low-velocity RNG gate. `$86:9D6E-$A45E` detaches into upper
+`$17`, launches the shot, returns the shooter to mode 11, and lets the following
+non-owner dispatch fall to mode 1. Regression checks use that velocity-driven
+sequence rather than the former unrelated mode-16 timer lifecycle.
+
+Finally, catches and rebounds share the represented `$86:BAA2-$BC99`
+acquisition contract. It installs the first pose-collision winner, clears
+`$09A2/$09AA/$09AC/$09AE`, requests a new asset-backed team strategy through
+`$0994`, conditionally resets `$092C` on a side change, and clears stale
+`$0948/$094C/$096A/$097C` after old-shot classification. `$097C` clearing at
+`$86:BC8A` is essential: leaving the rim value `$05A0` alive trapped roles 3/4
+in the edge route forever. The old four-play host rotation is no longer used
+after catches; the 50,000-frame regression now covers the ROM strategy ranges,
+both-side scoring, mode-12 releases, boundary contacts, collision-owned
+rebounds, repeated inbounds, and sustained camera/player movement.

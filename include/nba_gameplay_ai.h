@@ -51,6 +51,9 @@ bool nba_gameplay_predictive_arrival(int16_t actor_x, int16_t actor_y,
                                      uint16_t tolerance,
                                      uint8_t *steering_direction,
                                      uint16_t *distance);
+bool nba_gameplay_mode11_shot_rectangle(int16_t rom_x, int16_t y, int16_t z);
+bool nba_gameplay_court_clamp(int32_t *x_fp, int32_t *y_fp,
+                              int16_t *velocity_x, int16_t *velocity_y);
 void nba_gameplay_velocity_step(int16_t *velocity_x, int16_t *velocity_y,
                                 uint16_t *boost_timer, uint8_t direction,
                                 uint8_t profile_42, uint16_t dispatch_dt,

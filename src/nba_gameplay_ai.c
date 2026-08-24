@@ -117,19 +117,22 @@ static bool receiver_is_in_forward_window(
     return delta < 0x00C9;
 }
 
-/* `$85:B50E-$B60A`: `$09A2` has priority. Otherwise `$09AA` is tried first
- * and `$09AC` only when the validator rejects it. `$09AE` belongs to later
- * play policy and is not part of this receiver-selection slice. */
+/* `$85:B50E-$B60A`: `$09A2` has priority. A negative `$09AA` or one naming
+ * the owner returns immediately. Otherwise AA, AC and AE are tried in order,
+ * with each later selector reached only when `$85:B60B` rejects the prior
+ * candidate. None of these selector words is consumed by this routine. */
 int8_t nba_gameplay_select_pass_receiver(
     uint8_t passer_actor, int16_t special_actor,
     const int16_t selectors[3], const NbaGameplayReceiverState *actors,
     uint8_t actor_count, bool attack_right) {
     if (!actors || !selectors || passer_actor >= actor_count) return -1;
     if (special_actor >= 0 && special_actor < actor_count &&
+        actors[special_actor].control_mode != 8u &&
         receiver_is_in_forward_window(&actors[passer_actor],
                                       &actors[special_actor], attack_right))
         return (int8_t)special_actor;
-    for (unsigned i = 0; i < 2u; ++i) {
+    if (selectors[0] < 0 || selectors[0] == passer_actor) return -1;
+    for (unsigned i = 0; i < 3u; ++i) {
         int16_t candidate = selectors[i];
         if (candidate < 0 || candidate >= actor_count) continue;
         if (nba_gameplay_receiver_candidate_valid(
@@ -312,6 +315,67 @@ void nba_gameplay_target_from_pair(int16_t paired_x, int16_t paired_y,
             arithmetic_shift_right_3(paired_velocity_y) + offset_y);
 }
 
+/* `$85:B714-$B833`: exact symmetric mode-11 direct-shot rectangle. The
+ * negative X path explicitly computes two's-complement magnitude. */
+bool nba_gameplay_mode11_shot_rectangle(int16_t rom_x, int16_t y, int16_t z) {
+    if (rom_x < -338 || rom_x >= 338 || z != 0) return false;
+    uint16_t abs_x = rom_x < 0 ? (uint16_t)(0u - (uint16_t)rom_x) :
+                                 (uint16_t)rom_x;
+    return abs_x >= 0x00E2u && y >= -0x0040 && y < 0x0040;
+}
+
+static int32_t fixed_integer_floor(int32_t value) {
+    return value >= 0 ? value / 256 : -(((-value) + 255) / 256);
+}
+
+static void fixed_replace_integer(int32_t *value, int32_t integer) {
+    int32_t old_integer = fixed_integer_floor(*value);
+    int32_t fraction = *value - old_integer * 256;
+    *value = integer * 256 + fraction;
+}
+
+/* `$85:A656-$A755`: the common actor/free-ball court integrator clamps the
+ * signed rectangle first, cancelling only outward velocity. It then applies
+ * the asymmetric isometric edge by replacing integer X while preserving the
+ * fractional word and velocity. The return value identifies the rectangular
+ * `$86:A613` cancellation path; diagonal-only correction does not take it. */
+bool nba_gameplay_court_clamp(int32_t *x_fp, int32_t *y_fp,
+                              int16_t *velocity_x, int16_t *velocity_y) {
+    if (!x_fp || !y_fp || !velocity_x || !velocity_y) return false;
+    bool rectangle_contact = false;
+    int32_t x = fixed_integer_floor(*x_fp);
+    if (x >= 394) {
+        fixed_replace_integer(x_fp, 394);
+        if (*velocity_x >= 0) *velocity_x = 0;
+        rectangle_contact = true;
+    } else if (x <= -394) {
+        fixed_replace_integer(x_fp, -394);
+        if (*velocity_x < 0) *velocity_x = 0;
+        rectangle_contact = true;
+    }
+    int32_t y = fixed_integer_floor(*y_fp);
+    if (y >= 224) {
+        fixed_replace_integer(y_fp, 224);
+        if (*velocity_y >= 0) *velocity_y = 0;
+        rectangle_contact = true;
+    } else if (y <= -224) {
+        fixed_replace_integer(y_fp, -224);
+        if (*velocity_y < 0) *velocity_y = 0;
+        rectangle_contact = true;
+    }
+
+    y = fixed_integer_floor(*y_fp);
+    x = fixed_integer_floor(*x_fp);
+    if (y < 0) {
+        int32_t minimum_x = -556 - y;
+        if (x <= minimum_x) fixed_replace_integer(x_fp, minimum_x);
+    } else {
+        int32_t maximum_x = 561 - y;
+        if (x > maximum_x) fixed_replace_integer(x_fp, maximum_x);
+    }
+    return rectangle_contact;
+}
+
 bool nba_gameplay_ai_self_test(void) {
     int16_t x = 0, y = 0;
     nba_gameplay_target_from_pair(100, -50, 31, -31, -20, 12, &x, &y);
@@ -329,6 +393,46 @@ bool nba_gameplay_ai_self_test(void) {
     timer = 20u;
     if (!nba_gameplay_decision_timer_step(&timer, 11u, 0x30u, false) ||
         timer != 47u) return false;
+    static const struct { int16_t x, y, z; bool expected; } shot_edges[] = {
+        {-338, 0, 0, true}, {-226, -64, 0, true}, {-225, 0, 0, false},
+        {225, 0, 0, false}, {226, 63, 0, true}, {337, 0, 0, true},
+        {338, 0, 0, false}, {226, -65, 0, false}, {226, 64, 0, false},
+        {226, 0, 1, false}
+    };
+    for (unsigned i = 0; i < sizeof(shot_edges) / sizeof(shot_edges[0]); ++i)
+        if (nba_gameplay_mode11_shot_rectangle(
+                shot_edges[i].x, shot_edges[i].y, shot_edges[i].z) !=
+            shot_edges[i].expected) return false;
+    static const struct {
+        int32_t x, y;
+        int16_t vx, vy;
+        int32_t expected_x, expected_y;
+        int16_t expected_vx, expected_vy;
+        bool rectangle;
+    } court_edges[] = {
+        {395 * 256, 0, 16, 0, 394 * 256, 0, 0, 0, true},
+        {394 * 256, 0, -16, 0, 394 * 256, 0, -16, 0, true},
+        {-395 * 256, 0, -16, 0, -394 * 256, 0, 0, 0, true},
+        {0, 225 * 256, 0, 16, 0, 224 * 256, 0, 0, true},
+        {0, -225 * 256, 0, -16, 0, -224 * 256, 0, 0, true},
+        {-333 * 256, -224 * 256, -16, 0,
+         -332 * 256, -224 * 256, -16, 0, true},
+        {338 * 256, 224 * 256, 16, 0,
+         337 * 256, 224 * 256, 16, 0, true},
+        {-390 * 256 + 73, -167 * 256 + 91, -9, 4,
+         -389 * 256 + 73, -167 * 256 + 91, -9, 4, false}
+    };
+    for (unsigned i = 0; i < sizeof(court_edges) / sizeof(court_edges[0]); ++i) {
+        int32_t court_x = court_edges[i].x, court_y = court_edges[i].y;
+        int16_t court_vx = court_edges[i].vx, court_vy = court_edges[i].vy;
+        if (nba_gameplay_court_clamp(
+                &court_x, &court_y, &court_vx, &court_vy) !=
+                court_edges[i].rectangle ||
+            court_x != court_edges[i].expected_x ||
+            court_y != court_edges[i].expected_y ||
+            court_vx != court_edges[i].expected_vx ||
+            court_vy != court_edges[i].expected_vy) return false;
+    }
     static const struct { int16_t x, y; uint8_t direction; uint16_t distance; } cases[] = {
         {0,0,8,0},{10,0,2,10},{0,10,0,10},{-10,-10,5,12},
         {10,20,1,22},{10,21,0,23},{10,11,1,12}
@@ -374,6 +478,18 @@ bool nba_gameplay_ai_self_test(void) {
             8u, -1, selectors, receivers, 10u, true) != 7) return false;
     receivers[9].travel_direction = 8u;
     receivers[9].travel_distance = 0x40u;
+    selectors[2] = 6;
+    receivers[9].control_mode = 7u;
+    receivers[7].control_mode = 7u;
+    if (nba_gameplay_select_pass_receiver(
+            8u, -1, selectors, receivers, 10u, true) != 6) return false;
+    selectors[0] = -1;
+    if (nba_gameplay_select_pass_receiver(
+            8u, -1, selectors, receivers, 10u, true) != -1) return false;
+    selectors[0] = 9;
+    selectors[2] = -1;
+    receivers[9].control_mode = 1u;
+    receivers[7].control_mode = 1u;
     receivers[5].x = 500;
     if (nba_gameplay_select_pass_receiver(
             8u, 5, selectors, receivers, 10u, true) != 9) return false;

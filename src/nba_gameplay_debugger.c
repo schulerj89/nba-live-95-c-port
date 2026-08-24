@@ -131,8 +131,9 @@ void nba_gameplay_debugger_render(const NbaGameplayDebugger *debugger,
                  telemetry->camera_side_group_raw,
                  telemetry->camera_routine);
         text(renderer, 6, 180, line, 0xFFFFFFFFu);
-        snprintf(line, sizeof(line), "SCORE:%u-%u VAL:%u C:%u M:%u/%u",
+        snprintf(line, sizeof(line), "SCORE:%u-%u SC:%u VAL:%u C:%u M:%u/%u",
                  telemetry->score_left_raw, telemetry->score_right_raw,
+                 telemetry->shot_clock_raw_092c,
                  telemetry->shot_value_raw, telemetry->shot_chance_raw,
                  telemetry->shot_inner_veto_raw, telemetry->shot_miss_index_raw);
         text(renderer, 6, 192, line, 0xFF9EF7A9u);
@@ -195,11 +196,13 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
             "\"pass_active_raw\":%u,\"pass_distance_raw\":%u,"
             "\"play_selector_raw\":[%d,%d,%d],"
             "\"rng_state_raw\":%u},\"match\":{\"score_left_raw\":%u,"
-            "\"score_right_raw\":%u,\"shot_value_raw\":%u,"
+            "\"score_right_raw\":%u,\"shot_clock_raw_092c\":%u,"
+            "\"shot_value_raw\":%u,"
             "\"shot_chance_raw\":%u,\"shot_miss_index_raw\":%u,"
             "\"shot_inner_veto_raw\":%u,"
             "\"live_state_raw\":%u,\"inbound_state_raw\":%u,"
-            "\"inbound_actor_raw\":%u,\"inbound_timer_raw\":%u},"
+            "\"inbound_actor_raw\":%u,\"inbound_timer_raw\":%u,"
+            "\"rim_context_raw_097c\":%u,\"event_bits_raw_13e7\":%u},"
             "\"fouls\":{\"event_raw\":%u,\"shooting_raw\":%u,"
             "\"offender_raw\":%d,\"victim_raw\":%d,"
             "\"team_raw\":[%u,%u],\"personal_raw\":["
@@ -235,11 +238,13 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
             telemetry->play_selector_raw[1], telemetry->play_selector_raw[2],
             telemetry->rng_state_raw,
             telemetry->score_left_raw, telemetry->score_right_raw,
+            telemetry->shot_clock_raw_092c,
             telemetry->shot_value_raw, telemetry->shot_chance_raw,
             telemetry->shot_miss_index_raw, telemetry->shot_inner_veto_raw,
             telemetry->live_state_raw,
             telemetry->inbound_state_raw, telemetry->inbound_actor_raw,
-            telemetry->inbound_timer_raw,
+            telemetry->inbound_timer_raw, telemetry->rim_context_raw_097c,
+            telemetry->event_bits_raw_13e7,
             telemetry->foul_event_raw, telemetry->shooting_foul_raw,
             telemetry->foul_offender_raw, telemetry->foul_victim_raw,
             telemetry->team_fouls_raw[0], telemetry->team_fouls_raw[1],

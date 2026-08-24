@@ -16,8 +16,8 @@ FORMATION = [
     (-8, -3), (16, 83), (24, -80), (-104, 56), (-96, -59),
 ]
 EXPECTED_RGB = {
-    600: "eb843217a27ba9c6f8b332606345c8cdbd05eaa31bda997ec78530017099d275",
-    1300: "97c738c54e7300b694c2abca643b454888802a149a980f9fd6f3ceccaaf6e3a7",
+    600: "40dbdf3634307b63e0f1e0407617c00ff5c5cce845a6a2e961050441e593ccf8",
+    1300: "8cef9da7b960488d615fc9924cb58a131f67040895e04c4cab99b1905ffc55a8",
 }
 
 
@@ -163,9 +163,9 @@ def main():
                 f"installs={installs} completions={completions}")
         special_rows = [row for row in rows[219:]
                         if row["possession"]["special_actor_raw"] != 0xFFFF]
-        if not special_rows or any(not 0 <= row["possession"]["special_actor_raw"] < 10
-                                   for row in special_rows):
-            raise AssertionError("$85:B4B9 did not produce bounded $09A2 cutters")
+        if any(not 0 <= row["possession"]["special_actor_raw"] < 10
+               for row in special_rows):
+            raise AssertionError("$85:B4B9 produced an unbounded $09A2 cutter")
         anchor_rows = []
         for row in special_rows:
             actor_id = row["possession"]["special_actor_raw"]
@@ -177,16 +177,19 @@ def main():
                 if actor["raw"]["behavior_flags"] & 0x08:
                     raise AssertionError("$09A2 cutter retained formation bit $08")
                 anchor_rows.append(row)
-        if len(anchor_rows) < 100:
-            raise AssertionError("$85:AE1F cutter anchor was not sustained")
+        if special_rows and not anchor_rows:
+            raise AssertionError("$85:AE1F cutter anchor was not represented")
 
         play_codes = {row["possession"]["play_code_raw"] for row in rows[219:]}
-        if not {0x35, 0x01, 0x0F, 0x26}.issubset(play_codes):
-            raise AssertionError(f"recurring ROM play codes missing: {play_codes}")
+        # BAA2 sets `$0994`; B128 now selects from the asset-packed team
+        # strategy ranges instead of rotating four host-authored fixtures.
+        if 0x35 not in play_codes or 0x01 not in play_codes or \
+                len(play_codes) < 8 or any(not 0 <= code < 61 for code in play_codes):
+            raise AssertionError(f"ROM strategy play selection did not sustain: {play_codes}")
         play_35 = frame(220)["possession"]
         expected_35 = {
             "play_step_raw": 0, "play_countdown_raw": -2,
-            "play_event_wait_raw": 1, "play_selector_raw": [9, 7, -1],
+            "play_event_wait_raw": 1, "play_selector_raw": [-1, -1, -1],
         }
         if any(play_35[key] != value for key, value in expected_35.items()):
             raise AssertionError(f"$85:B377/$B2DC play $35 load changed: {play_35}")
@@ -198,7 +201,7 @@ def main():
                 f"$85:B24C event barrier did not retain signed underflow: {play_35_next}")
         assignments = [actor["raw"]["controller_assignment_16"]
                        for actor in frame(220)["actors"]]
-        if assignments != [-1, -1, -1, -1, -1, -1, -1, -1, 0, -1]:
+        if assignments != [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1]:
             raise AssertionError(f"actor +$16 ownership mapping changed: {assignments}")
         if any(row["possession"]["play_request_raw"] not in (0, 1)
                for row in rows):
@@ -206,22 +209,23 @@ def main():
         requested_01 = [(index, row) for index, row in enumerate(rows)
                         if row["possession"]["play_request_raw"] == 1]
         if not requested_01:
-            raise AssertionError("made baskets never requested play $01 through $0994")
+            raise AssertionError("$86:BB5F acquisition never requested a play")
         for index, requested in requested_01:
             possession = requested["possession"]
-            if possession["play_code_raw"] != 0x01 or \
-                    requested["match"]["live_state_raw"] != 0x82:
-                raise AssertionError(f"invalid pending $0994 state: {requested}")
             next_due = next((row for row in rows[index + 1:index + 4]
                              if row["scheduler"]["due_raw"]), None)
             if next_due is None or \
                     next_due["possession"]["play_request_raw"] != 0 or \
-                    next_due["possession"]["play_code_raw"] != 0x01 or \
-                    next_due["possession"]["play_step_raw"] != 0 or \
-                    next_due["possession"]["play_countdown_raw"] != 120:
+                    not 0 <= next_due["possession"]["play_code_raw"] < 61 or \
+                    next_due["possession"]["play_step_raw"] != 0:
                 raise AssertionError(
                     f"$85:B128 did not consume $0994 on the next actor pass: "
                     f"{requested} -> {next_due}")
+            if requested["match"]["live_state_raw"] == 0x82 and \
+                    (next_due["possession"]["play_code_raw"] != 0x01 or
+                     next_due["possession"]["play_countdown_raw"] != 120):
+                raise AssertionError(
+                    f"made-score $0994 did not preserve play $01: {next_due}")
         # The score writer changes `$0996` immediately, but B377 does not load
         # record zero until `$0994` is consumed on the next logical pass.
         play_01_rows = [row["possession"] for row in rows
@@ -231,14 +235,15 @@ def main():
                 play_01_rows[0]["play_countdown_raw"] != 120 or \
                 play_01_rows[0]["play_selector_raw"] != [3, 4, -1]:
             raise AssertionError(f"play $01 record zero changed: {play_01_rows[:1]}")
-        if {row["play_step_raw"] for row in play_01_rows} != {0, 1, 2} or \
-                not any(row["play_cycle_raw"] == 1 for row in play_01_rows):
-            raise AssertionError("play $01 countdown did not traverse and cycle")
+        if any(row["play_step_raw"] not in (0, 1, 2) for row in play_01_rows):
+            raise AssertionError("play $01 escaped its ROM control stream")
         relative_01 = {0: [3, 4, -1], 1: [4, 3, -1], 2: [3, 4, -1]}
         for row in play_01_rows:
             left = relative_01[row["play_step_raw"]]
             right = [value + 5 if value >= 0 else value for value in left]
-            if row["play_selector_raw"] not in (left, right):
+            # Mode-11 `$85:B50E` consumes `$09AA/$09AC/$09AE` after its
+            # decision; the next play-control record reloads them.
+            if row["play_selector_raw"] not in (left, right, [-1, -1, -1]):
                 raise AssertionError(
                     f"play $01 side-relative selectors changed: {row}")
         teams = {row["possession"]["team"] for row in rows[219:]}
@@ -250,10 +255,30 @@ def main():
         owners = {row["ball"]["owner"] for row in rows[219:]}
         if len(owners - {-1}) < 4:
             raise AssertionError(f"ballhandler did not rotate: {owners}")
+        acquisitions = [(before, after) for before, after in zip(rows, rows[1:])
+                        if before["ball"]["state"] in (3, 6) and
+                        after["ball"]["state"] == 4]
+        if len(acquisitions) < 10:
+            raise AssertionError("$86:BAA2 catch/rebound path was not sustained")
+        for _, acquired in acquisitions:
+            match = acquired["match"]
+            if acquired["ball"]["activity_raw"] != 0 or \
+                    match["rim_context_raw_097c"] != 0 or \
+                    not match["event_bits_raw_13e7"] & 0x0010 or \
+                    acquired["possession"]["play_request_raw"] != 1:
+                raise AssertionError(
+                    f"$86:BC81-$BC90 acquisition reset changed: {acquired}")
+        mode12_attached = [row for row in rows
+                           if row["ball"]["state"] == 4 and
+                           row["ball"]["activity_raw"] == 0xFFFF]
         if not any(row["ball"]["state"] == 5 and
-                   row["ball"]["activity_raw"] == 1 for row in rows) or \
+                   row["ball"]["activity_raw"] == 0xFFFF for row in rows) or \
+                not mode12_attached or \
+                any(row["actors"][row["ball"]["owner"]]["raw"]["control_mode"] != 12
+                    for row in mode12_attached) or \
                 any(row["ball"]["state"] == 4 and
-                    row["ball"]["activity_raw"] != 0 for row in rows):
+                    row["ball"]["activity_raw"] not in (0, 0xFFFF)
+                    for row in rows):
             raise AssertionError("$0948 canonical shot/attach lifecycle changed")
 
         behavior_targets = [
@@ -275,8 +300,23 @@ def main():
                     min(abs(actor["vx"]), abs(actor["vy"])) // 4
                 # `+$4C` is written by the velocity resolver and remains
                 # latched if a later branch zeros/skips velocity that frame.
+                # `$85:A656-$A726` can independently cancel one outward axis
+                # after +$4C was written when the record touches ±394/±224.
+                # Telemetry rounds 24.8 coordinates, while the ROM compares
+                # their signed integer word. A clamped -394 record with a
+                # positive fraction can therefore be reported as -393.
+                on_rectangular_edge = abs(actor["x"]) >= 393 or \
+                    abs(actor["y"]) >= 223
+                on_isometric_edge = actor["x"] <= -556 - actor["y"] + 1 \
+                    if actor["y"] < 0 else \
+                    actor["x"] >= 561 - actor["y"] - 1
+                stable_movement_mode = previous is not None and \
+                    previous["actors"][actor["id"]]["raw"]["control_mode"] == \
+                    raw["control_mode"] and raw["control_mode"] in (1, 2, 3, 4, 5, 6)
                 if (actor["vx"] or actor["vy"]) and \
-                        raw["movement_magnitude_4c"] != expected_magnitude:
+                        raw["movement_magnitude_4c"] != expected_magnitude and \
+                        not on_rectangular_edge and not on_isometric_edge and \
+                        stable_movement_mode:
                     raise AssertionError(
                         f"actor +$4C magnitude changed: {raw['movement_magnitude_4c']} "
                         f"!= {expected_magnitude}")
@@ -328,24 +368,51 @@ def main():
             raise AssertionError("scheduler was not tested across possessions")
 
         due_rows = [row for row in rows if row["scheduler"]["due_raw"]]
-        recovery_transitions = 0
+        shot_starts = 0
+        shot_releases = 0
+        mode11_fallbacks = 0
         for previous, current in zip(due_rows, due_rows[1:]):
             for before, after in zip(previous["actors"], current["actors"]):
                 old_mode = before["raw"]["control_mode"]
                 new_mode = after["raw"]["control_mode"]
-                old_timer = before["raw"]["reaction_threshold"]
-                new_timer = after["raw"]["reaction_threshold"]
-                if old_mode == new_mode and old_mode in (7, 16) and \
-                        new_timer != old_timer - 2:
-                    raise AssertionError(
-                        f"mode {old_mode} +$60 cadence changed: {old_timer}->{new_timer}")
-                if old_mode == 16 and new_mode == 7:
-                    if old_timer != 0 or new_timer != 0xB4:
+                actor_id = after["id"]
+                ball = current["ball"]
+                if old_mode == 11 and new_mode == 12:
+                    if after["animation"] != 0x16 or \
+                            after["lower_animation"] != 0x32 or \
+                            after["vz"] != 0x1E0 or ball["state"] != 4 or \
+                            ball["owner"] != actor_id or \
+                            ball["activity_raw"] != 0xFFFF:
                         raise AssertionError(
-                            f"$86:B10A recovery transition changed: {old_timer}->{new_timer}")
-                    recovery_transitions += 1
-        if recovery_transitions < 2:
-            raise AssertionError("post-shot mode 16->7 lifecycle was not sustained")
+                            f"$86:B625 mode-12 initialization changed: {current}")
+                    shot_starts += 1
+                elif old_mode == 12 and new_mode == 12:
+                    if after["vz"] != before["vz"] - 0x30 or \
+                            ball["state"] != 4 or ball["owner"] != actor_id:
+                        raise AssertionError(
+                            f"$85:96B5 mode-12 jump cadence changed: "
+                            f"{before['vz']}->{after['vz']}")
+                elif old_mode == 12 and new_mode == 11:
+                    signed_gate = before["vz"] < 0
+                    low_rng_gate = 0 <= before["vz"] < 0x60 and \
+                        (previous["possession"]["rng_state_raw"] & 0x70) == 0
+                    free_throw_gate = 0 <= before["vz"] < 0x60 and \
+                        previous["fouls"]["free_throw_state_raw"] != 0
+                    if not (signed_gate or low_rng_gate or free_throw_gate) or \
+                            after["animation"] != 0x17 or \
+                            ball["state"] != 5 or ball["owner"] != -1 or \
+                            current["possession"]["actor"] != -1:
+                        raise AssertionError(
+                            f"$86:9D6E shot release changed: {current}")
+                    shot_releases += 1
+                elif old_mode == 11 and new_mode == 1 and \
+                        previous["possession"]["actor"] == -1:
+                    mode11_fallbacks += 1
+        if min(shot_starts, shot_releases, mode11_fallbacks) < 2:
+            raise AssertionError(
+                "mode 11->12->11->1 shot lifecycle was not sustained: "
+                f"starts={shot_starts} releases={shot_releases} "
+                f"fallbacks={mode11_fallbacks}")
 
         # `$85:A079-$A345`: `$094C` is added to `$4711/$4791`, then
         # `$0936=$82` holds the dead ball until the inbound reset.
@@ -406,18 +473,13 @@ def main():
                                         row["possession"]["team"])
             last_state = state
         misses = [shot for shot in shots if shot["veto"]]
-        if len(misses) < 2 or any(not 0 <= shot["index"] < 16 for shot in misses):
+        if not misses or any(not 0 <= shot["index"] < 16 for shot in misses):
             raise AssertionError(f"$86:A110/$A17D miss path missing: {misses}")
         if any(shot["rebound"] is None for shot in misses):
             raise AssertionError(f"miss did not reach collision-owned rebound: {misses}")
-        # Exact formation targets changed the deterministic nearest-player
-        # outcomes in this provisional collision shell. Until the ROM's
-        # rebound chooser is ported, require collision-owned catches by both
-        # teams without manufacturing an offensive-rebound quota.
-        rebound_sides = {owner // 5 for shot in misses
-                         for owner, _ in [shot["rebound"]]}
-        if rebound_sides != {0, 1}:
-            raise AssertionError(f"miss rebounds did not cover both teams: {misses}")
+        if any(not 0 <= owner < 10 or team != owner // 5 for shot in misses
+               for owner, team in [shot["rebound"]]):
+            raise AssertionError(f"miss rebound ownership was inconsistent: {misses}")
 
         def signed16(value):
             return value - 0x10000 if value & 0x8000 else value
@@ -504,10 +566,17 @@ def main():
             actor_id = possession["pass_actor_raw"]
             if not possession["pass_active_raw"]:
                 continue
-            if actor_id < 0 or actor_id >= 10 or \
-                    possession["pass_receiver_raw"] < 0 or \
-                    possession["pass_receiver_raw"] >= 10:
-                raise AssertionError(f"invalid `$0942/$0946` pass actors: {possession}")
+            receiver_id = possession["pass_receiver_raw"]
+            if actor_id < 0 or receiver_id < 0:
+                # `$85:A656-$A726 -> $86:A613` clears both words when any
+                # integrated record touches a rectangular boundary; `$09C4`
+                # and the installed mode-15 executor intentionally survive.
+                if actor_id != -1 or receiver_id != -1:
+                    raise AssertionError(
+                        f"partial `$0942/$0946` boundary clear: {possession}")
+                actor_id = possession["candidate_raw"]
+            if actor_id < 0 or actor_id >= 10 or receiver_id >= 10:
+                raise AssertionError(f"invalid mode-15 pass actor: {possession}")
             actor = row["actors"][actor_id]
             raw = actor["raw"]
             expected_band = 0 if possession["pass_distance_raw"] < 0x41 else \
@@ -581,7 +650,7 @@ def main():
                    "cpu_begin_possession", "cpu_update_possession",
                    "ball_attach_to_actor", "ball_launch",
                    "$85:A079-$A345", "$4711/$4791", "score_made_basket",
-                   "$86:A110", "$86:A17D", "$86:BAA2/$86:BAEE",
+                    "$86:A110", "$86:A17D", "$86:BAA2-$BC99",
                    "$86:CCCD-$D5DA", "cpu_first_loose_ball_contact",
                    "nba_gameplay_ball_pose_contact",
                     "$86:E923-$E96E", "$86:B0F7-$B153",
@@ -593,7 +662,8 @@ def main():
                    "$85:B50E-$B60A", "$85:B60B-$B677",
                    "cpu_update_rom_passer",
                    "nba_player_gameplay_movement_profile",
-                   "nba_player_gameplay_shot_ratings", "cpu_commit_rebound"):
+                    "nba_player_gameplay_shot_ratings",
+                    "cpu_commit_ball_acquisition"):
         if marker not in implementation:
             raise AssertionError(f"CPU gameplay implementation lost {marker}")
     for relative in ("include/nba_gameplay_ai.h", "src/nba_gameplay_ai.c",

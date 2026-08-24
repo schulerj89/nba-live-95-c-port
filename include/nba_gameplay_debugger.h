@@ -124,6 +124,7 @@ typedef struct {
     uint16_t rng_state_raw;
     uint16_t score_left_raw;
     uint16_t score_right_raw;
+    uint16_t shot_clock_raw_092c;
     uint16_t shot_value_raw;
     uint8_t shot_chance_raw;
     uint8_t shot_miss_index_raw;
@@ -132,6 +133,8 @@ typedef struct {
     uint16_t inbound_state_raw;
     uint16_t inbound_actor_raw;
     uint16_t inbound_timer_raw;
+    uint16_t rim_context_raw_097c;
+    uint16_t event_bits_raw_13e7;
     uint16_t foul_event_raw;
     uint16_t shooting_foul_raw;
     int16_t foul_offender_raw;

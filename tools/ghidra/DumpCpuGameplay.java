@@ -45,13 +45,14 @@ public class DumpCpuGameplay extends GhidraScript {
         if (bank.equals("85")) return new long[] {
             0x8d19, 0x8ee6, 0x9192, 0x963d, 0x9700, 0x9a24,
             0x9d40, 0x9f01, 0xa079, 0xa1e9, 0xa21f, 0xa357, 0xa518, 0xa5cc,
+            0xa3b7, 0xa5f4, 0xa656, 0xa755,
             0xab17, 0xaf5c, 0xb402, 0xb50e, 0xb60b, 0xb678, 0xb9d2,
             0xba1d, 0xbab7, 0xbae4, 0xbc07, 0xc37d, 0xc5fb, 0xef3a, 0xf02d,
             0xf1c1, 0xf34f, 0xf3c3, 0xf5e4, 0xf78b, 0xf7c9, 0xf867, 0xf8d9
         };
         if (bank.equals("86")) return new long[] {
             0x9846, 0x99c4, 0x9c45, 0x9cdb, 0x9d6e, 0x9ed8, 0xa110,
-            0xa17d, 0xa1bd, 0xa561, 0xa5b0, 0xa6b3, 0xa7a8, 0xab2d,
+            0xa17d, 0xa1bd, 0xa561, 0xa5b0, 0xa613, 0xa6b3, 0xa7a8, 0xab2d,
             0xb00b, 0xb625, 0xb769, 0xb8ca, 0xbaa2, 0xbaee, 0xbf0b,
             0xc302, 0xc34c, 0xc493, 0xc4fe, 0xd12d,
             0xe39a, 0xe3cb, 0xe3e1, 0xe4a7, 0xe5ab,
@@ -119,8 +120,45 @@ public class DumpCpuGameplay extends GhidraScript {
                     if (instruction != null)
                         out.printf("$85:%04X  %s%n", address, instruction.toString());
                 }
+                out.println("\n--- Complete ownerless bounce and shared court clamp ---");
+                addEntryPoint(toAddr(0xa3b7)); disassemble(toAddr(0xa3b7));
+                addEntryPoint(toAddr(0xa5f4)); disassemble(toAddr(0xa5f4));
+                addEntryPoint(toAddr(0xa656)); disassemble(toAddr(0xa656));
+                for (long address = 0xa3b7; address <= 0xa755; ++address) {
+                    Instruction instruction = listing.getInstructionAt(toAddr(address));
+                    if (instruction != null)
+                        out.printf("$85:%04X  %s%n", address, instruction.toString());
+                }
+                out.println("\n--- Complete mode-11 shot/formation/pass dispatcher ---");
+                addEntryPoint(toAddr(0xb50e)); disassemble(toAddr(0xb50e));
+                addEntryPoint(toAddr(0xb678)); disassemble(toAddr(0xb678));
+                for (long address = 0xb50e; address <= 0xb833; ++address) {
+                    Instruction instruction = listing.getInstructionAt(toAddr(address));
+                    if (instruction != null)
+                        out.printf("$85:%04X  %s%n", address, instruction.toString());
+                }
             }
             if (bank.equals("86")) {
+                out.println("\n--- Complete boundary-state cancellation helper ---");
+                addEntryPoint(toAddr(0xa613)); disassemble(toAddr(0xa613));
+                for (long address = 0xa613; address <= 0xa628; ++address) {
+                    Instruction instruction = listing.getInstructionAt(toAddr(address));
+                    if (instruction != null)
+                        out.printf("$86:%04X  %s%n", address, instruction.toString());
+                }
+                out.println("\n--- Complete mode-12 shot release and flight initialization ---");
+                addEntryPoint(toAddr(0x9d6e)); disassemble(toAddr(0x9d6e));
+                addEntryPoint(toAddr(0xb625)); disassemble(toAddr(0xb625));
+                for (long address = 0x9d6e; address <= 0xa45e; ++address) {
+                    Instruction instruction = listing.getInstructionAt(toAddr(address));
+                    if (instruction != null)
+                        out.printf("$86:%04X  %s%n", address, instruction.toString());
+                }
+                for (long address = 0xb625; address <= 0xb978; ++address) {
+                    Instruction instruction = listing.getInstructionAt(toAddr(address));
+                    if (instruction != null)
+                        out.printf("$86:%04X  %s%n", address, instruction.toString());
+                }
                 out.println("\n--- Complete CPU pass initialization and release ---");
                 addEntryPoint(toAddr(0xa6b3)); disassemble(toAddr(0xa6b3));
                 addEntryPoint(toAddr(0xab2d)); disassemble(toAddr(0xab2d));

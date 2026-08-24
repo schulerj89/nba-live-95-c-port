@@ -198,13 +198,14 @@ static void nba_game_debug_lines(const NbaGame *game, NbaDebugLines *out) {
                      passer->pass_released_raw ? 1u : 0u);
         }
         snprintf(out->line[out->count++], NBA_DEBUG_LINE_SIZE,
-                 "SCORE %u-%u VAL:%u CH:%u MISS:%u/%u IN:%u/%u T:%u A2:%02X ACT:%u",
+                 "SCORE %u-%u SC:$%04X VAL:%u CH:%u MISS:%u/%u IN:%u/%u T:%u A2:%02X ACT:%u RC:$%04X EV:$%04X",
                  s->session->score[0], s->session->score[1],
+                 s->rim_raw_092c,
                  s->shot_value_raw, s->shot_chance_raw,
                  s->shot_inner_veto_raw ? 1u : 0u, s->shot_miss_index_raw,
                  s->inbound_state_raw, s->inbound_actor_raw,
                  s->inbound_timer_raw, s->special_actor_raw & 0xFFu,
-                 s->ball_activity_raw);
+                  s->ball_activity_raw, s->rim_raw_097c, s->rim_raw_13e7);
     }
 
     if (out->count < NBA_DEBUG_MAX_LINES) {
