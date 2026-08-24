@@ -59,6 +59,14 @@ bool nba_player_ball_attachment_offsets(const NbaAssetPack *assets,
                                         uint16_t lower_resource,
                                         uint16_t mirror_flags_raw,
                                         int16_t *x, int16_t *y, int16_t *z);
+/* `$86:D549-$D5DA` evaluates both `$87:B832` pose points. Selector zero is
+ * the normal held-ball point; selector one uses `$AC:CC2F/$BF4B/$C397`. */
+bool nba_player_ball_attachment_point_offsets(const NbaAssetPack *assets,
+                                        uint16_t upper_resource,
+                                        uint16_t lower_resource,
+                                        uint16_t mirror_flags_raw,
+                                        uint8_t point_selector,
+                                        int16_t *x, int16_t *y, int16_t *z);
 bool nba_player_gameplay_shot_ratings(const NbaAssetPack *assets,
                                       uint8_t team, uint8_t roster_slot,
                                       uint8_t *two_point, uint8_t *three_point);

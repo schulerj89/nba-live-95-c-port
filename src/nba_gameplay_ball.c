@@ -286,6 +286,36 @@ int16_t nba_gameplay_arithmetic_shift_right(int16_t value, unsigned amount) {
     return (int16_t)shifted;
 }
 
+/* `$86:CCCD-$CCFB`: inclusive coarse actor/ball box. Y is intentionally
+ * asymmetric and only the designated `$0946` pass candidate receives the
+ * extended 95-unit vertical window. */
+bool nba_gameplay_ball_coarse_contact(int16_t actor_x, int16_t actor_y,
+                                      int16_t actor_z, int16_t ball_x,
+                                      int16_t ball_y, int16_t ball_z,
+                                      bool intended_receiver) {
+    int16_t dx = (int16_t)(actor_x - ball_x);
+    int16_t dy = (int16_t)(actor_y - ball_y);
+    int16_t dz = (int16_t)(ball_z - actor_z);
+    int16_t max_z = intended_receiver ? 95 : 71;
+    return dx >= -16 && dx <= 16 && dy >= -16 && dy <= 15 &&
+           dz >= 0 && dz <= max_z;
+}
+
+/* `$86:D549-$D5DA`: either animation-resource attachment point may win.
+ * Every axis is a strict cube comparison, so delta threshold itself fails. */
+bool nba_gameplay_ball_pose_contact(const NbaGameplayPosePoint points[2],
+                                    int16_t ball_x, int16_t ball_y,
+                                    int16_t ball_z, uint8_t threshold) {
+    if (!points || threshold == 0u) return false;
+    for (unsigned i = 0; i < 2u; ++i) {
+        int dx = abs((int)points[i].x - ball_x);
+        int dy = abs((int)points[i].y - ball_y);
+        int dz = abs((int)points[i].z - ball_z);
+        if (dx < threshold && dy < threshold && dz < threshold) return true;
+    }
+    return false;
+}
+
 bool nba_gameplay_ball_self_test(void) {
     int16_t vx = 0, vy = 0, vz = 0;
     NbaGameplayRimState rim = {0};
@@ -360,7 +390,23 @@ bool nba_gameplay_ball_self_test(void) {
             NBA_GAMEPLAY_RIM_OUTER_CONTACT &&
         nba_gameplay_rim_step(&(NbaGameplayRimState){344,0,123,20,20,150,0,0,0,0},
                                1u, false, false, true) == NBA_GAMEPLAY_RIM_FLIGHT;
+    NbaGameplayPosePoint points[2] = {{100, 100, 80}, {140, 120, 60}};
+    bool acquisition_gates =
+        nba_gameplay_ball_coarse_contact(0, 0, 0, -16, -15, 71, false) &&
+        nba_gameplay_ball_coarse_contact(0, 0, 0, 16, 16, 71, false) &&
+        !nba_gameplay_ball_coarse_contact(0, 0, 0, -17, 0, 0, false) &&
+        !nba_gameplay_ball_coarse_contact(0, 0, 0, 17, 0, 0, false) &&
+        !nba_gameplay_ball_coarse_contact(0, 0, 0, 0, -16, 0, false) &&
+        !nba_gameplay_ball_coarse_contact(0, 0, 0, 0, 17, 0, false) &&
+        !nba_gameplay_ball_coarse_contact(0, 0, 0, 0, 0, 72, false) &&
+        nba_gameplay_ball_coarse_contact(0, 0, 0, 0, 0, 95, true) &&
+        !nba_gameplay_ball_coarse_contact(0, 0, 0, 0, 0, 96, true) &&
+        nba_gameplay_ball_pose_contact(points, 115, 115, 95, 16u) &&
+        !nba_gameplay_ball_pose_contact(points, 116, 100, 80, 16u) &&
+        nba_gameplay_ball_pose_contact(points, 107, 107, 87, 8u) &&
+        !nba_gameplay_ball_pose_contact(points, 108, 100, 80, 8u);
     return launch_ok && shell_gates && outer_generic && outer_y &&
+           acquisition_gates &&
            right_world_bridge && left_world_bridge &&
            outer_negative_y_edge &&
            outer_low && outer_high &&

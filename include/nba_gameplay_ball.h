@@ -27,6 +27,10 @@ typedef struct NbaGameplayRimState {
     uint16_t raw_13e7;
 } NbaGameplayRimState;
 
+typedef struct NbaGameplayPosePoint {
+    int16_t x, y, z;
+} NbaGameplayPosePoint;
+
 uint16_t nba_gameplay_hoop_distance(int16_t dx, int16_t dy);
 NbaGameplayRimResult nba_gameplay_rim_step(NbaGameplayRimState *state,
                                            uint16_t live_state,
@@ -53,6 +57,13 @@ void nba_gameplay_shot_launch(int32_t ball_x_fp, int32_t ball_y_fp,
                               int16_t target_y, int16_t *velocity_x,
                               int16_t *velocity_y, int16_t *velocity_z);
 int16_t nba_gameplay_arithmetic_shift_right(int16_t value, unsigned amount);
+bool nba_gameplay_ball_coarse_contact(int16_t actor_x, int16_t actor_y,
+                                      int16_t actor_z, int16_t ball_x,
+                                      int16_t ball_y, int16_t ball_z,
+                                      bool intended_receiver);
+bool nba_gameplay_ball_pose_contact(const NbaGameplayPosePoint points[2],
+                                    int16_t ball_x, int16_t ball_y,
+                                    int16_t ball_z, uint8_t threshold);
 bool nba_gameplay_ball_self_test(void);
 
 #endif

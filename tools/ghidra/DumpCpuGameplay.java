@@ -134,6 +134,15 @@ public class DumpCpuGameplay extends GhidraScript {
                     if (instruction != null)
                         out.printf("$86:%04X  %s%n", address, instruction.toString());
                 }
+                out.println("\n--- Complete ball acquisition/possession boundary ---");
+                addEntryPoint(toAddr(0xbaa2)); disassemble(toAddr(0xbaa2));
+                addEntryPoint(toAddr(0xbaee)); disassemble(toAddr(0xbaee));
+                addEntryPoint(toAddr(0xbf0b)); disassemble(toAddr(0xbf0b));
+                for (long address = 0xbaa2; address <= 0xbf0b; ++address) {
+                    Instruction instruction = listing.getInstructionAt(toAddr(address));
+                    if (instruction != null)
+                        out.printf("$86:%04X  %s%n", address, instruction.toString());
+                }
                 out.println("\n--- Complete foul classification/bookkeeping boundary ---");
                 addEntryPoint(toAddr(0xc493)); disassemble(toAddr(0xc493));
                 addEntryPoint(toAddr(0xc4fe)); disassemble(toAddr(0xc4fe));

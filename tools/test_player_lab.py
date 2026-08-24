@@ -87,15 +87,17 @@ def main():
        len(assets[254][0]) != 36 + 29 * 2 * 3 * 32:
         raise AssertionError("player team/palette matrix is incomplete")
     animations, states, directions, schema = assets[256]
-    if animations[:8] != b"NBPANIM1" or (states, directions, schema) != (57, 8, 5):
+    if animations[:8] != b"NBPANIM1" or (states, directions, schema) != (57, 8, 6):
         raise AssertionError("invalid ROM player-animation schema")
     (animation_version, state_count, resource_count, bank84_offset,
      attachment_offset, directory_offset, data_offset, digit_source_offset,
      bcd_table_offset, number_attachment_offset, number_palette_offset,
      number_visibility_offset, ball_upper_x_offset, ball_upper_y_offset,
-     ball_upper_z_offset) = struct.unpack_from("<15I", animations, 8)
-    if animation_version != 5 or state_count != 57 or resource_count < 1800 or \
-       bank84_offset != 68 or attachment_offset != 68 + 0x8000 or \
+     ball_upper_z_offset, ball_point1_upper_x_offset,
+     ball_point1_upper_y_offset,
+     ball_point1_upper_z_offset) = struct.unpack_from("<18I", animations, 8)
+    if animation_version != 6 or state_count != 57 or resource_count < 1800 or \
+       bank84_offset != 80 or attachment_offset != 80 + 0x8000 or \
        not attachment_offset < directory_offset < data_offset < \
        digit_source_offset < bcd_table_offset < number_attachment_offset or \
        digit_source_offset + 90 * 32 != bcd_table_offset or \
@@ -105,7 +107,10 @@ def main():
        number_visibility_offset + 0x830 != ball_upper_x_offset or \
        ball_upper_x_offset + 0x830 != ball_upper_y_offset or \
        ball_upper_y_offset + 0x830 != ball_upper_z_offset or \
-       ball_upper_z_offset + 0x830 != len(animations):
+       ball_upper_z_offset + 0x830 != ball_point1_upper_x_offset or \
+       ball_point1_upper_x_offset + 0x830 != ball_point1_upper_y_offset or \
+       ball_point1_upper_y_offset + 0x830 != ball_point1_upper_z_offset or \
+       ball_point1_upper_z_offset + 0x830 != len(animations):
         raise AssertionError("player-animation ROM tables are incomplete")
     if animations[bcd_table_offset + 54] != 0x54 or \
        not any(animations[digit_source_offset:digit_source_offset + 90 * 32]):
@@ -115,13 +120,16 @@ def main():
     if animations[number_visibility_offset + 0x00F3] != 0x08 or \
        animations[number_visibility_offset + 0x01A7] != 0xF5:
         raise AssertionError("jersey-number upper-frame eligibility table changed")
-    def attachment(upper, lower, flags):
+    def attachment(upper, lower, flags, point=0):
         signed = lambda value: value - 256 if value >= 128 else value
         lower_y = signed(animations[attachment_offset + lower])
         lower_z = signed(animations[attachment_offset + 0x830 + lower])
-        upper_x = signed(animations[ball_upper_x_offset + upper])
-        upper_y = signed(animations[ball_upper_y_offset + upper])
-        upper_z = signed(animations[ball_upper_z_offset + upper])
+        tables = ((ball_upper_x_offset, ball_upper_y_offset, ball_upper_z_offset),
+                  (ball_point1_upper_x_offset, ball_point1_upper_y_offset,
+                   ball_point1_upper_z_offset))[point]
+        upper_x = signed(animations[tables[0] + upper])
+        upper_y = signed(animations[tables[1] + upper])
+        upper_z = signed(animations[tables[2] + upper])
         if flags & 0x8000:
             flags ^= 3
         if flags & 2:
@@ -140,6 +148,15 @@ def main():
         if attachment(*inputs) != expected:
             raise AssertionError(
                 f"$87:B832 ball attachment changed {inputs}: {attachment(*inputs)}")
+    dual_point_vectors = {
+        (240, 1100, 0): ((12, -20, 14), (20, -12, 14)),
+        (253, 1148, 0x8000): ((17, -15, 27), (-8, 8, 26)),
+    }
+    for inputs, expected in dual_point_vectors.items():
+        actual = (attachment(*inputs, 0), attachment(*inputs, 1))
+        if actual != expected:
+            raise AssertionError(
+                f"$86:D549 dual pose points changed {inputs}: {actual}")
     resource_ids = []
     for index in range(resource_count):
         resource_id, reserved, offset, size = struct.unpack_from(

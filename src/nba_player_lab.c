@@ -6,7 +6,7 @@
 
 #define PLAYER_HEADER_SIZE 24u
 #define PLAYER_RECORD_SIZE 64u
-#define PLAYER_ANIMATION_HEADER_SIZE 68u
+#define PLAYER_ANIMATION_HEADER_SIZE 80u
 #define PLAYER_ANIMATION_STATES NBA_PLAYER_ANIMATION_STATES
 #define PLAYER_ANIMATION_BANK84_SIZE 0x8000u
 #define PLAYER_ATTACHMENT_TABLE_SIZE 0x830u
@@ -94,7 +94,7 @@ static const uint8_t *animation_data(const NbaAssetPack *assets,
     const NbaAssetItem *item = nba_assets_get(assets, NBA_ASSET_PLAYER_ANIMATIONS);
     if (!item || !item->data || item->size < PLAYER_ANIMATION_HEADER_SIZE ||
         memcmp(item->data, "NBPANIM1", 8) != 0 ||
-        read_u32((const uint8_t *)item->data + 8) != 5u ||
+        read_u32((const uint8_t *)item->data + 8) != 6u ||
         read_u32((const uint8_t *)item->data + 12) != PLAYER_ANIMATION_STATES)
         return NULL;
     if (item_out) *item_out = item;
@@ -638,16 +638,20 @@ bool nba_player_animation_resources(const NbaAssetPack *assets,
     return *lower_resource != 0u && *upper_resource != 0u;
 }
 
-bool nba_player_ball_attachment_offsets(const NbaAssetPack *assets,
+bool nba_player_ball_attachment_point_offsets(const NbaAssetPack *assets,
                                         uint16_t upper_resource,
                                         uint16_t lower_resource,
                                         uint16_t mirror_flags_raw,
+                                        uint8_t point_selector,
                                         int16_t *x, int16_t *y, int16_t *z) {
     int8_t lower_y, lower_z, upper_x, upper_y, upper_z;
+    unsigned upper_header = point_selector == 0u ? 56u :
+                            point_selector == 1u ? 68u : 0u;
     if (!x || !y || !z ||
-        !ball_attachment_table_value(assets, 56u, upper_resource, &upper_x) ||
-        !ball_attachment_table_value(assets, 60u, upper_resource, &upper_y) ||
-        !ball_attachment_table_value(assets, 64u, upper_resource, &upper_z) ||
+        upper_header == 0u ||
+        !ball_attachment_table_value(assets, upper_header, upper_resource, &upper_x) ||
+        !ball_attachment_table_value(assets, upper_header + 4u, upper_resource, &upper_y) ||
+        !ball_attachment_table_value(assets, upper_header + 8u, upper_resource, &upper_z) ||
         !ball_attachment_table_value(assets, 24u, lower_resource, &lower_y))
         return false;
     const NbaAssetItem *item;
@@ -672,6 +676,16 @@ bool nba_player_ball_attachment_offsets(const NbaAssetPack *assets,
      * gameplay spaces both use this result as a positive-up actor offset. */
     *z = (int16_t)((int)upper_x - (int)lower_z - (int)upper_z);
     return true;
+}
+
+bool nba_player_ball_attachment_offsets(const NbaAssetPack *assets,
+                                        uint16_t upper_resource,
+                                        uint16_t lower_resource,
+                                        uint16_t mirror_flags_raw,
+                                        int16_t *x, int16_t *y, int16_t *z) {
+    return nba_player_ball_attachment_point_offsets(
+        assets, upper_resource, lower_resource, mirror_flags_raw, 0u,
+        x, y, z);
 }
 
 static void fill(NbaRenderer *ren, int x, int y, int w, int h, uint32_t color) {

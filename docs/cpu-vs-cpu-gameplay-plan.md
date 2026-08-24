@@ -512,3 +512,28 @@ explicitly temporary until the complete mode-11 executor replaces the global
 BREAK/DRIVE/ATTACK state machine. The 50,000-frame CPU regression continues
 to cover recurring possessions, both-team scoring, passes, shots, rebounds,
 inbounds, and bounded `$09A2` cutter lifetimes.
+
+Increment 4R establishes the resource-accurate acquisition boundary. Asset
+schema `NBPANIM1` version 6 adds the ROM's second `$87:B832` pose point from
+`$AC:CC2F/$AC:BF4B/$AC:C397`; both points continue sharing lower-body tables
+`$A9:D86E/$A9:D03E`. Golden vectors reproduce `(12,-20,14)/(20,-12,14)` and
+`(17,-15,27)/(-8,8,26)` exactly. C now isolates the coarse
+`$86:CCCD-$CCFB` box (X `-16..16`, asymmetric Y `-16..15`, Z `0..71` or
+`0..95` for the designated receiver) and `$86:D549-$D5DA`'s strict per-axis
+pose cubes. Loose rebounds scan actors 0 through 9 once and commit the first
+qualifying contact, matching `$86:CCFC-$D43C`; the former Z-at-most-24,
+planar-nearest, distance-14 shortcut is gone. Mode-10/14 receivers no longer
+run the generic formation accelerator while `$86:99C4`'s velocity lead is in
+flight.
+
+Pass contact now attempts the exact designated-receiver 16-unit pose cube,
+but retains a clearly labeled Z=0 completion bridge. The stricter gate exposed
+an upstream mismatch: the current global play geometry produced a 451-unit
+pass where the comparable ROM pass was about 197 units, so the host pass hit
+the floor before reaching either hand point. Opponent interception/foul RNG at
+`$86:D000-$D1CE` also remains disabled. Therefore this increment proves the
+asset, primitive, and loose-rebound portions; it does not claim the complete
+pass acquisition chain until mode-11 formation and `$86:99C4` flight parity
+remove that fallback. The repeatable headless dump now includes the complete
+`$86:BAA2-$BF0B` possession-install boundary, and the 50,000-frame regression
+passes with updated visual hashes.

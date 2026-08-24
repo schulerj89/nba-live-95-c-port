@@ -564,6 +564,19 @@ static void cpu_move_actor(NbaTipoff *tipoff, unsigned slot) {
     cpu_update_special_actor(tipoff, slot);
     if (actor->control_mode == 15u && cpu_update_rom_passer(tipoff, slot))
         return;
+    if (actor->control_mode == 10u || actor->control_mode == 14u) {
+        /* `$86:A5B0` (normal receiver) and `$86:B154` (special receiver)
+         * do not dispatch the generic formation accelerator. `$86:99C4`
+         * already led the pass by the receiver's existing velocity, so keep
+         * that motion through the common `$85:963D` coordinate commit. */
+        actor->x_fp += (int32_t)actor->velocity_x * 2;
+        actor->y_fp += (int32_t)actor->velocity_y * 2;
+        actor->movement_magnitude_raw = actor_distance(
+            actor->velocity_x, actor->velocity_y);
+        if (actor->reaction_threshold >= 2u)
+            actor->reaction_threshold -= 2u;
+        return;
+    }
     if (cpu_apply_passive_mode(actor)) return;
     /* `$85:B95C` seeds actor +$60; the mode-specific `$C8=$20` cadence above
      * replaces the former handcrafted per-slot/possession-frame delay. */
@@ -667,6 +680,61 @@ static bool ball_attachment_assets_valid(const NbaAssetPack *assets) {
                 z != vectors[i].z) return false;
     }
     return true;
+}
+
+static bool cpu_actor_pose_points(const NbaTipoff *tipoff, unsigned actor_index,
+                                  NbaGameplayPosePoint points[2]) {
+    if (!tipoff || !points || actor_index >= NBA_GAMEPLAY_ACTOR_COUNT)
+        return false;
+    const NbaTipoffActor *actor = &tipoff->actors[actor_index];
+    uint8_t direction = actor->direction < 8u ? actor->direction : 0u;
+    uint16_t upper_resource = 0u, lower_resource = 0u;
+    uint16_t mirror_flags = direction < 3u ? 0x8000u : 0u;
+    if (!nba_player_animation_resources(
+            tipoff->assets, actor->animation_state,
+            actor->lower_animation_state, direction,
+            actor->upper_animation_tick, actor->lower_animation_tick,
+            &upper_resource, &lower_resource)) return false;
+    for (unsigned point = 0; point < 2u; ++point) {
+        int16_t x, y, z;
+        if (!nba_player_ball_attachment_point_offsets(
+                tipoff->assets, upper_resource, lower_resource, mirror_flags,
+                (uint8_t)point, &x, &y, &z)) return false;
+        points[point].x = (int16_t)(fp_round(actor->x_fp) + x);
+        points[point].y = (int16_t)(fp_round(actor->y_fp) + y);
+        points[point].z = (int16_t)(fp_round(actor->z_fp) + z);
+    }
+    return true;
+}
+
+static bool cpu_actor_contacts_ball(const NbaTipoff *tipoff,
+                                    unsigned actor_index,
+                                    bool intended_receiver,
+                                    uint8_t threshold) {
+    const NbaTipoffActor *actor = &tipoff->actors[actor_index];
+    int16_t ball_x = fp_round(tipoff->ball.x_fp);
+    int16_t ball_y = fp_round(tipoff->ball.y_fp);
+    int16_t ball_z = fp_round(tipoff->ball.z_fp);
+    if (!nba_gameplay_ball_coarse_contact(
+            fp_round(actor->x_fp), fp_round(actor->y_fp),
+            fp_round(actor->z_fp), ball_x, ball_y, ball_z,
+            intended_receiver)) return false;
+    NbaGameplayPosePoint points[2];
+    return cpu_actor_pose_points(tipoff, actor_index, points) &&
+           nba_gameplay_ball_pose_contact(
+               points, ball_x, ball_y, ball_z, threshold);
+}
+
+/* `$86:CCFC-$D43C` visits logical actors 0..9 and commits the first fine
+ * contact. It does not choose the planar-nearest player. */
+static int cpu_first_loose_ball_contact(const NbaTipoff *tipoff) {
+    for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
+        uint8_t threshold = tipoff->actors[actor].animation_state == 0x13u ?
+                            12u : 16u;
+        if (cpu_actor_contacts_ball(tipoff, actor, false, threshold))
+            return (int)actor;
+    }
+    return -1;
 }
 
 static void ball_launch(NbaTipoff *tipoff, int target_x, int target_y,
@@ -1136,13 +1204,8 @@ static void cpu_update_possession(NbaTipoff *tipoff) {
     cpu_update_play_control(tipoff);
 
     NbaTipoffActor *handler = &tipoff->actors[tipoff->handler_actor];
-    NbaTipoffActor *receiver = &tipoff->actors[tipoff->receiver_actor];
     int handler_distance = actor_distance(handler->target_x - fp_round(handler->x_fp),
                                           handler->target_y - fp_round(handler->y_fp));
-    int receiver_distance = actor_distance(fp_round(receiver->x_fp) -
-                                           fp_round(tipoff->ball.x_fp),
-                                           fp_round(receiver->y_fp) -
-                                           fp_round(tipoff->ball.y_fp));
     switch ((NbaCpuPlayState)tipoff->cpu_play_state) {
         case NBA_CPU_PLAY_BREAK:
             if (handler_distance < 28)
@@ -1171,7 +1234,18 @@ static void cpu_update_possession(NbaTipoff *tipoff) {
             }
             break;
         case NBA_CPU_PLAY_PASS:
-            if (receiver_distance < 14 || tipoff->ball.z_fp <= 0) {
+            /* `$86:CCCD-$D5DA`: the intended receiver gets the 95-Z coarse
+             * window and strict 16-unit two-point pose cube. Opponent
+             * interception/foul RNG at `$86:D000-$D1CE` remains gated. */
+            if (tipoff->ball.owner_actor < 0 &&
+                (cpu_actor_contacts_ball(
+                    tipoff, tipoff->receiver_actor, true, 16u) ||
+                 /* The host-authored global formation can still produce a
+                  * pass whose `$86:99C4` flight reaches Z=0 before the
+                  * receiver pose. Retain the old ground completion only as
+                  * an explicit upstream-policy bridge; loose rebounds below
+                  * have no nearest-player or low-Z fallback. */
+                 tipoff->ball.z_fp <= 0)) {
                 tipoff->handler_actor = tipoff->receiver_actor;
                 /* Mode 11 selects the next target from `$09A2/$09AA/$09AC`;
                  * do not synthesize the former handler+2 receiver here. */
@@ -1271,22 +1345,9 @@ static void cpu_update_possession(NbaTipoff *tipoff) {
             }
             break;
         case NBA_CPU_PLAY_REBOUND:
-            if (tipoff->ball.z_fp <= 24 * 256) {
-                uint8_t catcher = NBA_GAMEPLAY_NO_ACTOR;
-                uint16_t nearest = 0xFFFFu;
-                for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
-                    int dx = fp_round(tipoff->actors[actor].x_fp) -
-                             fp_round(tipoff->ball.x_fp);
-                    int dy = fp_round(tipoff->actors[actor].y_fp) -
-                             fp_round(tipoff->ball.y_fp);
-                    uint16_t distance = actor_distance(dx, dy);
-                    if (distance < nearest) {
-                        nearest = distance;
-                        catcher = (uint8_t)actor;
-                    }
-                }
-                if (catcher != NBA_GAMEPLAY_NO_ACTOR && nearest <= 14u)
-                    cpu_commit_rebound(tipoff, catcher);
+            {
+                int catcher = cpu_first_loose_ball_contact(tipoff);
+                if (catcher >= 0) cpu_commit_rebound(tipoff, (uint8_t)catcher);
             }
             break;
     }
