@@ -1,0 +1,21 @@
+{
+  "comment": "Routines verified against emulator ground truth. Byte ranges are 24-bit SNES bus addresses. evidence points at the capture/replay artifacts; tools/progress.py counts these bytes as verified.",
+  "routines": [
+    {
+      "range": "80CEE7-80CEFC",
+      "name": "nba_gameplay_rng_next",
+      "source": "src/nba_gameplay_ai.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-rng-20260825 (500 live calls, 0 mismatches, includes $07F6-zero recovery)",
+      "date": "2026-08-25"
+    },
+    {
+      "range": "85F1C1-85F228",
+      "name": "nba_gameplay_hoop_distance",
+      "source": "src/nba_gameplay_ball.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-hoop-distance-20260825 (500 live calls, 0 mismatches, 0 orphan exits; all four RTL paths captured)",
+      "date": "2026-08-25"
+    }
+  ]
+}

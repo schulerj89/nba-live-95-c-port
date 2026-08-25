@@ -42,6 +42,40 @@ reports success.
 - `analyze_cpu_gameplay_trace.py`: reports recurring plays, offense/ball-mode changes, movement cadence, stationary windows, and owned-ball attachment distance
 - `ghidra/Run-CpuGameplayAnalysis.ps1`: correlates the extended live trace with the player integrator, CPU dispatch, and ball attachment/free-physics routines
 
+## Verification tools
+
+- `mesen_func_vectors.lua`: generic per-function I/O vector capture. Set
+  `NBA95_VEC_ENTRY` to a routine's 24-bit entry PC, `NBA95_VEC_EXITS` to its
+  RTS/RTL addresses, and `NBA95_VEC_READS`/`NBA95_VEC_WRITES` to the WRAM
+  ranges it consumes and produces (from Ghidra). Every real in-game call is
+  recorded as an entry/exit CPU + WRAM snapshot in
+  `<label>.vectors.jsonl` — ground truth for replaying through the C port
+  function and diffing outputs. `NBA95_VEC_DRIVE=1` drives the verified
+  Exhibition path into live gameplay first (with `NBA95_CPU_VS_CPU=1` for
+  CPU-controlled teams) and records only on-court calls. A ported routine is
+  *verified* when all its captured vectors pass.
+- `verify_func_vectors.py`: replays a vector capture through a small C probe
+  built against the real port sources and diffs each output word against the
+  ROM's recorded exit state. `--word` handles one-word state transitions;
+  `--input-words` plus `--output-word` covers pure routines with multiple
+  captured inputs. `rng_vector_probe.c` is the one-word worked example:
+  500 live `$80:CEE7` calls (including the `$07F6`-zero recovery path)
+  verified `nba_gameplay_rng_next` with zero mismatches.
+  `hoop_distance_vector_probe.c` independently replays signed DP `$AA/$AE`
+  through `$85:F1C1-$F228`; 500 live calls cover all four RTL paths with zero
+  mismatches against `nba_gameplay_hoop_distance`.
+- `trace_hash.py`: freezes a lockstep-passing gameplay JSONL trace as compact
+  per-frame golden hashes (`--write-golden`), then re-verifies later runs
+  cheaply (`--golden`), reporting the first divergent scene frame. Field-level
+  diagnosis stays with `compare_gameplay_traces.py`.
+
+- `progress.py`: quantifies port status with no hand-maintained state. Crosses
+  Mesen `exec_*.txt` coverage (denominator: code observed executing),
+  `$XX:XXXX` provenance comments in `src/` (documented), the
+  `docs/verified-routines.json` ledger (verified), and the recomp's
+  `bank_XX_YYYY` function set. Writes `docs/progress.md` with per-bank
+  percentages and the largest undocumented executed regions.
+
 ## Investigation utilities
 
 The remaining `mesen_*.lua`, Python render/decoder helpers, `spc_render_main.c`,

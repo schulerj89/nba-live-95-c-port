@@ -100,6 +100,13 @@ Enter confirms Exhibition on Game Setup and keeps the Setup SPC music running
 through Team Select and Player Setup. Enter on settled Team Select opens Player
 Setup; Left/Right assigns Player 1 to the visitor/home side.
 
+## Status and progress
+
+[`STATUS.md`](STATUS.md) records the measurement methodology and milestone
+baselines; `python tools/progress.py --write docs/progress.md` regenerates
+the live numbers from Mesen exec coverage, `src/` provenance comments, the
+verified-routine ledger, and the recomp function set.
+
 ## Technical notes
 
 - [Title visuals and audio](docs/post-ea-title-audio.md)

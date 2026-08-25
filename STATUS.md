@@ -1,0 +1,91 @@
+# Project status
+
+Last updated 2026-08-25. Live numbers regenerate with
+`python tools/progress.py --write docs/progress.md`; this file records the
+methodology and frozen milestone snapshots.
+
+## Where the port stands
+
+The playable path covers the Nintendo license through Player Setup and into
+live tip-off gameplay (see `README.md`). Verification no longer relies on
+screenshots or recollection: every claim below is derived from machine
+evidence that can be recomputed on demand.
+
+## First-ever measurement — 2026-08-25 baseline
+
+**30.4% of observed executed ROM code is documented by the port; 0.04% is
+ground-truth verified.**
+
+| metric | bytes | % of executed |
+|---|---|---|
+| executed (denominator) | 27,901 | 100.0% |
+| documented by port provenance | 8,473 | 30.4% |
+| verified against ground truth | 10 | 0.04% |
+
+| bank | executed | documented | % | contents |
+|---|---|---|---|---|
+| $00 | 30 | 0 | 0.0% | vectors |
+| $80 | 7,517 | 128 | 1.7% | OS/scheduler/runtime — biggest gap |
+| $81 | 2,589 | 10 | 0.4% | |
+| $82 | 1,937 | 418 | 21.6% | menus/Team Select |
+| $83 | 1,043 | 0 | 0.0% | |
+| $84 | 195 | 0 | 0.0% | |
+| $85 | 5,095 | 3,361 | 66.0% | actor physics — strongest area |
+| $86 | 6,114 | 3,528 | 57.7% | ball/AI/contact logic |
+| $87 | 3,381 | 1,028 | 30.4% | rendering/dispatch |
+
+Function-level: the NBA-Live-95-Recomp statically discovered 136 functions
+(banks 00/80/81/82 only — its analysis stops at indirect dispatch). 126 of
+them execute in our captures, but only 6 are referenced by port provenance.
+The recomp therefore holds reference C implementations for nearly all of the
+bank-$80 runtime the port has not yet documented.
+
+Verified-routine ledger (`docs/verified-routines.json`): 1 routine —
+`$80:CEE7` (`nba_gameplay_rng_next`), 500 live in-game calls replayed through
+the compiled C with 0 mismatches, including the `$07F6`-zero recovery path.
+
+## How each number is captured
+
+All three inputs are machine-generated; none are maintained by hand.
+
+1. **Executed code (denominator).** Mesen Lua captures register wide exec
+   callbacks over banks `$80-$8F` while driving the game
+   (`mesen_tipoff_capture.lua` and friends), then write every executed
+   address as merged `XXXXXX-YYYYYY` ranges into `.analysis/**/exec_*.txt`.
+   `tools/progress.py` takes the union of all of them. *Known blind spot:*
+   only gameplay captures emit these files today, so the denominator
+   under-counts menu/title code; a full-session coverage capture would
+   complete it.
+2. **Documented (numerator 1).** `tools/progress.py` parses every
+   `$XX:XXXX` / `$XX:XXXX-$YYYY` provenance comment in `src/*.c` and
+   intersects those ranges with the executed set. Keeping the
+   provenance-comment convention is what keeps this metric honest.
+3. **Verified (numerator 2).** A routine enters
+   `docs/verified-routines.json` only after passing emulator ground-truth
+   replay: `tools/mesen_func_vectors.lua` records real in-game calls
+   (entry/exit CPU + WRAM snapshots, driven into live CPU-vs-CPU gameplay
+   with `NBA95_VEC_DRIVE=1`), and `tools/verify_func_vectors.py` replays
+   every vector through a small MSVC probe built against the actual port
+   sources, diffing each output against the ROM's recorded exit state.
+4. **Recomp function set.** Function definitions (`bank_XX_YYYY`) parsed
+   from `../NBA-Live-95-Recomp/generated/bank*.c`.
+
+Supporting tiers (details in `tools/README.md`):
+
+- **Frame lockstep:** `mesen_tipoff_capture.lua` → `gameplay_rom.jsonl` vs
+  the port's trace via `compare_gameplay_traces.py` — first divergent frame
+  and field pinpoint the broken subsystem.
+- **Golden regression:** `tools/trace_hash.py` freezes a lockstep-passing
+  trace as per-frame hashes so later changes can't silently regress it.
+
+## Next targets
+
+- Add a full-session exec-coverage capture so the denominator includes
+  title/menu code.
+- Burn down bank `$80` using the recomp's generated C as reference,
+  verifying each routine with the vector pipeline
+  (`docs/progress.md` "largest undocumented executed regions" is the
+  prioritized queue; `$80:81A8-$80:82A4` is the biggest).
+- Next clean vector target: `$86:D549` pose contact
+  (`nba_gameplay_ball_pose_contact_index`, exits `$86:D5D8`/`$86:D5DA`) —
+  needs DP-relative snapshot support in `mesen_func_vectors.lua`.
