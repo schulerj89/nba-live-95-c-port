@@ -64,6 +64,14 @@
       "method": "function-vectors",
       "evidence": ".analysis/func-vectors-owner-dribble-proximity-20260825 (1000 live calls, 0 mismatches, 0 orphan exits; 841 fallback, 3 latched, 156 unlatched outcomes; 925 expected shared-boundary callbacks)",
       "date": "2026-08-25"
+    },
+    {
+      "range": "86E545-86E592",
+      "name": "nba_gameplay_owner_unlatched_pose",
+      "source": "src/nba_gameplay_ball.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-owner-unlatched-pose-20260825 (158 live calls, 0 mismatches, 0 orphan exits; 55 pose-9 and 103 pose-11 results; changed-byte audit limited writes to actor +$38/+$4E)",
+      "date": "2026-08-25"
     }
   ]
 }

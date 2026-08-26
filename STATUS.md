@@ -84,6 +84,16 @@ starting at `$86:E545` remains the next bounded increment. The ledger now
 contains 8 routines and 213 executed bytes (0.76% of the observed
 denominator).
 
+The unlatched continuation `$86:E545-$E592` now copies requested facing into
+actor `+$4E` and selects dribble base 9/11 from velocity relative to that
+facing. All 158 live calls replay with zero mismatches (55 pose 9, 103 pose
+11), and a full WRAM changed-byte audit confirms the slice writes only
+`+$38/+$4E`. This corrected trajectory also exercises deferred shot starts;
+the 63,800-frame CPU regression and refreshed frame anchors pass. The ledger
+now contains 9 routines and 240 observed-executed bytes (0.86% of the
+denominator); sparse execution inside this branch means only 27 new observed
+bytes enter the metric.
+
 ## How each number is captured
 
 All three inputs are machine-generated; none are maintained by hand.

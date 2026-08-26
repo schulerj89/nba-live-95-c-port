@@ -8,7 +8,7 @@ Derived by tools/progress.py from Mesen exec coverage, src/ provenance comments,
 |---|---|---|
 | executed (denominator) | 27901 | 100.0% |
 | documented by port provenance | 8480 | 30.4% |
-| verified against ground truth | 213 | 0.8% |
+| verified against ground truth | 240 | 0.9% |
 
 ## Per bank
 
@@ -26,10 +26,10 @@ Derived by tools/progress.py from Mesen exec coverage, src/ provenance comments,
 
 ## Functions
 
-- recomp-discovered functions: 298 (banks 00/80/81/82 only; static analysis stops at indirect dispatch)
-- of those observed executing in captures: 252
-- of those referenced by port provenance: 67
-- verified routines (ledger): 8
+- recomp-discovered functions: 136 (banks 00/80/81/82 only; static analysis stops at indirect dispatch)
+- of those observed executing in captures: 126
+- of those referenced by port provenance: 6
+- verified routines (ledger): 9
 
 ## Largest undocumented executed regions
 

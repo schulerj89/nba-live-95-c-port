@@ -118,6 +118,9 @@ NbaGameplayOwnerProximityResult nba_gameplay_owner_dribble_proximity(
     uint16_t paired_movement_magnitude, uint16_t assignment_distance,
     uint8_t paired_direction, uint16_t dead_ball_raw_0968,
     uint16_t catcher_latch_raw_ae, uint8_t *requested_direction);
+uint8_t nba_gameplay_owner_unlatched_pose(
+    int16_t velocity_x, int16_t velocity_y, uint8_t requested_direction,
+    uint8_t *display_direction);
 NbaGameplayRimResult nba_gameplay_rim_step(NbaGameplayRimState *state,
                                            uint16_t live_state,
                                            bool alternate_height,

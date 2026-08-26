@@ -951,11 +951,13 @@ static void cpu_dispatch_normal_actor_behavior(NbaTipoff *tipoff,
             tipoff->fouls.free_throw_state_raw_0978,
             tipoff->live_state_raw, actor->movement_magnitude_raw);
         if (gate != NBA_GAMEPLAY_OWNER_DRIBBLE_SKIP) {
+            NbaGameplayOwnerProximityResult proximity =
+                NBA_GAMEPLAY_OWNER_PROXIMITY_FALLBACK;
             if (gate == NBA_GAMEPLAY_OWNER_DRIBBLE_CONTINUE) {
                 unsigned paired = actor->assignment_actor;
                 if (paired < NBA_GAMEPLAY_ACTOR_COUNT) {
                     NbaTipoffActor *paired_actor = &tipoff->actors[paired];
-                    (void)nba_gameplay_owner_dribble_proximity(
+                    proximity = nba_gameplay_owner_dribble_proximity(
                         tipoff->team_context[slot / 5u].anchor_x_raw_0a,
                         (int16_t)x, paired_actor->movement_magnitude_raw,
                         actor->assignment_distance,
@@ -965,12 +967,17 @@ static void cpu_dispatch_normal_actor_behavior(NbaTipoff *tipoff,
                         &actor->requested_direction);
                 }
             }
-            /* The unlatched `$E545-$E592` pose choice is the next increment;
-             * retain the prior fallback pose until it is ported. */
-            actor->base_animation_state_raw_38 =
-                nba_gameplay_owner_dribble_fallback_pose(
-                    tipoff->dead_ball_raw_0968,
-                    actor->catcher_latch_raw_ae);
+            if (proximity == NBA_GAMEPLAY_OWNER_PROXIMITY_UNLATCHED) {
+                actor->base_animation_state_raw_38 =
+                    nba_gameplay_owner_unlatched_pose(
+                        actor->velocity_x, actor->velocity_y,
+                        actor->requested_direction, &actor->direction);
+            } else {
+                actor->base_animation_state_raw_38 =
+                    nba_gameplay_owner_dribble_fallback_pose(
+                        tipoff->dead_ball_raw_0968,
+                        actor->catcher_latch_raw_ae);
+            }
         }
     } else if (actor->control_mode >= 1u &&
                actor->control_mode <= 6u &&

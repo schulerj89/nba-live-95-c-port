@@ -81,6 +81,8 @@ reports success.
   `verify_owner_dribble_proximity_vectors.py` continues through
   `$86:E4C7-$E4F3`, verifying paired-side/speed/distance gates and the
   successful `+$86 -> +$50` requested-facing write.
+  `verify_owner_unlatched_pose_vectors.py` covers `$86:E545-$E592`, replaying
+  the relative-velocity 9/11 pose choice and `+$50 -> +$4E` facing write.
 - `trace_hash.py`: freezes a lockstep-passing gameplay JSONL trace as compact
   per-frame golden hashes (`--write-golden`), then re-verifies later runs
   cheaply (`--golden`), reporting the first divergent scene frame. Field-level
