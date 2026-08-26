@@ -245,5 +245,8 @@ bool nba_tipoff_begin_rom_pass(NbaTipoff *tipoff, unsigned passer_slot,
 bool nba_tipoff_update_rom_passer(NbaTipoff *tipoff, unsigned slot);
 void nba_tipoff_refresh_team_roles_end_frame(NbaTipoff *tipoff);
 void nba_tipoff_refresh_defense_roles_end_frame(NbaTipoff *tipoff);
+/* Verification entry for the ownerless `$85:9A6A-$A7C7` ball driver. */
+NbaGameplayRimResult nba_tipoff_replay_ownerless_ball_entry(
+    NbaTipoff *tipoff);
 
 #endif

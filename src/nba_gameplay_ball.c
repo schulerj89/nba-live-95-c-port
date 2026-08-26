@@ -330,8 +330,10 @@ void nba_gameplay_rim_apply_inner_response(
             state->velocity_y, 60u);
         state->velocity_x = signed_magnitude_with_sign(
             state->velocity_x, state->x >= 0);
+        /* `$85:9F87-$9F99`: a miss keeps the Y velocity on the ball's
+         * current side. Negative-Y samples therefore remain negative. */
         state->velocity_y = signed_magnitude_with_sign(
-            state->velocity_y, state->y >= 0);
+            state->velocity_y, state->y < 0);
         if (state->velocity_x == 0 && state->velocity_y == 0) {
             if (state->y >= 0) {
                 state->y = (int16_t)(uint16_t)((uint16_t)state->y + 2u);
@@ -815,7 +817,7 @@ bool nba_gameplay_ball_self_test(void) {
     nba_gameplay_rim_apply_inner_response(
         &rim, NBA_GAMEPLAY_RIM_MISS, &miss_context, &miss_rng);
     bool miss_response =
-        rim.velocity_x == 71 && rim.velocity_y == -31 &&
+        rim.velocity_x == 71 && rim.velocity_y == 31 &&
         rim.velocity_z == 100 && miss_context.raw_0920 == 10u &&
         miss_context.raw_0936 == 0u && miss_context.raw_0948 == 0u &&
         miss_context.raw_094a == 0u && miss_context.raw_0970 == 0x000Fu &&

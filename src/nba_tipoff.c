@@ -3743,6 +3743,10 @@ static NbaGameplayRimResult cpu_update_live_ball(NbaTipoff *tipoff) {
                 rim_context.raw_09b8 = tipoff->inbound_transfer_raw;
                 nba_gameplay_rim_apply_made_response(
                     &rim, right_basket, &rim_context);
+                /* Score bookkeeping at `$85:A33C-$A342` occurs before the
+                 * common physics tail. Keep those freshly raised bits when
+                 * the local rim snapshot is copied back below. */
+                rim.raw_13e7 = tipoff->rim_raw_13e7;
                 made_response = true;
             }
             tipoff->rim_raw_092c = rim.raw_092c;
@@ -3781,8 +3785,9 @@ static NbaGameplayRimResult cpu_update_live_ball(NbaTipoff *tipoff) {
                 ball->velocity_z = rim.velocity_z;
             }
         }
-        if (!made_response)
-            ball->velocity_z = (int16_t)(ball->velocity_z - 0x18);
+        /* `$85:A3D7-$A3DD` applies gravity on every common-tail pass,
+         * including the detecting made-basket substep. */
+        ball->velocity_z = (int16_t)(ball->velocity_z - 0x18);
         ball->x_fp += ball->velocity_x;
         ball->z_fp += ball->velocity_z;
         if (nba_gameplay_court_finish_y_step(
@@ -3874,6 +3879,26 @@ static NbaGameplayRimResult cpu_update_live_ball(NbaTipoff *tipoff) {
     return NBA_GAMEPLAY_RIM_FLIGHT;
 }
 
+NbaGameplayRimResult nba_tipoff_replay_ownerless_ball_entry(
+        NbaTipoff *tipoff) {
+    if (!tipoff) return NBA_GAMEPLAY_RIM_FLIGHT;
+    /* The capture enters at `$85:9A6A`, after the wrapper's once-per-pass
+     * counters. Back the represented counters up so the production driver
+     * reaches that exact state before executing the ownerless core. */
+    if (tipoff->free_throw_flight_timer_raw_0930 != 0u)
+        ++tipoff->free_throw_flight_timer_raw_0930;
+    if (tipoff->rim_raw_094a != 0u)
+        tipoff->rim_raw_094a = (uint16_t)(tipoff->rim_raw_094a - 2u);
+    if (tipoff->rim_raw_0970 != 0u) ++tipoff->rim_raw_0970;
+    tipoff->simulation_tick &= ~1u;
+    tipoff->ball.owner_actor = -1;
+    if (tipoff->ball.state == NBA_BALL_ATTACHED ||
+        tipoff->ball.state == NBA_BALL_HIDDEN ||
+        tipoff->ball.state == NBA_BALL_TOSS)
+        tipoff->ball.state = NBA_BALL_BOUNCE;
+    return cpu_update_live_ball(tipoff);
+}
+
 /* Contact-tick regression for `$85:9A78-$A656`: the negative Y lip reflects
  * velocity before this pass integrates it, while all three fractional bytes
  * survive. This deliberately exercises the live orchestration rather than
@@ -3930,8 +3955,9 @@ static bool cpu_ball_substep_self_test(void) {
     if (result != NBA_GAMEPLAY_RIM_MAKE || session.score[1] != 2u ||
         state.live_state_raw != 0x82u || state.shot_value_raw != 0u ||
         state.ball.x_fp != 336 * 256 || state.ball.y_fp != 0 ||
-        state.ball.z_fp != 82 * 256 + 229 ||
-        state.ball.velocity_z != -3) return false;
+        state.ball.z_fp != 82 * 256 + 205 ||
+        state.ball.velocity_z != -27 ||
+        (state.rim_raw_13e7 & 0x0004u) == 0u) return false;
 
     memset(&state, 0, sizeof(state));
     state.ball.owner_actor = -1;

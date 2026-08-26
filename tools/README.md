@@ -121,6 +121,10 @@ reports success.
   normal `$85:C0F5` return and exhausted-assignment `$85:C051` return. It
   compares cadence/rebuild state and every represented defense-planner actor
   output, including pair, anchor, and focal geometry.
+  `verify_ownerless_ball_vectors.py` filters the shared `$85:9A6A` entry by
+  negative `$093E`, then compares the represented ball/rim/pass/score core
+  through `$85:A7C7`; owned-contact continuations and the separately scheduled
+  `$87:AA02` graphics-effect dispatcher remain outside that replay.
 - `trace_hash.py`: freezes a lockstep-passing gameplay JSONL trace as compact
   per-frame golden hashes (`--write-golden`), then re-verifies later runs
   cheaply (`--golden`), reporting the first divergent scene frame. Field-level

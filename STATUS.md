@@ -18,7 +18,7 @@ Current measured coverage:
 |---|---:|---:|
 | observed executed code | 27,901 | 100.0% |
 | documented by ROM-address provenance | 8,855 | 31.7% |
-| verified against live ROM calls | 2,662 | 9.54% |
+| verified against live ROM calls | 3,343 | 11.98% |
 
 These values are generated, not estimated. The detailed per-bank report is
 `docs/progress.md`; the authoritative verified list and evidence paths are in
@@ -26,9 +26,13 @@ These values are generated, not estimated. The detailed per-bank report is
 
 ## Verified gameplay checkpoint
 
-Twenty-eight routine slices currently pass emulator-ground-truth replay. The most important
+Thirty routine slices currently pass emulator-ground-truth replay. The most important
 recent slices are:
 
+- `$85:9A6A-$A4F1`, `$85:A598-$A7C7`: ownerless pass/shot/bounce
+  physics, rim and score responses, gravity, fixed-point integration, ground
+  restitution, settle, court clamp, and the two-substep scheduler tail across
+  252 live ownerless calls.
 - `$85:BC07-$C0F5`: complete defense-role cadence, rebuild, pairing cleanup,
   primary/help selection, and final context-ordered assignment pass across 26
   live calls and both observed exits.
@@ -82,6 +86,13 @@ and the owner's post-repair assignment reload.
 The integration regression also now keeps receiverless dead-ball recovery on
 the active inbound side and scans for a side-gate-valid teammate at the final
 retry threshold, preventing repeated five-second-violation loops.
+
+The ownerless-ball increment adds 681 observed-executed verified bytes,
+raising ground-truth coverage from 9.54% to 11.98% (+2.44 percentage points).
+The replay selected 252 genuinely ownerless calls from 500 live entries and
+matched every represented ball, rim, pass, score, RNG, and event output. It
+corrected negative-Y miss recoil, gravity on the made-basket detection
+substep, and an event-bit copyback that erased the ROM's score marker.
 
 Do not infer that a surrounding routine is verified from one verified slice.
 Only ranges present in `docs/verified-routines.json` count as ground-truth

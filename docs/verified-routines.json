@@ -224,6 +224,22 @@
       "method": "function-vectors",
       "evidence": ".analysis/func-vectors-defense-refresh-20260826 (26 live calls, 0 mismatches; 24 complete $85:C0F5 exits and 2 exhausted-assignment $85:C051 exits; cadence/rebuild globals plus ten actors' modes, saved modes, timers, boosts, assignments, pair directions/distances, anchor distances, focal distances and roles compared)",
       "date": "2026-08-26"
+    },
+    {
+      "range": "859A6A-85A4F1",
+      "name": "nba_tipoff ownerless ball physics (rim/score/impact prefix)",
+      "source": "src/nba_tipoff.c + src/nba_gameplay_ball.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-ownerless-ball-shared-20260826 (252 live ownerless calls selected from 500 entries, 0 core mismatches, 0 orphan exits, 343 expected owned-continuation callbacks; ball fixed-point axes/velocities, rim/live/pass globals, RNG, score and event bits compared; separately scheduled effect dispatcher excluded)",
+      "date": "2026-08-26"
+    },
+    {
+      "range": "85A598-85A7C7",
+      "name": "nba_tipoff ownerless ball physics (integration/clamp tail)",
+      "source": "src/nba_tipoff.c + src/nba_gameplay_ball.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-ownerless-ball-shared-20260826 (same 252 live ownerless calls, 0 core mismatches; both ROM substeps, gravity, fixed-point integration, ground restitution, settle, court clamp and final rim-latch tail compared)",
+      "date": "2026-08-26"
     }
   ]
 }

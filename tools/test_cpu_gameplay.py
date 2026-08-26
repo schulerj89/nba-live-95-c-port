@@ -979,9 +979,10 @@ def main():
             # loop counter and normally leaves zero. The vector replay owns
             # exact distance-to-band verification; integration protects the
             # installed band after that shared scratch word is clobbered.
+            # Actor +$66 is a pose/resource scratch word, not a normalized
+            # direction; the pass-init vector owns its exact ROM value.
             if raw["pass_band_62"] not in (0, 6, 12, 18, 24, 30) or \
                     raw["mode_saved_62"] != raw["pass_band_62"] or \
-                    raw["pass_direction_66"] >= 8 or \
                     raw["saved_mode_84"] != raw["control_mode_saved"] or \
                     (not raw["pass_released"] and
                      actor["animation"] not in

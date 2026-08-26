@@ -1354,3 +1354,21 @@ Receiverless passes during state `$82` are now still restricted to the active
 inbound side, and the incomplete formation writer can select the first valid
 same-side teammate after the final 60-tick retry threshold. The 63,800-frame
 sustained regression passes without the former repeated five-second loop.
+
+### Increment 5T: ownerless two-substep ball physics
+
+A shared-exit Mesen capture at `$85:9A6A` recorded 500 entries through
+`$85:A7C7`. Raw `$093E` separates 252 ownerless calls from 248 owned-contact
+continuations that share the same entry and return boundary. The ownerless
+replay compares all represented fixed-point ball axes and velocities, live,
+pass, rim, score and event globals, plus RNG. The independently scheduled
+`$87:AA02` graphics-effect dispatcher and unrelated interrupt clock writes are
+outside this routine's owned-output set.
+
+Two non-contiguous owned ranges now replay with zero mismatches:
+`$85:9A6A-$A4F1` covers the rim/score/impact prefix, and
+`$85:A598-$A7C7` covers common integration, clamp, ground restitution,
+settle, the second substep, and final rim-latch cleanup. The replay found that
+negative-Y miss recoil had been reflected to the wrong side, made baskets had
+skipped `$85:A3D7` gravity on the detecting substep, and the local rim-state
+copyback erased `$85:A33C`'s score-event bit. All three now follow the ROM.
