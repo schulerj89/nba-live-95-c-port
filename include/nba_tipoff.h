@@ -155,6 +155,7 @@ typedef struct {
     int16_t play_selector_raw[3];/* `$09AA/$09AC/$09AE` */
     uint32_t simulation_tick;
     uint32_t actor_update_tick;
+    uint8_t actor_behavior_pending;
     uint16_t possession_frame;
     uint16_t play_state_frame;
     uint16_t possession_number;

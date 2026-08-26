@@ -910,74 +910,40 @@ static bool cpu_update_knockdown_actor(NbaTipoff *tipoff, unsigned slot) {
     return true;
 }
 
-static void cpu_move_actor(NbaTipoff *tipoff, unsigned slot) {
+/* `$87:9244/$9BD0` is a second ten-actor scheduler pass. It runs after the
+ * `$87:8EFB-$8F92 -> $85:963D` locomotion/physics loop and the intervening
+ * ball/contact work. Keeping the dispatcher separate means a new owner can
+ * receive its mode-11 target and velocity without retroactively moving in
+ * the already-completed physics pass. */
+static void cpu_dispatch_normal_actor_behavior(NbaTipoff *tipoff,
+                                               unsigned slot) {
     NbaTipoffActor *actor = &tipoff->actors[slot];
-    if (cpu_move_inbound_actor(tipoff, slot)) return;
+    if (!((actor->control_mode >= 1u && actor->control_mode <= 6u) ||
+          actor->control_mode == 11u)) return;
+
+    cpu_update_special_actor(tipoff, slot);
     if (actor->control_mode == 11u &&
         slot != (unsigned)tipoff->possession_actor) {
-        /* `$86:F3F6-$F40A`: a mode-11 actor that no longer matches `$093E`
-         * falls back to mode 1 on its next scheduled dispatch. */
+        /* `$86:F3F6-$F40A`: stale mode-11 actors normalize in the behavior
+         * pass, after their previous motion has already been committed. */
         actor->control_mode = 1u;
         actor->behavior_timer = 47u;
         actor->reaction_threshold = 0u;
         actor->behavior_flags_raw = 0u;
-        cpu_integrate_actor_vertical(actor);
-        return;
     }
-    if (actor->control_mode == 5u && slot != (unsigned)tipoff->possession_actor) {
-        /* `$86:F3F6-$F40A`: mode 5 belongs only to `$093E`. Every other
-         * actor falls back to mode 1 and clears the complete +$7E word. */
+    if (actor->control_mode == 5u &&
+        slot != (unsigned)tipoff->possession_actor) {
         actor->control_mode = 1u;
         actor->behavior_timer = 47u;
         actor->reaction_threshold = 0u;
         actor->behavior_flags_raw = 0u;
-        cpu_integrate_actor_vertical(actor);
-        return;
     }
-    cpu_update_special_actor(tipoff, slot);
-    if (actor->control_mode == 15u && cpu_update_rom_passer(tipoff, slot))
-        return;
-    if (actor->control_mode == 12u && cpu_update_rom_shooter(tipoff, slot))
-        return;
-    if (actor->control_mode == 13u && cpu_update_rom_layup(tipoff, slot))
-        return;
-    if (actor->control_mode == 10u && cpu_update_rom_receiver(tipoff, slot)) {
-        /* `$86:A5B0` (normal receiver) and `$86:B154` (special receiver)
-         * do not dispatch the generic formation accelerator. `$86:99C4`
-         * already led the pass by the receiver's existing velocity, so keep
-         * that motion through the common `$85:963D` coordinate commit. */
-        actor->x_fp += (int32_t)actor->velocity_x * 2;
-        actor->y_fp += (int32_t)actor->velocity_y * 2;
-        actor->movement_magnitude_raw = actor_distance(
-            actor->velocity_x, actor->velocity_y);
-        if (actor->reaction_threshold >= 2u)
-            actor->reaction_threshold -= 2u;
-        cpu_integrate_actor_vertical(actor);
-        return;
-    }
-    if (actor->control_mode == 14u &&
-        cpu_update_rom_special_receiver(tipoff, slot)) return;
-    if (cpu_update_knockdown_actor(tipoff, slot)) return;
-    if (cpu_apply_passive_mode(actor)) {
-        cpu_integrate_actor_vertical(actor);
-        return;
-    }
-    /* `$87:B572` resolves the pose from the velocity installed by the prior
-     * behavior pass. `$85:963D-$985F` then commits that velocity before the
-     * mode dispatcher can replace it for the next 30-Hz pass. Keeping this
-     * order is essential: calling A82C before every coordinate commit makes
-     * CPU actors skate and prevents the stationary owner table from choosing
-     * idle-dribble state 12. */
-    cpu_resolve_locomotion_animation(tipoff, slot);
-    actor->x_fp += (int32_t)actor->velocity_x * 2;
-    actor->y_fp += (int32_t)actor->velocity_y * 2;
-    cpu_integrate_actor_vertical(actor);
-    int x = fp_round(actor->x_fp), y = fp_round(actor->y_fp);
 
+    int x = fp_round(actor->x_fp), y = fp_round(actor->y_fp);
     /* `$86:E4A7-$E5A7` writes the next base pose during mode 11. The catcher
      * latch selects base 12 until movement clears it; an ordinary moving
      * owner uses base 5. `$86:E3CB-$E3DD` repairs special mode 1-6 bases.
-     * Both writes intentionally affect the next logical actor pass. */
+     * Both writes intentionally affect the next logical physics pass. */
     if (actor->control_mode == 11u) {
         actor->base_animation_state_raw_38 =
             tipoff->dead_ball_raw_0968 != 0u ||
@@ -1022,27 +988,17 @@ static void cpu_move_actor(NbaTipoff *tipoff, unsigned slot) {
         if (mode == 11u && tipoff->live_state_raw != 0x82u &&
                 slot == (unsigned)tipoff->possession_actor &&
                 actor->controller_assignment_raw < 0) {
-            /* `$86:F423-$F435`: B678 has a non-local consumed return for
-             * formation-only and mode-13 actions as well as shots. Only
-             * NORMAL_RETURN reaches the receiver/pass selector. */
             CpuMode11Outcome outcome = cpu_dispatch_rom_mode11(
                 tipoff, slot, &direction);
             if (outcome != CPU_MODE11_NORMAL_RETURN) {
                 if (actor->control_mode == 13u) {
-                    /* B34F supplied the complete vector for the next pass;
-                     * the common coordinate commit already ran above. */
                     ball_attach_to_actor(tipoff, slot);
                     actor->action_state = tipoff->cpu_play_state;
                     return;
                 }
-                /* Formation exits inside B678 have already selected the
-                 * AD6B direction and therefore execute its one A82C step.
-                 * Shot exits install their own motion/animation. */
                 apply_velocity_step =
                     outcome == CPU_MODE11_CONSUMED_ACTION && direction < 8u;
             } else {
-                /* `$86:F423-$F435`: +$7A suppresses ordinary AD6B steering,
-                 * but B678 above and B50E below still execute. */
                 if (actor->recovery_inhibit_raw == 0u) {
                     direction = cpu_formation_target_direction(tipoff, slot);
                     apply_velocity_step = true;
@@ -1051,19 +1007,13 @@ static void cpu_move_actor(NbaTipoff *tipoff, unsigned slot) {
                 bool special_receiver = selected >= 0 &&
                     (uint16_t)selected == tipoff->special_actor_raw;
                 if (selected >= 0) {
-                    /* `$85:B566`: a validated normal selector writes owner
-                     * +$60=1 before AB2D. B50E/AB2D never clear A2/AA/AC/AE.
-                     * A C false return only represents a still-unported AB2D
-                     * animation family, so retain mode 11 and retry it. */
                     if (!special_receiver) actor->reaction_threshold = 1u;
-                    if (cpu_begin_rom_pass(
-                            tipoff, slot, (unsigned)selected)) {
+                    if (cpu_begin_rom_pass(tipoff, slot, (unsigned)selected)) {
                         tipoff->receiver_actor = (uint8_t)selected;
                         tipoff->actors[selected].control_mode =
                             special_receiver ? 14u : 10u;
                         if (special_receiver) {
-                            NbaTipoffActor *receiver =
-                                &tipoff->actors[selected];
+                            NbaTipoffActor *receiver = &tipoff->actors[selected];
                             receiver->mode13_baseline_velocity_x =
                                 receiver->velocity_x;
                             receiver->mode13_baseline_velocity_y =
@@ -1082,8 +1032,7 @@ static void cpu_move_actor(NbaTipoff *tipoff, unsigned slot) {
         else if (tipoff->cpu_play_state != NBA_CPU_PLAY_REBOUND &&
                  (mode == 2u || mode == 4u || mode == 6u) &&
                  actor->recovery_inhibit_raw == 0u) {
-            (void)cpu_refresh_defense_target(
-                tipoff, slot, &stop_velocity);
+            (void)cpu_refresh_defense_target(tipoff, slot, &stop_velocity);
             direction = stop_velocity ? 8u : nba_gameplay_target_direction(
                 (int16_t)(actor->target_x - x),
                 (int16_t)(actor->target_y - y), NULL);
@@ -1098,8 +1047,6 @@ static void cpu_move_actor(NbaTipoff *tipoff, unsigned slot) {
     uint8_t profile_42 = 0x58u;
     (void)nba_player_gameplay_movement_profile(
         tipoff->assets, team, actor->roster_slot, &profile_42);
-    /* `$85:A82C-$AB16` is reached only by a due steering route. Positive
-     * decision-timer passes preserve the previous velocity verbatim. */
     if (apply_velocity_step)
         nba_gameplay_velocity_step(
             &actor->velocity_x, &actor->velocity_y,
@@ -1116,6 +1063,47 @@ static void cpu_move_actor(NbaTipoff *tipoff, unsigned slot) {
         actor->requested_direction = velocity_direction;
     }
     actor->action_state = tipoff->cpu_play_state;
+}
+
+static void cpu_move_actor(NbaTipoff *tipoff, unsigned slot) {
+    NbaTipoffActor *actor = &tipoff->actors[slot];
+    if (actor->control_mode == 15u && cpu_update_rom_passer(tipoff, slot))
+        return;
+    if (actor->control_mode == 12u && cpu_update_rom_shooter(tipoff, slot))
+        return;
+    if (actor->control_mode == 13u && cpu_update_rom_layup(tipoff, slot))
+        return;
+    if (actor->control_mode == 10u && cpu_update_rom_receiver(tipoff, slot)) {
+        /* `$86:A5B0` (normal receiver) and `$86:B154` (special receiver)
+         * do not dispatch the generic formation accelerator. `$86:99C4`
+         * already led the pass by the receiver's existing velocity, so keep
+         * that motion through the common `$85:963D` coordinate commit. */
+        actor->x_fp += (int32_t)actor->velocity_x * 2;
+        actor->y_fp += (int32_t)actor->velocity_y * 2;
+        actor->movement_magnitude_raw = actor_distance(
+            actor->velocity_x, actor->velocity_y);
+        if (actor->reaction_threshold >= 2u)
+            actor->reaction_threshold -= 2u;
+        cpu_integrate_actor_vertical(actor);
+        return;
+    }
+    if (actor->control_mode == 14u &&
+        cpu_update_rom_special_receiver(tipoff, slot)) return;
+    if (cpu_update_knockdown_actor(tipoff, slot)) return;
+    if (cpu_apply_passive_mode(actor)) {
+        cpu_integrate_actor_vertical(actor);
+        return;
+    }
+    /* `$87:B572` resolves the pose from the velocity installed by the prior
+     * behavior pass. `$85:963D-$985F` then commits that velocity before the
+     * mode dispatcher can replace it for the next 30-Hz pass. Keeping this
+     * order is essential: calling A82C before every coordinate commit makes
+     * CPU actors skate and prevents the stationary owner table from choosing
+     * idle-dribble state 12. */
+    cpu_resolve_locomotion_animation(tipoff, slot);
+    actor->x_fp += (int32_t)actor->velocity_x * 2;
+    actor->y_fp += (int32_t)actor->velocity_y * 2;
+    cpu_integrate_actor_vertical(actor);
 }
 
 static void ball_position_at_actor(NbaTipoff *tipoff, unsigned owner) {
@@ -4794,6 +4782,34 @@ static void cpu_update_all_actors(NbaTipoff *tipoff) {
     }
 }
 
+static void cpu_update_actor_behaviors(NbaTipoff *tipoff) {
+    for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
+        if (cpu_move_inbound_actor(tipoff, actor)) continue;
+        cpu_dispatch_normal_actor_behavior(tipoff, actor);
+    }
+}
+
+static void cpu_schedule_actor_behaviors(NbaTipoff *tipoff,
+                                         bool acquisition_boundary) {
+    /* `$87:9244` normally follows the even-tick physics/global passes. A
+     * BAA2 ownership install at that boundary can cross the outer-frame
+     * callback: Mesen sees its mode changes on the following odd frame, then
+     * the next even pass both consumes and replaces that motion. Preserve
+     * that single deferred dispatch without delaying every behavior pass. */
+    if ((tipoff->simulation_tick & 1u) == 0u) {
+        if (acquisition_boundary) {
+            tipoff->actor_behavior_pending = 1u;
+            return;
+        }
+        cpu_update_actor_behaviors(tipoff);
+        return;
+    }
+    if (tipoff->actor_behavior_pending != 0u) {
+        tipoff->actor_behavior_pending = 0u;
+        cpu_update_actor_behaviors(tipoff);
+    }
+}
+
 static int cpu_select_inbound_receiver(const NbaTipoff *tipoff,
                                        uint8_t inbounder) {
     for (unsigned i = 0; i < 3u; ++i) {
@@ -5384,6 +5400,7 @@ static void cpu_update_possession(NbaTipoff *tipoff) {
         cpu_update_player_contacts(tipoff);
         cpu_update_play_control(tipoff);
         cpu_refresh_team_roles_end_frame(tipoff);
+        cpu_update_actor_behaviors(tipoff);
         if (tipoff->possession_actor >= 0 &&
             tipoff->possession_actor < NBA_GAMEPLAY_ACTOR_COUNT &&
             tipoff->inbound_transfer_raw == 0u) {
@@ -5448,6 +5465,13 @@ static void cpu_update_possession(NbaTipoff *tipoff) {
     if (tipoff->possession_frame != 0u && tipoff->rim_raw_092c != 0u)
         --tipoff->rim_raw_092c;
     cpu_update_all_actors(tipoff);
+    /* `$87:8F7D -> $85:963D` completes all ten actor commits before the
+     * global jump-ball path reaches `$86:D3F9 -> $86:BAA2`. Installing the
+     * owner here preserves the frame-220 pose while making mode 11 visible
+     * to the following `$87:9244` behavior pass. */
+    bool jump_ball_acquisition = tipoff->frame == NBA_TIPOFF_BREAK_FRAME;
+    if (jump_ball_acquisition)
+        cpu_begin_possession(tipoff, 1u);
     NbaGameplayRimResult rim_result = cpu_update_live_ball(tipoff);
     cpu_update_player_contacts(tipoff);
     bool detached_contact = cpu_try_detached_shot_contact(tipoff);
@@ -5503,6 +5527,10 @@ static void cpu_update_possession(NbaTipoff *tipoff) {
             }
             break;
     }
+
+    cpu_schedule_actor_behaviors(
+        tipoff, jump_ball_acquisition ||
+        (tipoff->rim_raw_13e7 & 0x0010u) != 0u);
 
     ++tipoff->possession_frame;
     ++tipoff->play_state_frame;
@@ -5736,17 +5764,17 @@ void nba_tipoff_update(NbaTipoff *tipoff, const NbaInput *input) {
         cpu_update_tip_ball(tipoff);
     if (tipoff->frame == NBA_TIPOFF_POSSESSION_FRAME) {
         /* `$85:B100-$B28B` resolves the tip and writes play code $35.
-         * `$87:9244/$9BD0` then dispatches actor +$5E behavior modes. */
-        tipoff->possession_actor = 8;
+         * `$0946` selects actor 8 as the prospective receiver, but signed
+         * owner `$093E` remains FFFF through frame 219. `$86:D3F9/BAA2`
+         * installs actor 8 only after the frame-220 physics loop. */
+        tipoff->handler_actor = 8u;
+        tipoff->receiver_actor = 8u;
         tipoff->possession_team = 1;
         tipoff->camera_side_group_raw = 5u;
         tipoff->play_code = 0x35u;
         for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor)
             tipoff->actors[actor].control_mode = actor >= 5u ? 1u : 2u;
         tipoff->actors[8].control_mode = 10u;
-    }
-    if (tipoff->frame == NBA_TIPOFF_BREAK_FRAME) {
-        cpu_begin_possession(tipoff, 1u);
     }
     if (tipoff->frame >= NBA_TIPOFF_BREAK_FRAME) {
         cpu_update_possession(tipoff);
@@ -6045,9 +6073,15 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
             out->lower_resource_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
         }
         out->head_resource_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
-        out->motion_38_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
-        out->motion_3a_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
-        out->motion_3c_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
+        /* `$87:B572-$B648` consumes these exact actor words. Export the
+         * represented values instead of hiding them behind FFFF so a Mesen
+         * trace can distinguish locomotion-state errors from descriptor
+         * phase errors. `lower_animation_tick` is the port's raw +$3C
+         * timing accumulator; the resolved lower resource remains separate
+         * in `lower_resource_raw`. */
+        out->motion_38_raw = live ? state->base_animation_state_raw_38 : 0u;
+        out->motion_3a_raw = live ? state->upper_animation_phase_raw : 0u;
+        out->motion_3c_raw = live ? state->lower_animation_tick : 0u;
         out->direction_4e_raw = out->direction;
         out->direction_50_raw = state->requested_direction;
         out->direction_52_raw = out->direction;

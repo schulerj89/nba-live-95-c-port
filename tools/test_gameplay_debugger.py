@@ -55,6 +55,7 @@ def main():
         if any(actor["control"] != 0 for actor in sample["actors"]):
             raise AssertionError("tip-off introduced a human-controlled actor")
         required = {"base", "action", "flags", "control_mode", "side_group",
+                    "motion_38", "motion_3a", "motion_3c",
                     "target_x_56", "target_y_58", "mode_saved_62",
                     "pass_band_62", "pass_direction_66", "saved_mode_84",
                     "pass_family_c0", "pass_release_threshold", "pass_released",
@@ -66,6 +67,13 @@ def main():
                     "lower_restart", "behavior_flags"}
         if not required.issubset(sample["actors"][0]["raw"]):
             raise AssertionError("AI/actor raw telemetry schema is incomplete")
+        for actor in sample["actors"]:
+            raw = actor["raw"]
+            if raw["motion_38"] == 0xffff or \
+                    raw["motion_3a"] != raw["upper_phase"] or \
+                    raw["motion_3c"] != raw["lower_phase"]:
+                raise AssertionError(
+                    f"locomotion/animation raw telemetry diverged: {actor}")
         if len(sample["controllers"]["held_raw"]) != 5 or \
                 not {"raw_087a", "subject_raw", "side_group_raw"}.issubset(
                     sample["camera"]) or "flags_raw" not in sample["ball"]:
@@ -190,6 +198,7 @@ def main():
                    "play_step_raw", "play_selector_raw", "subject_raw",
                    "0x0964", "0x09bc", "0x492d", "0x492f",
                    "inbound_phase_raw", "inbound_target_x_raw",
+                   "lineup_base", "roster_slot", "0x46f9", "0x4779",
                    "0x85c37d", "0x86f43a", "0x86f64f"):
         if marker not in mesen:
             raise AssertionError(f"Mesen gameplay oracle lost {marker}")

@@ -382,6 +382,13 @@ local function dump_gameplay_jsonl(frame)
     gameplay_jsonl:write("],\"actors\":[")
     for actor = 0, 9 do
         local base = 0x34eb + actor * 0x100
+        -- `$86:D7B8-$D85D` builds actor records from the two active-lineup
+        -- word arrays. Actor index is not a roster index: the default ROM
+        -- order is 2,0,1,3,4 on each side. Reading the authoritative arrays
+        -- keeps the Mesen oracle comparable with the port's asset-backed
+        -- player/rating selection.
+        local lineup_base = actor < 5 and 0x46f9 or 0x4779
+        local roster_slot = word(lineup_base + (actor % 5) * 2)
         local screen = draw_screen[actor]
         local actor_x, actor_y, actor_z = signed_word(base + 4),
             signed_word(base + 8), signed_word(base + 12)
@@ -424,7 +431,7 @@ local function dump_gameplay_jsonl(frame)
             "\"lower_phase\":%u,\"behavior_flags\":%u," ..
             "\"palette\":%u}}",
             actor > 0 and "," or "", actor, actor >= 5 and 1 or 0,
-            actor % 5,
+            roster_slot,
             (not force_cpu_vs_cpu and possession_actor == actor) and 1 or 0,
             screen and "true" or "false", actor_x, actor_y, actor_z,
             screen and screen.x or -32768, screen and screen.y or -32768,

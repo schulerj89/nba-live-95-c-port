@@ -324,6 +324,21 @@ def main():
                        for actor in frame(220)["actors"]]
         if assignments != [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1]:
             raise AssertionError(f"actor +$16 ownership mapping changed: {assignments}")
+        jump_owner = frame(220)["actors"][8]
+        if (jump_owner["vx"], jump_owner["vy"],
+                jump_owner["raw"]["motion_38"], jump_owner["animation"]) != \
+                (0, 0, 0, 0):
+            raise AssertionError(
+                "$86:D3F9/$86:BAA2 acquisition ran mode 11 before the next "
+                f"$85:963D actor pass: {jump_owner}")
+        first_owner_pass = frame(222)["actors"][8]
+        if first_owner_pass["raw"]["control_mode"] != 11 or \
+                first_owner_pass["raw"]["motion_38"] != 5 or \
+                first_owner_pass["animation"] != 5 or \
+                (first_owner_pass["vx"] == 0 and first_owner_pass["vy"] == 0):
+            raise AssertionError(
+                "mode-11 owner did not begin locomotion on the next logical "
+                f"actor pass: {first_owner_pass}")
         if any(row["possession"]["play_request_raw"] not in (0, 1)
                for row in rows):
             raise AssertionError("$0994 escaped its word-boolean contract")
