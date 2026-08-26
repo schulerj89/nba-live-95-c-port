@@ -1,6 +1,6 @@
 # Project status
 
-Last updated 2026-08-25. This is a current-state handoff, not a milestone log.
+Last updated 2026-08-26. This is a current-state handoff, not a milestone log.
 Use Git history for older checkpoints and run
 `python tools/progress.py --write docs/progress.md` for live measurements.
 
@@ -17,8 +17,8 @@ Current measured coverage:
 | metric | bytes | % of observed executed code |
 |---|---:|---:|
 | observed executed code | 27,901 | 100.0% |
-| documented by ROM-address provenance | 8,492 | 30.4% |
-| verified against live ROM calls | 1,612 | 5.78% |
+| documented by ROM-address provenance | 8,575 | 30.7% |
+| verified against live ROM calls | 2,182 | 7.82% |
 
 These values are generated, not estimated. The detailed per-bank report is
 `docs/progress.md`; the authoritative verified list and evidence paths are in
@@ -26,7 +26,7 @@ These values are generated, not estimated. The detailed per-bank report is
 
 ## Verified gameplay checkpoint
 
-Twenty-two routines currently pass emulator-ground-truth replay. The most important
+Twenty-seven routine slices currently pass emulator-ground-truth replay. The most important
 recent slices are:
 
 - `$86:E4A7-$E592`: mode-11 owner/dribble gates, proximity selection, facing,
@@ -47,6 +47,11 @@ recent slices are:
   the fixed-point X projection carry and no-team hold.
 - `$85:A692-$A755`, `$85:B971-$B9D1`, `$85:F3C3-$F472`: court Y/clamp tail,
   reaction threshold/RNG, and fine pass direction.
+- `$85:96B5-$9961` (three owned slices): live actor vertical and planar
+  fixed-point commits, prior-position storage, movement distance,
+  doubled speed, facing, and velocity direction across both observed exits.
+- `$86:AB73-$AF4D`, `$86:A6B3-$A78F`: grounded pass initialization and the
+  mode-15 release core, including native receiver timers and reaction cadence.
 - `$86:E923-$E96E`, `$86:F0FD-$F1AF`: paired defensive target projection and
   loose-ball pursuit permission.
 
@@ -55,12 +60,13 @@ routine, `-128` contributes `-7`, not normal C truncation's `-8`. The port now
 matches all captured outputs. The 63,800-frame CPU-vs-CPU regression and its
 visual anchors pass at this checkpoint.
 
-The latest gameplay-path increment adds 572 observed-executed verified bytes,
-raising ground-truth coverage from 3.73% to 5.78% (+2.05 percentage points).
-Its six replays cover 3,817 live ROM calls with zero mismatches. They exposed
-and corrected the pre-possession camera hold, subpixel projection carry,
-offense-relative loose-ball pursuit gate, fixed-point clamp sequencing, and
-the X-only carried ADC in paired defensive target placement.
+The latest gameplay-path increment adds 570 observed-executed verified bytes,
+raising ground-truth coverage from 5.78% to 7.82% (+2.04 percentage points).
+Its actor/pass replays cover 1,105 live ROM calls with zero owned-output
+mismatches. They exposed and corrected actor 8.8-to-16.16 velocity scaling,
+zero-velocity direction preservation, pass-coordinate truncation, the native
+10-tick release reaction, pose-resource `+$66` ownership, and two pass-pose
+selection branches.
 
 Do not infer that a surrounding routine is verified from one verified slice.
 Only ranges present in `docs/verified-routines.json` count as ground-truth
@@ -86,6 +92,9 @@ See `tools/README.md` for capture, replay, Ghidra, and regression commands.
 
 - Capture enough calls to verify the rare latched owner/CPU pose branch at
   `$86:E4F5-$E544`; the existing six-call sample is insufficient.
+- Replace the still-simplified `$85:BC07-$C0F5` defense-role refresh. Its new
+  26-call oracle currently fails all calls, proving that assignment cadence,
+  `+$74/+$76` rebuild state, and coarse anchor direction remain incomplete.
 - Continue converting small post-tip CPU decision/animation slices from the
   recomp and Ghidra, re-verifying after each increment.
 - Expand ball physics, scoring, and CPU decisions beyond the early-gameplay

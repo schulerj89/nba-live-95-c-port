@@ -233,4 +233,12 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
                                   const NbaInput *input,
                                   NbaGameplayTelemetry *telemetry);
 
+/* ROM-vector replay boundaries. Runtime gameplay uses these same functions;
+ * they are public so captured native calls can be replayed without copying
+ * their decision logic into a test-only model. */
+bool nba_tipoff_begin_rom_pass(NbaTipoff *tipoff, unsigned passer_slot,
+                               unsigned receiver_slot);
+bool nba_tipoff_update_rom_passer(NbaTipoff *tipoff, unsigned slot);
+void nba_tipoff_refresh_team_roles_end_frame(NbaTipoff *tipoff);
+
 #endif

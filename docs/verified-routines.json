@@ -176,6 +176,46 @@
       "method": "function-vectors",
       "evidence": ".analysis/func-vectors-loose_pursuit_gate-20260825 (748 live calls, 0 mismatches, 0 orphan exits; 86 allowed and 662 rejected calls across both exits)",
       "date": "2026-08-25"
+    },
+    {
+      "range": "8596B5-85973A",
+      "name": "nba_gameplay_actor_commit (vertical integration)",
+      "source": "src/nba_gameplay_ai.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-actor-commit-live-20260826 (990 delayed live-game calls, 0 mismatches, 0 orphan exits; split Z fraction/integer and vertical velocity compared)",
+      "date": "2026-08-26"
+    },
+    {
+      "range": "859791-85985F",
+      "name": "nba_gameplay_actor_commit (planar integration)",
+      "source": "src/nba_gameplay_ai.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-actor-commit-live-20260826 (990 delayed live-game calls, 0 mismatches, 0 orphan exits; prior/current split X/Y positions, velocities and scratch word compared; edge predicates checked by integration regression)",
+      "date": "2026-08-26"
+    },
+    {
+      "range": "859893-859961",
+      "name": "nba_gameplay_actor_commit (movement vector commit)",
+      "source": "src/nba_gameplay_ai.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-actor-commit-live-20260826 (990 delayed live-game calls, 0 mismatches, 0 orphan exits; 979 grounded/common and 11 alternate exits; distance, doubled speed, facing and velocity direction compared)",
+      "date": "2026-08-26"
+    },
+    {
+      "range": "86A6B3-86A78F",
+      "name": "nba_tipoff_update_rom_passer (release core)",
+      "source": "src/nba_tipoff.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-pass-release-20260826 (100 live calls, 0 core mismatches, 0 orphan exits; 35 non-owner cleanup, 18 release/abort and 47 wait calls; external attachment/detachment writes excluded)",
+      "date": "2026-08-26"
+    },
+    {
+      "range": "86AB73-86AF4D",
+      "name": "nba_tipoff_begin_rom_pass (grounded initializer core)",
+      "source": "src/nba_tipoff.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-pass-init-core-20260826 (15 live grounded calls, 0 core mismatches, 0 orphan exits; fixed-point prediction, distance/band, side/aligned selection, families -1/1/5, six selected upper poses, receiver timers and global state compared; external pose-resource +$66 write excluded)",
+      "date": "2026-08-26"
     }
   ]
 }

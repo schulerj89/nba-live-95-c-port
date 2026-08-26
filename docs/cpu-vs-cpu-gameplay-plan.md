@@ -1311,3 +1311,28 @@ also preserves the running `$092E` timer and reached-arrival state; only the
 first dead-ball pickup seeds 300. The 63,800-frame regression now completes
 with sustained CPU decisions, movement, passes, shots, scores, inbound
 retries, and no dead-ball interval above 2,400 frames.
+
+### Increment 5R: common actor commit and grounded pass lifecycle
+
+A delayed live-game Mesen capture now covers 990 calls through the common
+`$85:963D` actor commit, rather than the earlier presentation-idle sample.
+Three owned slices—`$85:96B5-$973A`, `$85:9791-$985F`, and
+`$85:9893-$9961`—replay with zero mismatches across 979 common and 11
+alternate exits. The shared production helper preserves the ROM's split
+16.16 positions, converts signed 8.8 velocity with the required eight-bit
+scale, stores prior X/Y words, applies the signed edge gates, and commits distance, doubled
+speed, facing, and velocity direction. A zero velocity preserves `+$A2`;
+writing direction 8 there was a C-only behavior.
+
+The grounded pass initializer `$86:AB73-$AF4D` now matches 15 live calls and
+six observed upper-pose outcomes. Position prediction reads the signed integer
+word instead of rounding subpixels. Actor `+$66` remains owned by the called
+pose-resource resolver, captured inbound layout 5 selects `$2B`, and the
+fine-relative side branch selects the corrected `$2D/$2E` pose. The release
+core `$86:A6B3-$A78F` matches 100 calls across non-owner cleanup, wait,
+release, and edge-abort paths; ordinary pass families install the native
+10-tick passer reaction.
+
+The adjacent `$85:BC07-$C0F5` defense-role refresh is deliberately not marked
+verified: its 26-call replay currently fails and remains the next substantial
+assignment/cadence conversion rather than being hidden behind this increment.

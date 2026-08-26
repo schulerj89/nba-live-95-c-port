@@ -52,7 +52,10 @@ reports success.
   `<label>.vectors.jsonl` — ground truth for replaying through the C port
   function and diffing outputs. `NBA95_VEC_DRIVE=1` drives the verified
   Exhibition path into live gameplay first (with `NBA95_CPU_VS_CPU=1` for
-  CPU-controlled teams) and records only on-court calls. A ported routine is
+  CPU-controlled teams) and records only on-court calls. Set
+  `NBA95_VEC_DELAY` to skip that many driven gameplay frames before arming a
+  capture when presentation-idle calls would otherwise exhaust `MAX_CALLS`.
+  A ported routine is
   *verified* when all its captured vectors pass.
 - `verify_func_vectors.py`: replays a vector capture through a small C probe
   built against the real port sources and diffs each output word against the
@@ -110,6 +113,13 @@ reports success.
   `verify_lane_clear_vectors.py` normalizes the linked-list player scan at
   `$85:F5E4-$F727` into ten actor records and compares the native blocked/clear
   result for both basket orientations.
+  `verify_actor_commit_vectors.py` replays delayed moving-player calls through
+  the split 16.16 `$85:96B5-$9961` commit. `verify_pass_init_vectors.py` and
+  `verify_pass_release_vectors.py` cover the grounded `$86:AB73-$AF4D`
+  initializer and `$86:A6B3-$A78F` mode-15 release core. The neighboring
+  `verify_defense_refresh_vectors.py` is intentionally retained as a failing
+  oracle until `$85:BC07-$C0F5` is fully translated; it must not be entered in
+  the verified ledger while mismatches remain.
 - `trace_hash.py`: freezes a lockstep-passing gameplay JSONL trace as compact
   per-frame golden hashes (`--write-golden`), then re-verifies later runs
   cheaply (`--golden`), reporting the first divergent scene frame. Field-level

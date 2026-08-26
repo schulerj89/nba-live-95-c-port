@@ -1261,6 +1261,78 @@ bool nba_gameplay_same_x_half(int16_t actor_x, int16_t context_anchor_x) {
     return (int16_t)((uint16_t)actor_x ^ (uint16_t)context_anchor_x) >= 0;
 }
 
+static void actor_commit_axis(uint16_t *fraction, int16_t *integer,
+                              int16_t velocity, uint16_t dispatch_dt) {
+    uint32_t raw = ((uint32_t)(uint16_t)*integer << 16) | *fraction;
+    /* Velocity is signed 8.8 while the split position is signed 16.16. */
+    raw += (uint32_t)((int32_t)velocity * (int32_t)dispatch_dt * 256);
+    *fraction = (uint16_t)raw;
+    *integer = (int16_t)(raw >> 16);
+}
+
+/* `$85:96B5-$9961`: common actor Z/planar fixed-point integration and
+ * movement-vector commit. The animation landing callbacks at `$85:9741`
+ * remain with the mode executors; this function owns the arithmetic shared
+ * by every ordinary actor pass. `$85:98F4` may very rarely suppress a facing
+ * write after consuming `$80:8930`; the caller supplies that already-resolved
+ * branch so the physics helper itself consumes no RNG out of order. */
+void nba_gameplay_actor_commit(NbaGameplayActorCommit *actor,
+                               uint16_t dispatch_dt,
+                               bool update_ground_facing) {
+    if (!actor) return;
+    if (actor->z_fraction != 0u || actor->z != 0 || actor->velocity_z != 0) {
+        actor->velocity_z = (int16_t)(
+            (uint16_t)actor->velocity_z - (uint16_t)(0x18u * dispatch_dt));
+        actor_commit_axis(&actor->z_fraction, &actor->z,
+                          actor->velocity_z, dispatch_dt);
+        if (actor->z < 0) {
+            actor->z_fraction = 0u;
+            actor->z = 0;
+            actor->velocity_z = 0;
+        }
+    }
+
+    actor->previous_x_fraction_raw_94 = actor->x_fraction;
+    actor->previous_x_raw_96 = actor->x;
+    actor->previous_y_fraction_raw_98 = actor->y_fraction;
+    actor->previous_y_raw_9a = actor->y;
+    actor->planar_scratch_raw_a0 = 0u;
+    actor_commit_axis(&actor->x_fraction, &actor->x,
+                      actor->velocity_x, dispatch_dt);
+    if (actor->x >= 0x018A) {
+        actor->x = 0x018A;
+        actor->x_fraction = 0u;
+        actor->velocity_x = 0;
+    } else if (actor->x < -0x018A) {
+        actor->x = -0x018A;
+        actor->x_fraction = 0u;
+        actor->velocity_x = 0;
+    }
+    actor_commit_axis(&actor->y_fraction, &actor->y,
+                      actor->velocity_y, dispatch_dt);
+    if (actor->y >= 0x00E0) {
+        actor->y = 0x00E0;
+        actor->y_fraction = 0u;
+        actor->velocity_y = 0;
+    } else if (actor->y < -0x00E0) {
+        actor->y = -0x00E0;
+        actor->y_fraction = 0u;
+        actor->velocity_y = 0;
+    }
+
+    uint16_t distance = 0u;
+    uint8_t direction = nba_gameplay_target_direction(
+        actor->velocity_x, actor->velocity_y, &distance);
+    actor->movement_distance_raw_4c = distance;
+    actor->speed_raw_4a = (uint16_t)(distance << 1);
+    if (direction != 8u)
+        actor->velocity_direction_raw_a2 = direction;
+    if (actor->z_fraction == 0u && actor->z == 0 &&
+        (actor->behavior_flags_raw_7e & 2u) == 0u &&
+        direction != 8u && update_ground_facing)
+        actor->facing_raw_4e = direction;
+}
+
 /* `$85:B13F-$B16A`: when a play request is consumed, update the opposing
  * `$46EB/$476B` context mode. The score comparison is the 65816 subtraction
  * N bit, not C's unsigned less-than and not an overflow-corrected compare. */

@@ -21,6 +21,19 @@ EXPECTED_RGB = {
 }
 
 
+def native_target_distance(dx, dy):
+    """Distance word returned by verified `$85:F347-$F3BA`."""
+    def signed16(value):
+        value &= 0xFFFF
+        return value - 0x10000 if value & 0x8000 else value
+
+    x = (-dx if dx < 0 else dx) & 0xFFFF
+    y = (-dy if dy < 0 else dy) & 0xFFFF
+    if signed16(y - 1) <= signed16(x):
+        x, y = y, x
+    return (y + (((x << 1) & 0xFFFF) >> 3)) & 0xFFFF
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--pack", required=True)
@@ -454,8 +467,11 @@ def main():
                               "movement_magnitude_4c", "recovery_inhibit_7a"):
                     if field not in raw:
                         raise AssertionError(f"missing actor raw field {field}")
-                expected_magnitude = max(abs(actor["vx"]), abs(actor["vy"])) + \
+                resolver_magnitude = max(abs(actor["vx"]), abs(actor["vy"])) + \
                     min(abs(actor["vx"]), abs(actor["vy"])) // 4
+                commit_magnitude = native_target_distance(
+                    actor["vx"], actor["vy"])
+                expected_magnitudes = {resolver_magnitude, commit_magnitude}
                 # `+$4C` is written by the velocity resolver and remains
                 # latched if a later branch zeros/skips velocity that frame.
                 # `$86:BD41/$BF0B` likewise rewrites planar velocity after
@@ -479,14 +495,15 @@ def main():
                     (previous is not None and
                      previous["collision"]["player_count"] != 0)
                 if (actor["vx"] or actor["vy"]) and \
-                        raw["movement_magnitude_4c"] != expected_magnitude and \
+                        raw["movement_magnitude_4c"] not in expected_magnitudes and \
                         not on_rectangular_edge and not on_isometric_edge and \
                         stable_movement_mode and not post_resolver_contact and \
                         row["fouls"]["free_throw_state_raw"] == 0:
                     raise AssertionError(
                         f"actor +$4C magnitude changed at frame {row['frame']} "
                         f"actor {actor['id']}: {raw['movement_magnitude_4c']} "
-                        f"!= {expected_magnitude}; collision={row['collision']}")
+                        f"not in {sorted(expected_magnitudes)}; "
+                        f"collision={row['collision']}")
                 mode = actor["raw"]["control_mode"]
                 if row["fouls"]["free_throw_state_raw"] == 0 and \
                         (mode >= len(behavior_targets) or
@@ -1063,7 +1080,8 @@ def main():
                    "$86:E82F-$E8F6", "$86:E8F7-$E922",
                    "nba_gameplay_defense_pair_target",
                    "nba_gameplay_defense_mode_target",
-                   "$87:8FA1-$8FA9", "cpu_refresh_team_roles_end_frame",
+                   "$87:8FA1-$8FA9",
+                   "nba_tipoff_refresh_team_roles_end_frame",
                    "$85:A5F4-$A655", "nba_gameplay_ball_apply_settle",
                    "$85:A43A-$A44B",
                    "nba_gameplay_ball_apply_ground_impact",
@@ -1071,10 +1089,10 @@ def main():
                    "nba_gameplay_effect_step",
                    "$86:AB2D-$AF65", "$86:A6B3-$A790",
                    "$86:9DDB-$9DE4", "$86:9B84-$9B8F",
-                   "nba_gameplay_pass_direction", "cpu_begin_rom_pass",
+                   "nba_gameplay_pass_direction", "nba_tipoff_begin_rom_pass",
                    "nba_gameplay_select_pass_receiver",
                    "$85:B50E-$B60A", "$85:B60B-$B677",
-                   "cpu_update_rom_passer",
+                   "nba_tipoff_update_rom_passer",
                    "$86:D035-$D205", "nba_gameplay_owned_contact_attempt",
                    "cpu_try_owned_ball_contact",
                    "$86:D5DB", "$86:D652-$D728", "$86:BD41-$BF08",

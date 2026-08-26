@@ -79,7 +79,7 @@ static void ball_attach_to_actor(NbaTipoff *tipoff, unsigned owner);
 static void ball_launch(NbaTipoff *tipoff, int target_x, int target_y,
                         unsigned flight_frames, int vertical_velocity,
                         NbaBallMode mode);
-static bool cpu_update_rom_passer(NbaTipoff *tipoff, unsigned slot);
+bool nba_tipoff_update_rom_passer(NbaTipoff *tipoff, unsigned slot);
 static void cpu_enter_play_state(NbaTipoff *tipoff, NbaCpuPlayState state);
 static CpuMode11Outcome cpu_dispatch_rom_mode11(NbaTipoff *tipoff,
                                                  unsigned slot,
@@ -346,17 +346,19 @@ static uint8_t pass_band_from_distance(uint16_t distance) {
 /* `$86:AB2D-$AF65`: grounded mode-15 setup. This includes the aligned
  * `$2A-$2C` selector at `$86:AE52-$AED7`; airborne `$AFC4` and catch-preinit
  * `$AF66` still depend on raw writers not represented by the port. */
-static bool cpu_begin_rom_pass(NbaTipoff *tipoff, unsigned passer_slot,
+bool nba_tipoff_begin_rom_pass(NbaTipoff *tipoff, unsigned passer_slot,
                                unsigned receiver_slot) {
     NbaTipoffActor *passer = &tipoff->actors[passer_slot];
     NbaTipoffActor *receiver = &tipoff->actors[receiver_slot];
-    int16_t passer_x = (int16_t)(fp_round(passer->x_fp) +
+    /* `$86:AB83-$ABE5` reads the signed integer position words directly;
+     * subpixel bytes do not round either endpoint before the velocity lead. */
+    int16_t passer_x = (int16_t)(fp_integer_word(passer->x_fp) +
         pass_predict_component(passer->velocity_x, 4u));
-    int16_t passer_y = (int16_t)(fp_round(passer->y_fp) +
+    int16_t passer_y = (int16_t)(fp_integer_word(passer->y_fp) +
         pass_predict_component(passer->velocity_y, 4u));
-    int16_t receiver_x = (int16_t)(fp_round(receiver->x_fp) +
+    int16_t receiver_x = (int16_t)(fp_integer_word(receiver->x_fp) +
         pass_predict_component(receiver->velocity_x, 3u));
-    int16_t receiver_y = (int16_t)(fp_round(receiver->y_fp) +
+    int16_t receiver_y = (int16_t)(fp_integer_word(receiver->y_fp) +
         pass_predict_component(receiver->velocity_y, 3u));
     uint16_t distance = 0u;
     uint8_t fine = nba_gameplay_pass_direction(
@@ -366,8 +368,9 @@ static bool cpu_begin_rom_pass(NbaTipoff *tipoff, unsigned passer_slot,
     if (pass_direction >= 8u) return false;
 
     uint8_t band = pass_band_from_distance(distance);
-    uint8_t relative = (uint8_t)((pass_direction - passer->direction) & 7u);
-    if (fp_round(passer->z_fp) != 0) return false;
+    uint8_t relative = (uint8_t)(
+        (pass_direction - passer->movement_direction) & 7u);
+    if (fp_integer_word(passer->z_fp) != 0) return false;
     uint8_t upper = 0u;
     int16_t family = -1;
     bool airborne_family = false;
@@ -422,30 +425,34 @@ static bool cpu_begin_rom_pass(NbaTipoff *tipoff, unsigned passer_slot,
             int selector = relative;
             if (relative == 4u) {
                 uint8_t fine_relative = (uint8_t)(
-                    (fine - passer->direction - passer->direction) & 15u);
+                    (fine - passer->movement_direction -
+                     passer->movement_direction) & 15u);
                 if (fine_relative == 8u) {
-                    passer->direction = (uint8_t)((passer->direction + 1u) & 7u);
-                    relative = (uint8_t)((pass_direction - passer->direction) & 7u);
+                    passer->movement_direction = (uint8_t)(
+                        (passer->movement_direction + 1u) & 7u);
+                    relative = (uint8_t)(
+                        (pass_direction - passer->movement_direction) & 7u);
                     selector = relative;
-                } else selector = fine_relative == 9u ? 5 : 3;
+                } else selector = fine_relative == 9u ? 3 : 5;
             }
             int16_t sign_test = (int16_t)(selector * 2 - 7);
-            if (passer->direction < 3u) sign_test = (int16_t)~sign_test;
+            if (passer->movement_direction < 3u)
+                sign_test = (int16_t)~sign_test;
             upper = sign_test < 0 ? 0x2Eu : 0x2Du;
         }
     } else {
         /* `$86:AE10-$AE4F`: off-axis route. */
         int selector = relative;
         if (relative == 0u) {
-            selector = (fine - passer->direction - passer->direction) & 15u;
+            selector = (fine - passer->movement_direction -
+                        passer->movement_direction) & 15u;
             if (selector == 0) {
-                /* `$86:AE52-$AED7`: the inbound layouts 2..4 force the
+                /* `$86:AE52-$AED7`: captured inbound layout 5 forces the
                  * straight-ahead `$2B` family. This is the route reached by
                  * `$86:F43A-$F653` after a made basket. It deliberately
                  * retains the common `$28` receiver timer seeded above. */
                 if (tipoff->live_state_raw == 0x82u &&
-                    tipoff->inbound_layout_raw >= 2 &&
-                    tipoff->inbound_layout_raw < 5) {
+                    tipoff->inbound_layout_raw == 5) {
                     upper = 0x2Bu;
                     family = -1;
                 } else {
@@ -460,7 +467,7 @@ static bool cpu_begin_rom_pass(NbaTipoff *tipoff, unsigned passer_slot,
         }
         if (upper == 0u) {
             bool choose_30 = selector < 3;
-            if (passer->direction < 3u) choose_30 = !choose_30;
+            if (passer->movement_direction < 3u) choose_30 = !choose_30;
             upper = choose_30 ? 0x30u : 0x31u;
         }
     }
@@ -469,7 +476,8 @@ static bool cpu_begin_rom_pass(NbaTipoff *tipoff, unsigned passer_slot,
     if (!airborne_family && !nba_assets_gameplay_pass_release_threshold(
             tipoff->assets, upper, &threshold)) return false;
     passer->pass_band_raw = (uint16_t)(band * 6u);
-    passer->pass_direction_raw = pass_direction;
+    /* +$66 is animation-resource state, not the coarse pass direction.
+     * `$87:B47A/$B649` may rewrite it while resolving the selected pose. */
     passer->pass_family_raw = family;
     passer->pass_release_threshold_raw = threshold;
     passer->pass_released_raw = false;
@@ -1016,7 +1024,8 @@ static void cpu_dispatch_normal_actor_behavior(NbaTipoff *tipoff,
                     (uint16_t)selected == tipoff->special_actor_raw;
                 if (selected >= 0) {
                     if (!special_receiver) actor->reaction_threshold = 1u;
-                    if (cpu_begin_rom_pass(tipoff, slot, (unsigned)selected)) {
+                    if (nba_tipoff_begin_rom_pass(
+                            tipoff, slot, (unsigned)selected)) {
                         tipoff->receiver_actor = (uint8_t)selected;
                         tipoff->actors[selected].control_mode =
                             special_receiver ? 14u : 10u;
@@ -1075,7 +1084,8 @@ static void cpu_dispatch_normal_actor_behavior(NbaTipoff *tipoff,
 
 static void cpu_move_actor(NbaTipoff *tipoff, unsigned slot) {
     NbaTipoffActor *actor = &tipoff->actors[slot];
-    if (actor->control_mode == 15u && cpu_update_rom_passer(tipoff, slot))
+    if (actor->control_mode == 15u &&
+        nba_tipoff_update_rom_passer(tipoff, slot))
         return;
     if (actor->control_mode == 12u && cpu_update_rom_shooter(tipoff, slot))
         return;
@@ -1109,9 +1119,32 @@ static void cpu_move_actor(NbaTipoff *tipoff, unsigned slot) {
      * CPU actors skate and prevents the stationary owner table from choosing
      * idle-dribble state 12. */
     cpu_resolve_locomotion_animation(tipoff, slot);
-    actor->x_fp += (int32_t)actor->velocity_x * 2;
-    actor->y_fp += (int32_t)actor->velocity_y * 2;
-    cpu_integrate_actor_vertical(actor);
+    NbaGameplayActorCommit commit = {
+        .x_fraction = (uint16_t)((uint16_t)actor->x_fp << 8),
+        .y_fraction = (uint16_t)((uint16_t)actor->y_fp << 8),
+        .z_fraction = (uint16_t)((uint16_t)actor->z_fp << 8),
+        .x = (int16_t)(actor->x_fp >> 8),
+        .y = (int16_t)(actor->y_fp >> 8),
+        .z = (int16_t)(actor->z_fp >> 8),
+        .velocity_x = actor->velocity_x,
+        .velocity_y = actor->velocity_y,
+        .velocity_z = actor->velocity_z,
+        .behavior_flags_raw_7e = actor->behavior_flags_raw,
+        .speed_raw_4a = (uint16_t)(actor->movement_magnitude_raw << 1),
+        .movement_distance_raw_4c = actor->movement_magnitude_raw,
+        .facing_raw_4e = actor->movement_direction,
+        .velocity_direction_raw_a2 = actor->velocity_direction_raw_a2
+    };
+    nba_gameplay_actor_commit(&commit, 2u, true);
+    actor->x_fp = (int32_t)commit.x * 256 + (commit.x_fraction >> 8);
+    actor->y_fp = (int32_t)commit.y * 256 + (commit.y_fraction >> 8);
+    actor->z_fp = (int32_t)commit.z * 256 + (commit.z_fraction >> 8);
+    actor->velocity_x = commit.velocity_x;
+    actor->velocity_y = commit.velocity_y;
+    actor->velocity_z = commit.velocity_z;
+    actor->movement_magnitude_raw = commit.movement_distance_raw_4c;
+    actor->velocity_direction_raw_a2 = commit.velocity_direction_raw_a2;
+    actor->movement_direction = commit.facing_raw_4e;
 }
 
 static void ball_position_at_actor(NbaTipoff *tipoff, unsigned owner) {
@@ -2952,7 +2985,7 @@ static bool cpu_update_rom_shooter(NbaTipoff *tipoff, unsigned slot) {
 /* `$86:A6B3-$A790`: only the owner advances mode 15's release gate. The
  * ROM reattaches through `$87:B649` while threshold >= actor +$3A, then
  * dispatches `$86:99C4` with family selected by signed actor +$C0. */
-static bool cpu_update_rom_passer(NbaTipoff *tipoff, unsigned slot) {
+bool nba_tipoff_update_rom_passer(NbaTipoff *tipoff, unsigned slot) {
     NbaTipoffActor *passer = &tipoff->actors[slot];
     /* `$86:A6B3-$A6C7`: a mode-15 actor that no longer matches ownership
      * `$093E` counts +$60 down at the logical-pass delta. On underflow,
@@ -3048,6 +3081,10 @@ static bool cpu_update_rom_passer(NbaTipoff *tipoff, unsigned slot) {
     tipoff->pass_active_raw = 0u;
     ball_launch(tipoff, target_x, target_y, (unsigned)duration,
                 vertical, NBA_BALL_PASS);
+    /* `$86:A761-$A76C`: ordinary families retain a ten-tick post-release
+     * actor timer. Airborne families 4/5 bypass this write. */
+    if (passer->pass_family_raw < 4)
+        passer->reaction_threshold = 0x0Au;
     /* `$86:9B84-$9B8F`: `$99C4` closes the temporary pass-init state 2
      * before normal live ball processing resumes. Leaving it set makes
      * `$85:9D40` reject an otherwise centered basket. */
@@ -3118,7 +3155,7 @@ static bool cpu_boundary_pass_recovery_self_test(void) {
     state.actors[3].actor_status_raw_28 = 0xFFFFu;
     state.actors[3].upper_animation_phase_raw = 2u;
     state.actors[3].pass_release_threshold_raw = 1u;
-    if (!cpu_update_rom_passer(&state, 3u) ||
+    if (!nba_tipoff_update_rom_passer(&state, 3u) ||
         state.actors[3].control_mode != 11u ||
         state.actors[3].reaction_threshold != 0u ||
         state.actors[3].behavior_flags_raw != 0u ||
@@ -3133,10 +3170,10 @@ static bool cpu_boundary_pass_recovery_self_test(void) {
     state.actors[2].reaction_threshold = 2u;
     state.actors[2].behavior_flags_raw = 6u;
     state.actors[2].actor_status_raw_28 = 0xFFFFu;
-    if (!cpu_update_rom_passer(&state, 2u) ||
+    if (!nba_tipoff_update_rom_passer(&state, 2u) ||
         state.actors[2].control_mode != 15u ||
         state.actors[2].reaction_threshold != 0u) return false;
-    if (!cpu_update_rom_passer(&state, 2u) ||
+    if (!nba_tipoff_update_rom_passer(&state, 2u) ||
         state.actors[2].control_mode != 1u ||
         state.actors[2].behavior_timer != 0x2Fu ||
         state.actors[2].reaction_threshold != 0u ||
@@ -3176,8 +3213,9 @@ static bool cpu_boosted_pass_self_test(const NbaAssetPack *assets,
     uint16_t distance = 0u;
     uint8_t fine = nba_gameplay_pass_direction(380, 0, &distance);
     if (fine >= 16u || distance < 0x119u) return false;
-    state.actors[0].direction = (uint8_t)(((fine >> 1) + 4u) & 7u);
-    if (!cpu_begin_rom_pass(&state, 0u, 1u) ||
+    state.actors[0].movement_direction =
+        (uint8_t)(((fine >> 1) + 4u) & 7u);
+    if (!nba_tipoff_begin_rom_pass(&state, 0u, 1u) ||
         state.actors[0].control_mode != 15u ||
         state.actors[1].control_mode != 10u ||
         state.actors[1].reaction_threshold != 0x46u ||
@@ -3188,11 +3226,11 @@ static bool cpu_boosted_pass_self_test(const NbaAssetPack *assets,
         state.pass_active_raw != 1u) return false;
     for (unsigned pass = 0u; pass < 32u &&
             state.actors[0].pass_family_raw == 2; ++pass)
-        (void)cpu_update_rom_passer(&state, 0u);
+        (void)nba_tipoff_update_rom_passer(&state, 0u);
     if (state.actors[0].pass_family_raw != 4 ||
         state.actors[0].animation_state != 0x2Cu ||
         state.actors[0].lower_animation_state != 0x24u) return false;
-    (void)cpu_update_rom_passer(&state, 0u);
+    (void)nba_tipoff_update_rom_passer(&state, 0u);
     return state.actors[0].pass_released_raw &&
            state.ball.state == NBA_BALL_PASS &&
            state.ball.owner_actor < 0 && state.pass_active_raw == 0u;
@@ -4603,7 +4641,7 @@ static bool cpu_defensive_planner_self_test(void) {
     return true;
 }
 
-static void cpu_refresh_team_roles_end_frame(NbaTipoff *tipoff) {
+void nba_tipoff_refresh_team_roles_end_frame(NbaTipoff *tipoff) {
     /* `$87:8FA1-$8FA9` calls `$85:AF5C`, then `$85:BC07`, once after all
      * ten actor dispatches. AF5C normalizes only modes below 7 on offense;
      * BC07 does the same for defense, then promotes the owner's assigned
@@ -5382,7 +5420,8 @@ static void cpu_update_rom_inbound(NbaTipoff *tipoff) {
     actor->reaction_threshold = 1u; /* `$86:F60B-$F610` */
     if (!cpu_inbound_side_gate(
             tipoff, inbounder, (uint8_t)candidate)) return;
-    if (cpu_begin_rom_pass(tipoff, inbounder, (unsigned)candidate)) {
+    if (nba_tipoff_begin_rom_pass(
+            tipoff, inbounder, (unsigned)candidate)) {
         tipoff->receiver_actor = (uint8_t)candidate;
         cpu_enter_play_state(tipoff, NBA_CPU_PLAY_PASS);
     }
@@ -5477,7 +5516,7 @@ static void cpu_update_possession(NbaTipoff *tipoff) {
         (void)cpu_update_live_ball(tipoff);
         cpu_update_player_contacts(tipoff);
         cpu_update_play_control(tipoff);
-        cpu_refresh_team_roles_end_frame(tipoff);
+        nba_tipoff_refresh_team_roles_end_frame(tipoff);
         cpu_update_actor_behaviors(tipoff);
         if (tipoff->possession_actor >= 0 &&
             tipoff->possession_actor < NBA_GAMEPLAY_ACTOR_COUNT &&
@@ -5555,7 +5594,7 @@ static void cpu_update_possession(NbaTipoff *tipoff) {
     bool detached_contact = cpu_try_detached_shot_contact(tipoff);
     if (!detached_contact) (void)cpu_try_owned_ball_contact(tipoff);
     cpu_update_play_control(tipoff);
-    cpu_refresh_team_roles_end_frame(tipoff);
+    nba_tipoff_refresh_team_roles_end_frame(tipoff);
 
     switch ((NbaCpuPlayState)tipoff->cpu_play_state) {
         case NBA_CPU_PLAY_BREAK:

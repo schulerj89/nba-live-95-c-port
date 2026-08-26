@@ -107,6 +107,25 @@ typedef struct {
     uint8_t inbound_group_raw_0952;
 } NbaGameplayLoosePursuitGateInput;
 
+/* Raw actor words consumed by the common `$85:96B5-$9961` physics commit.
+ * Positions intentionally retain the ROM's split 16.16 representation so
+ * vector replay does not discard the low fractional byte used by carries. */
+typedef struct {
+    uint16_t x_fraction, y_fraction, z_fraction;
+    int16_t x, y, z;
+    int16_t velocity_x, velocity_y, velocity_z;
+    uint16_t behavior_flags_raw_7e;
+    uint16_t speed_raw_4a;
+    uint16_t movement_distance_raw_4c;
+    uint8_t facing_raw_4e;
+    uint8_t velocity_direction_raw_a2;
+    uint16_t previous_x_fraction_raw_94;
+    int16_t previous_x_raw_96;
+    uint16_t previous_y_fraction_raw_98;
+    int16_t previous_y_raw_9a;
+    uint16_t planar_scratch_raw_a0;
+} NbaGameplayActorCommit;
+
 void nba_gameplay_rng_seed(NbaGameplayRng *rng, uint16_t seed);
 uint16_t nba_gameplay_rng_next(NbaGameplayRng *rng);
 bool nba_gameplay_rng_self_test(void);
@@ -188,5 +207,8 @@ void nba_gameplay_velocity_step(int16_t *velocity_x, int16_t *velocity_y,
                                 uint8_t profile_42, uint16_t dispatch_dt,
                                 bool movement_blocked,
                                 int16_t global_093e);
+void nba_gameplay_actor_commit(NbaGameplayActorCommit *actor,
+                               uint16_t dispatch_dt,
+                               bool update_ground_facing);
 
 #endif

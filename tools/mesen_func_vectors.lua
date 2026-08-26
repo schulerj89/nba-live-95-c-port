@@ -21,6 +21,7 @@
 --                       begins (same route as mesen_tipoff_capture.lua)
 --   NBA95_CPU_VS_CPU    1 = with NBA95_VEC_DRIVE, clear human assignments so
 --                       both teams play under CPU control
+--   NBA95_VEC_DELAY     on-court frames to skip before recording (default 0)
 --   NBA95_VEC_SHARED_EXITS 1 = exit PCs are internal/shared boundaries;
 --                       callbacks without a pending entry are counted
 --                       separately instead of as orphaned returns
@@ -149,6 +150,7 @@ local pending = {}
 local shared_exits = os.getenv("NBA95_VEC_SHARED_EXITS") == "1"
 local drive = os.getenv("NBA95_VEC_DRIVE") == "1"
 local force_cpu_vs_cpu = os.getenv("NBA95_CPU_VS_CPU") == "1"
+local record_delay = tonumber(os.getenv("NBA95_VEC_DELAY")) or 0
 -- Without driving, record immediately; with driving, wait for on-court play.
 local recording = not drive
 
@@ -263,7 +265,7 @@ if drive then
     emu.addMemoryCallback(function()
         if gameplay_frame < 0 then
             gameplay_frame = 0
-            recording = true
+            recording = record_delay == 0
         end
     end, emu.callbackType.exec, 0x87A47A, 0x87A47A,
         emu.cpuType.snes, emu.memType.snesMemory)
@@ -304,6 +306,7 @@ if drive then
             return
         end
         gameplay_frame = gameplay_frame + 1
+        if gameplay_frame >= record_delay then recording = true end
         -- Emit whatever was captured even if max_calls was never reached.
         if gameplay_frame >= MAX_GAMEPLAY_FRAMES then finish() end
     end, emu.eventType.endFrame)
