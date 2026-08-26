@@ -86,6 +86,10 @@ reports success.
   `verify_velocity_step_vectors.py` resolves dynamic actor/profile pointers
   (including LoROM profile byte `[$E0]+$42`) and replays 2,000 calls through
   `$85:A82C-$AB16`, comparing velocity `+$0E/+$10` and boost `+$72`.
+  `verify_predictive_arrival_step_vectors.py` continues through
+  `$85:B402-$B4B8`, comparing native carry, preserved steering, velocity and
+  boost across both arrival outcomes. `verify_receiver_candidate_vectors.py`
+  covers all three `$85:B60B-$B677` candidate returns using live actor records.
 - `trace_hash.py`: freezes a lockstep-passing gameplay JSONL trace as compact
   per-frame golden hashes (`--write-golden`), then re-verifies later runs
   cheaply (`--golden`), reporting the first divergent scene frame. Field-level

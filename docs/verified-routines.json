@@ -80,6 +80,22 @@
       "method": "function-vectors",
       "evidence": ".analysis/func-vectors-velocity-step2-20260825 (2000 live calls, 0 mismatches, 0 orphan exits; 430 blocked/jump-ball, 873 damping, 574 normal-acceleration and 123 boosted-acceleration calls; actor +$0E/+$10/+$72 compared)",
       "date": "2026-08-25"
+    },
+    {
+      "range": "85B402-85B4B8",
+      "name": "nba_gameplay_predictive_arrival + nba_gameplay_velocity_step",
+      "source": "src/nba_gameplay_ai.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-predictive-arrival-step-20260825 (1000 live calls, 0 mismatches, 0 orphan exits; 444 arrived and 556 continuing returns; carry, preserved steering $B6 and actor +$0E/+$10/+$72 compared; directions 0-8 observed)",
+      "date": "2026-08-25"
+    },
+    {
+      "range": "85B60B-85B677",
+      "name": "nba_gameplay_receiver_candidate_valid",
+      "source": "src/nba_gameplay_ai.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-receiver-candidate-20260825 (30 live calls, 0 mismatches, 0 orphan exits; 17 accepted, 6 ordinary rejected and 7 negative/self rejected calls; all three RTL returns observed)",
+      "date": "2026-08-25"
     }
   ]
 }

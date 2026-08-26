@@ -18,7 +18,7 @@ Current measured coverage:
 |---|---:|---:|
 | observed executed code | 27,901 | 100.0% |
 | documented by ROM-address provenance | 8,480 | 30.4% |
-| verified against live ROM calls | 601 | 2.15% |
+| verified against live ROM calls | 742 | 2.66% |
 
 These values are generated, not estimated. The detailed per-bank report is
 `docs/progress.md`; the authoritative verified list and evidence paths are in
@@ -26,7 +26,7 @@ These values are generated, not estimated. The detailed per-bank report is
 
 ## Verified gameplay checkpoint
 
-Ten routines currently pass emulator-ground-truth replay. The most important
+Twelve routines currently pass emulator-ground-truth replay. The most important
 recent slices are:
 
 - `$86:E4A7-$E592`: mode-11 owner/dribble gates, proximity selection, facing,
@@ -35,11 +35,19 @@ recent slices are:
 - `$85:F347-$F3BA`: target distance/direction calculation.
 - `$85:A82C-$AB16`: native actor velocity damping, acceleration, boost, and
   cap behavior across 2,000 captured calls.
+- `$85:B402-$B4B8`: predictive arrival, steering, and the coupled velocity
+  application across 1,000 captured calls.
+- `$85:B60B-$B677`: CPU pass-receiver candidate rejection and acceptance.
 
 The velocity replay exposed a ROM-specific negative damping bias: for this
 routine, `-128` contributes `-7`, not normal C truncation's `-8`. The port now
 matches all captured outputs. The 63,800-frame CPU-vs-CPU regression and its
 visual anchors pass at this checkpoint.
+
+The two latest post-tip CPU helpers add 141 observed-executed verified bytes,
+raising ground-truth coverage from 2.15% to 2.66% (+0.51 percentage points).
+Their replays cover both predictive-arrival returns, every steering direction,
+and all three receiver-candidate returns with zero mismatches.
 
 Do not infer that a surrounding routine is verified from one verified slice.
 Only ranges present in `docs/verified-routines.json` count as ground-truth
