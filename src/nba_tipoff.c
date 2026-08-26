@@ -940,14 +940,15 @@ static void cpu_dispatch_normal_actor_behavior(NbaTipoff *tipoff,
     }
 
     int x = fp_round(actor->x_fp), y = fp_round(actor->y_fp);
-    /* `$86:E4A7-$E5A7` writes the next base pose during mode 11. The catcher
-     * latch selects base 12 until movement clears it; an ordinary moving
-     * owner uses base 5. `$86:E3CB-$E3DD` repairs special mode 1-6 bases.
-     * Both writes intentionally affect the next logical physics pass. */
+    /* `$86:E593-$E5AA`, the verified terminal fallback of the larger
+     * `$86:E4A7-$E5AA` selector: the catcher/dead-ball latch selects base 12;
+     * an ordinary owner selects base 5. The earlier proximity/facing branches
+     * remain a separate porting increment. `$86:E3CB-$E3DD` repairs special
+     * mode 1-6 bases. Writes affect the next logical physics pass. */
     if (actor->control_mode == 11u) {
         actor->base_animation_state_raw_38 =
-            tipoff->dead_ball_raw_0968 != 0u ||
-            actor->catcher_latch_raw_ae != 0u ? 12u : 5u;
+            nba_gameplay_owner_dribble_fallback_pose(
+                tipoff->dead_ball_raw_0968, actor->catcher_latch_raw_ae);
     } else if (actor->control_mode >= 1u &&
                actor->control_mode <= 6u &&
                (actor->animation_state == 8u ||
@@ -4150,6 +4151,20 @@ static void cpu_apply_catch_prefix(NbaTipoff *tipoff, uint8_t catcher) {
     tipoff->catch_context_record_raw_0912 = prefix.context_record_raw_0912;
 }
 
+static void cpu_apply_catch_mode(NbaTipoff *tipoff, uint8_t catcher) {
+    NbaTipoffActor *actor = &tipoff->actors[catcher];
+    NbaGameplayTeamContext *context = &tipoff->team_context[catcher / 5u];
+    uint16_t mode = actor->control_mode;
+    uint16_t timer = actor->reaction_threshold;
+    uint16_t flags = actor->behavior_flags_raw;
+    nba_gameplay_apply_catch_mode(
+        tipoff->match_clock_raw_0928, &context->match_clock_raw_47,
+        &mode, &timer, &flags);
+    actor->control_mode = (uint8_t)mode;
+    actor->reaction_threshold = timer;
+    actor->behavior_flags_raw = flags;
+}
+
 static void cpu_begin_possession(NbaTipoff *tipoff, uint8_t offense_side) {
     static const uint8_t play_codes[4] = {0x35u, 0x01u, 0x0Fu, 0x26u};
     static const uint8_t handler_slots[4] = {3u, 3u, 2u, 2u};
@@ -4184,7 +4199,7 @@ static void cpu_begin_possession(NbaTipoff *tipoff, uint8_t offense_side) {
     for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor)
         tipoff->actors[actor].control_mode =
             actor / 5u == offense_side ? 1u : 2u;
-    tipoff->actors[tipoff->handler_actor].control_mode = 11u;
+    cpu_apply_catch_mode(tipoff, tipoff->handler_actor);
     for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
         NbaTipoffActor *state = &tipoff->actors[actor];
         state->reaction_threshold = nba_gameplay_reaction_threshold(
@@ -4230,8 +4245,9 @@ static void cpu_commit_ball_acquisition(NbaTipoff *tipoff, uint8_t catcher) {
     unsigned previous_side = tipoff->offense_side;
     unsigned side = catcher / 5u;
     NbaTipoffActor *catcher_state = &tipoff->actors[catcher];
-    bool special_finish = catcher_state->control_mode == 14u;
     cpu_apply_catch_prefix(tipoff, catcher);
+    cpu_apply_catch_mode(tipoff, catcher);
+    bool special_finish = catcher_state->control_mode == 14u;
     if (side != previous_side || inbound_completion) {
         ++tipoff->possession_number;
         /* `$86:BB3B-$BB6E` restores all actor +$74 assignments from +$76
@@ -4261,13 +4277,6 @@ static void cpu_commit_ball_acquisition(NbaTipoff *tipoff, uint8_t catcher) {
     tipoff->handler_actor = catcher;
     tipoff->receiver_actor = catcher;
     ball_attach_to_actor(tipoff, catcher);
-    /* `$86:BB03-$BB14`: mode 14 is the sole acquisition mode preserved by
-     * BAA2. Every ordinary catch becomes mode 11 and clears +$60/+$7E. */
-    if (!special_finish) {
-        catcher_state->control_mode = 11u;
-        catcher_state->reaction_threshold = 0u;
-        catcher_state->behavior_flags_raw = 0u;
-    }
     tipoff->play_request_raw = 1u;
     tipoff->pass_actor_raw = -1;
     tipoff->pass_aux_raw = -1;

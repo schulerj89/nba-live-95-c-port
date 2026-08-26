@@ -60,6 +60,15 @@ threshold. The port now preserves team ownership history and raw `$09A6`,
 which were previously missing from its represented state. The ledger is now
 4 routines and 163 executed bytes (0.58% of the observed denominator).
 
+The first CPU-owner branch and its terminal dribble fallback are now verified
+too. `$86:BAFD-$BB14` covers 24 ordinary mode-11 installs plus one live
+mode-14 preservation; `$86:E593-$E5AA` covers 188 idle/catch pose-12 results
+and 312 moving-owner pose-5 results. The larger `$86:E4A7-$E592`
+proximity/facing selector remains explicitly unverified for the next small
+increment rather than being hidden behind the verified fallback. The ledger
+now contains 6 routines and 182 executed bytes (0.65% of the observed
+denominator).
+
 ## How each number is captured
 
 All three inputs are machine-generated; none are maintained by hand.

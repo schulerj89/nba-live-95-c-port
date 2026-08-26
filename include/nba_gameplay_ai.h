@@ -16,6 +16,7 @@ typedef struct {
     int16_t controller_actor_raw_41;
     uint16_t previous_dead_ball_actor_raw_43;
     int16_t previous_controller_actor_raw_45;
+    uint16_t match_clock_raw_47;
     uint16_t help_distance_raw_4e;
     uint8_t actor_order_raw_49[5];
 } NbaGameplayTeamContext;

@@ -71,6 +71,9 @@ reports success.
   `verify_catch_prefix_vectors.py` resolves DP `$96/$9E`, then replays 19
   coupled outputs from `$86:BAA2-$BAFA` through
   `catch_prefix_vector_probe.c`.
+  `verify_catch_mode_vectors.py` covers the first CPU-owner mode branch at
+  `$86:BAFD-$BB14`; `verify_owner_dribble_pose_vectors.py` covers the
+  terminal idle/moving dribble fallback at `$86:E593-$E5AA`.
 - `trace_hash.py`: freezes a lockstep-passing gameplay JSONL trace as compact
   per-frame golden hashes (`--write-golden`), then re-verifies later runs
   cheaply (`--golden`), reporting the first divergent scene frame. Field-level

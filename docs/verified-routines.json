@@ -32,6 +32,22 @@
       "method": "function-vectors",
       "evidence": ".analysis/func-vectors-catch-prefix-20260825 (25 live catches, 0 mismatches, 0 orphan exits; dynamic actor/context pointers and both movement branches captured)",
       "date": "2026-08-25"
+    },
+    {
+      "range": "86BAFD-86BB14",
+      "name": "nba_gameplay_apply_catch_mode",
+      "source": "src/nba_gameplay_ball.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-catch-mode-20260825 (25 live catches, 0 mismatches, 0 orphan exits; 24 mode-11 installs and 1 preserved mode-14 branch)",
+      "date": "2026-08-25"
+    },
+    {
+      "range": "86E593-86E5AA",
+      "name": "nba_gameplay_owner_dribble_fallback_pose",
+      "source": "src/nba_gameplay_ball.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-owner-dribble-pose-20260825 (500 live calls, 0 mismatches, 0 orphan exits; 188 pose-12 and 312 pose-5 results)",
+      "date": "2026-08-25"
     }
   ]
 }

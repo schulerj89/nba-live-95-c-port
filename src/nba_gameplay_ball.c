@@ -27,6 +27,29 @@ void nba_gameplay_apply_catch_prefix(NbaGameplayCatchPrefixState *state) {
     state->context_controller_raw_41 = state->controller_actor;
 }
 
+/* `$86:BAFD-$BB14`: publish the catch-time clock, preserve the special
+ * mode-14 finish, or install ordinary CPU-owner mode 11 with an immediately
+ * due decision and cleared behavior flags. */
+void nba_gameplay_apply_catch_mode(uint16_t match_clock,
+                                   uint16_t *context_match_clock,
+                                   uint16_t *control_mode,
+                                   uint16_t *decision_timer,
+                                   uint16_t *behavior_flags) {
+    if (!context_match_clock || !control_mode || !decision_timer ||
+        !behavior_flags) return;
+    *context_match_clock = match_clock;
+    if (*control_mode == 14u) return;
+    *control_mode = 11u;
+    *decision_timer = 0u;
+    *behavior_flags = 0u;
+}
+
+/* `$86:E593-$E5AA`: terminal mode-11 owner pose fallback. */
+uint8_t nba_gameplay_owner_dribble_fallback_pose(
+        uint16_t dead_ball_raw_0968, uint16_t catcher_latch_raw_ae) {
+    return dead_ball_raw_0968 != 0u || catcher_latch_raw_ae != 0u ? 12u : 5u;
+}
+
 /* Three-point arc table `$85:ABFB`, indexed by even Y offsets 0..356. */
 static const int16_t three_point_arc[179] = {
     259,251,246,243,241,238,236,234,232,229,226,224,222,218,215,212,
@@ -814,12 +837,25 @@ bool nba_gameplay_ball_self_test(void) {
     nba_gameplay_ball_apply_ground_impact(&rim, &impact_raw);
     ground_impact = ground_impact && rim.velocity_z == 71 &&
         impact_raw == 71u && rim.raw_13e7 == 0u;
+    uint16_t catch_clock = 0u, catch_mode = 3u;
+    uint16_t catch_timer = 9u, catch_flags = 0x55AAu;
+    nba_gameplay_apply_catch_mode(
+        0x4321u, &catch_clock, &catch_mode, &catch_timer, &catch_flags);
+    bool catch_modes = catch_clock == 0x4321u && catch_mode == 11u &&
+        catch_timer == 0u && catch_flags == 0u;
+    catch_mode = 14u;
+    catch_timer = 7u;
+    catch_flags = 0x1234u;
+    nba_gameplay_apply_catch_mode(
+        0x5678u, &catch_clock, &catch_mode, &catch_timer, &catch_flags);
+    catch_modes = catch_modes && catch_clock == 0x5678u &&
+        catch_mode == 14u && catch_timer == 7u && catch_flags == 0x1234u;
     return launch_ok && shell_gates && outer_generic && outer_y &&
            acquisition_gates && contact_selector && deflection_vectors &&
            owned_contact_vectors && detached_contact_vectors &&
            edge_response && miss_response &&
            inner_distance_vectors && made_response && settle_response &&
-           settle_gates && ground_impact &&
+           settle_gates && ground_impact && catch_modes &&
            right_world_bridge && left_world_bridge &&
            outer_negative_y_edge &&
            outer_low && outer_high &&

@@ -93,6 +93,13 @@ typedef struct NbaGameplayCatchPrefixState {
 
 uint16_t nba_gameplay_hoop_distance(int16_t dx, int16_t dy);
 void nba_gameplay_apply_catch_prefix(NbaGameplayCatchPrefixState *state);
+void nba_gameplay_apply_catch_mode(uint16_t match_clock,
+                                   uint16_t *context_match_clock,
+                                   uint16_t *control_mode,
+                                   uint16_t *decision_timer,
+                                   uint16_t *behavior_flags);
+uint8_t nba_gameplay_owner_dribble_fallback_pose(
+    uint16_t dead_ball_raw_0968, uint16_t catcher_latch_raw_ae);
 NbaGameplayRimResult nba_gameplay_rim_step(NbaGameplayRimState *state,
                                            uint16_t live_state,
                                            bool alternate_height,
