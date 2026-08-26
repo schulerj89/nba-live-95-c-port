@@ -67,6 +67,10 @@ reports success.
   mismatches against `nba_gameplay_hoop_distance`.
   `target_direction_vector_probe.c` replays those signed inputs through
   `$85:F347-$F3BA` and verifies both distance `$AA` and direction `$B2`.
+  Dynamic-record routines can use a specialized normalizer:
+  `verify_catch_prefix_vectors.py` resolves DP `$96/$9E`, then replays 19
+  coupled outputs from `$86:BAA2-$BAFA` through
+  `catch_prefix_vector_probe.c`.
 - `trace_hash.py`: freezes a lockstep-passing gameplay JSONL trace as compact
   per-frame golden hashes (`--write-golden`), then re-verifies later runs
   cheaply (`--golden`), reporting the first divergent scene frame. Field-level

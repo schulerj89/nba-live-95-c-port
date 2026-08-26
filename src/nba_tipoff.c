@@ -4093,6 +4093,63 @@ static void cpu_update_play_control(NbaTipoff *tipoff) {
     cpu_advance_play_control(tipoff);
 }
 
+/* `$86:BAA2-$BAFA`, stopping immediately before `$86:BAFD`: common
+ * player-grab prefix shared by the opening tip, pass catches, and rebounds.
+ * Live Mesen vectors prove both movement branches: a catcher below `$0080`
+ * loses lateral velocity, while a faster catcher retains it verbatim. */
+static void cpu_apply_catch_prefix(NbaTipoff *tipoff, uint8_t catcher) {
+    NbaTipoffActor *actor = &tipoff->actors[catcher];
+    unsigned side = catcher / 5u;
+    NbaGameplayTeamContext *context = &tipoff->team_context[side];
+    NbaGameplayCatchPrefixState prefix = {
+        .catcher = catcher,
+        .controller_actor = actor->controller_assignment_raw,
+        .velocity_x = actor->velocity_x,
+        .velocity_y = actor->velocity_y,
+        .movement_magnitude = actor->movement_magnitude_raw,
+        .catcher_latch = actor->catcher_latch_raw_ae,
+        .rim_force_raw_1866 = tipoff->rim_force_raw_1866,
+        .dead_ball_raw_0968 = tipoff->dead_ball_raw_0968,
+        .rim_raw_096a = tipoff->rim_raw_096a,
+        .context_actor_raw_3f = context->dead_ball_actor_raw_3f,
+        .context_controller_raw_41 = context->controller_actor_raw_41,
+        .context_previous_actor_raw_43 =
+            context->previous_dead_ball_actor_raw_43,
+        .context_previous_controller_raw_45 =
+            context->previous_controller_actor_raw_45,
+        .special_actor_raw_09a2 = (int16_t)tipoff->special_actor_raw,
+        .play_aux_raw_09a6 = tipoff->play_aux_selector_raw_09a6,
+        .play_selector_raw = {
+            tipoff->play_selector_raw[0], tipoff->play_selector_raw[1],
+            tipoff->play_selector_raw[2]
+        },
+        .possession_actor_raw_093e = tipoff->possession_actor,
+        .actor_record_raw_0910 = tipoff->catch_actor_record_raw_0910,
+        .context_record_raw_0912 = tipoff->catch_context_record_raw_0912,
+    };
+    nba_gameplay_apply_catch_prefix(&prefix);
+    actor->velocity_x = prefix.velocity_x;
+    actor->velocity_y = prefix.velocity_y;
+    actor->movement_magnitude_raw = prefix.movement_magnitude;
+    actor->catcher_latch_raw_ae = prefix.catcher_latch;
+    tipoff->rim_force_raw_1866 = prefix.rim_force_raw_1866;
+    tipoff->dead_ball_raw_0968 = prefix.dead_ball_raw_0968;
+    tipoff->rim_raw_096a = prefix.rim_raw_096a;
+    context->dead_ball_actor_raw_3f = prefix.context_actor_raw_3f;
+    context->controller_actor_raw_41 = prefix.context_controller_raw_41;
+    context->previous_dead_ball_actor_raw_43 =
+        prefix.context_previous_actor_raw_43;
+    context->previous_controller_actor_raw_45 =
+        prefix.context_previous_controller_raw_45;
+    tipoff->special_actor_raw = (uint16_t)prefix.special_actor_raw_09a2;
+    tipoff->play_aux_selector_raw_09a6 = prefix.play_aux_raw_09a6;
+    for (unsigned i = 0; i < 3u; ++i)
+        tipoff->play_selector_raw[i] = prefix.play_selector_raw[i];
+    tipoff->possession_actor = (int8_t)prefix.possession_actor_raw_093e;
+    tipoff->catch_actor_record_raw_0910 = prefix.actor_record_raw_0910;
+    tipoff->catch_context_record_raw_0912 = prefix.context_record_raw_0912;
+}
+
 static void cpu_begin_possession(NbaTipoff *tipoff, uint8_t offense_side) {
     static const uint8_t play_codes[4] = {0x35u, 0x01u, 0x0Fu, 0x26u};
     static const uint8_t handler_slots[4] = {3u, 3u, 2u, 2u};
@@ -4103,22 +4160,14 @@ static void cpu_begin_possession(NbaTipoff *tipoff, uint8_t offense_side) {
     tipoff->play_state_frame = 0;
     tipoff->play_code = play_codes[tipoff->possession_number % 4u];
     tipoff->play_hold_raw = 0u;
-    tipoff->special_actor_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
     cpu_reset_play_control(tipoff);
-    if (tipoff->possession_number == 0u) {
-        /* The `$86:D3F9 -> $86:BAA2` jump-ball ownership commit consumes
-         * play `$35` record zero's `$09AA/$09AC/$09AE` opportunity. The
-         * CPU-only oracle is already all `$FFFF` when mode 11 starts at
-         * frame 220; record one later reloads `[9,7,-1]`. */
-        tipoff->play_selector_raw[0] = -1;
-        tipoff->play_selector_raw[1] = -1;
-        tipoff->play_selector_raw[2] = -1;
-    }
     unsigned base = offense_side ? 5u : 0u;
     tipoff->handler_actor = (uint8_t)(base + handler_slots[tipoff->possession_number % 4u]);
     tipoff->receiver_actor = (uint8_t)(base +
         ((handler_slots[tipoff->possession_number % 4u] + 1u) % 5u));
-    tipoff->possession_actor = (int8_t)tipoff->handler_actor;
+    /* The `$86:D3F9 -> $86:BAA2` jump-ball ownership commit consumes play
+     * `$35` record zero's pending selectors before installing actor 8. */
+    cpu_apply_catch_prefix(tipoff, tipoff->handler_actor);
     tipoff->cpu_play_state = NBA_CPU_PLAY_BREAK;
     tipoff->shot_result_resolved = false;
     tipoff->shot_inner_veto_raw = false;
@@ -4136,7 +4185,6 @@ static void cpu_begin_possession(NbaTipoff *tipoff, uint8_t offense_side) {
         tipoff->actors[actor].control_mode =
             actor / 5u == offense_side ? 1u : 2u;
     tipoff->actors[tipoff->handler_actor].control_mode = 11u;
-    tipoff->actors[tipoff->handler_actor].catcher_latch_raw_ae = 1u;
     for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
         NbaTipoffActor *state = &tipoff->actors[actor];
         state->reaction_threshold = nba_gameplay_reaction_threshold(
@@ -4183,15 +4231,7 @@ static void cpu_commit_ball_acquisition(NbaTipoff *tipoff, uint8_t catcher) {
     unsigned side = catcher / 5u;
     NbaTipoffActor *catcher_state = &tipoff->actors[catcher];
     bool special_finish = catcher_state->control_mode == 14u;
-    catcher_state->catcher_latch_raw_ae = 1u; /* `$86:BAE0-$BAE5` */
-    tipoff->rim_force_raw_1866 = 0u;
-    tipoff->dead_ball_raw_0968 = 0u;
-    /* `$86:BAB9-$BAC7`: only a slow catcher loses lateral momentum. */
-    if (catcher_state->movement_magnitude_raw < 0x0080u) {
-        catcher_state->velocity_x = 0;
-        catcher_state->velocity_y = 0;
-        catcher_state->movement_magnitude_raw = 0u;
-    }
+    cpu_apply_catch_prefix(tipoff, catcher);
     if (side != previous_side || inbound_completion) {
         ++tipoff->possession_number;
         /* `$86:BB3B-$BB6E` restores all actor +$74 assignments from +$76
@@ -4221,7 +4261,6 @@ static void cpu_commit_ball_acquisition(NbaTipoff *tipoff, uint8_t catcher) {
     tipoff->handler_actor = catcher;
     tipoff->receiver_actor = catcher;
     ball_attach_to_actor(tipoff, catcher);
-    tipoff->possession_actor = (int8_t)catcher;
     /* `$86:BB03-$BB14`: mode 14 is the sole acquisition mode preserved by
      * BAA2. Every ordinary catch becomes mode 11 and clears +$60/+$7E. */
     if (!special_finish) {
@@ -4230,10 +4269,6 @@ static void cpu_commit_ball_acquisition(NbaTipoff *tipoff, uint8_t catcher) {
         catcher_state->behavior_flags_raw = 0u;
     }
     tipoff->play_request_raw = 1u;
-    tipoff->special_actor_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
-    tipoff->play_selector_raw[0] = -1;
-    tipoff->play_selector_raw[1] = -1;
-    tipoff->play_selector_raw[2] = -1;
     tipoff->pass_actor_raw = -1;
     tipoff->pass_aux_raw = -1;
     tipoff->pass_receiver_raw = -1;
@@ -4282,9 +4317,16 @@ static bool cpu_ball_acquisition_self_test(void) {
     state.rim_raw_094a = 29u;
     state.rim_force_raw_1866 = 1u;
     state.dead_ball_raw_0968 = 2u;
+    state.rim_raw_096a = 2u;
+    state.play_aux_selector_raw_09a6 = 3;
+    state.team_context[1].dead_ball_actor_raw_3f = 9u;
+    state.team_context[1].controller_actor_raw_41 = 2;
     state.dead_ball_raw_096c = 3u;
     state.dead_ball_raw_097e = 0u;
     state.actors[7].control_mode = 3u;
+    state.actors[7].controller_assignment_raw = -1;
+    state.actors[7].velocity_x = 0x30;
+    state.actors[7].velocity_y = -0x20;
     state.actors[7].velocity_z = 0x123;
     state.actors[7].movement_magnitude_raw = 0x80u;
     for (unsigned i = 0; i < NBA_GAMEPLAY_ACTOR_COUNT; ++i) {
@@ -4296,18 +4338,37 @@ static bool cpu_ball_acquisition_self_test(void) {
         state.actors[7].control_mode != 11u ||
         state.actors[7].velocity_z != 0x123 ||
         state.actors[7].catcher_latch_raw_ae != 1u ||
+        state.actors[7].velocity_x != 0x30 ||
+        state.actors[7].velocity_y != -0x20 ||
         state.role_rebuild_raw_09d6 != NBA_GAMEPLAY_UNKNOWN_WORD ||
         state.rim_raw_092c != 0x05A0u ||
         state.free_throw_flight_timer_raw_0930 != 0x0258u ||
         state.pass_actor_raw != -1 || state.pass_aux_raw != -1 ||
         state.pass_receiver_raw != -1 || state.ball_activity_raw != 0u ||
-        state.rim_raw_094a != 0u || state.rim_force_raw_1866 != 0u ||
+        state.rim_raw_094a != 0u || state.rim_raw_096a != 0u ||
+        state.rim_force_raw_1866 != 0u ||
         state.dead_ball_raw_0968 != 0u || state.dead_ball_raw_096c != 0u ||
-        state.dead_ball_raw_097e != NBA_GAMEPLAY_UNKNOWN_WORD)
+        state.dead_ball_raw_097e != NBA_GAMEPLAY_UNKNOWN_WORD ||
+        state.play_aux_selector_raw_09a6 != -1 ||
+        state.catch_actor_record_raw_0910 != 0x3BEBu ||
+        state.catch_context_record_raw_0912 != 0x476Bu ||
+        state.team_context[1].previous_dead_ball_actor_raw_43 != 9u ||
+        state.team_context[1].previous_controller_actor_raw_45 != 2 ||
+        state.team_context[1].dead_ball_actor_raw_3f != 7u ||
+        state.team_context[1].controller_actor_raw_41 != -1)
         return false;
     for (unsigned i = 0; i < NBA_GAMEPLAY_ACTOR_COUNT; ++i)
         if (state.actors[i].assignment_current_raw !=
             state.actors[i].assignment_base_raw) return false;
+    NbaTipoff slow;
+    memset(&slow, 0, sizeof(slow));
+    slow.actors[2].velocity_x = 0x20;
+    slow.actors[2].velocity_y = -0x10;
+    slow.actors[2].movement_magnitude_raw = 0x7Fu;
+    cpu_apply_catch_prefix(&slow, 2u);
+    if (slow.actors[2].velocity_x != 0 ||
+        slow.actors[2].velocity_y != 0 ||
+        slow.actors[2].movement_magnitude_raw != 0u) return false;
     return true;
 }
 
@@ -5639,6 +5700,12 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
         tipoff->team_context[side].mode_raw_30 = 4u;
         tipoff->team_context[side].flags_raw_32 = 1u;
         tipoff->team_context[side].activity_raw_39 = 1u;
+        tipoff->team_context[side].dead_ball_actor_raw_3f =
+            NBA_GAMEPLAY_UNKNOWN_WORD;
+        tipoff->team_context[side].controller_actor_raw_41 = -1;
+        tipoff->team_context[side].previous_dead_ball_actor_raw_43 =
+            NBA_GAMEPLAY_UNKNOWN_WORD;
+        tipoff->team_context[side].previous_controller_actor_raw_45 = -1;
         tipoff->team_context[side].help_distance_raw_4e = 0x00A0u;
         for (unsigned i = 0; i < 5u; ++i)
             tipoff->team_context[side].actor_order_raw_49[i] =
@@ -5658,6 +5725,7 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
     tipoff->inbound_actor_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
     tipoff->pass_actor_raw = -1;
     tipoff->pass_receiver_raw = -1;
+    tipoff->play_aux_selector_raw_09a6 = -1;
     tipoff->shot_actor_raw_09c8 = -1;
     tipoff->ball.x_fp = 0;
     tipoff->ball.y_fp = 0;

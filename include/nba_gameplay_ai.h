@@ -13,6 +13,9 @@ typedef struct {
     uint16_t flags_raw_32;
     uint16_t activity_raw_39;
     uint16_t dead_ball_actor_raw_3f;
+    int16_t controller_actor_raw_41;
+    uint16_t previous_dead_ball_actor_raw_43;
+    int16_t previous_controller_actor_raw_45;
     uint16_t help_distance_raw_4e;
     uint8_t actor_order_raw_49[5];
 } NbaGameplayTeamContext;

@@ -53,6 +53,13 @@ with 0 mismatches and 0 orphan exits. Both return paths and every direction
 value 0-8 were observed; the probe compares the coupled `$AA` distance and
 `$B2` direction outputs.
 
+The next small post-tip checkpoint verifies `$86:BAA2-$BAFA`, the shared
+player-grab prefix. Twenty-five live pass/rebound catches replay with zero
+mismatches across 19 outputs, including both sides of the `$0080` movement
+threshold. The port now preserves team ownership history and raw `$09A6`,
+which were previously missing from its represented state. The ledger is now
+4 routines and 163 executed bytes (0.58% of the observed denominator).
+
 ## How each number is captured
 
 All three inputs are machine-generated; none are maintained by hand.

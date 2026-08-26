@@ -1,6 +1,32 @@
 #include "nba_gameplay_ball.h"
 #include <stdlib.h>
 
+void nba_gameplay_apply_catch_prefix(NbaGameplayCatchPrefixState *state) {
+    if (!state || state->catcher >= 10u) return;
+    state->rim_force_raw_1866 = 0u;
+    state->dead_ball_raw_0968 = 0u;
+    state->rim_raw_096a = 0u;
+    state->catcher_latch = 1u;
+    if (state->movement_magnitude < 0x0080u) {
+        state->velocity_x = 0;
+        state->velocity_y = 0;
+        state->movement_magnitude = 0u;
+    }
+    state->context_previous_actor_raw_43 = state->context_actor_raw_3f;
+    state->context_previous_controller_raw_45 =
+        state->context_controller_raw_41;
+    state->special_actor_raw_09a2 = -1;
+    state->play_aux_raw_09a6 = -1;
+    for (unsigned i = 0; i < 3u; ++i) state->play_selector_raw[i] = -1;
+    state->possession_actor_raw_093e = state->catcher;
+    state->actor_record_raw_0910 =
+        (uint16_t)(0x34EBu + (uint16_t)state->catcher * 0x0100u);
+    state->context_record_raw_0912 =
+        (uint16_t)(0x46EBu + (uint16_t)(state->catcher / 5u) * 0x0080u);
+    state->context_actor_raw_3f = state->catcher;
+    state->context_controller_raw_41 = state->controller_actor;
+}
+
 /* Three-point arc table `$85:ABFB`, indexed by even Y offsets 0..356. */
 static const int16_t three_point_arc[179] = {
     259,251,246,243,241,238,236,234,232,229,226,224,222,218,215,212,

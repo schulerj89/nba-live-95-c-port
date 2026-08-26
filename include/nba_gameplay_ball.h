@@ -67,7 +67,32 @@ typedef struct NbaGameplaySettleContext {
     uint16_t raw_09b8;
 } NbaGameplaySettleContext;
 
+/* Normalized state for the live-covered player-grab prefix at
+ * `$86:BAA2-$BAFA`. Raw actor/team-record pointers are retained because the
+ * ROM publishes them in `$0910/$0912` for the following ownership tail. */
+typedef struct NbaGameplayCatchPrefixState {
+    uint8_t catcher;
+    int16_t controller_actor;
+    int16_t velocity_x, velocity_y;
+    uint16_t movement_magnitude;
+    uint16_t catcher_latch;
+    uint16_t rim_force_raw_1866;
+    uint16_t dead_ball_raw_0968;
+    uint16_t rim_raw_096a;
+    uint16_t context_actor_raw_3f;
+    int16_t context_controller_raw_41;
+    uint16_t context_previous_actor_raw_43;
+    int16_t context_previous_controller_raw_45;
+    int16_t special_actor_raw_09a2;
+    int16_t play_aux_raw_09a6;
+    int16_t play_selector_raw[3];
+    int16_t possession_actor_raw_093e;
+    uint16_t actor_record_raw_0910;
+    uint16_t context_record_raw_0912;
+} NbaGameplayCatchPrefixState;
+
 uint16_t nba_gameplay_hoop_distance(int16_t dx, int16_t dy);
+void nba_gameplay_apply_catch_prefix(NbaGameplayCatchPrefixState *state);
 NbaGameplayRimResult nba_gameplay_rim_step(NbaGameplayRimState *state,
                                            uint16_t live_state,
                                            bool alternate_height,

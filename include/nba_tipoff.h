@@ -152,7 +152,10 @@ typedef struct {
     uint16_t role_rebuild_raw_09d6;
     uint16_t role_ownerless_raw_09d8;
     uint16_t special_actor_raw;  /* `$09A2`, clear-lane cutter or `$FFFF` */
+    int16_t play_aux_selector_raw_09a6; /* cleared by `$86:BADC` */
     int16_t play_selector_raw[3];/* `$09AA/$09AC/$09AE` */
+    uint16_t catch_actor_record_raw_0910; /* `$86:BAEE` */
+    uint16_t catch_context_record_raw_0912; /* `$86:BAF1` */
     uint32_t simulation_tick;
     uint32_t actor_update_tick;
     uint8_t actor_behavior_pending;
