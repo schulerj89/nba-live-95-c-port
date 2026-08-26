@@ -16,6 +16,14 @@
       "method": "function-vectors",
       "evidence": ".analysis/func-vectors-hoop-distance-20260825 (500 live calls, 0 mismatches, 0 orphan exits; all four RTL paths captured)",
       "date": "2026-08-25"
+    },
+    {
+      "range": "85F347-85F3BA",
+      "name": "nba_gameplay_target_direction",
+      "source": "src/nba_gameplay_ai.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-target-direction-20260825 (3000 live calls, 0 mismatches, 0 orphan exits; zero/normal RTL paths and directions 0-8 captured)",
+      "date": "2026-08-25"
     }
   ]
 }

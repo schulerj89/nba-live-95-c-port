@@ -44,6 +44,15 @@ Verified-routine ledger (`docs/verified-routines.json`): 1 routine —
 `$80:CEE7` (`nba_gameplay_rng_next`), 500 live in-game calls replayed through
 the compiled C with 0 mismatches, including the `$07F6`-zero recovery path.
 
+## Current verified checkpoint — 2026-08-25
+
+The ledger now contains 3 routines and 131 executed bytes (0.47% of the
+27,901-byte observed denominator). The newest tip-off/gameplay routine is
+`$85:F347-$F3BA`, `nba_gameplay_target_direction`: 3,000 live calls replayed
+with 0 mismatches and 0 orphan exits. Both return paths and every direction
+value 0-8 were observed; the probe compares the coupled `$AA` distance and
+`$B2` direction outputs.
+
 ## How each number is captured
 
 All three inputs are machine-generated; none are maintained by hand.

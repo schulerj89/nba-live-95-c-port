@@ -44,19 +44,24 @@ def main():
                         help="comma-separated entry word addresses passed to "
                              "the probe, e.g. 00aa,00ae")
     parser.add_argument("--output-word",
-                        help="exit word address produced by the probe")
+                        help="single exit word address produced by the probe")
+    parser.add_argument("--output-words",
+                        help="comma-separated exit word addresses produced by "
+                             "the probe, e.g. 00aa,00b2")
     parser.add_argument("--max-mismatches", type=int, default=10)
     args = parser.parse_args()
 
     if args.word:
         input_words = [args.word]
-        output_word = args.word
+        output_words = [args.word]
     else:
-        if not args.input_words or not args.output_word:
-            parser.error("use --word or both --input-words and --output-word")
+        output_spec = args.output_words or args.output_word
+        if not args.input_words or not output_spec:
+            parser.error("use --word or --input-words with --output-word(s)")
         input_words = [word.strip() for word in args.input_words.split(",")
                        if word.strip()]
-        output_word = args.output_word
+        output_words = [word.strip() for word in output_spec.split(",")
+                        if word.strip()]
 
     vectors = [json.loads(line) for line in
                Path(args.vectors).read_text().splitlines() if line.strip()]
@@ -65,27 +70,34 @@ def main():
                  for word in input_words) for v in vectors)
     result = subprocess.run([args.probe], input=stdin + "\n",
                             capture_output=True, text=True, check=True)
-    outputs = result.stdout.split()
-    if len(outputs) != len(vectors):
+    output_lines = [line.split() for line in result.stdout.splitlines()
+                    if line.strip()]
+    if len(output_lines) != len(vectors) or \
+            any(len(line) != len(output_words) for line in output_lines):
         raise SystemExit(f"[FUNC VECTORS] FAIL: probe produced "
-                         f"{len(outputs)} outputs for {len(vectors)} vectors")
+                         f"{len(output_lines)} rows x "
+                         f"{[len(line) for line in output_lines[:5]]} outputs "
+                         f"for {len(vectors)} vectors x {len(output_words)}")
 
     mismatches = []
-    for vector, produced in zip(vectors, outputs):
-        expected = mem_word(vector["exit"]["mem"], output_word)
-        if int(produced, 16) != expected:
+    for vector, produced_tokens in zip(vectors, output_lines):
+        expected = [mem_word(vector["exit"]["mem"], word)
+                    for word in output_words]
+        produced = [int(token, 16) for token in produced_tokens]
+        if produced != expected:
             entry = ",".join(
                 f"{mem_word(vector['entry']['mem'], word):04x}"
                 for word in input_words)
-            mismatches.append((vector["call"], entry,
-                               expected, int(produced, 16)))
+            mismatches.append((vector["call"], entry, expected, produced))
 
     status = "PASS" if not mismatches else "FAIL"
     print(f"[FUNC VECTORS] {status}: vectors={len(vectors)} "
           f"mismatches={len(mismatches)} ({Path(args.vectors).name})")
     for call, entry, expected, produced in mismatches[:args.max_mismatches]:
-        print(f"  call={call} entry={entry} rom={expected:04x} "
-              f"port={produced:04x}")
+        expected_text = ",".join(f"{word:04x}" for word in expected)
+        produced_text = ",".join(f"{word:04x}" for word in produced)
+        print(f"  call={call} entry={entry} rom={expected_text} "
+              f"port={produced_text}")
     if mismatches:
         raise SystemExit(1)
 

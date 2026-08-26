@@ -58,12 +58,15 @@ reports success.
   built against the real port sources and diffs each output word against the
   ROM's recorded exit state. `--word` handles one-word state transitions;
   `--input-words` plus `--output-word` covers pure routines with multiple
-  captured inputs. `rng_vector_probe.c` is the one-word worked example:
+  captured inputs; `--output-words` verifies routines that produce multiple
+  coupled words. `rng_vector_probe.c` is the one-word worked example:
   500 live `$80:CEE7` calls (including the `$07F6`-zero recovery path)
   verified `nba_gameplay_rng_next` with zero mismatches.
   `hoop_distance_vector_probe.c` independently replays signed DP `$AA/$AE`
   through `$85:F1C1-$F228`; 500 live calls cover all four RTL paths with zero
   mismatches against `nba_gameplay_hoop_distance`.
+  `target_direction_vector_probe.c` replays those signed inputs through
+  `$85:F347-$F3BA` and verifies both distance `$AA` and direction `$B2`.
 - `trace_hash.py`: freezes a lockstep-passing gameplay JSONL trace as compact
   per-frame golden hashes (`--write-golden`), then re-verifies later runs
   cheaply (`--golden`), reporting the first divergent scene frame. Field-level

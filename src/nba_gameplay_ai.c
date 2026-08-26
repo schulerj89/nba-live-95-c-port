@@ -56,7 +56,8 @@ static bool subtract16_is_negative(uint16_t left, uint16_t right) {
     return ((uint16_t)(left - right) & 0x8000u) != 0u;
 }
 
-/* `$85:F34F-$F3B7`: exact direction key consumed by `$87:B832`, plus the
+/* `$85:F347-$F3BA` (entry `$85:F34F`): exact direction key consumed by
+ * `$87:B832`, plus the
  * major+minor/4 distance. The
  * y<=x+1 swap and diagonal boundary intentionally differ from a conventional
  * octant quantizer. */
