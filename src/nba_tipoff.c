@@ -207,20 +207,20 @@ static bool cpu_lane_to_basket_is_clear(const NbaTipoff *tipoff,
  * `$09A4` is active. This runs before the mode's formation/arrival work. */
 static void cpu_update_special_actor(NbaTipoff *tipoff, unsigned slot) {
     NbaTipoffActor *actor = &tipoff->actors[slot];
-    bool selects_cutter = actor->control_mode == 1u ||
-                          actor->control_mode == 3u;
-    int16_t remaining = (int16_t)(uint16_t)(actor->behavior_timer - 2u);
-    actor->behavior_timer = (uint16_t)remaining;
-    if (remaining >= 0) return;
-    actor->behavior_timer = (uint16_t)(remaining + 0x2Fu);
-    if (!selects_cutter || tipoff->play_cycle_raw == 0u ||
-        tipoff->possession_actor < 0 ||
-        !cpu_lane_to_basket_is_clear(tipoff, slot)) return;
-    const NbaTipoffActor *owner = &tipoff->actors[tipoff->possession_actor];
-    int dx = fp_round(owner->x_fp) - fp_round(actor->x_fp);
-    int dy = fp_round(owner->y_fp) - fp_round(actor->y_fp);
-    if (actor_distance(dx, dy) < 0xA0u)
-        tipoff->special_actor_raw = (uint16_t)slot;
+    bool has_owner = tipoff->possession_actor >= 0;
+    uint16_t owner_distance = UINT16_MAX;
+    if (has_owner) {
+        const NbaTipoffActor *owner =
+            &tipoff->actors[tipoff->possession_actor];
+        int dx = fp_round(owner->x_fp) - fp_round(actor->x_fp);
+        int dy = fp_round(owner->y_fp) - fp_round(actor->y_fp);
+        owner_distance = actor_distance(dx, dy);
+    }
+    nba_gameplay_special_actor_step(
+        &actor->behavior_timer, actor->control_mode,
+        tipoff->play_cycle_raw, has_owner,
+        cpu_lane_to_basket_is_clear(tipoff, slot), owner_distance,
+        (uint8_t)slot, &tipoff->special_actor_raw);
 }
 
 /* `$87:B37C/$B3BD/$B47A/$B4DB` install independent resources and restart

@@ -90,6 +90,12 @@ reports success.
   `$85:B402-$B4B8`, comparing native carry, preserved steering, velocity and
   boost across both arrival outcomes. `verify_receiver_candidate_vectors.py`
   covers all three `$85:B60B-$B677` candidate returns using live actor records.
+  `verify_special_actor_vectors.py` replays the preceding `$85:B4B9-$B50D`
+  cutter timer and selection gates, resolving `$093E` as the possession actor
+  rather than the current DP `$96` actor. `verify_pass_selector_vectors.py`
+  then covers `$85:B50E-$B5FE` priority/order selection through both stable
+  exits, and `verify_mode11_shot_policy_vectors.py` covers `$85:B734-$B820`
+  while checking both the policy result and every resulting `$07F6` RNG state.
   `verify_lane_clear_vectors.py` normalizes the linked-list player scan at
   `$85:F5E4-$F727` into ten actor records and compares the native blocked/clear
   result for both basket orientations.

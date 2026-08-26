@@ -154,6 +154,10 @@ bool nba_gameplay_receiver_candidate_valid(
 bool nba_gameplay_lane_to_basket_clear(
     uint8_t subject_actor, int16_t basket_x,
     const NbaGameplayLaneActor *actors, uint8_t actor_count);
+void nba_gameplay_special_actor_step(
+    uint16_t *behavior_timer, uint8_t control_mode,
+    uint16_t play_cycle_raw_09a4, bool possession_active, bool lane_clear,
+    uint16_t owner_distance, uint8_t actor_id, uint16_t *special_actor_raw_09a2);
 int8_t nba_gameplay_select_pass_receiver(
     uint8_t passer_actor, int16_t special_actor,
     const int16_t selectors[3], const NbaGameplayReceiverState *actors,

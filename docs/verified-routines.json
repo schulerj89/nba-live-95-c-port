@@ -90,11 +90,35 @@
       "date": "2026-08-25"
     },
     {
+      "range": "85B4B9-85B50D",
+      "name": "nba_gameplay_special_actor_step",
+      "source": "src/nba_gameplay_ai.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-cutter-cadence-20260825 (1000 live calls, 0 mismatches, 0 orphan exits; 956 decrement and 44 signed-reload calls; actor +$64 and $09A2 compared)",
+      "date": "2026-08-25"
+    },
+    {
+      "range": "85B50E-85B5FE",
+      "name": "nba_gameplay_select_pass_receiver",
+      "source": "src/nba_gameplay_ai.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-pass-selector-20260825 (187 live calls, 0 mismatches, 0 orphan exits; 176 no-selection and 11 selected calls across both stable exits)",
+      "date": "2026-08-25"
+    },
+    {
       "range": "85B60B-85B677",
       "name": "nba_gameplay_receiver_candidate_valid",
       "source": "src/nba_gameplay_ai.c",
       "method": "function-vectors",
       "evidence": ".analysis/func-vectors-receiver-candidate-20260825 (30 live calls, 0 mismatches, 0 orphan exits; 17 accepted, 6 ordinary rejected and 7 negative/self rejected calls; all three RTL returns observed)",
+      "date": "2026-08-25"
+    },
+    {
+      "range": "85B734-85B820",
+      "name": "nba_gameplay_mode11_shot_decision",
+      "source": "src/nba_gameplay_ai.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-mode11-shot-policy-20260825 (183 live calls, 0 mismatches, 0 orphan exits; 180 rejected and 3 accepted policy exits with all $07F6 RNG transitions compared)",
       "date": "2026-08-25"
     },
     {

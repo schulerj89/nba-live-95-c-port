@@ -324,6 +324,25 @@ int8_t nba_gameplay_select_pass_receiver(
     return -1;
 }
 
+/* `$85:B4B9-$B50D`: the signed actor +$64 cadence reloads by 47 before
+ * applying the mode/play/lane/distance cutter gates. The lane predicate is
+ * kept separate because `$85:F5E4-$F727` is independently reusable. */
+void nba_gameplay_special_actor_step(
+    uint16_t *behavior_timer, uint8_t control_mode,
+    uint16_t play_cycle_raw_09a4, bool possession_active, bool lane_clear,
+    uint16_t owner_distance, uint8_t actor_id,
+    uint16_t *special_actor_raw_09a2) {
+    if (!behavior_timer || !special_actor_raw_09a2) return;
+    int16_t remaining = (int16_t)(uint16_t)(*behavior_timer - 2u);
+    *behavior_timer = (uint16_t)remaining;
+    if (remaining >= 0) return;
+    *behavior_timer = (uint16_t)(remaining + 0x2Fu);
+    if ((control_mode == 1u || control_mode == 3u) &&
+        play_cycle_raw_09a4 != 0u && possession_active && lane_clear &&
+        owner_distance < 0x00A0u)
+        *special_actor_raw_09a2 = actor_id;
+}
+
 /* `$85:B402-$B4B8`: predict target residual by velocity/8 with the ROM's
  * negative-quotient +1 bias, then use the inclusive caller tolerance. */
 bool nba_gameplay_predictive_arrival(int16_t actor_x, int16_t actor_y,
@@ -939,6 +958,22 @@ bool nba_gameplay_ai_self_test(void) {
     timer = 20u;
     if (!nba_gameplay_decision_timer_step(&timer, 11u, 0x30u, false) ||
         timer != 47u) return false;
+    uint16_t cutter_timer = 47u, special_actor = 0xFFFFu;
+    nba_gameplay_special_actor_step(
+        &cutter_timer, 1u, 1u, true, true, 0x009Fu, 6u,
+        &special_actor);
+    if (cutter_timer != 45u || special_actor != 0xFFFFu) return false;
+    cutter_timer = 1u;
+    nba_gameplay_special_actor_step(
+        &cutter_timer, 1u, 1u, true, true, 0x009Fu, 6u,
+        &special_actor);
+    if (cutter_timer != 46u || special_actor != 6u) return false;
+    cutter_timer = 0u;
+    special_actor = 0xFFFFu;
+    nba_gameplay_special_actor_step(
+        &cutter_timer, 1u, 1u, true, true, 0x00A0u, 6u,
+        &special_actor);
+    if (cutter_timer != 45u || special_actor != 0xFFFFu) return false;
     if (nba_gameplay_same_x_half(200, -336) ||
         !nba_gameplay_same_x_half(-200, -336) ||
         !nba_gameplay_same_x_half(200, 336) ||
