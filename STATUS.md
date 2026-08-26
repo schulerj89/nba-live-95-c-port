@@ -94,6 +94,16 @@ now contains 9 routines and 240 observed-executed bytes (0.86% of the
 denominator); sparse execution inside this branch means only 27 new observed
 bytes enter the metric.
 
+The high-yield locomotion routine `$85:A82C-$AB16` is now ground-truth
+verified across 2,000 live calls: 430 blocked/jump-ball calls, 873 damping
+calls, 574 normal acceleration calls, and 123 boosted calls. Replay exposed
+and fixed the ROM's unusual negative damping bias (`-128 >> 4` contributes
+`-7`, not `-8`). All actor velocity and boost outputs now match, the full
+63,800-frame CPU simulation passes, and both refreshed visual anchors were
+inspected. The ledger now contains 10 routines and 601 observed-executed
+bytes (2.15% of the denominator), a +1.39 percentage-point increase over the
+0.76% checkpoint that began this run.
+
 ## How each number is captured
 
 All three inputs are machine-generated; none are maintained by hand.

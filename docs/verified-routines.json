@@ -72,6 +72,14 @@
       "method": "function-vectors",
       "evidence": ".analysis/func-vectors-owner-unlatched-pose-20260825 (158 live calls, 0 mismatches, 0 orphan exits; 55 pose-9 and 103 pose-11 results; changed-byte audit limited writes to actor +$38/+$4E)",
       "date": "2026-08-25"
+    },
+    {
+      "range": "85A82C-85AB16",
+      "name": "nba_gameplay_velocity_step",
+      "source": "src/nba_gameplay_ai.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-velocity-step2-20260825 (2000 live calls, 0 mismatches, 0 orphan exits; 430 blocked/jump-ball, 873 damping, 574 normal-acceleration and 123 boosted-acceleration calls; actor +$0E/+$10/+$72 compared)",
+      "date": "2026-08-25"
     }
   ]
 }

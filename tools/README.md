@@ -83,6 +83,9 @@ reports success.
   successful `+$86 -> +$50` requested-facing write.
   `verify_owner_unlatched_pose_vectors.py` covers `$86:E545-$E592`, replaying
   the relative-velocity 9/11 pose choice and `+$50 -> +$4E` facing write.
+  `verify_velocity_step_vectors.py` resolves dynamic actor/profile pointers
+  (including LoROM profile byte `[$E0]+$42`) and replays 2,000 calls through
+  `$85:A82C-$AB16`, comparing velocity `+$0E/+$10` and boost `+$72`.
 - `trace_hash.py`: freezes a lockstep-passing gameplay JSONL trace as compact
   per-frame golden hashes (`--write-golden`), then re-verifies later runs
   cheaply (`--golden`), reporting the first divergent scene frame. Field-level

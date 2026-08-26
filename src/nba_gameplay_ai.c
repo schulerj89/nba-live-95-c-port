@@ -10,11 +10,12 @@ static int16_t wrap16(int32_t value) {
     return (int16_t)(uint16_t)value;
 }
 
-static int16_t trunc_div_pow2(int16_t value, unsigned shift) {
-    uint16_t magnitude = value < 0 ?
-        (uint16_t)(0u - (uint16_t)value) : (uint16_t)value;
-    int16_t quotient = (int16_t)(magnitude >> shift);
-    return value < 0 ? (int16_t)(uint16_t)(0u - (uint16_t)quotient) : quotient;
+/* `$85:A930-$A969/$A971-$A9AA`: four sign-preserving CMP/ROR shifts,
+ * followed by subtracting the sign word. Negative values therefore receive
+ * a +1 bias even when exactly divisible by 16 (e.g. -128 becomes -7). */
+static int16_t velocity_damping_div16(int16_t value) {
+    if (value >= 0) return (int16_t)(value >> 4);
+    return (int16_t)(-(((-(int)value) + 15) >> 4) + 1);
 }
 
 static uint16_t magnitude16(int16_t value) {
@@ -348,9 +349,9 @@ void nba_gameplay_velocity_step(int16_t *velocity_x, int16_t *velocity_y,
         int16_t counter = (int16_t)(uint16_t)(dispatch_dt - 1u);
         do {
             candidate_x = wrap16((int32_t)candidate_x -
-                                  trunc_div_pow2(candidate_x, 4u) + accel_x);
+                                  velocity_damping_div16(candidate_x) + accel_x);
             candidate_y = wrap16((int32_t)candidate_y -
-                                  trunc_div_pow2(candidate_y, 4u) + accel_y);
+                                  velocity_damping_div16(candidate_y) + accel_y);
             counter = wrap16((int32_t)counter - 1);
         } while (counter >= 0);
         uint16_t qx = magnitude16(candidate_x) >> 2;
