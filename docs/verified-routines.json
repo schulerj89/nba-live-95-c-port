@@ -74,11 +74,27 @@
       "date": "2026-08-25"
     },
     {
+      "range": "859192-8593F4",
+      "name": "nba_gameplay_camera_update",
+      "source": "src/nba_gameplay_camera.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-camera-20260825 (500 live calls, 0 mismatches, 0 orphan exits; horizontal/vertical targets, prior positions, prior displacement and commanded steps compared; 499 normal and 1 ball-height calls)",
+      "date": "2026-08-25"
+    },
+    {
       "range": "85A82C-85AB16",
       "name": "nba_gameplay_velocity_step",
       "source": "src/nba_gameplay_ai.c",
       "method": "function-vectors",
       "evidence": ".analysis/func-vectors-velocity-step2-20260825 (2000 live calls, 0 mismatches, 0 orphan exits; 430 blocked/jump-ball, 873 damping, 574 normal-acceleration and 123 boosted-acceleration calls; actor +$0E/+$10/+$72 compared)",
+      "date": "2026-08-25"
+    },
+    {
+      "range": "85A692-85A755",
+      "name": "nba_gameplay_court_finish_y_step",
+      "source": "src/nba_gameplay_ai.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-court_clamp_core-20260825 (504 live calls, 0 mismatches, 0 orphan exits; fixed-point Y integration, both position words and both planar velocities compared)",
       "date": "2026-08-25"
     },
     {
@@ -122,11 +138,43 @@
       "date": "2026-08-25"
     },
     {
+      "range": "85B971-85B9D1",
+      "name": "nba_gameplay_reaction_threshold",
+      "source": "src/nba_gameplay_ai.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-reaction_core-20260825 (65 live calls, 0 mismatches, 1 expected outer-entry callback; threshold and all 65 $07F6 RNG transitions compared)",
+      "date": "2026-08-25"
+    },
+    {
       "range": "85F5E4-85F727",
       "name": "nba_gameplay_lane_to_basket_clear",
       "source": "src/nba_gameplay_ai.c",
       "method": "function-vectors",
       "evidence": ".analysis/func-vectors-lane-clear2-20260825 (264 live calls, 0 mismatches, 0 orphan exits; 257 blocked and 7 clear results; all ten actor slots and both +/-336 basket anchors observed; lower-inclusive/upper-exclusive edge behavior regression-tested)",
+      "date": "2026-08-25"
+    },
+    {
+      "range": "85F3C3-85F472",
+      "name": "nba_gameplay_pass_direction",
+      "source": "src/nba_gameplay_ai.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-pass-direction-20260825 (1000 live calls, 0 mismatches, 0 orphan exits; distance and fine direction compared across 10 observed direction results)",
+      "date": "2026-08-25"
+    },
+    {
+      "range": "86E923-86E96E",
+      "name": "nba_gameplay_target_from_pair",
+      "source": "src/nba_gameplay_ai.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-target_from_pair-20260825 (1000 live calls, 0 mismatches, 0 orphan exits; dynamic pair/subject pointers and ROM formation-table offsets normalized; both target axes compared)",
+      "date": "2026-08-25"
+    },
+    {
+      "range": "86F0FD-86F1AF",
+      "name": "nba_gameplay_loose_ball_pursuit_allowed",
+      "source": "src/nba_gameplay_ai.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-loose_pursuit_gate-20260825 (748 live calls, 0 mismatches, 0 orphan exits; 86 allowed and 662 rejected calls across both exits)",
       "date": "2026-08-25"
     }
   ]

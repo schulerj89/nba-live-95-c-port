@@ -16,8 +16,9 @@ typedef struct {
 } NbaGameplayCamera;
 
 void nba_gameplay_camera_init(NbaGameplayCamera *camera, int16_t x, int16_t y);
-void nba_gameplay_camera_update(NbaGameplayCamera *camera, int16_t subject_x,
-                                int16_t subject_y, int16_t subject_z,
+void nba_gameplay_camera_update(NbaGameplayCamera *camera,
+                                int32_t subject_x_fp, int32_t subject_y_fp,
+                                int32_t subject_z_fp,
                                 uint8_t side_group, bool ball_height_path);
 
 #endif

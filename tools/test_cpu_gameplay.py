@@ -16,8 +16,8 @@ FORMATION = [
     (-8, -3), (16, 83), (24, -80), (-104, 56), (-96, -59),
 ]
 EXPECTED_RGB = {
-    600: "fc9c8ca6a06215cadce63c8c06b86aee2b963077cb528f2627b819a9278dc0bf",
-    1300: "96a1547343b06300723c626a401bbb767cee20a9f559f7f1994e56b593f6f197",
+    600: "f42b7e5f9e945d6bd720ac39c5bd1992774feff1b9d727682aa070180c43c0b9",
+    1300: "b5015fca230d12f968779f1b4823d3365fee04fc6e03198f160a09fe91e738fa",
 }
 
 
@@ -641,9 +641,14 @@ def main():
                     raise AssertionError(f"invalid ROM score increment {delta}")
                 # `$85:A262` clears `$094C` in the same inline scoring
                 # substep; the score delta is the durable shot-value witness.
+                # The native branch does not select an object routine here:
+                # `$85:A118-$A124` clears the live/rim latches and execution
+                # continues through the shared free-ball tail at `$85:A34A`.
+                # SHOT (5) and BOUNCE (6) are host labels for that same native
+                # path, so either is valid at the score-write observation.
                 if match["shot_value_raw"] != 0 or \
                         match["live_state_raw"] != 0x82 or \
-                        row["ball"]["state"] != 5 or \
+                        row["ball"]["state"] not in (5, 6) or \
                         not 74 <= row["ball"]["z"] <= 82:
                     raise AssertionError(f"made basket state incomplete: {row}")
                 scoring_side = 0 if delta[0] else 1

@@ -173,6 +173,9 @@ bool nba_gameplay_mode11_shot_decision(
     const NbaGameplayMode11ShotInput *input, NbaGameplayRng *rng);
 bool nba_gameplay_court_clamp(int32_t *x_fp, int32_t *y_fp,
                               int16_t *velocity_x, int16_t *velocity_y);
+bool nba_gameplay_court_finish_y_step(
+    int32_t *x_fp, int32_t *y_fp, int16_t *velocity_x,
+    int16_t *velocity_y);
 bool nba_gameplay_inbound_target(
     int16_t layout_state, int16_t source_x, int16_t source_y,
     int16_t context_anchor_x, int16_t ball_x, NbaGameplayRng *rng,

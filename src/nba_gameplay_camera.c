@@ -63,16 +63,30 @@ void nba_gameplay_camera_init(NbaGameplayCamera *camera, int16_t x, int16_t y) {
     camera->subject_actor = 0xFFu;
 }
 
-void nba_gameplay_camera_update(NbaGameplayCamera *camera, int16_t subject_x,
-                                int16_t subject_y, int16_t subject_z,
+void nba_gameplay_camera_update(NbaGameplayCamera *camera,
+                                int32_t subject_x_fp, int32_t subject_y_fp,
+                                int32_t subject_z_fp,
                                 uint8_t side_group, bool ball_height_path) {
+    int16_t subject_x = (int16_t)(subject_x_fp >= 0 ? subject_x_fp / 256 :
+        -(((-subject_x_fp) + 255) / 256));
+    int16_t subject_y = (int16_t)(subject_y_fp >= 0 ? subject_y_fp / 256 :
+        -(((-subject_y_fp) + 255) / 256));
+    int16_t subject_z = (int16_t)(subject_z_fp >= 0 ? subject_z_fp / 256 :
+        -(((-subject_z_fp) + 255) / 256));
+    int fractional_carry = ((subject_x_fp & 0xFF) +
+                            (subject_y_fp & 0xFF)) >> 8;
     int old_x = camera->x, old_y = camera->y;
     camera->prior_displacement_x = (uint16_t)abs(camera->x - camera->previous_x);
     camera->prior_displacement_y = (uint16_t)abs(camera->y - camera->previous_y);
     camera->previous_x = camera->x;
     camera->previous_y = camera->y;
-    camera->target_x = (int16_t)horizontal_target(subject_x + subject_y,
-                                                  side_group);
+    /* `$85:9219-$922D`: signed `$093A == FFFF` has no team context yet and
+     * preserves the horizontal camera coordinate. Only raw groups 0 and 5
+     * enter the asymmetric look-ahead tables. */
+    camera->target_x = side_group == 0u || side_group == 5u ?
+        (int16_t)horizontal_target(
+            (int16_t)(subject_x + subject_y + fractional_carry), side_group) :
+        camera->x;
     int base_y = (subject_y - subject_x) >> 2;
     if (ball_height_path) {
         /* `$85:92E4-$932C`: tip/ball-height camera. Heights below 56 are

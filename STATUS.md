@@ -18,7 +18,7 @@ Current measured coverage:
 |---|---:|---:|
 | observed executed code | 27,901 | 100.0% |
 | documented by ROM-address provenance | 8,492 | 30.4% |
-| verified against live ROM calls | 1,040 | 3.73% |
+| verified against live ROM calls | 1,612 | 5.78% |
 
 These values are generated, not estimated. The detailed per-bank report is
 `docs/progress.md`; the authoritative verified list and evidence paths are in
@@ -26,7 +26,7 @@ These values are generated, not estimated. The detailed per-bank report is
 
 ## Verified gameplay checkpoint
 
-Sixteen routines currently pass emulator-ground-truth replay. The most important
+Twenty-two routines currently pass emulator-ground-truth replay. The most important
 recent slices are:
 
 - `$86:E4A7-$E592`: mode-11 owner/dribble gates, proximity selection, facing,
@@ -43,19 +43,24 @@ recent slices are:
 - `$85:B734-$B820`: CPU mode-11 shot policy and its ordered RNG consumption.
 - `$85:F5E4-$F727`: opponent lane obstruction used by the cutter and mode-11
   shot branches, including its half-open rectangle edges.
+- `$85:9192-$93F4`: complete camera targeting and acceleration, including
+  the fixed-point X projection carry and no-team hold.
+- `$85:A692-$A755`, `$85:B971-$B9D1`, `$85:F3C3-$F472`: court Y/clamp tail,
+  reaction threshold/RNG, and fine pass direction.
+- `$86:E923-$E96E`, `$86:F0FD-$F1AF`: paired defensive target projection and
+  loose-ball pursuit permission.
 
 The velocity replay exposed a ROM-specific negative damping bias: for this
 routine, `-128` contributes `-7`, not normal C truncation's `-8`. The port now
 matches all captured outputs. The 63,800-frame CPU-vs-CPU regression and its
 visual anchors pass at this checkpoint.
 
-The latest CPU decision-chain increment adds 151 observed-executed verified
-bytes, raising ground-truth coverage from 3.19% to 3.73% (+0.54 percentage
-points). Its three replays cover cutter timer decrement/reload, pass selection
-and no-selection, shot acceptance/rejection, and every captured RNG transition
-with zero mismatches. The cutter capture did not produce a `$09A2` value change;
-that rare write is protected by direct self-tests and the long integration
-regression but remains a useful target for a longer ROM capture.
+The latest gameplay-path increment adds 572 observed-executed verified bytes,
+raising ground-truth coverage from 3.73% to 5.78% (+2.05 percentage points).
+Its six replays cover 3,817 live ROM calls with zero mismatches. They exposed
+and corrected the pre-possession camera hold, subpixel projection carry,
+offense-relative loose-ball pursuit gate, fixed-point clamp sequencing, and
+the X-only carried ADC in paired defensive target placement.
 
 Do not infer that a surrounding routine is verified from one verified slice.
 Only ranges present in `docs/verified-routines.json` count as ground-truth

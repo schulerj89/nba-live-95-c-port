@@ -96,6 +96,17 @@ reports success.
   then covers `$85:B50E-$B5FE` priority/order selection through both stable
   exits, and `verify_mode11_shot_policy_vectors.py` covers `$85:B734-$B820`
   while checking both the policy result and every resulting `$07F6` RNG state.
+  `verify_camera_vectors.py` covers the complete `$85:9192-$93F4` camera
+  target/easing pass, including the no-team hold and fixed-point projection
+  carry. `verify_court_clamp_vectors.py` resumes at `$85:A692` after X
+  integration and compares Y integration plus both clamp axes.
+  `verify_reaction_core_vectors.py` checks the distance/RNG tail at
+  `$85:B971-$B9D1`; `verify_pass_direction_vectors.py` checks the fine
+  16-direction result at `$85:F3C3-$F472`.
+  `verify_target_from_pair_vectors.py` resolves dynamic records and ROM
+  formation tables for `$86:E923-$E96E`, including the X-only carried ADC.
+  `verify_loose_pursuit_gate_vectors.py` covers both allow/reject exits of
+  `$86:F0FD-$F1AF` and the offense-relative pursuit restriction.
   `verify_lane_clear_vectors.py` normalizes the linked-list player scan at
   `$85:F5E4-$F727` into ten actor records and compares the native blocked/clear
   result for both basket orientations.

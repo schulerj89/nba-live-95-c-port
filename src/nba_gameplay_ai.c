@@ -498,17 +498,21 @@ uint32_t nba_gameplay_behavior_routine(uint8_t mode) {
     return mode < 18u ? targets[mode] : 0u;
 }
 
-/* `$86:E923-$E96E`: predict the paired actor by one eighth of signed
- * velocity, then add the caller-selected formation-table displacement.
- * The 65816 stores the wrapped 16-bit results in actor +$56/+$58. */
+/* `$86:E923-$E96E`: predict the paired actor by one eighth of velocity,
+ * then add the caller-selected formation-table displacement. X preserves
+ * the 16-bit carry from `bias + position` into the table ADC; Y explicitly
+ * clears carry before its table ADC. */
 void nba_gameplay_target_from_pair(int16_t paired_x, int16_t paired_y,
                                    int16_t paired_velocity_x,
                                    int16_t paired_velocity_y,
                                    int16_t offset_x, int16_t offset_y,
                                    int16_t *target_x, int16_t *target_y) {
-    if (target_x)
-        *target_x = (int16_t)(paired_x +
-            arithmetic_shift_right_3(paired_velocity_x) + offset_x);
+    if (target_x) {
+        uint32_t first = (uint16_t)paired_x +
+                         (uint16_t)arithmetic_shift_right_3(paired_velocity_x);
+        *target_x = (int16_t)(uint16_t)(first + (uint16_t)offset_x +
+                                       (first >> 16));
+    }
     if (target_y)
         *target_y = (int16_t)(paired_y +
             arithmetic_shift_right_3(paired_velocity_y) + offset_y);
@@ -683,7 +687,9 @@ bool nba_gameplay_loose_ball_pursuit_allowed(
         return in->bounce_age_raw_094a == 0u ||
                in->bounce_age_raw_094a >= 0x1Eu;
 
-    if (in->actor_team_group_raw_6e == in->offense_group_raw_093a)
+    /* `$86:F197-$F1AE`: the non-offense group goes straight to pursuit.
+     * The offense group is limited to its first three logical records. */
+    if (in->actor_team_group_raw_6e != in->offense_group_raw_093a)
         return true;
     return (int16_t)(uint16_t)(in->actor_id -
            in->actor_team_group_raw_6e) < 3;
@@ -802,6 +808,17 @@ bool nba_gameplay_court_clamp(int32_t *x_fp, int32_t *y_fp,
     return rectangle_contact;
 }
 
+/* `$85:A692-$A755`: X has already been integrated on entry. Finish the Y
+ * fixed-point step, then apply the shared rectangular/isometric clamp. */
+bool nba_gameplay_court_finish_y_step(
+    int32_t *x_fp, int32_t *y_fp, int16_t *velocity_x,
+    int16_t *velocity_y) {
+    if (!x_fp || !y_fp || !velocity_x || !velocity_y) return false;
+    *y_fp += *velocity_y;
+    return nba_gameplay_court_clamp(
+        x_fp, y_fp, velocity_x, velocity_y);
+}
+
 bool nba_gameplay_ai_self_test(void) {
     int16_t x = 0, y = 0;
     if (nba_gameplay_weighted_distance(16, -16) != 20u ||
@@ -865,12 +882,13 @@ bool nba_gameplay_ai_self_test(void) {
     if (nba_gameplay_loose_ball_pursuit_allowed(&pursuit)) return false;
     pursuit.actor_control_mode = 4u;
     pursuit.ball_activity_raw_0948 = 1u;
-    pursuit.actor_id = 2u;
+    pursuit.actor_id = 4u;
     if (!nba_gameplay_loose_ball_pursuit_allowed(&pursuit)) return false;
-    pursuit.actor_id = 3u;
-    if (nba_gameplay_loose_ball_pursuit_allowed(&pursuit)) return false;
     pursuit.actor_team_group_raw_6e = 5u;
+    pursuit.actor_id = 7u;
     if (!nba_gameplay_loose_ball_pursuit_allowed(&pursuit)) return false;
+    pursuit.actor_id = 8u;
+    if (nba_gameplay_loose_ball_pursuit_allowed(&pursuit)) return false;
     pursuit.free_throw_state_raw_0978 = 1u;
     pursuit.foul_actor_raw_7e492f = 7;
     if (nba_gameplay_loose_ball_pursuit_allowed(&pursuit)) return false;

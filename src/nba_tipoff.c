@@ -3737,10 +3737,11 @@ static NbaGameplayRimResult cpu_update_live_ball(NbaTipoff *tipoff) {
         if (!made_response)
             ball->velocity_z = (int16_t)(ball->velocity_z - 0x18);
         ball->x_fp += ball->velocity_x;
-        ball->y_fp += ball->velocity_y;
         ball->z_fp += ball->velocity_z;
-        cpu_clamp_ball_to_court(tipoff, &ball->x_fp, &ball->y_fp,
-                                &ball->velocity_x, &ball->velocity_y);
+        if (nba_gameplay_court_finish_y_step(
+                &ball->x_fp, &ball->y_fp,
+                &ball->velocity_x, &ball->velocity_y))
+            cpu_cancel_rom_pass_activity(tipoff);
         if (ball->z_fp < 0) {
             ball->z_fp = 0;
             {
@@ -5633,15 +5634,15 @@ static void cpu_update_camera(NbaTipoff *tipoff) {
         unsigned subject = (unsigned)selector;
         tipoff->camera.subject_actor = (uint8_t)subject;
         nba_gameplay_camera_update(&tipoff->camera,
-            fp_round(tipoff->actors[subject].x_fp),
-            fp_round(tipoff->actors[subject].y_fp),
-            fp_round(tipoff->actors[subject].z_fp),
+            tipoff->actors[subject].x_fp,
+            tipoff->actors[subject].y_fp,
+            tipoff->actors[subject].z_fp,
             tipoff->camera_side_group_raw, tipoff->live_state_raw == 1u);
     } else {
         tipoff->camera.subject_actor = NBA_GAMEPLAY_NO_ACTOR;
         nba_gameplay_camera_update(&tipoff->camera,
-            fp_round(tipoff->ball.x_fp), fp_round(tipoff->ball.y_fp),
-            fp_round(tipoff->ball.z_fp), tipoff->camera_side_group_raw,
+            tipoff->ball.x_fp, tipoff->ball.y_fp, tipoff->ball.z_fp,
+            tipoff->camera_side_group_raw,
             tipoff->live_state_raw == 1u);
     }
     tipoff->camera_x = tipoff->camera.x;
