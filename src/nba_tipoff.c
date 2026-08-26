@@ -1762,10 +1762,18 @@ static bool cpu_process_player_pair(NbaTipoff *tipoff,
         } else {
             responded = cpu_apply_player_contact_response(
                 tipoff, x_slot, y_slot, 4u, true);
-            if (responded && x->control_mode < 7u &&
-                (x->control_mode & 1u) == 0u) {
-                x->recovery_inhibit_raw = 8u;
-                y->recovery_inhibit_raw = 2u;
+            if (responded) {
+                /* `$86:C2C1-$C300` always installs the pair cooldowns.
+                 * Even modes below seven use X=8/Y=2; odd or high modes
+                 * reverse them to X=2/Y=8. */
+                if (x->control_mode < 7u &&
+                    (x->control_mode & 1u) == 0u) {
+                    x->recovery_inhibit_raw = 8u;
+                    y->recovery_inhibit_raw = 2u;
+                } else {
+                    x->recovery_inhibit_raw = 2u;
+                    y->recovery_inhibit_raw = 8u;
+                }
             }
         }
         if (responded) {
@@ -1805,6 +1813,25 @@ static void cpu_update_player_contacts(NbaTipoff *tipoff) {
             if (!cpu_process_player_pair(tipoff, order[i], order[j])) break;
         }
     }
+}
+
+void nba_tipoff_replay_player_contact_order(NbaTipoff *tipoff,
+                                            const uint8_t *order,
+                                            unsigned count) {
+    if (!tipoff || !order || count > NBA_GAMEPLAY_ACTOR_COUNT) return;
+    for (unsigned i = 0; i < count; ++i) {
+        if (order[i] >= NBA_GAMEPLAY_ACTOR_COUNT) return;
+        for (unsigned j = i + 1u; j < count; ++j) {
+            if (order[j] >= NBA_GAMEPLAY_ACTOR_COUNT ||
+                !cpu_process_player_pair(tipoff, order[i], order[j])) break;
+        }
+    }
+}
+
+void nba_tipoff_replay_player_contact_sweep(NbaTipoff *tipoff) {
+    if (!tipoff) return;
+    tipoff->simulation_tick &= ~1u;
+    cpu_update_player_contacts(tipoff);
 }
 
 static bool cpu_player_contact_self_test(void) {
@@ -3643,6 +3670,7 @@ static NbaGameplayRimResult cpu_update_live_ball(NbaTipoff *tipoff) {
     if (tipoff->rim_raw_0970 != 0u) --tipoff->rim_raw_0970;
     NbaTipoffBall *ball = &tipoff->ball;
     int32_t old_x = ball->x_fp, old_y = ball->y_fp, old_z = ball->z_fp;
+    int16_t old_velocity_z = ball->velocity_z;
     bool attached = ball->state == NBA_BALL_ATTACHED;
     if (attached) {
         ball_attach_to_actor(tipoff, tipoff->handler_actor);
@@ -3872,6 +3900,32 @@ static NbaGameplayRimResult cpu_update_live_ball(NbaTipoff *tipoff) {
         ball->velocity_x = (int16_t)(ball->x_fp - old_x);
         ball->velocity_y = (int16_t)(ball->y_fp - old_y);
         ball->velocity_z = (int16_t)(ball->z_fp - old_z);
+        NbaTipoffActor *owner = &tipoff->actors[tipoff->handler_actor];
+        if (owner->upper_animation_phase_raw >= 3u) {
+            /* `$85:9A99->$A4F2->$A532` retains the prior ball Z words and
+             * velocity once the owner pose reaches phase three. Attachment
+             * still supplies X/Y, but its Z snap is not an impulse. */
+            ball->z_fp = old_z;
+            NbaGameplayAttachedVerticalState vertical = {
+                .attachment_state_raw_09f6 =
+                    tipoff->attached_ball_state_raw_09f6,
+                .dead_ball_raw_0968 = tipoff->dead_ball_raw_0968,
+                .velocity_z = old_velocity_z,
+                .z_fraction = (uint16_t)((old_z & 0xFF) << 8),
+                .z = fp_integer_word(old_z),
+                .impact_raw_13e5 = tipoff->rim_impact_raw_13e5,
+                .event_bits_raw_13e7 = tipoff->rim_raw_13e7
+            };
+            nba_gameplay_ball_apply_attached_vertical(&vertical);
+            tipoff->attached_ball_state_raw_09f6 =
+                vertical.attachment_state_raw_09f6;
+            tipoff->dead_ball_raw_0968 = vertical.dead_ball_raw_0968;
+            ball->velocity_z = vertical.velocity_z;
+            ball->z_fp = (int32_t)vertical.z * 256 +
+                         (vertical.z_fraction >> 8);
+            tipoff->rim_impact_raw_13e5 = vertical.impact_raw_13e5;
+            tipoff->rim_raw_13e7 = vertical.event_bits_raw_13e7;
+        }
     }
     nba_gameplay_effect_step(
         &tipoff->rim_effect, fp_integer_word(ball->y_fp),

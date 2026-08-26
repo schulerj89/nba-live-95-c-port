@@ -415,6 +415,40 @@ bool nba_gameplay_ball_apply_settle(
     return true;
 }
 
+/* `$85:A4F2-$A517/$85:A532-$A597`: after a resolved attachment pose has
+ * supplied vertical displacement in DP $AA, the ROM applies gravity and
+ * integrates it into the split Z words. A below-floor attachment uses the
+ * distinct 3/4 rebound here (not the ownerless ball's 7/8 restitution). */
+void nba_gameplay_ball_apply_attached_vertical(
+        NbaGameplayAttachedVerticalState *state) {
+    if (!state) return;
+    if (state->attachment_state_raw_09f6 == 0u) {
+        state->attachment_state_raw_09f6 = 1u;
+        state->dead_ball_raw_0968 = 0u;
+    } else if (state->attachment_state_raw_09f6 >= 2u) {
+        state->attachment_state_raw_09f6 = 3u;
+    }
+
+    state->velocity_z = (int16_t)(uint16_t)(state->velocity_z - 0x18u);
+    int32_t position = (int32_t)state->z * 256 +
+                       (int32_t)(state->z_fraction >> 8);
+    position += state->velocity_z;
+    if (position >= 0) {
+        state->z = (int16_t)(position / 256);
+        state->z_fraction = (uint16_t)((position & 0xFF) << 8);
+        return;
+    }
+
+    state->impact_raw_13e5 = (uint16_t)state->velocity_z;
+    int16_t half = nba_gameplay_arithmetic_shift_right(state->velocity_z, 1u);
+    int16_t quarter = nba_gameplay_arithmetic_shift_right(half, 1u);
+    state->velocity_z = (int16_t)(uint16_t)(0u -
+        (uint16_t)((uint16_t)half + (uint16_t)quarter));
+    state->z_fraction = 0u;
+    state->z = 0;
+    state->event_bits_raw_13e7 |= 0x0001u;
+}
+
 /* `$85:A3B7-$A4DA`, specifically `$85:A43A-$A44B`: ground restitution is
  * stored in `$13E5`, and an impact of at least `$0048` raises event bit 0.
  * The 15/16 planar damping belongs to the same impact branch. */

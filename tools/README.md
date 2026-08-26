@@ -125,6 +125,15 @@ reports success.
   negative `$093E`, then compares the represented ball/rim/pass/score core
   through `$85:A7C7`; owned-contact continuations and the separately scheduled
   `$87:AA02` graphics-effect dispatcher remain outside that replay.
+  `verify_attached_ball_vectors.py` covers the complementary phase>=3 attached
+  vertical response, including `$09F6`, gravity, split Z integration and the
+  two rebound states. `verify_inbound_target_vectors.py` checks the inbound
+  target constructor and its nested projection helpers, while
+  `verify_defense_close_target_vectors.py` checks the mode-2/mode-4 close
+  defender projection. `verify_player_contact_sweep_vectors.py` consumes the
+  exact captured `$34D3` actor-pointer order and compares player-owned outputs
+  from `$86:D652`; ball/event and separately scheduled animation-only calls
+  are explicitly filtered rather than attributed to the player-pair replay.
 - `trace_hash.py`: freezes a lockstep-passing gameplay JSONL trace as compact
   per-frame golden hashes (`--write-golden`), then re-verifies later runs
   cheaply (`--golden`), reporting the first divergent scene frame. Field-level

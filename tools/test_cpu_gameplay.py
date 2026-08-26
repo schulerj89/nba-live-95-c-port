@@ -16,8 +16,8 @@ FORMATION = [
     (-8, -3), (16, 83), (24, -80), (-104, 56), (-96, -59),
 ]
 EXPECTED_RGB = {
-    600: "d8c97063a68c27b8776044fb81022ab98e9ccab55677d21210b9287326e30732",
-    1300: "6c0dec348f39edd0df61a2f1a016c35b19efd0c8e163deb66f305df95f67f182",
+    600: "7414ad78ed2b3c1574c6d6e4c893378e690cb6a969551e5eeeb1dc9d612c7d85",
+    1300: "649bfb60c1fb72e7569c1386deee9fe83b42903ea7dfa71087af393159ee9fed",
 }
 
 
@@ -359,12 +359,18 @@ def main():
                         if row["possession"]["play_request_raw"] == 1]
         if not requested_01:
             raise AssertionError("$86:BB5F acquisition never requested a play")
+        consumed_requests = 0
         for index, requested in requested_01:
             possession = requested["possession"]
             next_due = next((row for row in rows[index + 1:index + 4]
                              if row["scheduler"]["due_raw"]), None)
-            if next_due is None or \
-                    next_due["possession"]["play_request_raw"] != 0 or \
+            # A request raised on the terminal captured frame has no next
+            # actor pass in this finite trace. Earlier requests still prove
+            # the `$85:B128` consumption boundary.
+            if next_due is None:
+                continue
+            consumed_requests += 1
+            if next_due["possession"]["play_request_raw"] != 0 or \
                     not 0 <= next_due["possession"]["play_code_raw"] < 61 or \
                     next_due["possession"]["play_step_raw"] != 0:
                 raise AssertionError(
@@ -376,6 +382,8 @@ def main():
                      next_due["possession"]["play_countdown_raw"] != 120):
                 raise AssertionError(
                     f"made-score $0994 did not preserve play $01: {next_due}")
+        if consumed_requests == 0:
+            raise AssertionError("$0994 requests ended outside the captured actor passes")
         # The score writer changes `$0996` immediately, but B377 does not load
         # record zero until `$0994` is consumed on the next logical pass.
         play_01_rows = [row["possession"] for row in rows
@@ -931,10 +939,16 @@ def main():
                           row["ball"]["y"] - actor["y"],
                           row["ball"]["z"] - actor["z"])
                 expected = expected_attachment(actor)
-                attached.append((row["frame"], actual, expected))
+                attached.append((row["frame"], actual, expected,
+                                 actor["raw"]["upper_phase"]))
         def attachment_matches(pair):
-            _, actual, expected = pair
-            return all(abs(a - e) <= 1 for a, e in zip(actual, expected))
+            _, actual, expected, upper_phase = pair
+            # `$85:A50D-$A52F` uses the pose-resource Z point only before
+            # phase three. `$85:A532-$A597` then keeps X/Y attached while Z
+            # follows its own gravity/integration response.
+            axes = 2 if upper_phase >= 3 else 3
+            return all(abs(actual[i] - expected[i]) <= 1
+                       for i in range(axes)) and actual[2] >= 0
         if not attached or any(not attachment_matches(pair) for pair in attached):
             raise AssertionError(
                 "ball diverged from `$87:B832/$B953` resource attachment: " +

@@ -240,6 +240,102 @@
       "method": "function-vectors",
       "evidence": ".analysis/func-vectors-ownerless-ball-shared-20260826 (same 252 live ownerless calls, 0 core mismatches; both ROM substeps, gravity, fixed-point integration, ground restitution, settle, court clamp and final rim-latch tail compared)",
       "date": "2026-08-26"
+    },
+    {
+      "range": "85A4F2-85A517",
+      "name": "nba_gameplay_ball_apply_attached_vertical (state/gravity prefix)",
+      "source": "src/nba_gameplay_ball.c + src/nba_tipoff.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-attached-ball-response-20260826 (292 phase>=3 live attached-ball calls, 0 mismatches; state $09F6, gravity and branch-specific rebound compared)",
+      "date": "2026-08-26"
+    },
+    {
+      "range": "85A532-85A597",
+      "name": "nba_gameplay_ball_apply_attached_vertical (integration tail)",
+      "source": "src/nba_gameplay_ball.c + src/nba_tipoff.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-attached-ball-response-20260826 (same 292 live calls, 0 mismatches; split fixed-point Z integration, state-3/state-4 restitution and impact/event outputs compared)",
+      "date": "2026-08-26"
+    },
+    {
+      "range": "85C37D-85C5C0",
+      "name": "nba_gameplay_inbound_target",
+      "source": "src/nba_gameplay_ai.c + src/nba_tipoff.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-inbound_target-20260825 (1 live layout-5 call, 0 mismatches; all layout branches and bounds retained by production self-test)",
+      "date": "2026-08-26"
+    },
+    {
+      "range": "85C5C1-85C5C9",
+      "name": "nba_gameplay_inbound_target (X projection helper)",
+      "source": "src/nba_gameplay_ai.c + src/nba_tipoff.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-inbound_target-20260825 (nested live layout-5 projection, 0 mismatches)",
+      "date": "2026-08-26"
+    },
+    {
+      "range": "85C5ED-85C601",
+      "name": "nba_gameplay_inbound_target (Y projection helper)",
+      "source": "src/nba_gameplay_ai.c + src/nba_tipoff.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-inbound_target-20260825 (nested live layout-5 projection, 0 mismatches)",
+      "date": "2026-08-26"
+    },
+    {
+      "range": "86E7DC-86E7FC",
+      "name": "nba_gameplay_defense_close_target (mode gate)",
+      "source": "src/nba_gameplay_ai.c + src/nba_tipoff.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-defense-close-target-20260826 (500 live calls, 0 mismatches; modes 2 and 4 observed)",
+      "date": "2026-08-26"
+    },
+    {
+      "range": "86E8F7-86E922",
+      "name": "nba_gameplay_defense_close_target (nested target projection)",
+      "source": "src/nba_gameplay_ai.c + src/nba_tipoff.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-defense-close-target-20260826 (500 live calls, 0 mismatches; paired actor target coordinates compared)",
+      "date": "2026-08-26"
+    },
+    {
+      "range": "86D652-86D720",
+      "name": "nba_tipoff_replay_player_contact_order",
+      "source": "src/nba_tipoff.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-player-contact-sweep2-20260826 (293 live player-only sweeps, 0 mismatches; exact ROM pointer order replayed, 18 state-changing sweeps)",
+      "date": "2026-08-26"
+    },
+    {
+      "range": "86C88F-86C91D",
+      "name": "cpu_process_player_pair (broadphase)",
+      "source": "src/nba_tipoff.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-player-contact-sweep2-20260826 (293 live sweeps, 0 mismatches; exact integer-coordinate and stop/continue behavior replayed)",
+      "date": "2026-08-26"
+    },
+    {
+      "range": "86CBC4-86CCCC",
+      "name": "cpu_process_player_pair (ordinary proximity gate)",
+      "source": "src/nba_tipoff.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-player-contact-sweep2-20260826 (293 live sweeps, 0 mismatches; teammate/opponent metric gates represented)",
+      "date": "2026-08-26"
+    },
+    {
+      "range": "86BD41-86BF08",
+      "name": "cpu_apply_player_contact_response (teammates)",
+      "source": "src/nba_tipoff.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-player-contact-sweep2-20260826 (live teammate response plus forced boundary self-tests, 0 mismatches)",
+      "date": "2026-08-26"
+    },
+    {
+      "range": "86C239-86C475",
+      "name": "cpu_apply_player_contact_response (ordinary opponents)",
+      "source": "src/nba_tipoff.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-player-contact-sweep2-20260826 (live ordinary opponent responses, 0 mismatches; planar velocity and native 8/2 versus 2/8 recovery cooldowns compared; knockdown-only prefix excluded)",
+      "date": "2026-08-26"
     }
   ]
 }

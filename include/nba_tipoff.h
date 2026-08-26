@@ -196,6 +196,7 @@ typedef struct {
     uint16_t rim_raw_0920;
     uint16_t rim_raw_094a;
     uint16_t rim_raw_0970;
+    uint16_t attached_ball_state_raw_09f6;
     uint16_t dead_ball_raw_0966;
     uint16_t dead_ball_raw_0968;
     uint16_t dead_ball_raw_096c;
@@ -248,5 +249,9 @@ void nba_tipoff_refresh_defense_roles_end_frame(NbaTipoff *tipoff);
 /* Verification entry for the ownerless `$85:9A6A-$A7C7` ball driver. */
 NbaGameplayRimResult nba_tipoff_replay_ownerless_ball_entry(
     NbaTipoff *tipoff);
+void nba_tipoff_replay_player_contact_sweep(NbaTipoff *tipoff);
+void nba_tipoff_replay_player_contact_order(NbaTipoff *tipoff,
+                                            const uint8_t *order,
+                                            unsigned count);
 
 #endif

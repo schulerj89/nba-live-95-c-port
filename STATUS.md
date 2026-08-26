@@ -18,7 +18,7 @@ Current measured coverage:
 |---|---:|---:|
 | observed executed code | 27,901 | 100.0% |
 | documented by ROM-address provenance | 8,855 | 31.7% |
-| verified against live ROM calls | 3,343 | 11.98% |
+| verified against live ROM calls | 4,225 | 15.14% |
 
 These values are generated, not estimated. The detailed per-bank report is
 `docs/progress.md`; the authoritative verified list and evidence paths are in
@@ -26,9 +26,19 @@ These values are generated, not estimated. The detailed per-bank report is
 
 ## Verified gameplay checkpoint
 
-Thirty routine slices currently pass emulator-ground-truth replay. The most important
+Forty-two routine slices currently pass emulator-ground-truth replay. The most important
 recent slices are:
 
+- `$86:D652-$D720`, `$86:C88F-$C91D`, `$86:CBC4-$CCCC`,
+  `$86:BD41-$BF08`, `$86:C239-$C475`: the native sorted player-contact
+  sweep, pair broadphase, teammate response, and ordinary opponent response
+  across 293 live player-only sweeps with zero mismatches. The knockdown-only
+  prefix remains outside the verified ranges.
+- `$85:A4F2-$A517`, `$85:A532-$A597`: attached-ball vertical state,
+  gravity, split fixed-point integration, and the distinct state-3/state-4
+  impact responses across 292 live calls.
+- `$85:C37D-$C5C0` plus its two projection helpers, and
+  `$86:E7DC-$E7FC/$E8F7-$E922`: inbound and close-defense target formation.
 - `$85:9A6A-$A4F1`, `$85:A598-$A7C7`: ownerless pass/shot/bounce
   physics, rim and score responses, gravity, fixed-point integration, ground
   restitution, settle, court clamp, and the two-substep scheduler tail across
@@ -93,6 +103,14 @@ The replay selected 252 genuinely ownerless calls from 500 live entries and
 matched every represented ball, rim, pass, score, RNG, and event output. It
 corrected negative-Y miss recoil, gravity on the made-basket detection
 substep, and an event-bit copyback that erased the ROM's score marker.
+
+The attached-ball/target/contact increment adds 882 observed-executed verified
+bytes, raising ground-truth coverage from 11.98% to 15.14% (+3.16 percentage
+points). Its four replays cover 1,086 retained live calls with zero mismatches.
+The contact replay exposed two exact integration details: `$86:D652` consumes
+the integer-coordinate pointer list prepared by `$86:D5DB`, and
+`$86:C2C1-$C300` reverses ordinary opponent recovery cooldowns from 8/2 to
+2/8 for odd or high control modes. The production port now preserves both.
 
 Do not infer that a surrounding routine is verified from one verified slice.
 Only ranges present in `docs/verified-routines.json` count as ground-truth

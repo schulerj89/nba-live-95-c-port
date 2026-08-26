@@ -67,6 +67,18 @@ typedef struct NbaGameplaySettleContext {
     uint16_t raw_09b8;
 } NbaGameplaySettleContext;
 
+/* Raw vertical state owned by the attached-ball response at
+ * `$85:A4F2-$A517/$85:A532-$A597`. */
+typedef struct NbaGameplayAttachedVerticalState {
+    uint16_t attachment_state_raw_09f6;
+    uint16_t dead_ball_raw_0968;
+    int16_t velocity_z;
+    uint16_t z_fraction;
+    int16_t z;
+    uint16_t impact_raw_13e5;
+    uint16_t event_bits_raw_13e7;
+} NbaGameplayAttachedVerticalState;
+
 /* Normalized state for the live-covered player-grab prefix at
  * `$86:BAA2-$BAFA`. Raw actor/team-record pointers are retained because the
  * ROM publishes them in `$0910/$0912` for the following ownership tail. */
@@ -138,6 +150,8 @@ void nba_gameplay_rim_apply_made_response(
     NbaGameplayRimContext *context);
 bool nba_gameplay_ball_apply_settle(
     NbaGameplayRimState *state, NbaGameplaySettleContext *context);
+void nba_gameplay_ball_apply_attached_vertical(
+    NbaGameplayAttachedVerticalState *state);
 void nba_gameplay_ball_apply_ground_impact(
     NbaGameplayRimState *state, uint16_t *impact_raw_13e5);
 bool nba_gameplay_ball_is_make(uint16_t live_state, bool alternate_height,

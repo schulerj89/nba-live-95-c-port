@@ -1372,3 +1372,25 @@ settle, the second substep, and final rim-latch cleanup. The replay found that
 negative-Y miss recoil had been reflected to the wrong side, made baskets had
 skipped `$85:A3D7` gravity on the detecting substep, and the local rim-state
 copyback erased `$85:A33C`'s score-event bit. All three now follow the ROM.
+
+### Increment 5U: attached-ball response, targets, and player contacts
+
+Four independent live-vector replays raise verified executed coverage from
+11.98% to 15.14%. `$85:A4F2-$A517/$A532-$A597` now carries the attached
+ball's `$09F6` state through native gravity, split fixed-point Z integration,
+and distinct state-3/state-4 rebounds. The 292 retained phase>=3 calls match
+all represented vertical and event outputs.
+
+The inbound target constructor at `$85:C37D-$C5C0` and its projection helpers
+matches the observed layout-5 call, with every layout and boundary held by the
+production self-test. The close-defense target gate/projection at
+`$86:E7DC-$E7FC/$E8F7-$E922` matches 500 live mode-2/mode-4 calls.
+
+The player-contact proof replays the captured pointer order consumed by
+`$86:D652-$D720`, rather than rebuilding a host-only actor set. Across 293
+player-only sweeps, including 18 state-changing sweeps, the broadphase,
+teammate response, and ordinary opponent response match with zero output
+mismatches. This exposed `$86:C2C1-$C300`'s unconditional cooldown assignment:
+even modes below seven receive X=8/Y=2, while odd or high modes receive
+X=2/Y=8. The knockdown-only `$86:BF0B-$C238` prefix and ball-contact calls are
+deliberately excluded from this increment's verified ledger.
