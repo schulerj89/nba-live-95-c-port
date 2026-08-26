@@ -134,6 +134,13 @@ reports success.
   exact captured `$34D3` actor-pointer order and compares player-owned outputs
   from `$86:D652`; ball/event and separately scheduled animation-only calls
   are explicitly filtered rather than attributed to the player-pair replay.
+  `verify_ball_contact_sweep_vectors.py` replays the complementary
+  state-changing ball/pass/shot/loose-ball calls. Direct
+  `verify_ball_acquisition_vectors.py` captures separate the shared BAA2
+  ownership core from D25A's pass/live-state continuation;
+  `verify_no_owner_pursuer_vectors.py` checks the five-record loose-ball scan,
+  and `verify_shot_launch_vectors.py` checks all three launch velocities,
+  including fractional-Z borrow and final-ADC carry behavior.
 - `trace_hash.py`: freezes a lockstep-passing gameplay JSONL trace as compact
   per-frame golden hashes (`--write-golden`), then re-verifies later runs
   cheaply (`--golden`), reporting the first divergent scene frame. Field-level

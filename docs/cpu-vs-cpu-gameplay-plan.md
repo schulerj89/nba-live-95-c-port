@@ -1394,3 +1394,27 @@ mismatches. This exposed `$86:C2C1-$C300`'s unconditional cooldown assignment:
 even modes below seven receive X=8/Y=2, while odd or high modes receive
 X=2/Y=8. The knockdown-only `$86:BF0B-$C238` prefix and ball-contact calls are
 deliberately excluded from this increment's verified ledger.
+
+### Increment 5V: collision, acquisition, pursuit, and launch carry
+
+Extended `$86:D652` capture now retains 1,475 player-only sweeps and 15
+ball/pass/shot/loose-ball state changes. The player replay verifies the full
+opponent `$86:BF0B-$C475` response, including the native assignment-case
+velocity restore before `$86:C302`'s vertical nudge. The ball replay verifies
+`$86:CCCD-$D548`; state `$81` jump-ball continuation and event-only animation
+callbacks stay explicitly outside its owned-output set.
+
+Direct `$86:BAA2-$BC99` and `$86:D25A-$D3C5` captures split shared ownership
+installation from its caller. Same-side catches now preserve both clocks and
+assignments, the catch mode clears actor `+$60` rather than reaction `+$AA`,
+and acquisition exposes the new owner without snapping or zeroing the ball
+record before the common attachment tail. The `$D34A-$D350` event-only slice
+remains outside the continuation ledger.
+
+Finally, 80 direct `$85:B0A8-$B128` scans verify five-player loose-ball
+pursuer selection, and 12 `$86:A1BD-$A292` launches verify all three velocity
+components. The latter exposed two deliberate 65816 carry details: Z's
+integer subtraction restarts carry instead of accepting the fractional
+borrow, while the final `ADC #$0018` does accept carry from the preceding
+velocity addition. This increment raises verified executed coverage from
+15.14% to 18.15% (+3.01 percentage points).

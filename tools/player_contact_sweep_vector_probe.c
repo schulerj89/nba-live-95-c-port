@@ -70,7 +70,8 @@ static void print_actor(const NbaTipoffActor *actor) {
 }
 
 int main(int argc, char **argv) {
-    if (argc != 2) return 2;
+    if (argc < 2 || argc > 3) return 2;
+    int ball_mode = argc == 3 && strcmp(argv[2], "ball") == 0;
     NbaAssetPack assets;
     memset(&assets, 0, sizeof(assets));
     if (!nba_assets_load(&assets, argv[1])) return 3;
@@ -85,8 +86,10 @@ int main(int argc, char **argv) {
         for (unsigned i = 0; i < 6u; ++i)
             session.config.rules[i] = (uint8_t)word(raw, 0x17D1u + i * 2u);
         if (!nba_tipoff_init(&state, &assets, &session)) return 4;
-        for (unsigned i = 0; i < NBA_GAMEPLAY_ACTOR_COUNT; ++i)
+        for (unsigned i = 0; i < NBA_GAMEPLAY_ACTOR_COUNT; ++i) {
             load_actor(&state.actors[i], raw, ACTOR_BASE + i * ACTOR_STRIDE);
+            state.actors[i].roster_slot = (uint8_t)(i % 5u);
+        }
         state.rng.state = word(raw, 0x07F6u);
         state.period_raw_0926 = word(raw, 0x0926u);
         state.live_state_raw = word(raw, 0x0936u);
@@ -95,6 +98,20 @@ int main(int argc, char **argv) {
         state.ball.owner_actor = state.possession_actor;
         state.inbound_actor_raw = word(raw, 0x0954u);
         state.ball_activity_raw = word(raw, 0x0948u);
+        state.shot_value_raw = word(raw, 0x094Cu);
+        state.pass_actor_raw = (int16_t)word(raw, 0x0942u);
+        state.pass_aux_raw = (int16_t)word(raw, 0x0944u);
+        state.pass_active_raw = word(raw, 0x09C4u);
+        state.pass_distance_raw = word(raw, 0x09DAu);
+        state.inbound_state_raw = word(raw, 0x0952u);
+        state.inbound_transfer_raw = word(raw, 0x09B8u);
+        state.inbound_ready_raw = word(raw, 0x09BAu);
+        state.rim_raw_0962 = word(raw, 0x0962u);
+        state.rim_raw_096a = word(raw, 0x096Au);
+        state.rim_raw_097c = word(raw, 0x097Cu);
+        state.dead_ball_raw_097e = word(raw, 0x097Eu);
+        state.match_clock_raw_0928 = word(raw, 0x0928u);
+        state.play_code = word(raw, 0x0996u);
         state.pass_receiver_raw = (int16_t)word(raw, 0x0946u);
         state.shot_actor_raw_09c8 = (int16_t)word(raw, 0x09C8u);
         state.rim_raw_13e7 = word(raw, 0x13E7u);
@@ -107,6 +124,27 @@ int main(int argc, char **argv) {
         state.fouls.team_fouls[1] = word(raw, 0x4793u);
         state.team_pose_contact_count_raw[0] = word(raw, 0x473Bu);
         state.team_pose_contact_count_raw[1] = word(raw, 0x47BBu);
+        state.session->score[0] = word(raw, 0x4711u);
+        state.session->score[1] = word(raw, 0x4791u);
+        state.offense_side = state.camera_side_group_raw != 0u;
+        state.possession_team = state.possession_actor >= 0 ?
+            (int8_t)(state.possession_actor / 5) : -1;
+        state.ball.x_fp = fixed_position(raw, 0x3EEDu, 0x3EEFu);
+        state.ball.y_fp = fixed_position(raw, 0x3EF1u, 0x3EF3u);
+        state.ball.z_fp = fixed_position(raw, 0x3EF5u, 0x3EF7u);
+        state.ball.velocity_x = (int16_t)word(raw, 0x3EF9u);
+        state.ball.velocity_y = (int16_t)word(raw, 0x3EFBu);
+        state.ball.velocity_z = (int16_t)word(raw, 0x3EFDu);
+        if (state.possession_actor >= 0) {
+            state.ball.state = NBA_BALL_ATTACHED;
+        } else if (state.ball_activity_raw != 0u) {
+            state.ball.state = NBA_BALL_SHOT;
+        } else if (state.pass_actor_raw >= 0 ||
+                   state.pass_receiver_raw >= 0 || state.pass_active_raw) {
+            state.ball.state = NBA_BALL_PASS;
+        } else {
+            state.ball.state = NBA_BALL_BOUNCE;
+        }
         state.cpu_vs_cpu = true;
         uint8_t order[NBA_GAMEPLAY_ACTOR_COUNT];
         unsigned order_count = 0u;
@@ -121,7 +159,26 @@ int main(int argc, char **argv) {
                 order_count >= NBA_GAMEPLAY_ACTOR_COUNT) return 6;
             order[order_count++] = (uint8_t)slot;
         }
-        nba_tipoff_replay_player_contact_order(&state, order, order_count);
+        if (ball_mode)
+            nba_tipoff_replay_collision_order(&state, order, order_count);
+        else
+            nba_tipoff_replay_player_contact_order(&state, order, order_count);
+        if (ball_mode) {
+            printf("%04x %04x %04x %04x %04x %04x %04x %04x %04x "
+                   "%04x %04x %04x %04x %04x %04x\n",
+                   state.rng.state, state.live_state_raw,
+                   (uint16_t)state.possession_actor,
+                   (uint16_t)state.pass_receiver_raw, state.rim_raw_13e7,
+                   state.fouls.foul_event_raw_0964,
+                   state.fouls.free_throw_state_raw_0978,
+                   state.fouls.shooting_foul_raw_09bc,
+                   state.fouls.whistle_active_raw_09b6,
+                   state.ball_activity_raw, state.shot_value_raw,
+                   (uint16_t)state.shot_actor_raw_09c8,
+                   state.rim_raw_096a, state.rim_raw_097c,
+                   state.pass_active_raw);
+            continue;
+        }
         printf("%04x %04x %04x %04x %04x %04x %04x %04x %04x",
                state.rng.state, state.live_state_raw,
                (uint16_t)state.possession_actor,

@@ -88,6 +88,11 @@ static bool cpu_update_rom_shooter(NbaTipoff *tipoff, unsigned slot);
 static bool cpu_update_rom_layup(NbaTipoff *tipoff, unsigned slot);
 static bool cpu_update_rom_special_receiver(NbaTipoff *tipoff, unsigned slot);
 static void cpu_commit_ball_acquisition(NbaTipoff *tipoff, uint8_t catcher);
+static bool cpu_try_owned_ball_contact(NbaTipoff *tipoff);
+static bool cpu_try_detached_shot_contact(NbaTipoff *tipoff);
+static int cpu_first_pass_contact(NbaTipoff *tipoff);
+static int cpu_first_loose_ball_contact(const NbaTipoff *tipoff);
+static int cpu_first_inbound_ball_contact(const NbaTipoff *tipoff);
 static void cpu_dispatch_pending_event(NbaTipoff *tipoff);
 static bool cpu_update_free_throw_scene(NbaTipoff *tipoff);
 
@@ -1348,6 +1353,22 @@ static bool cpu_actor_in_contact_window(const NbaTipoffActor *actor) {
     return x >= -378 && x < 379 && y >= -208 && y < 209;
 }
 
+/* `$86:C302-$C34B`: run after any defender velocity restoration performed
+ * by `$86:C261-$C275`; its gate observes those restored values. */
+static void cpu_nudge_contact_vertical(NbaTipoffActor *x,
+                                       const NbaTipoffActor *y) {
+    int16_t vx_delta = cpu_contact_sub(x->velocity_x, y->velocity_x);
+    unsigned abs_vx = (unsigned)(vx_delta < 0 ? -vx_delta : vx_delta);
+    if (abs_vx >= 0x80u) return;
+    int16_t vy = x->velocity_y;
+    unsigned abs_vy = (unsigned)(vy < 0 ? -vy : vy);
+    if (abs_vy >= 0x100u) return;
+    if (fp_round(x->y_fp) >= fp_round(y->y_fp))
+        x->velocity_y = (int16_t)(abs_vy + 0x10u);
+    else
+        x->velocity_y = (int16_t)-(int16_t)(abs_vy + 0x20u);
+}
+
 /* `$86:BD41-$BF08` and `$86:BF0B-$C475` share the same signed fixed-point
  * collision projection. Teammates use three arithmetic shifts; opponents
  * use four through `$86:C34C`. `$85:F78B` contributes the wrapped low word
@@ -1393,20 +1414,7 @@ static bool cpu_apply_player_contact_response(NbaTipoff *tipoff,
 
     /* `$86:C302-$C34B` prevents a nearly parallel opponent response from
      * leaving X sliding through Y on the vertical axis. */
-    if (nudge_x_vertical) {
-        int16_t vx_delta = cpu_contact_sub(x->velocity_x, y->velocity_x);
-        unsigned abs_vx = (unsigned)(vx_delta < 0 ? -vx_delta : vx_delta);
-        if (abs_vx < 0x80u) {
-            int16_t vy = x->velocity_y;
-            unsigned abs_vy = (unsigned)(vy < 0 ? -vy : vy);
-            if (abs_vy < 0x100u) {
-                if (fp_round(x->y_fp) >= fp_round(y->y_fp))
-                    x->velocity_y = (int16_t)(abs_vy + 0x10u);
-                else
-                    x->velocity_y = (int16_t)-(int16_t)(abs_vy + 0x20u);
-            }
-        }
-    }
+    if (nudge_x_vertical) cpu_nudge_contact_vertical(x, y);
     return true;
 }
 
@@ -1727,61 +1735,89 @@ static bool cpu_process_player_pair(NbaTipoff *tipoff,
     if (opponents) {
         if (dy < -16 || dy >= 16 || actor_distance(signed_dx, dy) >= 17u)
             return true;
+        /* `$86:BFBA-$BFDB` can swap X/Y while normalizing a moving first
+         * record for the knockdown probe. The symmetric ordinary impulse is
+         * represented in source order, except that `$86:C23B` must see the
+         * swapped defender when it is assigned to the current owner. */
+        unsigned response_x_slot = x_slot;
+        unsigned response_y_slot = y_slot;
+        if ((x->behavior_flags_raw & 1u) == 0u &&
+            x->movement_magnitude_raw != 0u &&
+            tipoff->possession_actor >= 0 &&
+            (unsigned)(y->assignment_current_raw >> 1) ==
+                (unsigned)tipoff->possession_actor &&
+            y->anchor_distance_raw < 0x90u &&
+            (y->control_mode == 2u || y->control_mode == 4u ||
+             y->control_mode == 6u)) {
+            response_x_slot = y_slot;
+            response_y_slot = x_slot;
+        }
         if (cpu_try_player_knockdown_contact(tipoff, x_slot, y_slot))
             return true;
         int16_t saved_x[3] = {x->velocity_x, x->velocity_y, x->velocity_z};
         int16_t saved_y[3] = {y->velocity_x, y->velocity_y, y->velocity_z};
-        bool x_defender = x->anchor_distance_raw < 0x90u &&
-            (x->control_mode == 2u || x->control_mode == 4u ||
-             x->control_mode == 6u);
-        bool y_defender = y->anchor_distance_raw < 0x90u &&
-            (y->control_mode == 2u || y->control_mode == 4u ||
-             y->control_mode == 6u);
+        NbaTipoffActor *response_x = &tipoff->actors[response_x_slot];
+        NbaTipoffActor *response_y = &tipoff->actors[response_y_slot];
+        bool x_defender = response_x->anchor_distance_raw < 0x90u &&
+            (response_x->control_mode == 2u ||
+             response_x->control_mode == 4u ||
+             response_x->control_mode == 6u);
+        bool y_defender = response_y->anchor_distance_raw < 0x90u &&
+            (response_y->control_mode == 2u ||
+             response_y->control_mode == 4u ||
+             response_y->control_mode == 6u);
         bool assignment_case = tipoff->possession_actor >= 0 &&
-            (unsigned)(x->assignment_current_raw >> 1) ==
+            (unsigned)(response_x->assignment_current_raw >> 1) ==
                 (unsigned)tipoff->possession_actor;
         bool responded = false;
         if (assignment_case && x_defender) {
-            int16_t preserve[2] = {x->velocity_x, x->velocity_y};
+            int16_t preserve[2] = {
+                response_x->velocity_x, response_x->velocity_y};
             responded = cpu_apply_player_contact_response(
-                tipoff, y_slot, x_slot, 4u, true);
-            x->velocity_x = preserve[0]; x->velocity_y = preserve[1];
+                tipoff, response_y_slot, response_x_slot, 4u, false);
+            response_x->velocity_x = preserve[0];
+            response_x->velocity_y = preserve[1];
             if (responded) {
-                y->recovery_inhibit_raw = 8u;
-                x->recovery_inhibit_raw = 2u;
+                cpu_nudge_contact_vertical(response_y, response_x);
+                response_y->recovery_inhibit_raw = 8u;
+                response_x->recovery_inhibit_raw = 2u;
             }
         } else if (assignment_case && y_defender) {
-            int16_t preserve[2] = {y->velocity_x, y->velocity_y};
+            int16_t preserve[2] = {
+                response_y->velocity_x, response_y->velocity_y};
             responded = cpu_apply_player_contact_response(
-                tipoff, x_slot, y_slot, 4u, true);
-            y->velocity_x = preserve[0]; y->velocity_y = preserve[1];
+                tipoff, response_x_slot, response_y_slot, 4u, false);
+            response_y->velocity_x = preserve[0];
+            response_y->velocity_y = preserve[1];
             if (responded) {
-                x->recovery_inhibit_raw = 8u;
-                y->recovery_inhibit_raw = 2u;
+                cpu_nudge_contact_vertical(response_x, response_y);
+                response_x->recovery_inhibit_raw = 8u;
+                response_y->recovery_inhibit_raw = 2u;
             }
         } else {
             responded = cpu_apply_player_contact_response(
-                tipoff, x_slot, y_slot, 4u, true);
+                tipoff, response_x_slot, response_y_slot, 4u, true);
             if (responded) {
                 /* `$86:C2C1-$C300` always installs the pair cooldowns.
                  * Even modes below seven use X=8/Y=2; odd or high modes
                  * reverse them to X=2/Y=8. */
-                if (x->control_mode < 7u &&
-                    (x->control_mode & 1u) == 0u) {
-                    x->recovery_inhibit_raw = 8u;
-                    y->recovery_inhibit_raw = 2u;
+                if (response_x->control_mode < 7u &&
+                    (response_x->control_mode & 1u) == 0u) {
+                    response_x->recovery_inhibit_raw = 8u;
+                    response_y->recovery_inhibit_raw = 2u;
                 } else {
-                    x->recovery_inhibit_raw = 2u;
-                    y->recovery_inhibit_raw = 8u;
+                    response_x->recovery_inhibit_raw = 2u;
+                    response_y->recovery_inhibit_raw = 8u;
                 }
             }
         }
         if (responded) {
-            cpu_record_player_contact(tipoff, x_slot, y_slot, 0x86BF0Bu);
-            if (x->controller_assignment_raw >= 0)
-                x->recovery_inhibit_raw = 0u;
-            if (y->controller_assignment_raw >= 0)
-                y->recovery_inhibit_raw = 0u;
+            cpu_record_player_contact(
+                tipoff, response_x_slot, response_y_slot, 0x86BF0Bu);
+            if (response_x->controller_assignment_raw >= 0)
+                response_x->recovery_inhibit_raw = 0u;
+            if (response_y->controller_assignment_raw >= 0)
+                response_y->recovery_inhibit_raw = 0u;
         }
         if ((y->behavior_flags_raw & 1u) != 0u) {
             y->velocity_x = saved_y[0]; y->velocity_y = saved_y[1];
@@ -1826,6 +1862,26 @@ void nba_tipoff_replay_player_contact_order(NbaTipoff *tipoff,
                 !cpu_process_player_pair(tipoff, order[i], order[j])) break;
         }
     }
+}
+
+void nba_tipoff_replay_collision_order(NbaTipoff *tipoff,
+                                       const uint8_t *order,
+                                       unsigned count) {
+    if (!tipoff || !order || count > NBA_GAMEPLAY_ACTOR_COUNT) return;
+    tipoff->simulation_tick &= ~1u;
+    nba_tipoff_replay_player_contact_order(tipoff, order, count);
+    bool handled = cpu_try_detached_shot_contact(tipoff);
+    if (!handled) handled = cpu_try_owned_ball_contact(tipoff);
+    if (handled || tipoff->ball.owner_actor >= 0) return;
+    int catcher = -1;
+    if (tipoff->ball.state == NBA_BALL_PASS)
+        catcher = cpu_first_pass_contact(tipoff);
+    else if (tipoff->live_state_raw == 0x82u)
+        catcher = cpu_first_inbound_ball_contact(tipoff);
+    else
+        catcher = cpu_first_loose_ball_contact(tipoff);
+    if (catcher >= 0)
+        cpu_commit_ball_acquisition(tipoff, (uint8_t)catcher);
 }
 
 void nba_tipoff_replay_player_contact_sweep(NbaTipoff *tipoff) {
@@ -4290,13 +4346,13 @@ static void cpu_apply_catch_mode(NbaTipoff *tipoff, uint8_t catcher) {
     NbaTipoffActor *actor = &tipoff->actors[catcher];
     NbaGameplayTeamContext *context = &tipoff->team_context[catcher / 5u];
     uint16_t mode = actor->control_mode;
-    uint16_t timer = actor->reaction_threshold;
+    uint16_t timer = actor->contact_action_timer_raw_60;
     uint16_t flags = actor->behavior_flags_raw;
     nba_gameplay_apply_catch_mode(
         tipoff->match_clock_raw_0928, &context->match_clock_raw_47,
         &mode, &timer, &flags);
     actor->control_mode = (uint8_t)mode;
-    actor->reaction_threshold = timer;
+    actor->contact_action_timer_raw_60 = timer;
     actor->behavior_flags_raw = flags;
 }
 
@@ -4368,22 +4424,22 @@ static bool cpu_inbound_completion_witness_self_test(void) {
     return !cpu_inbound_completion_witness(&state);
 }
 
-static void cpu_commit_ball_acquisition(NbaTipoff *tipoff, uint8_t catcher) {
+static void cpu_apply_ball_acquisition_core(NbaTipoff *tipoff,
+                                            uint8_t catcher) {
     /* `$86:BAA2-$BC99` is shared by pass catches and loose rebounds. It
      * installs the collision winner without mass-resetting the other nine
      * actor modes, clears the old play opportunities, and requests the next
      * ROM strategy through `$0994`. */
-    /* `$86:D365-$D39D`: state `$82` alone does not prove a completed inbound.
-     * A post-release `$86:A613` clears both witnesses; acquiring that loose
-     * pass keeps `$82` and makes the catcher the dead-ball carrier for retry. */
-    bool inbound_completion = cpu_inbound_completion_witness(tipoff);
-    unsigned previous_side = tipoff->offense_side;
     unsigned side = catcher / 5u;
+    uint16_t side_group = side ? 5u : 0u;
+    bool side_change = (int16_t)tipoff->dead_ball_raw_097e >= 0 ?
+        tipoff->dead_ball_raw_097e != side_group :
+        tipoff->camera_side_group_raw != side_group;
     NbaTipoffActor *catcher_state = &tipoff->actors[catcher];
     cpu_apply_catch_prefix(tipoff, catcher);
     cpu_apply_catch_mode(tipoff, catcher);
     bool special_finish = catcher_state->control_mode == 14u;
-    if (side != previous_side || inbound_completion) {
+    if (side_change) {
         ++tipoff->possession_number;
         /* `$86:BB3B-$BB6E` restores all actor +$74 assignments from +$76
          * and raises `$09D6`; the end-frame AF5C/BC07 pair owns modes. */
@@ -4395,29 +4451,33 @@ static void cpu_commit_ball_acquisition(NbaTipoff *tipoff, uint8_t catcher) {
                 (uint8_t)(state->assignment_current_raw >> 1);
         }
     }
-    /* `$86:BB3B-$BB81` requests the formation rebuild and resets both
-     * possession clocks on every acquisition, not only a side change. */
-    tipoff->role_rebuild_raw_09d6 = NBA_GAMEPLAY_UNKNOWN_WORD;
-    tipoff->rim_raw_092c = 0x05A0u;
-    tipoff->free_throw_flight_timer_raw_0930 = 0x0258u;
-    if (side != previous_side) tipoff->dead_ball_raw_096c = 0u;
-    if (tipoff->handler_actor != catcher &&
-        tipoff->handler_actor < NBA_GAMEPLAY_ACTOR_COUNT)
-        tipoff->actors[tipoff->handler_actor].control_mode = 1u;
+    /* `$86:BB17-$BB81` reaches the rebuild/clock block only when the
+     * catcher changes the active side (or completes the live `$82`
+     * inbound). Ordinary same-side passes preserve both clocks and the
+     * existing assignments. */
+    if (side_change) {
+        tipoff->role_rebuild_raw_09d6 = NBA_GAMEPLAY_UNKNOWN_WORD;
+        tipoff->play_request_raw = 1u;
+        tipoff->rim_raw_092c = 0x05A0u;
+        tipoff->free_throw_flight_timer_raw_0930 = 0x0258u;
+        tipoff->dead_ball_raw_096c = 0u;
+        tipoff->team_context[side].previous_dead_ball_actor_raw_43 =
+            NBA_GAMEPLAY_UNKNOWN_WORD;
+        tipoff->team_context[side].previous_controller_actor_raw_45 = -1;
+    }
     tipoff->offense_side = (uint8_t)side;
     tipoff->possession_team = (int8_t)side;
-    tipoff->camera_side_group_raw = side ? 5u : 0u;
+    tipoff->camera_side_group_raw = (uint8_t)side_group;
     tipoff->possession_frame = 0u;
     tipoff->play_state_frame = 0u;
     tipoff->handler_actor = catcher;
     tipoff->receiver_actor = catcher;
-    ball_attach_to_actor(tipoff, catcher);
-    tipoff->play_request_raw = 1u;
-    tipoff->pass_actor_raw = -1;
-    tipoff->pass_aux_raw = -1;
-    tipoff->pass_receiver_raw = -1;
-    tipoff->pass_active_raw = 0u;
-    tipoff->pass_distance_raw = 0u;
+    /* BAA2 installs `$093E` but does not rewrite the ball record. The later
+     * common attached-ball tail performs that projection. Preserve the
+     * collision-frame position and velocity here while exposing ownership
+     * to the host state machine. */
+    tipoff->ball.owner_actor = (int8_t)catcher;
+    tipoff->ball.state = NBA_BALL_ATTACHED;
     tipoff->cpu_play_state = special_finish ?
         NBA_CPU_PLAY_SHOT : NBA_CPU_PLAY_ATTACK;
     tipoff->shot_result_resolved = false;
@@ -4431,21 +4491,44 @@ static void cpu_commit_ball_acquisition(NbaTipoff *tipoff, uint8_t catcher) {
     tipoff->ball_activity_raw = 0u;
     tipoff->rim_raw_094a = 0u;
     tipoff->shot_value_raw = 0u;
-    tipoff->shot_actor_raw_09c8 = -1;
+    tipoff->free_throw_resolution_raw_0972 = 0u;
     tipoff->rim_raw_096a = 0u;
     tipoff->rim_raw_097c = 0u;
     tipoff->dead_ball_raw_097e = NBA_GAMEPLAY_UNKNOWN_WORD;
-    tipoff->rim_raw_0962 = 0u;
+}
+
+static void cpu_commit_ball_acquisition(NbaTipoff *tipoff, uint8_t catcher) {
+    /* `$86:D34A-$D3C5`: mark the collision, run the shared BAA2 ownership
+     * installer, then clear only the pass globals owned by this continuation.
+     * `$09C4/$09DA`, the inbound timer, and the ball record are not reset here. */
+    bool completion_witness = cpu_inbound_completion_witness(tipoff);
     tipoff->rim_raw_13e7 |= 0x0010u;
-    if (tipoff->live_state_raw != 0x82u || inbound_completion)
+    cpu_apply_ball_acquisition_core(tipoff, catcher);
+    if (completion_witness) {
+        if (tipoff->live_state_raw == 0x82u && tipoff->play_code < 6u)
+            tipoff->play_request_raw = 1u;
+        if (tipoff->fouls.whistle_active_raw_09b6 == 0u)
+            tipoff->live_state_raw = 0u;
+    } else if (tipoff->live_state_raw != 0x81u &&
+               tipoff->live_state_raw != 0x82u &&
+               tipoff->fouls.whistle_active_raw_09b6 == 0u) {
         tipoff->live_state_raw = 0u;
-    tipoff->inbound_transfer_raw = 0u;
-    if (inbound_completion) {
-        tipoff->inbound_state_raw = 0u;
-        tipoff->inbound_actor_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
-        tipoff->inbound_timer_raw = 0u;
-        tipoff->inbound_ready_raw = 0u;
     }
+    tipoff->pass_actor_raw = -1;
+    tipoff->pass_aux_raw = -1;
+    tipoff->pass_receiver_raw = -1;
+    tipoff->inbound_transfer_raw = 0u;
+}
+
+void nba_tipoff_replay_ball_acquisition(NbaTipoff *tipoff, uint8_t catcher) {
+    if (!tipoff || catcher >= NBA_GAMEPLAY_ACTOR_COUNT) return;
+    cpu_commit_ball_acquisition(tipoff, catcher);
+}
+
+void nba_tipoff_replay_ball_acquisition_core(NbaTipoff *tipoff,
+                                             uint8_t catcher) {
+    if (!tipoff || catcher >= NBA_GAMEPLAY_ACTOR_COUNT) return;
+    cpu_apply_ball_acquisition_core(tipoff, catcher);
 }
 
 static bool cpu_ball_acquisition_self_test(void) {
@@ -4496,8 +4579,9 @@ static bool cpu_ball_acquisition_self_test(void) {
         state.play_aux_selector_raw_09a6 != -1 ||
         state.catch_actor_record_raw_0910 != 0x3BEBu ||
         state.catch_context_record_raw_0912 != 0x476Bu ||
-        state.team_context[1].previous_dead_ball_actor_raw_43 != 9u ||
-        state.team_context[1].previous_controller_actor_raw_45 != 2 ||
+        state.team_context[1].previous_dead_ball_actor_raw_43 !=
+            NBA_GAMEPLAY_UNKNOWN_WORD ||
+        state.team_context[1].previous_controller_actor_raw_45 != -1 ||
         state.team_context[1].dead_ball_actor_raw_3f != 7u ||
         state.team_context[1].controller_actor_raw_41 != -1)
         return false;
@@ -5736,8 +5820,13 @@ static void cpu_update_possession(NbaTipoff *tipoff) {
         if (tipoff->cpu_play_state == NBA_CPU_PLAY_PASS &&
             tipoff->ball.owner_actor < 0) {
             int contact = cpu_first_pass_contact(tipoff);
-            if (contact >= 0)
+            if (contact >= 0) {
                 cpu_commit_ball_acquisition(tipoff, (uint8_t)contact);
+                /* `$86:D3C5` returns to the common `$85:A7A8/$87:B649`
+                 * owned-ball tail. BAA2 itself deliberately leaves the ball
+                 * record at its collision point; the tail projects it. */
+                ball_position_at_actor(tipoff, (unsigned)contact);
+            }
         }
         if (tipoff->cpu_play_state == NBA_CPU_PLAY_PASS &&
             tipoff->ball.state == NBA_BALL_BOUNCE) {
@@ -5780,6 +5869,7 @@ static void cpu_update_possession(NbaTipoff *tipoff) {
     if (jump_ball_acquisition)
         cpu_begin_possession(tipoff, 1u);
     NbaGameplayRimResult rim_result = cpu_update_live_ball(tipoff);
+    int8_t owner_before_contacts = tipoff->ball.owner_actor;
     cpu_update_player_contacts(tipoff);
     bool detached_contact = cpu_try_detached_shot_contact(tipoff);
     if (!detached_contact) (void)cpu_try_owned_ball_contact(tipoff);
@@ -5834,6 +5924,13 @@ static void cpu_update_possession(NbaTipoff *tipoff) {
             }
             break;
     }
+
+    /* `$86:D3C5` completes inside the collision pass, then the caller reaches
+     * the shared attached-ball tail. Keep that ordering outside the isolated
+     * BAA2/D25A replay functions, whose captured exits precede this write. */
+    if (owner_before_contacts < 0 && tipoff->ball.owner_actor >= 0)
+        ball_position_at_actor(tipoff,
+            (unsigned)tipoff->ball.owner_actor);
 
     cpu_schedule_actor_behaviors(
         tipoff, jump_ball_acquisition ||

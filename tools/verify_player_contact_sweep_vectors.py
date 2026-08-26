@@ -57,6 +57,26 @@ def native_nested_animation_only(entry, exit_mem):
                                  for offset in changed)
 
 
+def normalize_nested_receiver_animation(entry, exit_mem):
+    """Exclude pose writes owned by the ball/receiver callback in D652."""
+    for actor in range(10):
+        base = ACTOR_BASE + actor * ACTOR_STRIDE
+        if word(entry, base + 0x5E) != 10:
+            continue
+        for offset in (0x30, 0x32, 0x3A):
+            exit_mem[base + offset:base + offset + 2] = \
+                entry[base + offset:base + offset + 2]
+
+
+def native_nested_rng_only(entry, exit_mem):
+    """D652 may call the ball classifier, which can reject after RNG only."""
+    before = row(entry)
+    after = row(exit_mem)
+    differences = [index for index, values in
+                   enumerate(zip(before, after)) if values[0] != values[1]]
+    return differences == [0]
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--vectors", required=True)
@@ -69,10 +89,16 @@ def main():
     for vector in all_vectors:
         entry, exit_mem = memory(vector["entry"]), memory(vector["exit"])
         if (not native_ball_or_event_changed(entry, exit_mem) and
-                not native_nested_animation_only(entry, exit_mem)):
+                not native_nested_animation_only(entry, exit_mem) and
+                not native_nested_rng_only(entry, exit_mem)):
             vectors.append(vector)
     images = [memory(vector["entry"]) for vector in vectors]
-    expected = [row(memory(vector["exit"])) for vector in vectors]
+    expected = []
+    for vector in vectors:
+        entry = memory(vector["entry"])
+        exit_mem = memory(vector["exit"])
+        normalize_nested_receiver_animation(entry, exit_mem)
+        expected.append(row(exit_mem))
     run = subprocess.run([args.probe, args.pack], input=b"".join(images),
                          capture_output=True, check=True)
     actual = [[int(value, 16) for value in line.split()]

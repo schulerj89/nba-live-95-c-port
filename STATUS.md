@@ -18,7 +18,7 @@ Current measured coverage:
 |---|---:|---:|
 | observed executed code | 27,901 | 100.0% |
 | documented by ROM-address provenance | 8,855 | 31.7% |
-| verified against live ROM calls | 4,225 | 15.14% |
+| verified against live ROM calls | 5,064 | 18.15% |
 
 These values are generated, not estimated. The detailed per-bank report is
 `docs/progress.md`; the authoritative verified list and evidence paths are in
@@ -26,7 +26,7 @@ These values are generated, not estimated. The detailed per-bank report is
 
 ## Verified gameplay checkpoint
 
-Forty-two routine slices currently pass emulator-ground-truth replay. The most important
+Forty-nine routine slices currently pass emulator-ground-truth replay. The most important
 recent slices are:
 
 - `$86:D652-$D720`, `$86:C88F-$C91D`, `$86:CBC4-$CCCC`,
@@ -111,6 +111,15 @@ The contact replay exposed two exact integration details: `$86:D652` consumes
 the integer-coordinate pointer list prepared by `$86:D5DB`, and
 `$86:C2C1-$C300` reverses ordinary opponent recovery cooldowns from 8/2 to
 2/8 for odd or high control modes. The production port now preserves both.
+
+The collision/acquisition/launch increment adds 839 observed-executed verified
+bytes, raising ground-truth coverage from 15.14% to 18.15% (+3.01 percentage
+points). Its replays retain 1,475 player sweeps, 15 ball-contact sweeps, 14
+direct catch installs, 21 acquisition continuations, 80 loose-ball pursuer
+scans, and 12 shot launches with zero owned-output mismatches. They corrected
+assigned-defender velocity/nudge ordering, catch timer `+$60` ownership,
+same-side catch clock preservation, non-snapping acquisition state, and both
+65816 carry quirks in fractional-Z shot velocity construction.
 
 Do not infer that a surrounding routine is verified from one verified slice.
 Only ranges present in `docs/verified-routines.json` count as ground-truth

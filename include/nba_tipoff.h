@@ -253,5 +253,11 @@ void nba_tipoff_replay_player_contact_sweep(NbaTipoff *tipoff);
 void nba_tipoff_replay_player_contact_order(NbaTipoff *tipoff,
                                             const uint8_t *order,
                                             unsigned count);
+void nba_tipoff_replay_collision_order(NbaTipoff *tipoff,
+                                       const uint8_t *order,
+                                       unsigned count);
+void nba_tipoff_replay_ball_acquisition(NbaTipoff *tipoff, uint8_t catcher);
+void nba_tipoff_replay_ball_acquisition_core(NbaTipoff *tipoff,
+                                             uint8_t catcher);
 
 #endif

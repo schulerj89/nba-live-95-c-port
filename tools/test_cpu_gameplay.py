@@ -16,8 +16,8 @@ FORMATION = [
     (-8, -3), (16, 83), (24, -80), (-104, 56), (-96, -59),
 ]
 EXPECTED_RGB = {
-    600: "7414ad78ed2b3c1574c6d6e4c893378e690cb6a969551e5eeeb1dc9d612c7d85",
-    1300: "649bfb60c1fb72e7569c1386deee9fe83b42903ea7dfa71087af393159ee9fed",
+    600: "00728bd409009961093975b89eea8462f6255dd5948622b9dea26d65e9f42e84",
+    1300: "99056ccbf40db2c59036f268565ff4564782706d44494f48c58cbafa2488f0ab",
 }
 
 
@@ -420,14 +420,17 @@ def main():
                         after["match"]["live_state_raw"] != 0x82]
         if len(acquisitions) < 10:
             raise AssertionError("$86:BAA2 catch/rebound path was not sustained")
-        for _, acquired in acquisitions:
+        for previous, acquired in acquisitions:
             match = acquired["match"]
             if acquired["ball"]["activity_raw"] != 0 or \
                     match["rim_context_raw_097c"] != 0 or \
-                    not match["event_bits_raw_13e7"] & 0x0010 or \
-                    acquired["possession"]["play_request_raw"] != 1:
+                    not match["event_bits_raw_13e7"] & 0x0010:
                 raise AssertionError(
                     f"$86:BC81-$BC90 acquisition reset changed: {acquired}")
+            # The direct BAA2 vector replay verifies the side-change branch
+            # and same-side clock preservation.  An ownerless integration
+            # frame retains a stale possession-team word, so it cannot infer
+            # which branch BAA2 took from adjacent JSON rows alone.
         mode12_attached = [row for row in rows
                            if row["ball"]["state"] == 4 and
                            row["ball"]["activity_raw"] == 0xFFFF]
@@ -1019,10 +1022,21 @@ def main():
             boundary_dead_ball = row["ball"]["state"] == 4 and \
                 row["ball"]["owner"] == -1 and \
                 row["match"]["live_state_raw"] == 0x82
-            if before_actor["raw"]["upper_phase"] <= \
-                    raw["pass_release_threshold"] or \
+            # Family four is `$86:A6EC->$A749`: the descending boosted-pass
+            # continuation bypasses the ordinary `$86:A736-$A747` resource
+            # phase table. All other families must cross the phase gate.
+            phase_released = before_actor["raw"]["pass_family_c0"] == 4 or \
+                before_actor["raw"]["upper_phase"] > \
+                raw["pass_release_threshold"]
+            # A same-frame catch can immediately install a new pass for the
+            # catcher. In that case `$09C4=1` belongs to a different `$0942`,
+            # while the releasing actor's pass was still cleared correctly.
+            old_pass_still_active = \
+                row["possession"]["pass_active_raw"] != 0 and \
+                row["possession"]["pass_actor_raw"] == actor["id"]
+            if not phase_released or \
                     not (detached or same_frame_catch or boundary_dead_ball) or \
-                    row["possession"]["pass_active_raw"] != 0:
+                    old_pass_still_active:
                 raise AssertionError("pass released before `$86:A736-$A747` phase gate")
         pass_animations = {actor["animation"] for _, _, actor in pass_rows}
         if not pass_animations.intersection((0x2D, 0x2E)) or \

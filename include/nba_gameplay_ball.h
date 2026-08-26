@@ -169,6 +169,11 @@ void nba_gameplay_shot_launch(int32_t ball_x_fp, int32_t ball_y_fp,
                               int32_t ball_z_fp, int16_t target_x,
                               int16_t target_y, int16_t *velocity_x,
                               int16_t *velocity_y, int16_t *velocity_z);
+void nba_gameplay_shot_launch_delta(int32_t dx_fp, int32_t dy_fp,
+                                    int32_t ball_z_fp,
+                                    int16_t *velocity_x,
+                                    int16_t *velocity_y,
+                                    int16_t *velocity_z);
 int16_t nba_gameplay_arithmetic_shift_right(int16_t value, unsigned amount);
 bool nba_gameplay_ball_coarse_contact(int16_t actor_x, int16_t actor_y,
                                       int16_t actor_z, int16_t ball_x,

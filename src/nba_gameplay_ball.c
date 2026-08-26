@@ -557,13 +557,35 @@ void nba_gameplay_shot_launch(int32_t ball_x_fp, int32_t ball_y_fp,
      * ROM's signed 8.8 velocity increments used by this base launch branch. */
     int32_t dx_fp = (int32_t)target_x * 256 - ball_x_fp;
     int32_t dy_fp = (int32_t)target_y * 256 - ball_y_fp;
+    nba_gameplay_shot_launch_delta(dx_fp, dy_fp, ball_z_fp,
+                                   velocity_x, velocity_y, velocity_z);
+}
+
+void nba_gameplay_shot_launch_delta(int32_t dx_fp, int32_t dy_fp,
+                                    int32_t ball_z_fp,
+                                    int16_t *velocity_x,
+                                    int16_t *velocity_y,
+                                    int16_t *velocity_z) {
     uint16_t duration = nba_gameplay_shot_flight_duration(
         (int16_t)(dx_fp / 256), (int16_t)(dy_fp / 256));
-    int32_t dz_fp = 80 * 256 - ball_z_fp;
+    /* `$86:A244-$A26B` performs the fractional and integer SBC operations
+     * with a fresh SEC before each word. That deliberately discards the
+     * borrow from `0 - fraction`; preserve this ROM quirk instead of using
+     * an ordinary fixed-point subtraction. */
+    int32_t z_integer = ball_z_fp / 256;
+    uint8_t z_fraction = (uint8_t)((uint32_t)ball_z_fp & 0xFFu);
+    int32_t dz_fp = (80 - z_integer) * 256 +
+        (z_fraction == 0u ? 0 : 256 - z_fraction);
     if (velocity_x) *velocity_x = (int16_t)(dx_fp / (int32_t)duration);
     if (velocity_y) *velocity_y = (int16_t)(dy_fp / (int32_t)duration);
-    if (velocity_z) *velocity_z = (int16_t)(
-        dz_fp / (int32_t)duration + 12 * (int32_t)duration + 0x18);
+    if (velocity_z) {
+        int16_t quotient = (int16_t)(dz_fp / (int32_t)duration);
+        uint32_t first_sum = (uint16_t)quotient + 12u * duration;
+        /* `$A288-$A290` intentionally leaves ADC's carry from the first
+         * 16-bit addition live for `ADC #$0018`. */
+        *velocity_z = (int16_t)(uint16_t)(first_sum + 0x18u +
+                                          (first_sum >> 16));
+    }
 }
 
 int16_t nba_gameplay_arithmetic_shift_right(int16_t value, unsigned amount) {

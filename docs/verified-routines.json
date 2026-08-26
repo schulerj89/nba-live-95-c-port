@@ -336,6 +336,62 @@
       "method": "function-vectors",
       "evidence": ".analysis/func-vectors-player-contact-sweep2-20260826 (live ordinary opponent responses, 0 mismatches; planar velocity and native 8/2 versus 2/8 recovery cooldowns compared; knockdown-only prefix excluded)",
       "date": "2026-08-26"
+    },
+    {
+      "range": "86BF0B-86C475",
+      "name": "cpu_apply_player_contact_response (opponent knockdown and ordinary response)",
+      "source": "src/nba_tipoff.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-collision-sweep-long-20260826 (1,475 retained live player sweeps, 175 state-changing, 0 mismatches; high-speed knockdown/foul and recovery boundaries retained by forced production self-tests)",
+      "date": "2026-08-26"
+    },
+    {
+      "range": "86BAA2-86BC99",
+      "name": "cpu_apply_ball_acquisition_core",
+      "source": "src/nba_tipoff.c + src/nba_gameplay_ball.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-catch-complete-20260826 (14 complete direct calls, 7 catcher slots, 0 represented-output mismatches; 1 nested stat RNG callback reported separately)",
+      "date": "2026-08-26"
+    },
+    {
+      "range": "86CCCD-86D548",
+      "name": "nba_tipoff_replay_collision_order (ball contact core)",
+      "source": "src/nba_tipoff.c + src/nba_gameplay_ball.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-collision-sweep-long-20260826 (15 retained ball/pass/shot/loose acquisition sweeps, 0 mismatches; state-$81 jump-ball and effect-only callbacks explicitly excluded)",
+      "date": "2026-08-26"
+    },
+    {
+      "range": "86D25A-86D349",
+      "name": "cpu_commit_ball_acquisition (pre-event continuation)",
+      "source": "src/nba_tipoff.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-ball-acquisition-20260826 (21 non-$81 live continuations, 0 owned-output mismatches; roster/pose callbacks excluded)",
+      "date": "2026-08-26"
+    },
+    {
+      "range": "86D353-86D3C5",
+      "name": "cpu_commit_ball_acquisition (pass/live-state completion)",
+      "source": "src/nba_tipoff.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-ball-acquisition-20260826 (same 21 non-$81 live continuations, 0 owned-output mismatches; $D34A-$D350 event write deliberately remains outside this range)",
+      "date": "2026-08-26"
+    },
+    {
+      "range": "85B0A8-85B128",
+      "name": "nba_gameplay_select_no_owner_pursuer",
+      "source": "src/nba_gameplay_ai.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-no-owner-pursuer-core-20260826 (80 direct five-player scans, all selected, 0 mismatches; 335 pre-attachment shared-exit callbacks reported as orphan exits)",
+      "date": "2026-08-26"
+    },
+    {
+      "range": "86A1BD-86A292",
+      "name": "nba_gameplay_shot_launch_delta",
+      "source": "src/nba_gameplay_ball.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-shot-launch-core-20260826 (12 live launches, 0 mismatches; X/Y and vertical velocity compared across positive/negative and fractional-Z inputs)",
+      "date": "2026-08-26"
     }
   ]
 }
