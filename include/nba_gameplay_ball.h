@@ -100,6 +100,14 @@ void nba_gameplay_apply_catch_mode(uint16_t match_clock,
                                    uint16_t *behavior_flags);
 uint8_t nba_gameplay_owner_dribble_fallback_pose(
     uint16_t dead_ball_raw_0968, uint16_t catcher_latch_raw_ae);
+typedef enum NbaGameplayOwnerDribbleGate {
+    NBA_GAMEPLAY_OWNER_DRIBBLE_SKIP = 0,
+    NBA_GAMEPLAY_OWNER_DRIBBLE_FALLBACK,
+    NBA_GAMEPLAY_OWNER_DRIBBLE_CONTINUE
+} NbaGameplayOwnerDribbleGate;
+NbaGameplayOwnerDribbleGate nba_gameplay_owner_dribble_gate(
+    int16_t actor_z, uint16_t free_throw_state_raw_0978,
+    uint16_t live_state_raw_0936, uint16_t movement_magnitude_raw_4c);
 NbaGameplayRimResult nba_gameplay_rim_step(NbaGameplayRimState *state,
                                            uint16_t live_state,
                                            bool alternate_height,

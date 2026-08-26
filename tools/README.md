@@ -74,6 +74,10 @@ reports success.
   `verify_catch_mode_vectors.py` covers the first CPU-owner mode branch at
   `$86:BAFD-$BB14`; `verify_owner_dribble_pose_vectors.py` covers the
   terminal idle/moving dribble fallback at `$86:E593-$E5AA`.
+  `verify_owner_dribble_gate_vectors.py` covers all three opening outcomes at
+  `$86:E4A7-$E4C4`. Its internal exit PCs are shared by later control flow,
+  so `NBA95_VEC_SHARED_EXITS=1` reports post-classification callbacks
+  separately without mislabeling them as orphaned returns.
 - `trace_hash.py`: freezes a lockstep-passing gameplay JSONL trace as compact
   per-frame golden hashes (`--write-golden`), then re-verifies later runs
   cheaply (`--golden`), reporting the first divergent scene frame. Field-level

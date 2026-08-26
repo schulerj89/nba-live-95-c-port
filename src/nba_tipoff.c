@@ -946,9 +946,18 @@ static void cpu_dispatch_normal_actor_behavior(NbaTipoff *tipoff,
      * remain a separate porting increment. `$86:E3CB-$E3DD` repairs special
      * mode 1-6 bases. Writes affect the next logical physics pass. */
     if (actor->control_mode == 11u) {
-        actor->base_animation_state_raw_38 =
-            nba_gameplay_owner_dribble_fallback_pose(
-                tipoff->dead_ball_raw_0968, actor->catcher_latch_raw_ae);
+        NbaGameplayOwnerDribbleGate gate = nba_gameplay_owner_dribble_gate(
+            (int16_t)fp_round(actor->z_fp),
+            tipoff->fouls.free_throw_state_raw_0978,
+            tipoff->live_state_raw, actor->movement_magnitude_raw);
+        if (gate != NBA_GAMEPLAY_OWNER_DRIBBLE_SKIP) {
+            /* CONTINUE belongs to the next `$E4C7-$E592` increment; retain
+             * the prior fallback behavior until that selector is ported. */
+            actor->base_animation_state_raw_38 =
+                nba_gameplay_owner_dribble_fallback_pose(
+                    tipoff->dead_ball_raw_0968,
+                    actor->catcher_latch_raw_ae);
+        }
     } else if (actor->control_mode >= 1u &&
                actor->control_mode <= 6u &&
                (actor->animation_state == 8u ||

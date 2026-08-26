@@ -21,6 +21,9 @@
 --                       begins (same route as mesen_tipoff_capture.lua)
 --   NBA95_CPU_VS_CPU    1 = with NBA95_VEC_DRIVE, clear human assignments so
 --                       both teams play under CPU control
+--   NBA95_VEC_SHARED_EXITS 1 = exit PCs are internal/shared boundaries;
+--                       callbacks without a pending entry are counted
+--                       separately instead of as orphaned returns
 --
 -- Output:
 --   <label>.vectors.jsonl  one vector per completed call
@@ -140,8 +143,10 @@ meta:write(string.format(
     max_calls))
 meta:close()
 
-local frame, recorded, orphan_exits, done = 0, 0, 0, false
+local frame, recorded, orphan_exits, shared_exit_callbacks, done =
+    0, 0, 0, 0, false
 local pending = {}
+local shared_exits = os.getenv("NBA95_VEC_SHARED_EXITS") == "1"
 local drive = os.getenv("NBA95_VEC_DRIVE") == "1"
 local force_cpu_vs_cpu = os.getenv("NBA95_CPU_VS_CPU") == "1"
 -- Without driving, record immediately; with driving, wait for on-court play.
@@ -152,7 +157,8 @@ local function finish()
     vectors:close()
     local sentinel = assert(io.open(out .. "/capture_complete.txt", "wb"))
     sentinel:write(string.format(
-        "label=%s vectors=%d orphan_exits=%d\n", label, recorded, orphan_exits))
+        "label=%s vectors=%d orphan_exits=%d shared_exit_callbacks=%d\n",
+        label, recorded, orphan_exits, shared_exit_callbacks))
     sentinel:close()
     emu.stop(0)
 end
@@ -175,8 +181,14 @@ for _, exit_pc in ipairs(exit_pcs) do
         if done or not recording then return end
         local entry = table.remove(pending)
         if not entry then
-            -- Script attached mid-call; nothing to pair this exit with.
-            orphan_exits = orphan_exits + 1
+            if shared_exits then
+                -- An internal boundary can be revisited later by the same
+                -- invocation after its first classified exit was recorded.
+                shared_exit_callbacks = shared_exit_callbacks + 1
+            else
+                -- Script attached mid-call; nothing to pair this exit with.
+                orphan_exits = orphan_exits + 1
+            end
             return
         end
         recorded = recorded + 1

@@ -50,6 +50,19 @@ uint8_t nba_gameplay_owner_dribble_fallback_pose(
     return dead_ball_raw_0968 != 0u || catcher_latch_raw_ae != 0u ? 12u : 5u;
 }
 
+/* `$86:E4A7-$E4C4`: opening owner-pose gates. The signed BMI after CMP is
+ * preserved rather than replaced with an unsigned host comparison. */
+NbaGameplayOwnerDribbleGate nba_gameplay_owner_dribble_gate(
+        int16_t actor_z, uint16_t free_throw_state_raw_0978,
+        uint16_t live_state_raw_0936, uint16_t movement_magnitude_raw_4c) {
+    if (actor_z != 0) return NBA_GAMEPLAY_OWNER_DRIBBLE_SKIP;
+    if (free_throw_state_raw_0978 != 0u || live_state_raw_0936 == 0x82u)
+        return NBA_GAMEPLAY_OWNER_DRIBBLE_FALLBACK;
+    return (int16_t)(uint16_t)(movement_magnitude_raw_4c - 0x0200u) < 0 ?
+        NBA_GAMEPLAY_OWNER_DRIBBLE_CONTINUE :
+        NBA_GAMEPLAY_OWNER_DRIBBLE_FALLBACK;
+}
+
 /* Three-point arc table `$85:ABFB`, indexed by even Y offsets 0..356. */
 static const int16_t three_point_arc[179] = {
     259,251,246,243,241,238,236,234,232,229,226,224,222,218,215,212,
@@ -850,12 +863,22 @@ bool nba_gameplay_ball_self_test(void) {
         0x5678u, &catch_clock, &catch_mode, &catch_timer, &catch_flags);
     catch_modes = catch_modes && catch_clock == 0x5678u &&
         catch_mode == 14u && catch_timer == 7u && catch_flags == 0x1234u;
+    bool dribble_gates = nba_gameplay_owner_dribble_gate(
+            1, 0u, 0u, 0u) == NBA_GAMEPLAY_OWNER_DRIBBLE_SKIP &&
+        nba_gameplay_owner_dribble_gate(
+            0, 1u, 0u, 0u) == NBA_GAMEPLAY_OWNER_DRIBBLE_FALLBACK &&
+        nba_gameplay_owner_dribble_gate(
+            0, 0u, 0x82u, 0u) == NBA_GAMEPLAY_OWNER_DRIBBLE_FALLBACK &&
+        nba_gameplay_owner_dribble_gate(
+            0, 0u, 0u, 0x01FFu) == NBA_GAMEPLAY_OWNER_DRIBBLE_CONTINUE &&
+        nba_gameplay_owner_dribble_gate(
+            0, 0u, 0u, 0x0200u) == NBA_GAMEPLAY_OWNER_DRIBBLE_FALLBACK;
     return launch_ok && shell_gates && outer_generic && outer_y &&
            acquisition_gates && contact_selector && deflection_vectors &&
            owned_contact_vectors && detached_contact_vectors &&
            edge_response && miss_response &&
            inner_distance_vectors && made_response && settle_response &&
-           settle_gates && ground_impact && catch_modes &&
+           settle_gates && ground_impact && catch_modes && dribble_gates &&
            right_world_bridge && left_world_bridge &&
            outer_negative_y_edge &&
            outer_low && outer_high &&

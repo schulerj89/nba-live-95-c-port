@@ -69,6 +69,13 @@ increment rather than being hidden behind the verified fallback. The ledger
 now contains 6 routines and 182 executed bytes (0.65% of the observed
 denominator).
 
+`$86:E4A7-$E4C4`, the opening mode-11 dribble gate, is now verified across
+1,000 live calls: 21 vertical skips, 425 direct fallbacks, and 554
+continuations into `$E4C7`, with zero mismatches. The downstream fallback and
+catch-mode suites were replayed again after integration and remain exact. The
+ledger now contains 7 routines and 195 executed bytes (0.70% of the observed
+denominator).
+
 ## How each number is captured
 
 All three inputs are machine-generated; none are maintained by hand.
