@@ -108,6 +108,16 @@ typedef enum NbaGameplayOwnerDribbleGate {
 NbaGameplayOwnerDribbleGate nba_gameplay_owner_dribble_gate(
     int16_t actor_z, uint16_t free_throw_state_raw_0978,
     uint16_t live_state_raw_0936, uint16_t movement_magnitude_raw_4c);
+typedef enum NbaGameplayOwnerProximityResult {
+    NBA_GAMEPLAY_OWNER_PROXIMITY_FALLBACK = 0,
+    NBA_GAMEPLAY_OWNER_PROXIMITY_LATCHED,
+    NBA_GAMEPLAY_OWNER_PROXIMITY_UNLATCHED
+} NbaGameplayOwnerProximityResult;
+NbaGameplayOwnerProximityResult nba_gameplay_owner_dribble_proximity(
+    int16_t context_anchor_x, int16_t actor_x,
+    uint16_t paired_movement_magnitude, uint16_t assignment_distance,
+    uint8_t paired_direction, uint16_t dead_ball_raw_0968,
+    uint16_t catcher_latch_raw_ae, uint8_t *requested_direction);
 NbaGameplayRimResult nba_gameplay_rim_step(NbaGameplayRimState *state,
                                            uint16_t live_state,
                                            bool alternate_height,

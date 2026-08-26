@@ -56,6 +56,14 @@
       "method": "function-vectors",
       "evidence": ".analysis/func-vectors-owner-dribble-gate-20260825 (1000 live calls, 0 mismatches, 0 orphan exits; 21 skip, 425 fallback, 554 continue outcomes; 395 expected shared-boundary callbacks)",
       "date": "2026-08-25"
+    },
+    {
+      "range": "86E4C7-86E4F3",
+      "name": "nba_gameplay_owner_dribble_proximity",
+      "source": "src/nba_gameplay_ball.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-owner-dribble-proximity-20260825 (1000 live calls, 0 mismatches, 0 orphan exits; 841 fallback, 3 latched, 156 unlatched outcomes; 925 expected shared-boundary callbacks)",
+      "date": "2026-08-25"
     }
   ]
 }

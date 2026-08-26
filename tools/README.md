@@ -78,6 +78,9 @@ reports success.
   `$86:E4A7-$E4C4`. Its internal exit PCs are shared by later control flow,
   so `NBA95_VEC_SHARED_EXITS=1` reports post-classification callbacks
   separately without mislabeling them as orphaned returns.
+  `verify_owner_dribble_proximity_vectors.py` continues through
+  `$86:E4C7-$E4F3`, verifying paired-side/speed/distance gates and the
+  successful `+$86 -> +$50` requested-facing write.
 - `trace_hash.py`: freezes a lockstep-passing gameplay JSONL trace as compact
   per-frame golden hashes (`--write-golden`), then re-verifies later runs
   cheaply (`--golden`), reporting the first divergent scene frame. Field-level

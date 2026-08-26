@@ -76,6 +76,14 @@ catch-mode suites were replayed again after integration and remain exact. The
 ledger now contains 7 routines and 195 executed bytes (0.70% of the observed
 denominator).
 
+The next selector slice, `$86:E4C7-$E4F3`, is verified across 1,000 live
+calls: 841 fallbacks, 3 latched-owner paths, and 156 unlatched continuations.
+The port now performs the ROM's paired-side, speed, and distance gates and
+copies paired `+$86` direction into owner `+$50`. The unlatched pose decision
+starting at `$86:E545` remains the next bounded increment. The ledger now
+contains 8 routines and 213 executed bytes (0.76% of the observed
+denominator).
+
 ## How each number is captured
 
 All three inputs are machine-generated; none are maintained by hand.

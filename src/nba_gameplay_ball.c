@@ -63,6 +63,23 @@ NbaGameplayOwnerDribbleGate nba_gameplay_owner_dribble_gate(
         NBA_GAMEPLAY_OWNER_DRIBBLE_FALLBACK;
 }
 
+/* `$86:E4C7-$E4F3`: nearby-pair owner-pose gates and facing handoff. */
+NbaGameplayOwnerProximityResult nba_gameplay_owner_dribble_proximity(
+        int16_t context_anchor_x, int16_t actor_x,
+        uint16_t paired_movement_magnitude, uint16_t assignment_distance,
+        uint8_t paired_direction, uint16_t dead_ball_raw_0968,
+        uint16_t catcher_latch_raw_ae, uint8_t *requested_direction) {
+    if (((uint16_t)context_anchor_x ^ (uint16_t)actor_x) & 0x8000u)
+        return NBA_GAMEPLAY_OWNER_PROXIMITY_FALLBACK;
+    if ((int16_t)(uint16_t)(paired_movement_magnitude - 0x0200u) >= 0 ||
+        (int16_t)(uint16_t)(assignment_distance - 0x0021u) >= 0)
+        return NBA_GAMEPLAY_OWNER_PROXIMITY_FALLBACK;
+    if (requested_direction) *requested_direction = paired_direction;
+    return dead_ball_raw_0968 != 0u || catcher_latch_raw_ae != 0u ?
+        NBA_GAMEPLAY_OWNER_PROXIMITY_LATCHED :
+        NBA_GAMEPLAY_OWNER_PROXIMITY_UNLATCHED;
+}
+
 /* Three-point arc table `$85:ABFB`, indexed by even Y offsets 0..356. */
 static const int16_t three_point_arc[179] = {
     259,251,246,243,241,238,236,234,232,229,226,224,222,218,215,212,
@@ -873,12 +890,29 @@ bool nba_gameplay_ball_self_test(void) {
             0, 0u, 0u, 0x01FFu) == NBA_GAMEPLAY_OWNER_DRIBBLE_CONTINUE &&
         nba_gameplay_owner_dribble_gate(
             0, 0u, 0u, 0x0200u) == NBA_GAMEPLAY_OWNER_DRIBBLE_FALLBACK;
+    uint8_t proximity_facing = 3u;
+    bool proximity_gates = nba_gameplay_owner_dribble_proximity(
+            336, -1, 0u, 0u, 5u, 0u, 0u, &proximity_facing) ==
+            NBA_GAMEPLAY_OWNER_PROXIMITY_FALLBACK && proximity_facing == 3u;
+    proximity_gates = proximity_gates &&
+        nba_gameplay_owner_dribble_proximity(
+            336, 1, 0x0200u, 0u, 5u, 0u, 0u, &proximity_facing) ==
+            NBA_GAMEPLAY_OWNER_PROXIMITY_FALLBACK;
+    proximity_gates = proximity_gates &&
+        nba_gameplay_owner_dribble_proximity(
+            336, 1, 0u, 0x20u, 6u, 0u, 1u, &proximity_facing) ==
+            NBA_GAMEPLAY_OWNER_PROXIMITY_LATCHED && proximity_facing == 6u;
+    proximity_gates = proximity_gates &&
+        nba_gameplay_owner_dribble_proximity(
+            336, 1, 0u, 0x20u, 7u, 0u, 0u, &proximity_facing) ==
+            NBA_GAMEPLAY_OWNER_PROXIMITY_UNLATCHED && proximity_facing == 7u;
     return launch_ok && shell_gates && outer_generic && outer_y &&
            acquisition_gates && contact_selector && deflection_vectors &&
            owned_contact_vectors && detached_contact_vectors &&
            edge_response && miss_response &&
            inner_distance_vectors && made_response && settle_response &&
            settle_gates && ground_impact && catch_modes && dribble_gates &&
+           proximity_gates &&
            right_world_bridge && left_world_bridge &&
            outer_negative_y_edge &&
            outer_low && outer_high &&

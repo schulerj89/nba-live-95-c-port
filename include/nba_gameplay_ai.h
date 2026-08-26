@@ -9,6 +9,7 @@ typedef struct {
 } NbaGameplayRng;
 
 typedef struct {
+    int16_t anchor_x_raw_0a;
     uint16_t mode_raw_30;
     uint16_t flags_raw_32;
     uint16_t activity_raw_39;

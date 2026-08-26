@@ -951,8 +951,22 @@ static void cpu_dispatch_normal_actor_behavior(NbaTipoff *tipoff,
             tipoff->fouls.free_throw_state_raw_0978,
             tipoff->live_state_raw, actor->movement_magnitude_raw);
         if (gate != NBA_GAMEPLAY_OWNER_DRIBBLE_SKIP) {
-            /* CONTINUE belongs to the next `$E4C7-$E592` increment; retain
-             * the prior fallback behavior until that selector is ported. */
+            if (gate == NBA_GAMEPLAY_OWNER_DRIBBLE_CONTINUE) {
+                unsigned paired = actor->assignment_actor;
+                if (paired < NBA_GAMEPLAY_ACTOR_COUNT) {
+                    NbaTipoffActor *paired_actor = &tipoff->actors[paired];
+                    (void)nba_gameplay_owner_dribble_proximity(
+                        tipoff->team_context[slot / 5u].anchor_x_raw_0a,
+                        (int16_t)x, paired_actor->movement_magnitude_raw,
+                        actor->assignment_distance,
+                        paired_actor->assignment_direction,
+                        tipoff->dead_ball_raw_0968,
+                        actor->catcher_latch_raw_ae,
+                        &actor->requested_direction);
+                }
+            }
+            /* The unlatched `$E545-$E592` pose choice is the next increment;
+             * retain the prior fallback pose until it is ported. */
             actor->base_animation_state_raw_38 =
                 nba_gameplay_owner_dribble_fallback_pose(
                     tipoff->dead_ball_raw_0968,
@@ -5715,6 +5729,8 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
         {0x04u, 0x06u, 0x08u, 0x00u, 0x02u}
     };
     for (unsigned side = 0; side < 2u; ++side) {
+        tipoff->team_context[side].anchor_x_raw_0a =
+            side ? 336 : -336;
         tipoff->team_context[side].mode_raw_30 = 4u;
         tipoff->team_context[side].flags_raw_32 = 1u;
         tipoff->team_context[side].activity_raw_39 = 1u;
