@@ -34,6 +34,11 @@ typedef struct {
 
 typedef struct {
     int16_t x, y;
+    uint8_t team_group;
+} NbaGameplayLaneActor;
+
+typedef struct {
+    int16_t x, y;
     uint8_t direction;
     uint8_t play_code;
     bool play_requested;
@@ -146,6 +151,9 @@ uint8_t nba_gameplay_pass_direction(int16_t dx, int16_t dy,
 bool nba_gameplay_receiver_candidate_valid(
     uint8_t passer_actor, uint8_t candidate_actor,
     const NbaGameplayReceiverState *actors, uint8_t actor_count);
+bool nba_gameplay_lane_to_basket_clear(
+    uint8_t subject_actor, int16_t basket_x,
+    const NbaGameplayLaneActor *actors, uint8_t actor_count);
 int8_t nba_gameplay_select_pass_receiver(
     uint8_t passer_actor, int16_t special_actor,
     const int16_t selectors[3], const NbaGameplayReceiverState *actors,

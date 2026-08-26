@@ -456,7 +456,7 @@ host-authored substitutes.
 Increment 4M closes two live-required inputs that the first formation pass
 left explicit. `$85:B4B9-$B50D` now advances actor `+$64` with signed
 `C6=2` cadence. When `$09A4` is active, possession exists, the ROM
-actor-to-basket rectangle at `$85:F5E4-$F715` contains no opponent, and the
+actor-to-basket rectangle at `$85:F5E4-$F727` contains no opponent, and the
 actor is within 160 units of `$093E`, it writes that actor to `$09A2`.
 `$85:AE1F-$AE32` then clears formation bit `$08` and persists the exact team
 basket anchor `(-336,0)` or `(336,0)`. The 50,000-frame regression observes
@@ -1202,7 +1202,8 @@ non-local `$85:B837` unwind, so urgency formation and clear-lane actions no
 longer fall through into `$85:B50E` pass selection. Both `$092C < 120` and
 `$0928 < 120` urgency gates consume exactly one `$80:CEFD` result.
 
-`$85:F5E4-$F727` supplies the strict opponent-center corridor predicate.
+`$85:F5E4-$F727` supplies the lower-inclusive/upper-exclusive opponent-center
+corridor predicate.
 Blocked lanes alone reach the existing `$85:B734-$B820` rating/range tail;
 clear lanes with actor `+$8C >= $70` steer toward formation and consume the
 decision. Closer clear lanes execute the grounded/speed/profile/facing gates

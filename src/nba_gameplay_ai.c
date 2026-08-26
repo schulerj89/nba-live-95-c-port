@@ -139,6 +139,47 @@ bool nba_gameplay_receiver_candidate_valid(
     return true;
 }
 
+static bool lane_half_open_between(int16_t value, int16_t endpoint_a,
+                                   int16_t endpoint_b) {
+    int16_t da = wrap16((int32_t)value - endpoint_a);
+    int16_t db = wrap16((int32_t)value - endpoint_b);
+    return (int16_t)(uint16_t)((uint16_t)da ^ (uint16_t)db) < 0;
+}
+
+/* `$85:F5E4-$F727`: construct the asymmetric actor-to-basket rectangle and
+ * reject it when an opposing center lies in both half-open axis intervals.
+ * The XOR-sign tests include the numeric lower edge and exclude the upper.
+ * The ROM traverses the active linked list and skips the ball record; this
+ * normalized actor array contains the same ten eligible player records. */
+bool nba_gameplay_lane_to_basket_clear(
+    uint8_t subject_actor, int16_t basket_x,
+    const NbaGameplayLaneActor *actors, uint8_t actor_count) {
+    if (!actors || subject_actor >= actor_count) return false;
+    const NbaGameplayLaneActor *subject = &actors[subject_actor];
+    int16_t x_a, x_b, y_a, y_b;
+    if (subject->x < basket_x) {
+        x_a = wrap16((int32_t)subject->x - 8);
+        x_b = wrap16((int32_t)basket_x + 24);
+    } else {
+        x_a = wrap16((int32_t)subject->x + 8);
+        x_b = wrap16((int32_t)basket_x - 24);
+    }
+    if (subject->y < 0) {
+        y_a = wrap16((int32_t)subject->y - 24);
+        y_b = 24;
+    } else {
+        y_a = wrap16((int32_t)subject->y + 24);
+        y_b = -24;
+    }
+    for (uint8_t other = 0; other < actor_count; ++other) {
+        if (actors[other].team_group == subject->team_group) continue;
+        if (lane_half_open_between(actors[other].x, x_a, x_b) &&
+            lane_half_open_between(actors[other].y, y_a, y_b))
+            return false;
+    }
+    return true;
+}
+
 static uint8_t inbound_edge_play(int16_t x, int16_t y,
                                  int16_t context_anchor_x,
                                  NbaGameplayRng *rng) {
@@ -764,6 +805,28 @@ bool nba_gameplay_ai_self_test(void) {
         return false;
     for (unsigned i = 0; i < 5u; ++i)
         if (loose_modes[i] != 7u) return false;
+
+    NbaGameplayLaneActor lane[10] = {0};
+    lane[0] = (NbaGameplayLaneActor){100, 0, 0u};
+    lane[1] = (NbaGameplayLaneActor){200, 0, 0u};
+    lane[5] = (NbaGameplayLaneActor){200, 0, 5u};
+    if (nba_gameplay_lane_to_basket_clear(0u, 336, lane, 10u))
+        return false;
+    lane[5].x = 92; /* numeric lower X endpoint is included */
+    if (nba_gameplay_lane_to_basket_clear(0u, 336, lane, 10u))
+        return false;
+    lane[5].x = 360; /* numeric upper X endpoint is excluded */
+    if (!nba_gameplay_lane_to_basket_clear(0u, 336, lane, 10u))
+        return false;
+    lane[5].x = 93;
+    lane[5].y = 24; /* numeric upper Y endpoint is excluded */
+    if (!nba_gameplay_lane_to_basket_clear(0u, 336, lane, 10u))
+        return false;
+    lane[5].y = -24; /* numeric lower Y endpoint is included */
+    if (nba_gameplay_lane_to_basket_clear(0u, 336, lane, 10u))
+        return false;
+    if (nba_gameplay_lane_to_basket_clear(10u, 336, lane, 10u))
+        return false;
 
     NbaGameplayLoosePursuitGateInput pursuit = {
         .live_state_raw_0936 = 0u,

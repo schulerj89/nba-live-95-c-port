@@ -96,6 +96,14 @@
       "method": "function-vectors",
       "evidence": ".analysis/func-vectors-receiver-candidate-20260825 (30 live calls, 0 mismatches, 0 orphan exits; 17 accepted, 6 ordinary rejected and 7 negative/self rejected calls; all three RTL returns observed)",
       "date": "2026-08-25"
+    },
+    {
+      "range": "85F5E4-85F727",
+      "name": "nba_gameplay_lane_to_basket_clear",
+      "source": "src/nba_gameplay_ai.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-lane-clear2-20260825 (264 live calls, 0 mismatches, 0 orphan exits; 257 blocked and 7 clear results; all ten actor slots and both +/-336 basket anchors observed; lower-inclusive/upper-exclusive edge behavior regression-tested)",
+      "date": "2026-08-25"
     }
   ]
 }

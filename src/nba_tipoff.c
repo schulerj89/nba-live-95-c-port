@@ -185,45 +185,22 @@ static uint16_t actor_distance(int dx, int dy) {
     return (uint16_t)(high + (low >> 2));
 }
 
-static bool strictly_between(int16_t value, int16_t endpoint_a,
-                             int16_t endpoint_b) {
-    int32_t da = (int32_t)value - endpoint_a;
-    int32_t db = (int32_t)value - endpoint_b;
-    return (da < 0 && db > 0) || (da > 0 && db < 0);
-}
-
-/* `$85:F5E4-$F715`: an opponent blocks the cutter only when its center is
- * strictly inside the actor-to-basket rectangle. The ROM traverses linked
- * actor neighbors; the fixed ten-record C array yields the same predicate. */
+/* `$85:F5E4-$F727`: an opponent blocks the cutter when its center is in the
+ * ROM's lower-inclusive/upper-exclusive actor-to-basket rectangle. It
+ * traverses linked actor neighbors; the fixed ten-record C array yields the
+ * same predicate. */
 static bool cpu_lane_to_basket_is_clear(const NbaTipoff *tipoff,
                                         unsigned slot) {
-    const NbaTipoffActor *actor = &tipoff->actors[slot];
-    int16_t x = fp_round(actor->x_fp), y = fp_round(actor->y_fp);
-    int16_t basket_x = slot < 5u ? -336 : 336;
-    int16_t x_a, x_b, y_a, y_b;
-    if (x < basket_x) {
-        x_a = (int16_t)(x - 8);
-        x_b = (int16_t)(basket_x + 24);
-    } else {
-        x_a = (int16_t)(x + 8);
-        x_b = (int16_t)(basket_x - 24);
+    NbaGameplayLaneActor actors[NBA_GAMEPLAY_ACTOR_COUNT];
+    for (unsigned i = 0; i < NBA_GAMEPLAY_ACTOR_COUNT; ++i) {
+        actors[i].x = fp_round(tipoff->actors[i].x_fp);
+        actors[i].y = fp_round(tipoff->actors[i].y_fp);
+        actors[i].team_group = (uint8_t)((i / 5u) * 5u);
     }
-    if (y < 0) {
-        y_a = (int16_t)(y - 24);
-        y_b = 24;
-    } else {
-        y_a = (int16_t)(y + 24);
-        y_b = -24;
-    }
-    unsigned side = slot / 5u;
-    for (unsigned other = 0; other < NBA_GAMEPLAY_ACTOR_COUNT; ++other) {
-        if (other / 5u == side) continue;
-        int16_t other_x = fp_round(tipoff->actors[other].x_fp);
-        int16_t other_y = fp_round(tipoff->actors[other].y_fp);
-        if (strictly_between(other_x, x_a, x_b) &&
-            strictly_between(other_y, y_a, y_b)) return false;
-    }
-    return true;
+    return nba_gameplay_lane_to_basket_clear(
+        (uint8_t)slot,
+        tipoff->team_context[slot / 5u].anchor_x_raw_0a,
+        actors, NBA_GAMEPLAY_ACTOR_COUNT);
 }
 
 /* `$85:B4B9-$B50D`: actor +$64 cadence selects a clear-lane cutter while

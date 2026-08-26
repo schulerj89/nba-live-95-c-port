@@ -90,6 +90,9 @@ reports success.
   `$85:B402-$B4B8`, comparing native carry, preserved steering, velocity and
   boost across both arrival outcomes. `verify_receiver_candidate_vectors.py`
   covers all three `$85:B60B-$B677` candidate returns using live actor records.
+  `verify_lane_clear_vectors.py` normalizes the linked-list player scan at
+  `$85:F5E4-$F727` into ten actor records and compares the native blocked/clear
+  result for both basket orientations.
 - `trace_hash.py`: freezes a lockstep-passing gameplay JSONL trace as compact
   per-frame golden hashes (`--write-golden`), then re-verifies later runs
   cheaply (`--golden`), reporting the first divergent scene frame. Field-level
