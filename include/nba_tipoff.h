@@ -87,6 +87,7 @@ typedef struct {
     uint16_t assignment_base_raw;
     uint16_t assignment_current_raw;
     uint16_t assignment_alternate_raw;
+    uint16_t team_group_raw_6e;          /* actor `+$6E`: context group 0/5 */
     uint16_t assignment_distance;
     uint16_t anchor_distance_raw;       /* actor `+$8C` */
     uint16_t focal_distance_raw_8e;     /* actor `+$8E`, `$85:BC84` */
@@ -151,6 +152,9 @@ typedef struct {
     uint16_t play_hold_raw;      /* `$09D0` */
     uint16_t role_rebuild_raw_09d6;
     uint16_t role_ownerless_raw_09d8;
+    uint16_t role_cadence_raw_09d2;
+    int16_t role_focal_x_raw_0918; /* cached `$85:A76D` lookahead X */
+    int16_t role_focal_y_raw_091a; /* cached `$85:A76D` lookahead Y */
     uint16_t special_actor_raw;  /* `$09A2`, clear-lane cutter or `$FFFF` */
     int16_t play_aux_selector_raw_09a6; /* cleared by `$86:BADC` */
     int16_t play_selector_raw[3];/* `$09AA/$09AC/$09AE` */
@@ -240,5 +244,6 @@ bool nba_tipoff_begin_rom_pass(NbaTipoff *tipoff, unsigned passer_slot,
                                unsigned receiver_slot);
 bool nba_tipoff_update_rom_passer(NbaTipoff *tipoff, unsigned slot);
 void nba_tipoff_refresh_team_roles_end_frame(NbaTipoff *tipoff);
+void nba_tipoff_refresh_defense_roles_end_frame(NbaTipoff *tipoff);
 
 #endif

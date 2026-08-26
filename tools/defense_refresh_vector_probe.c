@@ -34,6 +34,7 @@ static void load_actor(NbaTipoffActor *actor, const uint8_t *raw,
     actor->assignment_current_raw = word(raw, base + 0x74u);
     actor->assignment_base_raw = word(raw, base + 0x76u);
     actor->assignment_alternate_raw = word(raw, base + 0x78u);
+    actor->team_group_raw_6e = word(raw, base + 0x6Eu);
     actor->help_request_raw_80 = word(raw, base + 0x80u);
     actor->assignment_direction = (uint8_t)word(raw, base + 0x86u);
     actor->anchor_direction_raw = (uint8_t)word(raw, base + 0x88u);
@@ -83,7 +84,10 @@ int main(void) {
         state.possession_actor = (int8_t)(int16_t)word(raw, 0x093Eu);
         state.pass_receiver_raw = (int16_t)word(raw, 0x0946u);
         state.inbound_state_raw = word(raw, 0x0952u);
+        state.role_focal_x_raw_0918 = (int16_t)word(raw, 0x0918u);
+        state.role_focal_y_raw_091a = (int16_t)word(raw, 0x091Au);
         state.role_rebuild_raw_09d6 = word(raw, 0x09D6u);
+        state.role_cadence_raw_09d2 = word(raw, 0x09D2u);
         state.role_ownerless_raw_09d8 = word(raw, 0x09D8u);
         state.pass_distance_raw = word(raw, 0x09DAu);
         state.ball.x_fp = fixed_position(raw, 0x3EEFu);
@@ -91,7 +95,7 @@ int main(void) {
         state.ball.velocity_x = (int16_t)word(raw, 0x3EFBu);
         state.ball.velocity_y = (int16_t)word(raw, 0x3EFDu);
 
-        nba_tipoff_refresh_team_roles_end_frame(&state);
+        nba_tipoff_refresh_defense_roles_end_frame(&state);
         printf("%04x %04x %04x", state.role_rebuild_raw_09d6,
                state.role_ownerless_raw_09d8, state.pass_distance_raw);
         for (unsigned i = 0; i < NBA_GAMEPLAY_ACTOR_COUNT; ++i)

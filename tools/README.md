@@ -117,9 +117,10 @@ reports success.
   the split 16.16 `$85:96B5-$9961` commit. `verify_pass_init_vectors.py` and
   `verify_pass_release_vectors.py` cover the grounded `$86:AB73-$AF4D`
   initializer and `$86:A6B3-$A78F` mode-15 release core. The neighboring
-  `verify_defense_refresh_vectors.py` is intentionally retained as a failing
-  oracle until `$85:BC07-$C0F5` is fully translated; it must not be entered in
-  the verified ledger while mismatches remain.
+  `verify_defense_refresh_vectors.py` covers `$85:BC07-$C0F5` across both the
+  normal `$85:C0F5` return and exhausted-assignment `$85:C051` return. It
+  compares cadence/rebuild state and every represented defense-planner actor
+  output, including pair, anchor, and focal geometry.
 - `trace_hash.py`: freezes a lockstep-passing gameplay JSONL trace as compact
   per-frame golden hashes (`--write-golden`), then re-verifies later runs
   cheaply (`--golden`), reporting the first divergent scene frame. Field-level

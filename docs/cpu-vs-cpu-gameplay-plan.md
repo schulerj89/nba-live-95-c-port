@@ -1333,6 +1333,24 @@ core `$86:A6B3-$A78F` matches 100 calls across non-owner cleanup, wait,
 release, and edge-abort paths; ordinary pass families install the native
 10-tick passer reaction.
 
-The adjacent `$85:BC07-$C0F5` defense-role refresh is deliberately not marked
-verified: its 26-call replay currently fails and remains the next substantial
-assignment/cadence conversion rather than being hidden behind this increment.
+### Increment 5S: defense-role refresh and assignment planner
+
+The complete `$85:BC07-$C0F5` defense-role refresh now replays 26 live calls
+with zero mismatches: 24 normal `$85:C0F5` returns and both observed
+assignment-exhaustion `$85:C051` returns. The conversion preserves the ROM's
+30-tick rebuild cadence, three-pass `+$74/+$76/+$78` reset, protected-basket
+versus context-anchor distinction, transient `$09DA` reuse, pairing cleanup,
+owner primary/help selection, and context-ordered final assignment pass.
+
+The replay exposed one particularly important ordering detail: after the
+distant-owner repair, `$85:BF89` reloads the owner's `+$74`; retaining the
+pre-repair value promotes and boosts the wrong defender. All represented
+planner globals and ten actors' modes, saved modes, timers, boosts,
+assignments, pair directions/distances, anchor distances, focal distances,
+and roles now match the captured exits.
+
+The exact cadence exposed two host-integration assumptions in the long run.
+Receiverless passes during state `$82` are now still restricted to the active
+inbound side, and the incomplete formation writer can select the first valid
+same-side teammate after the final 60-tick retry threshold. The 63,800-frame
+sustained regression passes without the former repeated five-second loop.

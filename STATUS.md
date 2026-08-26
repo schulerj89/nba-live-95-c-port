@@ -17,8 +17,8 @@ Current measured coverage:
 | metric | bytes | % of observed executed code |
 |---|---:|---:|
 | observed executed code | 27,901 | 100.0% |
-| documented by ROM-address provenance | 8,575 | 30.7% |
-| verified against live ROM calls | 2,182 | 7.82% |
+| documented by ROM-address provenance | 8,855 | 31.7% |
+| verified against live ROM calls | 2,662 | 9.54% |
 
 These values are generated, not estimated. The detailed per-bank report is
 `docs/progress.md`; the authoritative verified list and evidence paths are in
@@ -26,8 +26,12 @@ These values are generated, not estimated. The detailed per-bank report is
 
 ## Verified gameplay checkpoint
 
-Twenty-seven routine slices currently pass emulator-ground-truth replay. The most important
+Twenty-eight routine slices currently pass emulator-ground-truth replay. The most important
 recent slices are:
+
+- `$85:BC07-$C0F5`: complete defense-role cadence, rebuild, pairing cleanup,
+  primary/help selection, and final context-ordered assignment pass across 26
+  live calls and both observed exits.
 
 - `$86:E4A7-$E592`: mode-11 owner/dribble gates, proximity selection, facing,
   and unlatched pose 9/11 selection.
@@ -68,6 +72,17 @@ zero-velocity direction preservation, pass-coordinate truncation, the native
 10-tick release reaction, pose-resource `+$66` ownership, and two pass-pose
 selection branches.
 
+The defense-role increment adds another 480 observed-executed verified bytes,
+raising ground-truth coverage from 7.82% to 9.54% (+1.72 percentage points).
+Its 26-call replay compares all represented planner globals and ten actor
+records with zero mismatches. It corrected cached loose-ball focal input,
+protected-basket versus assignment-anchor selection, the forced three-pass
+role rebuild, `$09DA` scratch-counter lifetime, reciprocal release distance,
+and the owner's post-repair assignment reload.
+The integration regression also now keeps receiverless dead-ball recovery on
+the active inbound side and scans for a side-gate-valid teammate at the final
+retry threshold, preventing repeated five-second-violation loops.
+
 Do not infer that a surrounding routine is verified from one verified slice.
 Only ranges present in `docs/verified-routines.json` count as ground-truth
 verified.
@@ -92,9 +107,6 @@ See `tools/README.md` for capture, replay, Ghidra, and regression commands.
 
 - Capture enough calls to verify the rare latched owner/CPU pose branch at
   `$86:E4F5-$E544`; the existing six-call sample is insufficient.
-- Replace the still-simplified `$85:BC07-$C0F5` defense-role refresh. Its new
-  26-call oracle currently fails all calls, proving that assignment cadence,
-  `+$74/+$76` rebuild state, and coarse anchor direction remain incomplete.
 - Continue converting small post-tip CPU decision/animation slices from the
   recomp and Ghidra, re-verifying after each increment.
 - Expand ball physics, scoring, and CPU decisions beyond the early-gameplay
