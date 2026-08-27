@@ -126,11 +126,14 @@ reports success.
   Ghidra labels, pixel-proof limits and evidence are in
   `docs/camera-presentation-plan.md`.
   `verify_camera_vectors.py` retains the older camera target/easing replay.
-  It does not prove the entire `$85:9192-$93F4` routine: the current precise
-  census/ledger and `verify_court_presentation.py` cover seven slices totaling
-  212 instructions. Init, orientation, fractional boundary, no-team centering
-  and alternate-height corrections remain separate. The C no-team hold is
-  compatibility behavior, not the ROM branch.
+  It does not alone prove the entire `$85:9192-$93F4` routine:
+  `verify_court_presentation.py` covers the older 212 instructions;
+  `verify_camera_handoff.py` adds the remaining 60 and 39 setup/caller
+  instructions, with 1,133 saved native witnesses. `camera_handoff_runtime_probe.c`
+  checks raw live-state/ball-height/orientation binding and subject latching.
+  All run in `build.ps1 -Test`. Capture with `capture_camera_handoff.ps1`
+  (optionally `-Controlled` or `-InitActor`); labels and commands are in
+  `docs/camera-handoff-plan.md`. No-team hold is no longer a runtime shortcut.
   `verify_court_clamp_vectors.py` resumes at `$85:A692` after X
   integration and compares Y integration plus both clamp axes.
   `verify_reaction_core_vectors.py` checks the distance/RNG tail at

@@ -133,6 +133,10 @@ not an installed/running emulator or ignored local capture files.
 
 ## Remaining work (outside the selected three rows)
 
+Historical census below: the first two rows were subsequently completed in
+`camera-handoff-plan.md`, with separate raw native-call and runtime proofs.
+Other rows remain pending; this checkpoint's original scope is unchanged.
+
 | Area | Pending decoded instructions |
 |---|---:|
 | Camera init, fractional boundaries, orientation, no-team centering, alternate-height flags | 60 |

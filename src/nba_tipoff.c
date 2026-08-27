@@ -5042,6 +5042,11 @@ static void cpu_begin_possession(NbaTipoff *tipoff, uint8_t offense_side) {
         tipoff->actors[actor].control_mode =
             actor / 5u == offense_side ? 1u : 2u;
     cpu_apply_catch_mode(tipoff, tipoff->handler_actor);
+    /* `$86:D392-$D39C`: native tip acquisition clears 0936 unless a
+     * whistle owns the state. Previously the frame-based bridge left 0001
+     * (shot-flight) installed, feeding the wrong post-tip camera branch. */
+    if (tipoff->fouls.whistle_active_raw_09b6 == 0u)
+        tipoff->live_state_raw = 0u;
     for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
         NbaTipoffActor *state = &tipoff->actors[actor];
         state->reaction_threshold = nba_gameplay_reaction_threshold(
@@ -6600,36 +6605,37 @@ static void cpu_update_possession(NbaTipoff *tipoff) {
 }
 
 static void cpu_update_camera(NbaTipoff *tipoff) {
-    /* `$87:A9D0-$A9E2/$87:95BB-$95D8`: signed `$093E` selects an actor;
-     * FFFF substitutes the ball record before `$85:9192-$93F4` consumes the
-     * proxy. `$093A` is persistent and independent from the free ball. */
-    if (tipoff->frame < NBA_TIPOFF_POSSESSION_FRAME) return;
-    /* The `$87:95BB` subject-proxy path reaches `$85:9192` only on the
-     * 30-Hz logical pass. Mesen WRAM proof changes `$085C/$0860` at frames
-     * 201,203,205... and holds them on the intervening outer frames. */
-    if ((tipoff->simulation_tick & 1u) == 0u) return;
-    /* `$093E` is a camera/control selector distinct from possession. During
-     * the tip-result bridge it remains negative through frame 219 (ball),
-     * then becomes actor 8 at the frame-220 handoff. Live ownership changes
-     * use the represented possession actor until a separate control model
-     * owns this raw selector. */
-    int16_t selector = tipoff->frame < NBA_TIPOFF_BREAK_FRAME ?
-        -1 : tipoff->possession_actor;
-    if (selector >= 0 && selector < NBA_GAMEPLAY_ACTOR_COUNT) {
-        unsigned subject = (unsigned)selector;
-        tipoff->camera.subject_actor = (uint8_t)subject;
-        nba_gameplay_camera_update(&tipoff->camera,
-            tipoff->actors[subject].x_fp,
-            tipoff->actors[subject].y_fp,
-            tipoff->actors[subject].z_fp,
-            tipoff->camera_side_group_raw, tipoff->live_state_raw == 1u);
-    } else {
-        tipoff->camera.subject_actor = NBA_GAMEPLAY_NO_ACTOR;
-        nba_gameplay_camera_update(&tipoff->camera,
-            tipoff->ball.x_fp, tipoff->ball.y_fp, tipoff->ball.z_fp,
-            tipoff->camera_side_group_raw,
-            tipoff->live_state_raw == 1u);
+    /* `$87:95AC-$95DE`: resolve BEFORE the presentation-clock wait, then
+     * copy that record's coordinates when the wait completes. No frame-200
+     * camera enable or frame-220 camera-subject substitution. The upstream
+     * tip winner/ownership bridge still has its separately documented scope. */
+    NbaGameplayCamera *camera = &tipoff->camera;
+    if (!camera->caller_waiting) {
+        camera->subject_pointer_0940 = nba_gameplay_camera_resolve(tipoff->possession_actor);
+        camera->caller_waiting = true;
     }
+    if (!nba_gameplay_camera_ready(&camera->presentation_ticks_0564)) return;
+    camera->caller_waiting = false;
+    NbaCameraInput in = {0};
+    if (camera->subject_pointer_0940) {
+        unsigned subject = (camera->subject_pointer_0940 - 0x34EBu) / 0x100u;
+        in.subject = nba_gameplay_camera_subject(tipoff->actors[subject].x_fp,
+                                                tipoff->actors[subject].y_fp);
+    } else {
+        in.subject = nba_gameplay_camera_subject(tipoff->ball.x_fp, tipoff->ball.y_fp);
+    }
+    nba_gameplay_camera_copy(camera,camera->subject_pointer_0940,&in.subject);
+    /* 8E1C resolves again after the copy; it cannot replace the XY snapshot
+     * already chosen by 95BB if the selector changed while waiting. */
+    camera->subject_pointer_0940 = nba_gameplay_camera_resolve(tipoff->possession_actor);
+    in.ball_height = fp_integer_word(tipoff->ball.z_fp);
+    in.side_group = tipoff->camera_side_group_raw == 0xFFu ? -1 : tipoff->camera_side_group_raw;
+    in.basket_left = tipoff->team_context[0].anchor_x_raw_0a;
+    in.basket_right = tipoff->team_context[1].anchor_x_raw_0a;
+    in.alternate_08bc = tipoff->camera_alternate_raw_08bc;
+    in.alternate_mode_08cc = tipoff->camera_alternate_mode_raw_08cc;
+    in.live_state = tipoff->live_state_raw;
+    nba_gameplay_camera_step(camera,&in); /* `$85:9192`: full raw camera input. */
     tipoff->camera_x = tipoff->camera.x;
     tipoff->camera_y = tipoff->camera.y;
     /* 85:8E28 -> 8EDD: camera commits before presentation and streaming. */
@@ -6716,10 +6722,6 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
     tipoff->assets = assets;
     tipoff->session = session;
     tipoff->cpu_vs_cpu = true;
-    tipoff->camera_x = -128;
-    tipoff->camera_y = -124;
-    nba_gameplay_camera_init(&tipoff->camera, -128, -124);
-    nba_court_stream_init(&tipoff->court_stream,-128,-124);
     nba_gameplay_rng_seed(&tipoff->rng, 0x9146u);
     nba_gameplay_foul_init(&tipoff->fouls);
     static const uint8_t context_actor_order[2][5] = {
@@ -6753,7 +6755,10 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
     tipoff->player_contact_actor_b_raw = -1;
     session->score[0] = session->score[1] = 0u;
     session->game_clock_ticks = 0u;
-    tipoff->live_state_raw = 1u;
+    /* Native pre-tip 0936 is 0081, not shot-flight 0001. The distinction
+     * selects normal court framing at 85:92F1 instead of ball-height framing. */
+    tipoff->live_state_raw = 0x81u;
+    tipoff->camera_side_group_raw = 0xFFu;
     tipoff->inbound_actor_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
     tipoff->pass_actor_raw = -1;
     tipoff->pass_receiver_raw = -1;
@@ -6840,6 +6845,21 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
             (int16_t)-fp_round(state->y_fp),
             &state->anchor_distance_raw);
     }
+    NbaCameraInput initial_camera = {0};
+    initial_camera.subject = nba_gameplay_camera_subject(tipoff->ball.x_fp,tipoff->ball.y_fp);
+    initial_camera.ball_height = fp_integer_word(tipoff->ball.z_fp);
+    initial_camera.side_group = -1;
+    initial_camera.basket_left = tipoff->team_context[0].anchor_x_raw_0a;
+    initial_camera.basket_right = tipoff->team_context[1].anchor_x_raw_0a;
+    initial_camera.live_state = tipoff->live_state_raw;
+    nba_gameplay_camera_copy(&tipoff->camera,0,&initial_camera.subject);
+    nba_gameplay_camera_place(&tipoff->camera,&initial_camera);
+    tipoff->camera_x = tipoff->camera.x;
+    tipoff->camera_y = tipoff->camera.y;
+    /* Scene entry starts on the due presentation phase. Subsequent credits
+     * come from outer updates; pauses do not consume or invent camera ticks. */
+    tipoff->camera.presentation_ticks_0564 = 1;
+    nba_court_stream_init(&tipoff->court_stream,tipoff->camera_x,tipoff->camera_y);
     tipoff->is_initialized = true;
     printf("[TIPOFF] $86:DDA7 formation -> $86:E054 ball -> "
            "$86:ECF4 jump -> $86:D3F9 possession.\n");
@@ -6861,6 +6881,7 @@ void nba_tipoff_update(NbaTipoff *tipoff, const NbaInput *input) {
     tipoff->player_contact_routine_raw = 0u;
     ++tipoff->frame;
     ++tipoff->simulation_tick;
+    ++tipoff->camera.presentation_ticks_0564;
     ++tipoff->session->game_clock_ticks;
     /* `$85:EDB3`: presentation timer and master tick advance on every
      * outer update, independent of actor scheduling or gameplay state. */
@@ -7159,6 +7180,15 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
     telemetry->camera_0882_raw = tipoff->court_presentation.window_right_0882;
     telemetry->camera_basket_x_raw = tipoff->court_presentation.basket_x_3fef;
     telemetry->camera_stream_row_bytes = tipoff->court_stream.row_bytes;
+    telemetry->camera_initialized_raw = tipoff->camera.initialized_4a54;
+    telemetry->camera_pointer_raw = tipoff->camera.subject_pointer_0940;
+    telemetry->camera_ticks_raw = tipoff->camera.presentation_ticks_0564;
+    telemetry->camera_alternate_raw = tipoff->camera_alternate_raw_08bc;
+    telemetry->camera_alternate_mode_raw = tipoff->camera_alternate_mode_raw_08cc;
+    telemetry->camera_proxy_raw[0] = tipoff->camera.proxy.x_fraction;
+    telemetry->camera_proxy_raw[1] = tipoff->camera.proxy.x_integer;
+    telemetry->camera_proxy_raw[2] = tipoff->camera.proxy.y_fraction;
+    telemetry->camera_proxy_raw[3] = tipoff->camera.proxy.y_integer;
     telemetry->camera_routine = 0x859192u;
 
     telemetry->ball.world_x = fp_round(tipoff->ball.x_fp);

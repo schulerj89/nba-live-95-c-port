@@ -1208,7 +1208,8 @@ def main():
         "src/nba_gameplay_foul.c", "src/nba_player_lab.c", "src/nba_shot_launch.c"))
     for marker in ("$85:963D-$985F", "$85:BC52-$BC81", "$85:B95C",
                    "$87:B832", "$87:B649", "$87:B66A", "$85:9192",
-                   "$87:8F01-$8F8D", "nba_gameplay_camera_update",
+                   "$87:8F01-$8F8D", "nba_gameplay_camera_step",
+                   "nba_gameplay_camera_place", "nba_gameplay_camera_ready",
                    "cpu_begin_possession", "cpu_update_possession",
                    "ball_attach_to_actor", "ball_launch",
                    "$85:A079-$A345", "$4711/$4791", "score_made_basket",

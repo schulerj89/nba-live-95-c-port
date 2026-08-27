@@ -172,7 +172,8 @@ typedef struct {
     uint16_t match_clock_raw_0928;
     int8_t possession_actor;
     int8_t possession_team;
-    uint8_t camera_side_group_raw; /* persistent `$093A`: 0 or 5 */
+    uint8_t camera_side_group_raw; /* persistent `$093A`: 0/5, FF before tip */
+    uint16_t camera_alternate_raw_08bc, camera_alternate_mode_raw_08cc;
     uint16_t owner_team_group_raw_09f4; /* current mode-11 actor's +6E */
     uint16_t play_code;
     int16_t play_step_raw;       /* `$0998` */

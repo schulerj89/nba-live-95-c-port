@@ -61,54 +61,106 @@ void nba_gameplay_camera_init(NbaGameplayCamera *camera, int16_t x, int16_t y) {
     camera->stream_source = (uint16_t)(0x8006u +
         camera->coarse_x * 104u + camera->coarse_y * 2u);
     camera->subject_actor = 0xFFu;
+    camera->initialized_4a54 = 0xFFFFu;
 }
 
-void nba_gameplay_camera_update(NbaGameplayCamera *camera,
-                                int32_t subject_x_fp, int32_t subject_y_fp,
-                                int32_t subject_z_fp,
-                                uint8_t side_group, bool ball_height_path) {
-    int16_t subject_x = (int16_t)(subject_x_fp >= 0 ? subject_x_fp / 256 :
-        -(((-subject_x_fp) + 255) / 256));
-    int16_t subject_y = (int16_t)(subject_y_fp >= 0 ? subject_y_fp / 256 :
-        -(((-subject_y_fp) + 255) / 256));
-    int16_t subject_z = (int16_t)(subject_z_fp >= 0 ? subject_z_fp / 256 :
-        -(((-subject_z_fp) + 255) / 256));
-    int fractional_carry = ((subject_x_fp & 0xFF) +
-                            (subject_y_fp & 0xFF)) >> 8;
-    int old_x = camera->x, old_y = camera->y;
-    camera->prior_displacement_x = (uint16_t)abs(camera->x - camera->previous_x);
-    camera->prior_displacement_y = (uint16_t)abs(camera->y - camera->previous_y);
-    camera->previous_x = camera->x;
-    camera->previous_y = camera->y;
-    /* Compatibility fallback for an absent team: hold X. This is NOT the
-     * ROM's no-team centering branch (bank85:92C0). Its correction remains
-     * outside the seven verified camera slices; see camera-presentation-plan.
-     * Only raw groups 0 and 5 enter the asymmetric look-ahead tables here. */
-    camera->target_x = side_group == 0u || side_group == 5u ?
-        (int16_t)horizontal_target(
-            (int16_t)(subject_x + subject_y + fractional_carry), side_group) :
-        camera->x;
-    int base_y = (subject_y - subject_x) >> 2;
-    if (ball_height_path) {
-        /* Tip/ball-height camera: the verified 9312-932E arithmetic treats
-         * heights below 56 as zero. Upstream alternate-height flag selection
-         * remains a compatibility boolean, not a verified ROM caller. */
-        int height = subject_z >= 56 ? subject_z : 0;
-        camera->target_y = (int16_t)clamp_int(
-            base_y - height - 56, -242, -53);
+NbaCameraSubject nba_gameplay_camera_subject(int32_t x_fp, int32_t y_fp) {
+    /* Convert host 8.8 into the ROM's two-word 16.16 representation. */
+    NbaCameraSubject subject = {(uint16_t)((uint32_t)x_fp << 8),
+        (uint16_t)((uint32_t)x_fp >> 8), (uint16_t)((uint32_t)y_fp << 8),
+        (uint16_t)((uint32_t)y_fp >> 8)};
+    return subject;
+}
+
+/* `$87:A9D0-$A9E2`: literal actor-pointer table at 879C7B. Negative
+ * selectors clear 0940; a zero POINTER means ball, not actor zero. */
+uint16_t nba_gameplay_camera_resolve(int16_t selector) {
+    return selector >= 0 && selector < 10 ? (uint16_t)(0x34EB + selector * 0x100) : 0;
+}
+
+/* `$87:95AC-$95BA`: caller resolves the subject before waiting. The host
+ * yields instead of busy-waiting for VBlank. Surplus ticks are discarded. */
+bool nba_gameplay_camera_ready(uint16_t *ticks) {
+    if (*ticks < 2u) return false;
+    *ticks = 0;
+    return true;
+}
+
+/* `$87:95BB-$95DE`: snapshot XY before the presentation wrapper dispatch. */
+void nba_gameplay_camera_copy(NbaGameplayCamera *camera, uint16_t pointer,
+                              const NbaCameraSubject *subject) {
+    camera->subject_pointer_0940 = pointer;
+    camera->subject_actor = pointer ? (uint8_t)((pointer - 0x34EB) / 0x100) : 0xFF;
+    camera->proxy = *subject;
+}
+
+/* `$85:8B98-$8BBE`: first placement uses the selected subject, not fixed
+ * screen coordinates. Child9192 has its own full entry/exit replay. */
+void nba_gameplay_camera_place(NbaGameplayCamera *camera, const NbaCameraInput *input) {
+    camera->initialized_4a54 = 0;
+    nba_gameplay_camera_step(camera, input);
+}
+
+/* `$85:9192-$93F4`: complete camera arithmetic and initialization state.
+ * Raw 16-bit fractions are kept until the projection carry is consumed. */
+void nba_gameplay_camera_step(NbaGameplayCamera *camera, const NbaCameraInput *in) {
+    camera->proxy = in->subject;
+    int16_t subject_x = (int16_t)in->subject.x_integer;
+    int16_t subject_y = (int16_t)in->subject.y_integer;
+    uint16_t fraction_x = in->subject.x_fraction, fraction_y = in->subject.y_fraction;
+    bool initialized = camera->initialized_4a54 != 0;
+    if (initialized) {
+        camera->prior_displacement_x = (uint16_t)abs((int16_t)(camera->x - camera->previous_x));
+        camera->prior_displacement_y = (uint16_t)abs((int16_t)(camera->y - camera->previous_y));
+        camera->previous_x = camera->x;
+        camera->previous_y = camera->y;
     } else {
-        /* Normal live-play vertical path at `$85:92F9-$930D`. */
-        camera->target_y = (int16_t)clamp_int(
-            base_y - ((subject_y + 272) >> 2) - 56, -242, -53);
+        camera->prior_displacement_x = camera->prior_displacement_y = 0;
     }
-    camera->x = (int16_t)approach_axis(old_x, camera->target_x,
-                                      camera->prior_displacement_x,
-                                      &camera->commanded_step_x);
-    camera->y = (int16_t)approach_axis(old_y, camera->target_y,
-                                      camera->prior_displacement_y,
-                                      &camera->commanded_step_y);
+    /* 91DF-91FA changes scratch fractions, not the persistent proxy. */
+    if (subject_x == 394 || subject_x == -394) fraction_x = 0;
+    if (subject_y == 224 || subject_y == -224) fraction_y = 0;
+    unsigned carry = ((unsigned)fraction_x + fraction_y) >> 16;
+    int projected_x = (int16_t)(subject_x + subject_y + carry);
+    int16_t basket = in->side_group == 0 ? in->basket_left : in->basket_right;
+    camera->target_x = (int16_t)(in->side_group < 0 ?
+        clamp_int((int16_t)(projected_x - 128), -582, 328) :
+        horizontal_target(projected_x, basket < 0 ? 0u : 5u));
+    int base_y = (int16_t)(subject_y - subject_x) >> 2;
+    if (in->live_state == 1u || (in->alternate_08bc != 0u && in->alternate_mode_08cc == 1u)) {
+        /* 9312 explicitly reads the BALL height, even with an actor proxy. */
+        int height = in->ball_height >= 56 ? in->ball_height : 0;
+        camera->target_y = (int16_t)clamp_int(
+            (int16_t)(base_y - height - 56), -242, -53);
+    } else {
+        camera->target_y = (int16_t)clamp_int(
+            (int16_t)(base_y - ((uint16_t)(subject_y + 272) >> 2) - 56), -242, -53);
+    }
+    if (!initialized) {
+        camera->x = camera->target_x;
+        camera->y = camera->target_y;
+        camera->initialized_4a54 = 0xFFFFu;
+        /* 934E/9351 preserves old-history and commanded-step words. */
+    } else {
+        camera->x = (int16_t)approach_axis(camera->previous_x, camera->target_x,
+                                          camera->prior_displacement_x, &camera->commanded_step_x);
+        camera->y = (int16_t)approach_axis(camera->previous_y, camera->target_y,
+                                          camera->prior_displacement_y, &camera->commanded_step_y);
+    }
     camera->coarse_x = (uint16_t)((camera->x + 0x246) >> 3);
     camera->coarse_y = (uint16_t)((camera->y + 0x0F2) >> 3);
     camera->stream_source = (uint16_t)(0x8006u +
         camera->coarse_x * 104u + camera->coarse_y * 2u);
+}
+
+void nba_gameplay_camera_update(NbaGameplayCamera *camera,
+    int32_t x, int32_t y, int32_t z, uint8_t side, bool ball_height_path) {
+    NbaCameraInput in = {0};
+    in.subject = nba_gameplay_camera_subject(x, y);
+    in.ball_height = (int16_t)((uint32_t)z >> 8);
+    in.side_group = side == 0xFFu ? -1 : side;
+    in.basket_left = -336; in.basket_right = 336;
+    in.live_state = ball_height_path ? 1u : 2u;
+    camera->initialized_4a54 = 0xFFFFu;
+    nba_gameplay_camera_step(camera, &in);
 }

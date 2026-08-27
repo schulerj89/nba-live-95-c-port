@@ -75,7 +75,9 @@ def main():
                 raise AssertionError(
                     f"locomotion/animation raw telemetry diverged: {actor}")
         if len(sample["controllers"]["held_raw"]) != 5 or \
-                not {"raw_087a", "subject_raw", "side_group_raw"}.issubset(
+                not {"raw_087a", "subject_raw", "side_group_raw", "initialized_raw_4a54",
+                     "pointer_raw_0940", "ticks_raw_0564", "proxy_raw_4a56",
+                     "alternate_raw_08bc", "alternate_mode_raw_08cc"}.issubset(
                     sample["camera"]) or "flags_raw" not in sample["ball"]:
             raise AssertionError("controller/camera/ball telemetry schema is incomplete")
         if not {"pass_actor_raw", "pass_receiver_raw", "pass_active_raw",

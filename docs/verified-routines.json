@@ -78,7 +78,7 @@
       "name": "camera proxy-coordinate load",
       "source": "src/nba_gameplay_camera.c",
       "method": "controlled/natural ROM replay + runtime binding",
-      "evidence": "tests/fixtures/camera-presentation-witnesses.json; 1000 core calls, 203 controlled and797 natural, zero mismatches; all212 selected instruction starts match fresh Ghidra census. Replaces overbroad 9192-93F4 entry: 60 init/fraction/orientation/no-team/height-gate instructions explicitly excluded. docs/camera-presentation-plan.md.",
+      "evidence": "tests/fixtures/camera-presentation-witnesses.json; 1000 core calls, 203 controlled and797 natural, zero mismatches; all212 selected instruction starts match fresh Ghidra census. Replaces overbroad 9192-93F4 entry: 60 init/fraction/orientation/no-team/height-gate instructions excluded from THIS witness set; separately verified by camera-handoff-witnesses.json and the exact new ledger slices. docs/camera-presentation-plan.md.",
       "date": "2026-08-27"
     },
     {
@@ -86,7 +86,7 @@
       "name": "camera fixed-point projection",
       "source": "src/nba_gameplay_camera.c",
       "method": "controlled/natural ROM replay + runtime binding",
-      "evidence": "tests/fixtures/camera-presentation-witnesses.json; 1000 core calls, 203 controlled and797 natural, zero mismatches; all212 selected instruction starts match fresh Ghidra census. Replaces overbroad 9192-93F4 entry: 60 init/fraction/orientation/no-team/height-gate instructions explicitly excluded. docs/camera-presentation-plan.md.",
+      "evidence": "tests/fixtures/camera-presentation-witnesses.json; 1000 core calls, 203 controlled and797 natural, zero mismatches; all212 selected instruction starts match fresh Ghidra census. Replaces overbroad 9192-93F4 entry: 60 init/fraction/orientation/no-team/height-gate instructions excluded from THIS witness set; separately verified by camera-handoff-witnesses.json and the exact new ledger slices. docs/camera-presentation-plan.md.",
       "date": "2026-08-27"
     },
     {
@@ -94,7 +94,7 @@
       "name": "camera directional look-ahead",
       "source": "src/nba_gameplay_camera.c",
       "method": "controlled/natural ROM replay + runtime binding",
-      "evidence": "tests/fixtures/camera-presentation-witnesses.json; 1000 core calls, 203 controlled and797 natural, zero mismatches; all212 selected instruction starts match fresh Ghidra census. Replaces overbroad 9192-93F4 entry: 60 init/fraction/orientation/no-team/height-gate instructions explicitly excluded. docs/camera-presentation-plan.md.",
+      "evidence": "tests/fixtures/camera-presentation-witnesses.json; 1000 core calls, 203 controlled and797 natural, zero mismatches; all212 selected instruction starts match fresh Ghidra census. Replaces overbroad 9192-93F4 entry: 60 init/fraction/orientation/no-team/height-gate instructions excluded from THIS witness set; separately verified by camera-handoff-witnesses.json and the exact new ledger slices. docs/camera-presentation-plan.md.",
       "date": "2026-08-27"
     },
     {
@@ -102,7 +102,7 @@
       "name": "camera horizontal bounds",
       "source": "src/nba_gameplay_camera.c",
       "method": "controlled/natural ROM replay + runtime binding",
-      "evidence": "tests/fixtures/camera-presentation-witnesses.json; 1000 core calls, 203 controlled and797 natural, zero mismatches; all212 selected instruction starts match fresh Ghidra census. Replaces overbroad 9192-93F4 entry: 60 init/fraction/orientation/no-team/height-gate instructions explicitly excluded. docs/camera-presentation-plan.md.",
+      "evidence": "tests/fixtures/camera-presentation-witnesses.json; 1000 core calls, 203 controlled and797 natural, zero mismatches; all212 selected instruction starts match fresh Ghidra census. Replaces overbroad 9192-93F4 entry: 60 init/fraction/orientation/no-team/height-gate instructions excluded from THIS witness set; separately verified by camera-handoff-witnesses.json and the exact new ledger slices. docs/camera-presentation-plan.md.",
       "date": "2026-08-27"
     },
     {
@@ -110,7 +110,7 @@
       "name": "camera vertical target",
       "source": "src/nba_gameplay_camera.c",
       "method": "controlled/natural ROM replay + runtime binding",
-      "evidence": "tests/fixtures/camera-presentation-witnesses.json; 1000 core calls, 203 controlled and797 natural, zero mismatches; all212 selected instruction starts match fresh Ghidra census. Replaces overbroad 9192-93F4 entry: 60 init/fraction/orientation/no-team/height-gate instructions explicitly excluded. docs/camera-presentation-plan.md.",
+      "evidence": "tests/fixtures/camera-presentation-witnesses.json; 1000 core calls, 203 controlled and797 natural, zero mismatches; all212 selected instruction starts match fresh Ghidra census. Replaces overbroad 9192-93F4 entry: 60 init/fraction/orientation/no-team/height-gate instructions excluded from THIS witness set; separately verified by camera-handoff-witnesses.json and the exact new ledger slices. docs/camera-presentation-plan.md.",
       "date": "2026-08-27"
     },
     {
@@ -118,7 +118,7 @@
       "name": "camera vertical bounds",
       "source": "src/nba_gameplay_camera.c",
       "method": "controlled/natural ROM replay + runtime binding",
-      "evidence": "tests/fixtures/camera-presentation-witnesses.json; 1000 core calls, 203 controlled and797 natural, zero mismatches; all212 selected instruction starts match fresh Ghidra census. Replaces overbroad 9192-93F4 entry: 60 init/fraction/orientation/no-team/height-gate instructions explicitly excluded. docs/camera-presentation-plan.md.",
+      "evidence": "tests/fixtures/camera-presentation-witnesses.json; 1000 core calls, 203 controlled and797 natural, zero mismatches; all212 selected instruction starts match fresh Ghidra census. Replaces overbroad 9192-93F4 entry: 60 init/fraction/orientation/no-team/height-gate instructions excluded from THIS witness set; separately verified by camera-handoff-witnesses.json and the exact new ledger slices. docs/camera-presentation-plan.md.",
       "date": "2026-08-27"
     },
     {
@@ -126,7 +126,7 @@
       "name": "camera adaptive acceleration",
       "source": "src/nba_gameplay_camera.c",
       "method": "controlled/natural ROM replay + runtime binding",
-      "evidence": "tests/fixtures/camera-presentation-witnesses.json; 1000 core calls, 203 controlled and797 natural, zero mismatches; all212 selected instruction starts match fresh Ghidra census. Replaces overbroad 9192-93F4 entry: 60 init/fraction/orientation/no-team/height-gate instructions explicitly excluded. docs/camera-presentation-plan.md.",
+      "evidence": "tests/fixtures/camera-presentation-witnesses.json; 1000 core calls, 203 controlled and797 natural, zero mismatches; all212 selected instruction starts match fresh Ghidra census. Replaces overbroad 9192-93F4 entry: 60 init/fraction/orientation/no-team/height-gate instructions excluded from THIS witness set; separately verified by camera-handoff-witnesses.json and the exact new ledger slices. docs/camera-presentation-plan.md.",
       "date": "2026-08-27"
     },
     {
@@ -1087,6 +1087,86 @@
       "source": "src/nba_owner_flow.c + src/nba_tipoff.c",
       "method": "ROM caller-boundary replay + runtime binding",
       "evidence": "tests/fixtures/owner-flow-witnesses.json; 1,901 complete calls (44 controlled,1,857 natural), all 19 instruction starts in this slice covered (92 across caller). Compare 27 persistent/input words and each child-call entry/exit in order. Recorded child outputs verify caller composition only; child bodies keep separate proofs. Natural C8=32, CPU nonlocal-return test, runtime stop/base-pair/early-return bindings. F43A body excluded. docs/owner-flow-plan.md.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "858B98-858BBE",
+      "name": "camera initial subject copy and placement",
+      "source": "src/nba_gameplay_camera.c + src/nba_tipoff.c",
+      "method": "controlled/natural ROM replay + runtime binding",
+      "evidence": "tests/fixtures/camera-handoff-witnesses.json; tools/verify_camera_handoff.py; tools/ghidra/DumpCameraHandoff.java. All 13 instruction starts in this slice observed/replayed (99 requested total). 62243 native calls: 3877 core,3 init,50055 resolve,4164 copy,4144 cadence; zero mismatches,1133 durable witnesses. Controlled WRAM inputs, actual native execution, no patched PC/ROM. Runtime tests cover before-wait latch, after-wait copy, second resolver, surplus tick discard, ball rather than actor height, basket orientation and live-state binding. Valid actor selectors0..9/negative; external callees retain separate proof. Frame-based tip outcome/trajectory and NMI cycle parity excluded. docs/camera-handoff-plan.md.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "859192-8591CA",
+      "name": "camera first-update history",
+      "source": "src/nba_gameplay_camera.c + src/nba_tipoff.c",
+      "method": "controlled/natural ROM replay + runtime binding",
+      "evidence": "tests/fixtures/camera-handoff-witnesses.json; tools/verify_camera_handoff.py; tools/ghidra/DumpCameraHandoff.java. All 23 instruction starts in this slice observed/replayed (99 requested total). 62243 native calls: 3877 core,3 init,50055 resolve,4164 copy,4144 cadence; zero mismatches,1133 durable witnesses. Controlled WRAM inputs, actual native execution, no patched PC/ROM. Runtime tests cover before-wait latch, after-wait copy, second resolver, surplus tick discard, ball rather than actor height, basket orientation and live-state binding. Valid actor selectors0..9/negative; external callees retain separate proof. Frame-based tip outcome/trajectory and NMI cycle parity excluded. docs/camera-handoff-plan.md.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "859349-859351",
+      "name": "camera first-update return",
+      "source": "src/nba_gameplay_camera.c + src/nba_tipoff.c",
+      "method": "controlled/natural ROM replay + runtime binding",
+      "evidence": "tests/fixtures/camera-handoff-witnesses.json; tools/verify_camera_handoff.py; tools/ghidra/DumpCameraHandoff.java. All 4 instruction starts in this slice observed/replayed (99 requested total). 62243 native calls: 3877 core,3 init,50055 resolve,4164 copy,4144 cadence; zero mismatches,1133 durable witnesses. Controlled WRAM inputs, actual native execution, no patched PC/ROM. Runtime tests cover before-wait latch, after-wait copy, second resolver, surplus tick discard, ball rather than actor height, basket orientation and live-state binding. Valid actor selectors0..9/negative; external callees retain separate proof. Frame-based tip outcome/trajectory and NMI cycle parity excluded. docs/camera-handoff-plan.md.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "8591DF-8591FA",
+      "name": "camera edge scratch-fraction clearing",
+      "source": "src/nba_gameplay_camera.c + src/nba_tipoff.c",
+      "method": "controlled/natural ROM replay + runtime binding",
+      "evidence": "tests/fixtures/camera-handoff-witnesses.json; tools/verify_camera_handoff.py; tools/ghidra/DumpCameraHandoff.java. All 12 instruction starts in this slice observed/replayed (99 requested total). 62243 native calls: 3877 core,3 init,50055 resolve,4164 copy,4144 cadence; zero mismatches,1133 durable witnesses. Controlled WRAM inputs, actual native execution, no patched PC/ROM. Runtime tests cover before-wait latch, after-wait copy, second resolver, surplus tick discard, ball rather than actor height, basket orientation and live-state binding. Valid actor selectors0..9/negative; external callees retain separate proof. Frame-based tip outcome/trajectory and NMI cycle parity excluded. docs/camera-handoff-plan.md.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "859219-85922F",
+      "name": "camera basket orientation",
+      "source": "src/nba_gameplay_camera.c + src/nba_tipoff.c",
+      "method": "controlled/natural ROM replay + runtime binding",
+      "evidence": "tests/fixtures/camera-handoff-witnesses.json; tools/verify_camera_handoff.py; tools/ghidra/DumpCameraHandoff.java. All 9 instruction starts in this slice observed/replayed (99 requested total). 62243 native calls: 3877 core,3 init,50055 resolve,4164 copy,4144 cadence; zero mismatches,1133 durable witnesses. Controlled WRAM inputs, actual native execution, no patched PC/ROM. Runtime tests cover before-wait latch, after-wait copy, second resolver, surplus tick discard, ball rather than actor height, basket orientation and live-state binding. Valid actor selectors0..9/negative; external callees retain separate proof. Frame-based tip outcome/trajectory and NMI cycle parity excluded. docs/camera-handoff-plan.md.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "8592C0-8592C9",
+      "name": "camera no-team centering",
+      "source": "src/nba_gameplay_camera.c + src/nba_tipoff.c",
+      "method": "controlled/natural ROM replay + runtime binding",
+      "evidence": "tests/fixtures/camera-handoff-witnesses.json; tools/verify_camera_handoff.py; tools/ghidra/DumpCameraHandoff.java. All 4 instruction starts in this slice observed/replayed (99 requested total). 62243 native calls: 3877 core,3 init,50055 resolve,4164 copy,4144 cadence; zero mismatches,1133 durable witnesses. Controlled WRAM inputs, actual native execution, no patched PC/ROM. Runtime tests cover before-wait latch, after-wait copy, second resolver, surplus tick discard, ball rather than actor height, basket orientation and live-state binding. Valid actor selectors0..9/negative; external callees retain separate proof. Frame-based tip outcome/trajectory and NMI cycle parity excluded. docs/camera-handoff-plan.md.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "8592E4-8592F8",
+      "name": "camera alternate ball-height gate",
+      "source": "src/nba_gameplay_camera.c + src/nba_tipoff.c",
+      "method": "controlled/natural ROM replay + runtime binding",
+      "evidence": "tests/fixtures/camera-handoff-witnesses.json; tools/verify_camera_handoff.py; tools/ghidra/DumpCameraHandoff.java. All 8 instruction starts in this slice observed/replayed (99 requested total). 62243 native calls: 3877 core,3 init,50055 resolve,4164 copy,4144 cadence; zero mismatches,1133 durable witnesses. Controlled WRAM inputs, actual native execution, no patched PC/ROM. Runtime tests cover before-wait latch, after-wait copy, second resolver, surplus tick discard, ball rather than actor height, basket orientation and live-state binding. Valid actor selectors0..9/negative; external callees retain separate proof. Frame-based tip outcome/trajectory and NMI cycle parity excluded. docs/camera-handoff-plan.md.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "87A9D0-87A9E2",
+      "name": "camera actor/ball resolver",
+      "source": "src/nba_gameplay_camera.c + src/nba_tipoff.c",
+      "method": "controlled/natural ROM replay + runtime binding",
+      "evidence": "tests/fixtures/camera-handoff-witnesses.json; tools/verify_camera_handoff.py; tools/ghidra/DumpCameraHandoff.java. All 9 instruction starts in this slice observed/replayed (99 requested total). 62243 native calls: 3877 core,3 init,50055 resolve,4164 copy,4144 cadence; zero mismatches,1133 durable witnesses. Controlled WRAM inputs, actual native execution, no patched PC/ROM. Runtime tests cover before-wait latch, after-wait copy, second resolver, surplus tick discard, ball rather than actor height, basket orientation and live-state binding. Valid actor selectors0..9/negative; external callees retain separate proof. Frame-based tip outcome/trajectory and NMI cycle parity excluded. docs/camera-handoff-plan.md.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "8795AC-8795BA",
+      "name": "camera subject latch and presentation cadence",
+      "source": "src/nba_gameplay_camera.c + src/nba_tipoff.c",
+      "method": "controlled/natural ROM replay + runtime binding",
+      "evidence": "tests/fixtures/camera-handoff-witnesses.json; tools/verify_camera_handoff.py; tools/ghidra/DumpCameraHandoff.java. All 5 instruction starts in this slice observed/replayed (99 requested total). 62243 native calls: 3877 core,3 init,50055 resolve,4164 copy,4144 cadence; zero mismatches,1133 durable witnesses. Controlled WRAM inputs, actual native execution, no patched PC/ROM. Runtime tests cover before-wait latch, after-wait copy, second resolver, surplus tick discard, ball rather than actor height, basket orientation and live-state binding. Valid actor selectors0..9/negative; external callees retain separate proof. Frame-based tip outcome/trajectory and NMI cycle parity excluded. docs/camera-handoff-plan.md.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "8795BB-8795DE",
+      "name": "camera proxy copy and wrapper dispatch",
+      "source": "src/nba_gameplay_camera.c + src/nba_tipoff.c",
+      "method": "controlled/natural ROM replay + runtime binding",
+      "evidence": "tests/fixtures/camera-handoff-witnesses.json; tools/verify_camera_handoff.py; tools/ghidra/DumpCameraHandoff.java. All 12 instruction starts in this slice observed/replayed (99 requested total). 62243 native calls: 3877 core,3 init,50055 resolve,4164 copy,4144 cadence; zero mismatches,1133 durable witnesses. Controlled WRAM inputs, actual native execution, no patched PC/ROM. Runtime tests cover before-wait latch, after-wait copy, second resolver, surplus tick discard, ball rather than actor height, basket orientation and live-state binding. Valid actor selectors0..9/negative; external callees retain separate proof. Frame-based tip outcome/trajectory and NMI cycle parity excluded. docs/camera-handoff-plan.md.",
       "date": "2026-08-27"
     }
   ]

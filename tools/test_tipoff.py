@@ -18,7 +18,9 @@ EXPECTED_ASSETS = {
 EXPECTED_FRAMES = {
     90: ("TIP PH:FORMATION", "87e8872a01b4e52a63a5243e042f33c3534d7dc82b4d42611ced4e7099c23b5c"),
     170: ("TIP PH:JUMP BALL", "1c9fa44a36d3fd8923fc40364db0ceac8254a3bfe47d96b83b5cf384c47c61a6"),
-    220: ("TIP PH:LIVE", "6868be2376627b4bbb3834d9504b336641a6b35eef9c01b08664bed0d2ac7e9a"),
+    # Native camera cadence and $0936:0081 -> 0000 ownership transition;
+    # changes framing, not assets. See camera-handoff-plan.md/native witnesses.
+    220: ("TIP PH:LIVE", "5b63df09d261adc966699470ec8857b388d1d168f6d5cd62c6f4ebf5d933baac"),
 }
 
 

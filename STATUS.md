@@ -17,8 +17,8 @@ Current measured coverage:
 | metric | captured address positions | % of captured addresses |
 |---|---:|---:|
 | observed executed code | 27,901 | 100.0% |
-| documented by ROM-address provenance | 9,991 | 35.8% |
-| verified against ROM calls | 7,206 | 25.83% |
+| documented by ROM-address provenance | 10,004 | 35.9% |
+| verified against ROM calls | 7,300 | 26.16% |
 
 These values are generated, not estimated. The detailed per-bank report is
 `docs/progress.md`; the authoritative verified list and evidence paths are in
@@ -30,8 +30,18 @@ for a requested slice are reported separately.
 
 ## Verified gameplay checkpoint
 
-136 routine slices currently pass emulator-ground-truth replay/binding checks. The most important
+146 routine slices currently pass emulator-ground-truth replay/binding checks. The most important
 recent slices are:
+
+- Camera correction/callers: the remaining **99 instruction starts** now
+  pass native replay: 62,243 calls across core/init/resolver/copy/cadence,
+  zero mismatches, 1,133 durable witnesses. Initialization, edge fractions,
+  basket orientation, no-team centering, alternate ball-height flags and
+  before-wait latch/after-wait copy are integrated. Native tip state is
+  `$0936=0081`, then `0000` on acquisition, not the old persistent `0001`.
+  Correcting that connection reduces early post-tip vertical error, but
+  does NOT replace the frame-based tip ball trajectory/winner bridge.
+  See `docs/camera-handoff-plan.md` for numeric/visual limits and reproduction.
 
 - Camera/presentation: all **510 requested instruction starts** were audited
   in fresh Ghidra/native captures; 3,000 calls replay with zero mismatches.
@@ -43,9 +53,10 @@ recent slices are:
   Asset 279 supplies the raw map; all runtime art remains asset-pack data.
   There are 480 durable call witnesses, 12 native viewport map/scroll checks,
   16,000 runtime binding frames and 522 rendered viewports across 29 teams.
-  The old full-camera ledger claim was narrowed: 60 core corrections and
-  39 setup/caller instructions remain separate, as do animated crowd graphics
-  and downstream BG1/backboard composition. See `docs/camera-presentation-plan.md`.
+  The old full-camera ledger claim was narrowed to exact slices; the later
+  60 core corrections and 39 setup/caller instructions have separate proofs
+  above. Animated crowd graphics and downstream BG1/backboard composition
+  remain pending. See `docs/camera-presentation-plan.md`.
 
 - The **145-instruction owner table** is implemented/re-verified: unlatched
   reversal `$86:E545-$E592` (31), idle cadence `$87:AD86-$ADBD` (22), and
@@ -160,9 +171,10 @@ recent slices are:
 - `$85:B734-$B820`: CPU mode-11 shot policy and its ordered RNG consumption.
 - `$85:F5E4-$F727`: opponent lane obstruction used by the cutter and mode-11
   shot branches, including its half-open rectangle edges.
-- Seven slices within `$85:9192-$93F4`: initialized, normal-orientation camera
-  targeting/acceleration. See the precise ledger; no-team hold in the C port
-  is compatibility behavior, not the ROM's pending centering branch.
+- `$85:9192-$93F4`: camera targeting/acceleration, first-placement history,
+  fractional edges, orientation, no-team centering and alternate-height gate.
+  Proof is the union of the older 212-instruction slices and the newer 60;
+  setup/caller instructions have separate entries. No whole-game parity claim.
 - `$85:A692-$A755`, `$85:B971-$B9D1`, `$85:F3C3-$F472`: court Y/clamp tail,
   reaction threshold/RNG, and fine pass direction.
 - `$85:96B5-$9961` (three owned slices): live actor vertical and planar
@@ -357,10 +369,11 @@ See `tools/README.md` for capture, replay, Ghidra, and regression commands.
 
 ## Active gaps and next work
 
-- Camera: the additional presentation/stream/212-core audit is complete, but
-  the separate 60 core corrections and 39 setup/caller instructions are not.
-  Do not restore the old whole-camera verification claim. Crowd CHR animation
-  and the downstream basket/window compositor also remain outside this audit.
+- Camera: the additional 99 correction/caller instructions are complete.
+  The frame-based tip ball trajectory, forced winner/ownership timing and
+  upstream camera/control selector ownership remain separate; raw camera
+  correctness does not make those input trajectories ROM-identical.
+  Crowd CHR animation and the downstream basket/window compositor remain.
   The raw map geometry matches 12 native viewports; static art has 0-461
   crowd-tile pixel differences. See `docs/camera-presentation-plan.md`.
 - Selector/launch and upstream made-run/fatigue/assistance writers are

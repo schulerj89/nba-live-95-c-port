@@ -11,7 +11,7 @@ int main(int argc,char **argv) {
         NbaCourtPresentation previous=game.court_presentation;
         NbaCourtStream stream=game.court_stream;
         nba_tipoff_update(&game,&input);
-        if(frame>=200 && (game.simulation_tick&1u)) {
+        if(game.camera.presentation_ticks_0564==0) {
             nba_court_presentation_update(&previous,game.camera_x,game.camera_y,
                 game.period_raw_0926,game.team_context[0].anchor_x_raw_0a,game.team_context[1].anchor_x_raw_0a);
             if(memcmp(&previous,&game.court_presentation,sizeof(previous)))return 4;
