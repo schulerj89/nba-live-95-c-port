@@ -117,3 +117,16 @@ bool nba_tip_launch(const NbaAssetPack *assets,NbaTipLaunch *s) {
     if((int16_t)(uint16_t)(s->live_state-0x81)<0)s->live_state=0;
     return true;
 }
+
+bool nba_tip_complete_acquisition(NbaTipCompletion *s) {
+    /* `$86:D365-$D3B0`: first tip, initial inbound pickup, and completion
+     * are distinct paths. A whistle may retain state, not pass ownership. */
+    bool initial=s->transfer==0 && (int16_t)s->receiver<0;
+    if(initial && s->live_state==0x81)return true;
+    if(!(initial && s->live_state==0x82)) {
+        if(s->live_state==0x82 && (int16_t)(uint16_t)(s->play-6)<0)s->request=1;
+        if(s->whistle==0)s->live_state=0;
+    }
+    s->passer=s->receiver=s->aux=0xffff;s->transfer=0;s->ball_vz=0;
+    return false;
+}

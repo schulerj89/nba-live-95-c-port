@@ -377,7 +377,7 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
         const NbaGameplayActorTelemetry *a = &telemetry->actors[i];
         fprintf(stream,
                 "%s{\"id\":%u,\"team\":%u,\"roster\":%u,\"control\":%u,"
-                "\"visible\":%s,\"x\":%d,\"y\":%d,\"z\":%d,"
+                "\"visible\":%s,\"x\":%d,\"y\":%d,\"z\":%d,\"z_fp\":%d,"
                 "\"screen_x\":%d,\"screen_y\":%d,\"vx\":%d,\"vy\":%d,"
                 "\"vz\":%d,\"direction\":%u,\"animation\":%u,"
                 "\"lower_animation\":%u,"
@@ -419,7 +419,7 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
                 "\"palette\":%u}}",
                 i ? "," : "", a->index, a->team_side, a->roster_slot,
                 a->control, a->visible ? "true" : "false", a->world_x,
-                a->world_y, a->world_z, a->screen_x, a->screen_y,
+                a->world_y, a->world_z, a->world_z_fp, a->screen_x, a->screen_y,
                 a->velocity_x, a->velocity_y, a->velocity_z, a->direction,
                 a->animation_state, a->lower_animation_state, a->ai_state,
                 a->ai_target_actor, a->actor_routine, a->ai_routine,
@@ -471,7 +471,7 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
     for(unsigned i=0;i<10;++i)fprintf(stream,"%s%u",i ? "," : "",telemetry->shot_made_run[i]);
     fputs("],\"defensive_run\":[",stream);
     for(unsigned i=0;i<10;++i)fprintf(stream,"%s%u",i ? "," : "",telemetry->shot_defensive_run[i]);
-    fprintf(stream,"]},\"shot_launch\":{\"serial\":%u,\"actor\":%u,\"value\":%u},\"tipoff\":{\"contact_actor\":%d,\"contact_frame\":%u,\"reach_mask\":%u}}\n",
+    fprintf(stream,"]},\"shot_launch\":{\"serial\":%u,\"actor\":%u,\"value\":%u},\"tipoff\":{\"contact_actor\":%d,\"contact_frame\":%u,\"possession_frame\":%u,\"reach_mask\":%u}}\n",
             telemetry->shot_launch_serial,telemetry->shot_launch_actor,telemetry->shot_launch_value,
-            telemetry->tip_contact_actor,telemetry->tip_contact_frame,telemetry->tip_reach_mask);
+            telemetry->tip_contact_actor,telemetry->tip_contact_frame,telemetry->tip_possession_frame,telemetry->tip_reach_mask);
 }

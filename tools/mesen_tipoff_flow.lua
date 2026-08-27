@@ -6,6 +6,7 @@ local frame=0;local ready=false;local active={}
 local controlled=os.getenv('NBA95_TIP_CONTROL')=='1';local saved=nil;local case_index=0;local cases={}
 local variant=tonumber(os.getenv('NBA95_TIP_VARIANT')) or -1
 local launch_control=os.getenv('NBA95_TIP_LAUNCH_CONTROL')=='1';local launch_index=0
+local completion_control=os.getenv('NBA95_TIP_COMPLETION_CONTROL')=='1';local completion_index=0
 local ranges={{0,0xff},{0x700,0xa10},{0x13e0,0x14c0},{0x1800,0x187f},{0x34eb,0x3fff},{0x46eb,0x486b},{0x4900,0x4960}}
 local function w(a)return emu.read(a,emu.memType.snesWorkRam)|(emu.read(a+1,emu.memType.snesWorkRam)<<8)end
 local function put(a,v)emu.write(a,v&255,emu.memType.snesWorkRam);emu.write(a+1,(v>>8)&255,emu.memType.snesWorkRam)end
@@ -13,7 +14,7 @@ for _,dy in ipairs({-17,-16,0,15,16})do for _,z in ipairs({-1,0,55,60,71,72})do 
 for _,dx in ipairs({-17,-16,-8,0,7,8,15,16})do for _,z in ipairs({55,56,85,86})do cases[#cases+1]={dx=dx,z=z,hoop=0}end end
 for _,receiver in ipairs({-1,0,5,8})do for _,lock in ipairs({0,1})do for _,z in ipairs({59,60,67,95,96})do cases[#cases+1]={receiver=receiver,lock=lock,z=z}end end end
 for _,inhibit in ipairs({0,1})do for _,ft in ipairs({0,1})do cases[#cases+1]={inhibit=inhibit,ft=ft,z=50}end end
-if launch_control then cases={};for i=1,300 do cases[i]={z=50}end end
+if launch_control or completion_control then cases={};for i=1,300 do cases[i]={z=50}end end
 local function restore()
     if not saved then return end
     for a,v in pairs(saved)do emu.write(a,v,emu.memType.snesWorkRam)end;saved=nil
@@ -50,7 +51,15 @@ for _,p in ipairs({0x86cf9f,0x86cfa0,0x86d43e})do hook(p,function()finish('conta
 hook(0x86d25a,function()if ready and frame<=300 then begin('acquisition',0x86d25a)end end)
 hook(0x86baa2,function()if ready and frame<=300 then begin('catch_core',0x86baa2)end end)
 hook(0x86bc99,function()finish('catch_core',0x86bc99)end)
-hook(0x86d365,function()if ready and frame<=300 then begin('completion',0x86d365)end end)
+hook(0x86d365,function()if ready and frame<=300 then
+    if completion_control and saved then
+        local n=completion_index;completion_index=n+1
+        put(0x936,({0x81,0x82,0})[(n%3)+1]);put(0x9b8,math.floor(n/3)%2)
+        put(0x946,math.floor(n/6)%2==0 and 0xffff or 8)
+        put(0x9b6,math.floor(n/12)%2);put(0x996,math.floor(n/24)%2==0 and 4 or 8)
+    end
+    begin('completion',0x86d365)
+end end)
 hook(0x86d3c6,function()if ready and frame<=300 then begin('tip_bridge',0x86d3c6)end end)
 hook(0x86d3c2,function()finish('tip_bridge',0x86d3c2)end)
 hook(0x86d3c5,function()finish('completion',0x86d3c5);finish('acquisition',0x86d3c5);restore()end)

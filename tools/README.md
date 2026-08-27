@@ -171,6 +171,13 @@ reports success.
   state-changing ball/pass/shot/loose-ball calls. Direct
   `verify_ball_acquisition_vectors.py` captures separate the shared BAA2
   ownership core from D25A's pass/live-state continuation;
+  `verify_tip_acquisition.py` adds native BAA2/tip-wrapper fixtures and checks
+  the ball-source10 caller identity. `verify_tip_completion.py` requires all28
+  completion-branch starts; `tip_possession_runtime_probe` withholds the ball
+  beyond the old frame220 gate and then allows physical acquisition. These
+  run in `build.ps1 -Test`; capture via `capture_tipoff_flow.ps1`, and census
+  with `ghidra/DumpTipoffFlow.java`. See `docs/tipoff-flow-plan.md` and the
+  current `docs/gameplay-pending.md` table.
   `verify_no_owner_pursuer_vectors.py` checks the five-record loose-ball scan,
   and `verify_shot_launch_vectors.py` checks all three launch velocities,
   including fractional-Z borrow and final-ADC carry behavior.

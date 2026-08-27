@@ -76,7 +76,6 @@ static int basket_y_for_side(unsigned side) {
     return 0;
 }
 
-static void cpu_begin_possession(NbaTipoff *tipoff, uint8_t offense_side);
 static void cpu_apply_ball_acquisition_core(NbaTipoff *tipoff,uint8_t catcher);
 static void ball_attach_to_actor(NbaTipoff *tipoff, unsigned owner);
 static void ball_launch(NbaTipoff *tipoff, int target_x, int target_y,
@@ -5011,68 +5010,17 @@ static void cpu_apply_catch_mode(NbaTipoff *tipoff, uint8_t catcher) {
     NbaTipoffActor *actor = &tipoff->actors[catcher];
     NbaGameplayTeamContext *context = &tipoff->team_context[catcher / 5u];
     uint16_t mode = actor->control_mode;
-    uint16_t timer = actor->contact_action_timer_raw_60;
+    uint16_t timer = actor->reaction_threshold;
     uint16_t flags = actor->behavior_flags_raw;
     nba_gameplay_apply_catch_mode(
         tipoff->match_clock_raw_0928, &context->match_clock_raw_47,
         &mode, &timer, &flags);
     actor->control_mode = (uint8_t)mode;
     actor->contact_action_timer_raw_60 = timer;
+    actor->reaction_threshold = timer;
     actor->behavior_flags_raw = flags;
 }
 
-static void cpu_begin_possession(NbaTipoff *tipoff, uint8_t offense_side) {
-    static const uint8_t play_codes[4] = {0x35u, 0x01u, 0x0Fu, 0x26u};
-    static const uint8_t handler_slots[4] = {3u, 3u, 2u, 2u};
-    tipoff->offense_side = offense_side;
-    tipoff->possession_team = (int8_t)offense_side;
-    tipoff->camera_side_group_raw = offense_side ? 5u : 0u;
-    tipoff->possession_frame = 0;
-    tipoff->play_state_frame = 0;
-    tipoff->play_code = play_codes[tipoff->possession_number % 4u];
-    tipoff->play_hold_raw = 0u;
-    cpu_reset_play_control(tipoff);
-    unsigned base = offense_side ? 5u : 0u;
-    tipoff->handler_actor = (uint8_t)(base + handler_slots[tipoff->possession_number % 4u]);
-    tipoff->receiver_actor = (uint8_t)(base +
-        ((handler_slots[tipoff->possession_number % 4u] + 1u) % 5u));
-    /* Temporary frame bridge (removed by checkpoint4) must use the full
-     * acquisition cleanup, including the new launch latch, not just prefix. */
-    tipoff->rim_raw_13e7|=0x10u; /* `$86:D34A-$D350` */
-    cpu_apply_ball_acquisition_core(tipoff, tipoff->handler_actor);
-    tipoff->cpu_play_state = NBA_CPU_PLAY_BREAK;
-    tipoff->shot_result_resolved = false;
-    tipoff->shot_inner_veto_raw = false;
-    tipoff->shot_miss_index_raw = 0xFFu;
-    tipoff->shot_value_raw = 0u;
-    /* `$092C=05A0` is 24 seconds at the ROM's 60-Hz outer cadence. The
-     * oracle is 1440 at frame 220 and 1260 at frame 400. */
-    tipoff->rim_raw_092c = 0x05A0u;
-    tipoff->pass_actor_raw = -1;
-    tipoff->pass_receiver_raw = -1;
-    tipoff->pass_active_raw = 0u;
-    tipoff->pass_distance_raw = 0u;
-    ball_attach_to_actor(tipoff, tipoff->handler_actor);
-    for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor)
-        tipoff->actors[actor].control_mode =
-            actor / 5u == offense_side ? 1u : 2u;
-    cpu_apply_catch_mode(tipoff, tipoff->handler_actor);
-    /* `$86:D392-$D39C`: native tip acquisition clears 0936 unless a
-     * whistle owns the state. Previously the frame-based bridge left 0001
-     * (shot-flight) installed, feeding the wrong post-tip camera branch. */
-    if (tipoff->fouls.whistle_active_raw_09b6 == 0u)
-        tipoff->live_state_raw = 0u;
-    for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
-        NbaTipoffActor *state = &tipoff->actors[actor];
-        state->reaction_threshold = nba_gameplay_reaction_threshold(
-            &tipoff->rng, fp_round(state->x_fp), fp_round(state->y_fp),
-            fp_round(tipoff->ball.x_fp), fp_round(tipoff->ball.y_fp));
-    }
-    /* `$86:F3DD-$F439` begins CPU mode 11 with +$60=0, making the first
-     * B678/AD6B/B50E decision immediately due. CPU ownership remains in
-     * `$093E`; actor +$16 stays negative. */
-    tipoff->actors[tipoff->handler_actor].reaction_threshold = 0u;
-}
 
 static bool cpu_inbound_completion_witness(const NbaTipoff *tipoff) {
     return tipoff->live_state_raw == 0x82u &&
@@ -5172,23 +5120,29 @@ static void cpu_commit_ball_acquisition(NbaTipoff *tipoff, uint8_t catcher) {
     /* `$86:D34A-$D3C5`: mark the collision, run the shared BAA2 ownership
      * installer, then clear only the pass globals owned by this continuation.
      * `$09C4/$09DA`, the inbound timer, and the ball record are not reset here. */
-    bool completion_witness = cpu_inbound_completion_witness(tipoff);
+    bool completing_tip=tipoff->live_state_raw==0x81u;
     tipoff->rim_raw_13e7 |= 0x0010u;
     cpu_apply_ball_acquisition_core(tipoff, catcher);
-    if (completion_witness) {
-        if (tipoff->live_state_raw == 0x82u && tipoff->play_code < 6u)
-            tipoff->play_request_raw = 1u;
-        if (tipoff->fouls.whistle_active_raw_09b6 == 0u)
-            tipoff->live_state_raw = 0u;
-    } else if (tipoff->live_state_raw != 0x81u &&
-               tipoff->live_state_raw != 0x82u &&
-               tipoff->fouls.whistle_active_raw_09b6 == 0u) {
-        tipoff->live_state_raw = 0u;
+    NbaTipCompletion s={tipoff->live_state_raw,tipoff->inbound_transfer_raw,
+        (uint16_t)tipoff->pass_receiver_raw,tipoff->fouls.whistle_active_raw_09b6,
+        tipoff->play_code,tipoff->play_request_raw,(uint16_t)tipoff->pass_actor_raw,
+        (uint16_t)tipoff->pass_aux_raw,(uint16_t)tipoff->ball.velocity_z};
+    if(nba_tip_complete_acquisition(&s)) {
+        /* `$86:D3C6 -> B04C`: temporary first catch, never final possession. */
+        tipoff->tip_contact_actor=(int8_t)catcher;
+        tipoff->tip_contact_frame=(uint32_t)tipoff->frame;
+        (void)nba_tipoff_select_tip_receiver(tipoff);
+        tipoff->cpu_play_state=NBA_CPU_PLAY_PASS;
+        return;
     }
-    tipoff->pass_actor_raw = -1;
-    tipoff->pass_aux_raw = -1;
-    tipoff->pass_receiver_raw = -1;
-    tipoff->inbound_transfer_raw = 0u;
+    tipoff->live_state_raw=s.live_state;tipoff->play_request_raw=s.request;
+    tipoff->pass_actor_raw=(int8_t)s.passer;tipoff->pass_aux_raw=(int8_t)s.aux;
+    tipoff->pass_receiver_raw=(int8_t)s.receiver;tipoff->inbound_transfer_raw=s.transfer;
+    tipoff->ball.velocity_z=(int16_t)s.ball_vz;
+    if(completing_tip && tipoff->tip_possession_frame==0) {
+        tipoff->tip_possession_frame=(uint32_t)tipoff->frame;
+        tipoff->phase=NBA_TIPOFF_LIVE;
+    }
 }
 
 void nba_tipoff_replay_ball_acquisition(NbaTipoff *tipoff, uint8_t catcher) {
@@ -6533,13 +6487,6 @@ static void cpu_update_possession(NbaTipoff *tipoff) {
     }
     /* $092C is advanced by $85:EE38, not the possession dispatcher. */
     cpu_update_all_actors(tipoff);
-    /* `$87:8F7D -> $85:963D` completes all ten actor commits before the
-     * global jump-ball path reaches `$86:D3F9 -> $86:BAA2`. Installing the
-     * owner here preserves the frame-220 pose while making mode 11 visible
-     * to the following `$87:9244` behavior pass. */
-    bool jump_ball_acquisition = tipoff->frame == NBA_TIPOFF_BREAK_FRAME;
-    if (jump_ball_acquisition)
-        cpu_begin_possession(tipoff, 1u);
     NbaGameplayRimResult rim_result = cpu_update_live_ball(tipoff);
     cpu_cache_predicted_ball_xy(tipoff);
     int8_t owner_before_contacts = tipoff->ball.owner_actor;
@@ -6612,8 +6559,7 @@ static void cpu_update_possession(NbaTipoff *tipoff) {
             (unsigned)tipoff->ball.owner_actor);
 
     cpu_schedule_actor_behaviors(
-        tipoff, jump_ball_acquisition ||
-        (tipoff->rim_raw_13e7 & 0x0010u) != 0u);
+        tipoff, (tipoff->rim_raw_13e7 & 0x0010u) != 0u);
 
     ++tipoff->possession_frame;
     ++tipoff->play_state_frame;
@@ -6880,8 +6826,8 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
     tipoff->camera.presentation_ticks_0564 = 1;
     nba_court_stream_init(&tipoff->court_stream,tipoff->camera_x,tipoff->camera_y);
     tipoff->is_initialized = true;
-    printf("[TIPOFF] $86:DDA7 formation -> $86:E054 ball -> "
-           "$86:ECF4 jump -> $86:D3F9 possession.\n");
+    printf("[TIPOFF] $86:CCFC contact -> $86:B04C receiver -> "
+           "$86:99C4 deflection -> $86:D365 possession.\n");
     return true;
 }
 
@@ -6906,9 +6852,8 @@ void nba_tipoff_update(NbaTipoff *tipoff, const NbaInput *input) {
      * outer update, independent of actor scheduling or gameplay state. */
     tipoff->fouls.whistle_timer_raw_08de = (int16_t)(uint16_t)(
         (uint16_t)tipoff->fouls.whistle_timer_raw_08de - 1u);
-    /* Existing tip presentation hands off at frame 220. Thereafter the
-     * $85:EDC6 writer, not actor cadence, owns these 60-Hz timers. */
-    if (tipoff->frame > NBA_TIPOFF_BREAK_FRAME) {
+    /* Native state controls clocks; no frame220 enable or reset. */
+    if (tipoff->tip_contact_actor>=0) {
         NbaShotClock clock={tipoff->live_state_raw,tipoff->period_raw_0926,
             tipoff->match_clock_raw_0928,tipoff->rim_raw_092c,
             tipoff->shot_clock_mirror_raw_09c6,tipoff->dead_clock_enabled_raw_0a04,
@@ -6925,19 +6870,13 @@ void nba_tipoff_update(NbaTipoff *tipoff, const NbaInput *input) {
         tipoff->elapsed_clock_raw_13f9=clock.elapsed_clock;
         tipoff->elapsed_shot_clock_raw_13f7=clock.elapsed_shot_clock;
     }
-    if (tipoff->frame < NBA_TIPOFF_BREAK_FRAME)
+    bool advancing_tip=tipoff->tip_contact_actor>=0;
+    if (!advancing_tip)
         cpu_update_tip_ball(tipoff);
-    if (tipoff->frame < NBA_TIPOFF_BREAK_FRAME && nba_tipoff_try_tip_contact(tipoff)) {
-        /* The complete temporary/final acquisition caller is checkpoint4. */
-        (void)nba_tipoff_select_tip_receiver(tipoff);
-        /* Stage4 removes the frame220 catch.
-         * Existing role/play setup is not part of B04C's receiver selection. */
-        tipoff->play_code = 0x35u;
-        for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor)
-            tipoff->actors[actor].control_mode = actor / 5u == (unsigned)tipoff->possession_team ? 1u : 2u;
-        tipoff->actors[tipoff->receiver_actor].control_mode = 10u;
+    if (!advancing_tip && nba_tipoff_try_tip_contact(tipoff)) {
+        cpu_commit_ball_acquisition(tipoff,(uint8_t)tipoff->tip_contact_actor);
     }
-    if (tipoff->frame >= NBA_TIPOFF_BREAK_FRAME) {
+    if (advancing_tip) {
         /* $87:8EF3 calls fatigue before the due actor pass. All 24 roster
          * records persist; actors only mirror the currently active slots. */
         if ((tipoff->simulation_tick & 1u)==0u) {
@@ -6964,7 +6903,7 @@ void nba_tipoff_update(NbaTipoff *tipoff, const NbaInput *input) {
         cpu_dispatch_pending_event(tipoff);
     }
     cpu_update_camera(tipoff);
-    if (tipoff->frame >= NBA_TIPOFF_BREAK_FRAME) tipoff->phase = NBA_TIPOFF_LIVE;
+    if (tipoff->tip_possession_frame) tipoff->phase = NBA_TIPOFF_LIVE;
     else if (tipoff->tip_contact_actor >= 0)
         tipoff->phase = NBA_TIPOFF_POSSESSION;
     else if (tipoff->frame >= NBA_TIPOFF_TOSS_FRAME)
@@ -7066,7 +7005,9 @@ bool nba_tipoff_select_tip_receiver(NbaTipoff *tipoff) {
        tipoff->pass_receiver_raw>=0)return false;
     unsigned slot=(unsigned)tipoff->tip_contact_actor;
     NbaTipoffActor *actor=&tipoff->actors[slot];
-    NbaTipReceiver s={0};s.rng=tipoff->rng.state;s.actor_id=(uint16_t)slot;
+    /* D3F2 swaps actor pointers, but DP C2 remains the contact source: the
+     * ball record (10). B04C copies C2 to0942; it does not derive it from96. */
+    NbaTipReceiver s={0};s.rng=tipoff->rng.state;s.actor_id=10u;
     s.team_group=actor->team_group_raw_6e;s.event_bits=tipoff->tip_event_bits_raw_13e9;
     nba_tip_receiver_select(&s);
     if(s.receiver>=NBA_GAMEPLAY_ACTOR_COUNT)return false;
@@ -7128,6 +7069,7 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
     telemetry->shot_launch_actor=tipoff->last_shot_launch.last_owner;
     telemetry->shot_launch_value=tipoff->last_shot_launch.initial_value;
     telemetry->tip_contact_frame=tipoff->tip_contact_frame;
+    telemetry->tip_possession_frame=tipoff->tip_possession_frame;
     telemetry->tip_reach_mask=tipoff->tip_reach_mask;
     telemetry->simulation_tick = tipoff->simulation_tick;
     telemetry->phase = (uint8_t)tipoff->phase;
@@ -7155,9 +7097,9 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
     telemetry->controlled_actor_pointer_raw = 0u;
     telemetry->possession_actor = tipoff->possession_actor;
     telemetry->possession_team = tipoff->possession_team;
-    telemetry->possession_candidate_raw = tipoff->frame >= NBA_TIPOFF_BREAK_FRAME ?
+    telemetry->possession_candidate_raw = tipoff->tip_contact_actor >= 0 ?
                                           tipoff->handler_actor : -1;
-    telemetry->play_code_raw = tipoff->frame >= NBA_TIPOFF_POSSESSION_FRAME ?
+    telemetry->play_code_raw = tipoff->tip_contact_actor>=0 ?
                                tipoff->play_code : NBA_GAMEPLAY_UNKNOWN_WORD;
     telemetry->play_step_raw = tipoff->play_step_raw;
     telemetry->play_countdown_raw = tipoff->play_countdown_raw;
@@ -7268,25 +7210,16 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
     telemetry->pass_receiver_raw = tipoff->pass_receiver_raw;
     telemetry->pass_active_raw = tipoff->pass_active_raw;
     telemetry->pass_distance_raw = tipoff->pass_distance_raw;
-    telemetry->collision_actor_a = tipoff->frame < NBA_TIPOFF_BREAK_FRAME &&
-                                   tipoff->frame >= NBA_TIPOFF_CONTACT_FRAME &&
-                                   tipoff->frame < 211 ? 0 :
-                                   tipoff->collision_actor_a_raw;
-    telemetry->collision_actor_b = tipoff->frame < NBA_TIPOFF_BREAK_FRAME &&
-                                   tipoff->frame >= NBA_TIPOFF_CONTACT_FRAME &&
-                                   tipoff->frame < 211 ? 5 :
-                                   tipoff->collision_actor_b_raw;
+    telemetry->collision_actor_a = tipoff->collision_actor_a_raw;
+    telemetry->collision_actor_b = tipoff->collision_actor_b_raw;
     telemetry->player_contact_count_raw = tipoff->player_contact_count_raw;
     telemetry->player_contact_actor_a_raw = tipoff->player_contact_actor_a_raw;
     telemetry->player_contact_actor_b_raw = tipoff->player_contact_actor_b_raw;
     telemetry->player_contact_routine_raw = tipoff->player_contact_routine_raw;
     telemetry->controller_routine = 0x80CB8Fu;
     telemetry->selection_routine = 0x85C37Du;
-    telemetry->collision_routine = tipoff->frame < NBA_TIPOFF_BREAK_FRAME &&
-                                   tipoff->frame >= NBA_TIPOFF_CONTACT_FRAME ?
-                                   SNES_ADDR_TIPOFF_CONTACT :
-                                   tipoff->collision_routine_raw;
-    telemetry->possession_routine = tipoff->frame >= NBA_TIPOFF_POSSESSION_FRAME ?
+    telemetry->collision_routine = tipoff->collision_routine_raw;
+    telemetry->possession_routine = (tipoff->rim_raw_13e7&0x10u) ?
                                     SNES_ADDR_TIPOFF_POSSESSION : 0u;
     telemetry->camera_x = tipoff->camera_x;
     telemetry->camera_y = tipoff->camera_y;
@@ -7333,7 +7266,7 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
     telemetry->ball.velocity_z = fp_round(tipoff->ball.velocity_z);
     telemetry->ball.owner_actor = tipoff->ball.owner_actor;
     telemetry->ball.state = tipoff->ball.state;
-    telemetry->ball.routine = tipoff->frame < NBA_TIPOFF_BREAK_FRAME ?
+    telemetry->ball.routine = tipoff->tip_contact_actor < 0 ?
         SNES_ADDR_TIPOFF_BALL_INIT :
         tipoff->ball.state == NBA_BALL_ATTACHED ? 0x87B649u : 0x85A518u;
     telemetry->ball.flags_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
@@ -7344,12 +7277,13 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
         out->index = (uint8_t)actor;
         out->team_side = actor >= 5u;
         out->roster_slot = state->roster_slot;
-        bool live = tipoff->frame >= NBA_TIPOFF_BREAK_FRAME;
+        bool live = tipoff->tip_contact_actor >= 0;
         out->control = NBA_GAMEPLAY_CONTROL_CPU;
         out->world_x = live ? fp_round(state->x_fp) : formation[actor].world_x;
         out->world_y = live ? fp_round(state->y_fp) : formation[actor].world_y;
         out->world_z = live ? fp_round(state->z_fp) :
             actor == 5u ? (int16_t)center_jump_height(tipoff->frame) : 0;
+        out->world_z_fp = live ? state->z_fp : (int32_t)out->world_z * 256;
         out->screen_x = live ? (int16_t)(out->world_x + out->world_y -
             tipoff->camera_x) : formation[actor].screen_x;
         out->screen_y = live ? (int16_t)((out->world_y - out->world_x) / 4 -
@@ -7457,7 +7391,7 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
         out->behavior_flags_raw = state->behavior_flags_raw;
         out->palette_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
         out->actor_routine = live ? 0x85963Du : 0x80AD92u;
-        out->ai_routine = tipoff->frame >= NBA_TIPOFF_BREAK_FRAME ?
+        out->ai_routine = tipoff->tip_contact_actor >= 0 ?
             nba_gameplay_behavior_routine(state->control_mode) : 0u;
     }
 }
@@ -7477,7 +7411,7 @@ void nba_tipoff_render(const NbaTipoff *tipoff, NbaRenderer *ren) {
     int16_t screen_x[NBA_GAMEPLAY_ACTOR_COUNT];
     int16_t screen_y[NBA_GAMEPLAY_ACTOR_COUNT];
     unsigned render_count = 0;
-    if (tipoff->frame < NBA_TIPOFF_BREAK_FRAME) {
+    if (tipoff->tip_contact_actor < 0) {
         for (int order = 7; order >= 0; --order) {
             unsigned actor = visible_submission[order];
             render_order[render_count] = (uint8_t)actor;
@@ -7514,27 +7448,27 @@ void nba_tipoff_render(const NbaTipoff *tipoff, NbaRenderer *ren) {
         uint8_t slot = tipoff->actors[actor].roster_slot;
         uint8_t team = team_side ? tipoff->session->right_team :
                                    tipoff->session->left_team;
-        uint8_t state = tipoff->frame >= NBA_TIPOFF_BREAK_FRAME ?
+        uint8_t state = tipoff->tip_contact_actor >= 0 ?
                         tipoff->actors[actor].animation_state :
                         actor_animation(tipoff, actor);
         int jump = 0;
-        if (tipoff->frame < NBA_TIPOFF_BREAK_FRAME && actor == 5u &&
+        if (tipoff->tip_contact_actor < 0 && actor == 5u &&
             tipoff->frame >= NBA_TIPOFF_JUMP_FRAME &&
             tipoff->frame < NBA_TIPOFF_CONTACT_FRAME) {
             jump = center_jump_height(tipoff->frame);
         }
-        uint8_t direction = tipoff->frame >= NBA_TIPOFF_BREAK_FRAME ?
+        uint8_t direction = tipoff->tip_contact_actor >= 0 ?
                             tipoff->actors[actor].direction :
                             formation[actor].direction;
-        uint8_t lower_state = tipoff->frame >= NBA_TIPOFF_BREAK_FRAME ?
+        uint8_t lower_state = tipoff->tip_contact_actor >= 0 ?
                               tipoff->actors[actor].lower_animation_state : state;
-        uint32_t upper_tick = tipoff->frame >= NBA_TIPOFF_BREAK_FRAME ?
+        uint32_t upper_tick = tipoff->tip_contact_actor >= 0 ?
                               tipoff->actors[actor].upper_animation_tick :
                               actor_animation_tick(tipoff,actor);
-        uint32_t lower_tick = tipoff->frame >= NBA_TIPOFF_BREAK_FRAME ?
+        uint32_t lower_tick = tipoff->tip_contact_actor >= 0 ?
                               tipoff->actors[actor].lower_animation_tick :
                               actor_animation_tick(tipoff,actor);
-        if (tipoff->frame >= NBA_TIPOFF_BREAK_FRAME &&
+        if (tipoff->tip_contact_actor >= 0 &&
             tipoff->actors[actor].animation_resources_valid) {
             nba_player_sprite_render_resources(
                 ren, tipoff->assets, team, slot, uniform_side, direction,
@@ -7550,7 +7484,7 @@ void nba_tipoff_render(const NbaTipoff *tipoff, NbaRenderer *ren) {
         }
     }
     int ball_x, ball_y;
-    if (tipoff->frame < NBA_TIPOFF_BREAK_FRAME) {
+    if (tipoff->tip_contact_actor < 0) {
         ball_position(tipoff, &ball_x, &ball_y);
     } else {
         int x = fp_round(tipoff->ball.x_fp), y = fp_round(tipoff->ball.y_fp);

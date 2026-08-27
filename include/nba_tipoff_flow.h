@@ -49,4 +49,9 @@ typedef struct {
 } NbaTipLaunch;
 /* $86:99C4-$9C6E. Tables come from the ROM asset pack, never captures. */
 bool nba_tip_launch(const NbaAssetPack *assets,NbaTipLaunch *state);
+typedef struct {
+    uint16_t live_state,transfer,receiver,whistle,play,request,passer,aux,ball_vz;
+} NbaTipCompletion;
+/* $86:D365-$D3B0. True dispatches the initial tip wrapper; false attaches. */
+bool nba_tip_complete_acquisition(NbaTipCompletion *state);
 #endif

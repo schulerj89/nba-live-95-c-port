@@ -159,3 +159,63 @@ ECF9-EE75 loose-ball/jump continuation adds162 contiguous instructions.
 Neither is certified by the four contact/handoff checkpoints; total239
 decoded instructions require path-specific audit/adoption. E054-E0AB is
 only a31-instruction ball-init prefix, not its full dispatcher/toss census.
+
+## Checkpoint 4: actual possession
+
+The live dispatcher now uses the actual geometric event, BAA2 temporary
+catch, D365 branch, D3C6/B04C/99C4 launch, shared physics/contact sweep and
+second acquisition. No frame220 ownership, fixed actor8, play rotation,
+all-player mode reset, extra reaction-RNG draws or forced clock reset remains.
+The native state/whistle branch controls clock continuation and camera input.
+
+Full caller replay found0942 must receive the ball source10 (DP C2 remains
+unchanged while the wrapper swaps96/9A), not the jumping player's index.
+The adapter and both-team runtime tests now enforce that identity. Catch
+mode's +60 is mirrored into the CPU decision timer rather than leaving the
+old receiver countdown installed. Its probe no longer aliases +AA height
+to the +60 timer.
+
+Proof:164 native completion calls,28/28 starts;22 BAA2 calls (4 natural,
+18 controlled);17 wrappers (2 natural,15 controlled),60/60 starts observed.
+All represented outputs match. Previous14 core/21 non-tip continuation
+replays also pass. Durable fixtures:tip-completion.json and tip-acquisition.json.
+The wrapper's stack/DP preservation is represented by C locals, not CPU ABI
+emulation. Launch pointer provenance and final pose attachment remain separate.
+
+`tip_possession_runtime_probe` checks natural contact, withholding the ball
+past220, a later physical catch, both teams/both RNG bits/whistle alternatives,
+pass cleanup, +60 reset and preserved RNG/clock. Natural C contact/catch is
+204/222 versus native200/220; the initial quadratic toss and jump frame/pose
+scaffold is still a real visual limitation, not hidden by shifted captures.
+
+Diagnostics now record contact and final possession frames and remove fake
+frame-based collision reports. Exact actor24.8 Z is also in JSONL:96B5 only
+clamps a negative post-step height, so landing exactly on zero preserves VZ
+for one more step. The old rounded-height test incorrectly rejected that
+native boundary. Strategy, camera and fatigue tests now use actual events
+rather than assuming frame220 is initialization/ownership.
+
+Visual evidence:stage4-frames/frame_0204.bmp,frame_0220.bmp,frame_0222.bmp,
+frame_0400.bmp; reviewed CPU anchors600/1300/3480/6932/6954; stage4-port.mp4.
+Native comparison:acquisition-natural/native_0200.png and native_0220.png.
+These expose remaining pose/trajectory/framing differences, not full-ROM
+visual parity. Runtime art and animation/physics tables remain asset-pack data.
+
+Updated remaining work: `gameplay-pending.md`; fresh Ghidra census has602
+bounded CPU/gameplay instructions plus19 optional human steering instructions.
+Uncounted wider callers and integration gaps are explicitly separate.
+Coverage7,585/27,901 (27.19%),151 ledger slices.
+
+Release: `stage4-full-release.log`, final `build.ps1 -Test` exit0. All native
+replays, asset safety/regeneration, camera/court, audio, menus, teams, player
+lab/setup/intro, tip-off and gameplay tests pass. The63,800-frame CPU trace
+checks139 selectors,28 made-run updates,2,398 exact-pass frames and115
+automatic action unlocks. Two200,000-frame owner runs reach states13/18;
+Chicago/Orlando selects/releases one special at76883/76910, reverse matchup
+none. The latter is a distribution caveat, not hidden as proof of ROM frequency.
+The separate delayed-contact and63,800-frame dead-ball endurance tests pass.
+The existing desktop shortcut resolves to the rebuilt executable/asset pack.
+
+Checkpoint commits: contact a7b8297; receiver55085cd; deflection c020692.
+The actual-possession checkpoint contains this release report and the pending
+table; use Git history for its hash (do not embed a self-referential hash).

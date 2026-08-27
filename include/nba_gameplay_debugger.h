@@ -24,6 +24,7 @@ typedef struct {
     uint8_t control;
     bool visible;
     int16_t world_x, world_y, world_z;
+    int32_t world_z_fp; /* exact 24.8 height; rounded z cannot prove landing */
     int16_t screen_x, screen_y;
     int16_t velocity_x, velocity_y, velocity_z;
     uint8_t direction;
@@ -110,6 +111,7 @@ typedef struct {
     uint32_t simulation_tick;
     int16_t tip_contact_actor;
     uint32_t tip_contact_frame;
+    uint32_t tip_possession_frame;
     uint16_t tip_reach_mask;
     uint8_t scheduler_due_raw;
     uint8_t actor_pass_dt_raw;

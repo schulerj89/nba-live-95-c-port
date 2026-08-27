@@ -20,9 +20,10 @@ int main(int argc,char **argv) {
     if(t.camera.x!=-128||t.camera.y!=-124||t.camera.initialized_4a54!=0xffff||t.live_state_raw!=0x81)return 4;
     for(unsigned frame=1;frame<=400;++frame) {
         nba_tipoff_update(&t,&input);
-        if(frame<220 && t.live_state_raw!=0x81)return 5;
-        if(frame>=220 && frame<=224 && t.live_state_raw!=0)return 6;
+        if(!t.tip_possession_frame && t.live_state_raw!=0x81)return 5;
+        if(t.tip_possession_frame && frame<=t.tip_possession_frame+2 && t.live_state_raw!=0)return 6;
     }
+    if(!t.tip_possession_frame)return 14;
     /* Isolated caller inputs, deliberately BEFORE the old frame-200 gate.
      * Assert actor-vs-ball Z, reversed basket signs and alternate flags are
      * passed to the independently ROM-replayed core without substitution. */

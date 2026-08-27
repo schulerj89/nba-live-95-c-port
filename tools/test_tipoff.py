@@ -18,11 +18,9 @@ EXPECTED_ASSETS = {
 EXPECTED_FRAMES = {
     90: ("TIP PH:FORMATION", "87e8872a01b4e52a63a5243e042f33c3534d7dc82b4d42611ced4e7099c23b5c"),
     170: ("TIP PH:JUMP BALL", "1c9fa44a36d3fd8923fc40364db0ceac8254a3bfe47d96b83b5cf384c47c61a6"),
-    # Native camera cadence and $0936:0081 -> 0000 ownership transition;
-    # changes framing, not assets. See camera-handoff-plan.md/native witnesses.
-    # Geometric contact delays the placeholder trajectory and hence camera.
-    # Reviewed stage1/native frames; this is a C regression, NOT ROM parity.
-    220: ("TIP PH:LIVE", "29a1b49be7817ac919bf1c628ad2d6fe0260bef1fa30d39eb96cac1f32163d66"),
+    # Event-driven handoff: frame220 is still in flight, not forced ownership.
+    # Inspected stage4 image; C regression only, NOT ROM visual parity.
+    220: ("TIP PH:POSSESSION", "b4567ba158fbea8b925905fc6dce739cdda84bac233fa7e2a8337afdb0973003"),
 }
 
 

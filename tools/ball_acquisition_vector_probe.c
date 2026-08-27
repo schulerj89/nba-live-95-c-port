@@ -61,8 +61,10 @@ static void load_actor(NbaTipoffActor *actor, const uint8_t *raw,
     actor->behavior_flags_raw = word(raw, base + 0x7Eu);
     actor->saved_control_mode = (uint8_t)word(raw, base + 0x84u);
     actor->anchor_distance_raw = word(raw, base + 0x8Cu);
-    actor->reaction_threshold = word(raw, base + 0xAAu);
+    actor->reaction_threshold = word(raw, base + 0x60u);
+    actor->contact_height_raw_aa = word(raw, base + 0xAAu);
     actor->catcher_latch_raw_ae = word(raw, base + 0xAEu);
+    actor->pass_family_raw = sword(raw, base + 0xC0u);
     actor->movement_magnitude_raw = word(raw, base + 0x4Cu);
 }
 
@@ -84,7 +86,7 @@ static void print_actor(const NbaTipoffActor *actor) {
            (uint16_t)actor->velocity_x, (uint16_t)actor->velocity_y,
            (uint16_t)actor->velocity_z, actor->movement_magnitude_raw,
            actor->control_mode, actor->contact_action_timer_raw_60,
-           actor->reaction_threshold,
+           actor->contact_height_raw_aa,
            actor->behavior_timer, actor->movement_boost_timer,
            actor->assignment_current_raw, actor->recovery_inhibit_raw,
            actor->behavior_flags_raw, actor->catcher_latch_raw_ae);
@@ -97,13 +99,14 @@ static void print_word(uint16_t value) {
 int main(int argc, char **argv) {
     if (argc < 2 || argc > 3) return 2;
     int continuation = argc == 3 && strcmp(argv[2], "continuation") == 0;
+    int wrapper = argc == 3 && strcmp(argv[2], "tip-wrapper") == 0;
     NbaAssetPack assets;
     memset(&assets, 0, sizeof(assets));
     if (!nba_assets_load(&assets, argv[1])) return 3;
     uint8_t raw[WRAM_SIZE];
     _setmode(_fileno(stdin), _O_BINARY);
     while (fread(raw, 1u, sizeof(raw), stdin) == sizeof(raw)) {
-        uint16_t pointer = word(raw, continuation ? 0x009Au : 0x0096u);
+        uint16_t pointer = word(raw, (continuation || wrapper) ? 0x009Au : 0x0096u);
         if (pointer < ACTOR_BASE ||
             (pointer - ACTOR_BASE) % ACTOR_STRIDE != 0u) return 4;
         unsigned catcher = (pointer - ACTOR_BASE) / ACTOR_STRIDE;
@@ -156,6 +159,8 @@ int main(int argc, char **argv) {
         state.pass_distance_raw = word(raw, 0x09DAu);
         state.inbound_timer_raw = word(raw, 0x092Eu);
         state.rim_raw_13e7 = word(raw, 0x13E7u);
+        state.tip_event_bits_raw_13e9 = word(raw, 0x13E9u);
+        state.fouls.whistle_active_raw_09b6 = word(raw, 0x09B6u);
         state.rim_force_raw_1866 = word(raw, 0x1866u);
         state.catch_actor_record_raw_0910 = word(raw, 0x0910u);
         state.catch_context_record_raw_0912 = word(raw, 0x0912u);
@@ -169,7 +174,10 @@ int main(int argc, char **argv) {
         state.handler_actor = (uint8_t)catcher;
         state.cpu_vs_cpu = true;
 
-        if (continuation)
+        if (wrapper) {
+            state.tip_contact_actor = (int8_t)catcher;
+            if (!nba_tipoff_select_tip_receiver(&state)) return 7;
+        } else if (continuation)
             nba_tipoff_replay_ball_acquisition(&state, (uint8_t)catcher);
         else
             nba_tipoff_replay_ball_acquisition_core(&state, (uint8_t)catcher);
@@ -206,6 +214,18 @@ int main(int argc, char **argv) {
             print_word(globals[i]);
         for (unsigned i = 0; i < NBA_GAMEPLAY_ACTOR_COUNT; ++i)
             print_actor(&state.actors[i]);
+        if (wrapper) {
+            printf(" %04x %04x %04x %04x %04x %04x %04x %04x %04x %04x %04x",
+                state.tip_winner_group_raw_0932,state.tip_event_bits_raw_13e9,
+                state.tip_event.timer_140f,state.tip_event.active_148f,
+                state.tip_event.enabled_14a7,state.tip_event.duration_1477,
+                state.tip_event.address_14bf,state.tip_event.kind_1430,state.tip_event.bank_1448,
+                (unsigned)(state.ball.z_fp & 255u),state.rim_raw_094a);
+            for (unsigned i=0;i<10;++i)
+                printf(" %04x %04x %04x %04x",state.actors[i].reaction_threshold,
+                    state.actors[i].contact_inhibit_raw_5a,
+                    (uint16_t)state.actors[i].pass_family_raw,state.actors[i].pass_band_raw);
+        }
         putchar('\n');
     }
     nba_assets_free(&assets);

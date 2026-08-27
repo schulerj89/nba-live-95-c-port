@@ -19,8 +19,8 @@
 #define SNES_ADDR_TIPOFF_PLAYER_FORMATION 0x86DDA7
 #define SNES_ADDR_TIPOFF_BALL_INIT        0x86E054
 #define SNES_ADDR_TIPOFF_JUMP_ANIMATION   0x86ECF4
-#define SNES_ADDR_TIPOFF_CONTACT          0x86CF49
-#define SNES_ADDR_TIPOFF_POSSESSION       0x86D3F9
+#define SNES_ADDR_TIPOFF_CONTACT          0x86CCFC
+#define SNES_ADDR_TIPOFF_POSSESSION       0x86D25A
 
 #define NBA_TIPOFF_BALL_APPEAR_FRAME 140
 #define NBA_TIPOFF_TOSS_FRAME       145
@@ -174,6 +174,7 @@ typedef struct {
     int8_t possession_actor;
     int8_t tip_contact_actor;
     uint32_t tip_contact_frame;
+    uint32_t tip_possession_frame;
     uint16_t tip_reach_mask;
     NbaTipEvent tip_event;
     uint16_t tip_event_bits_raw_13e9;

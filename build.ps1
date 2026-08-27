@@ -201,6 +201,17 @@ if ($Test) {
         throw "Player Introduction regression tests failed with exit code $LASTEXITCODE"
     }
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name tip_contact_probe
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name tip_completion_probe
+    & python (Join-Path $Root 'tools\verify_tip_completion.py') --normalized `
+        --vectors (Join-Path $Root 'tests\fixtures\tip-completion.json') --probe (Join-Path $BuildDir 'tip_completion_probe.exe')
+    if ($LASTEXITCODE -ne 0) { throw 'Tip completion native replay failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name ball_acquisition_vector_probe
+    & python (Join-Path $Root 'tools\verify_tip_acquisition.py') --normalized --pack $AssetPack `
+        --vectors (Join-Path $Root 'tests\fixtures\tip-acquisition.json') --probe (Join-Path $BuildDir 'ball_acquisition_vector_probe.exe')
+    if ($LASTEXITCODE -ne 0) { throw 'Tip acquisition/caller native replay failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name tip_possession_runtime_probe
+    & (Join-Path $BuildDir 'tip_possession_runtime_probe.exe') $AssetPack
+    if ($LASTEXITCODE -ne 0) { throw 'Tip possession runtime binding failed.' }
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name tip_launch_probe
     & python (Join-Path $Root 'tools\verify_tip_launch.py') --normalized --pack $AssetPack `
         --vectors (Join-Path $Root 'tests\fixtures\tip-launch.json') --probe (Join-Path $BuildDir 'tip_launch_probe.exe')

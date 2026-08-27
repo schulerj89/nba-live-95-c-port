@@ -18,7 +18,7 @@ Current measured coverage:
 |---|---:|---:|
 | observed executed code | 27,901 | 100.0% |
 | documented by ROM-address provenance | 10,236 | 36.7% |
-| verified against ROM calls | 7,527 | 26.98% |
+| verified against ROM calls | 7,585 | 27.19% |
 
 These values are generated, not estimated. The detailed per-bank report is
 `docs/progress.md`; the authoritative verified list and evidence paths are in
@@ -30,17 +30,20 @@ for a requested slice are reported separately.
 
 ## Verified gameplay checkpoint
 
-149 routine slices currently have emulator-ground-truth replay/binding evidence. The most important
+151 routine slices currently have emulator-ground-truth replay/binding evidence. The most important
 recent slices are:
 
-- Active tip-flow goal: `docs/tipoff-flow-plan.md`. Contact geometry now drives
+- Tip-flow checkpoints: `docs/tipoff-flow-plan.md`. Contact geometry now drives
   the first hit instead of frame200. 340 native/controlled calls replay with
   zero mismatches. Receiver B04C now matches all59 starts across five native
   calls, with both-team/both-bit runtime guards. Launch now uses99C4 and
   shared physics:126 native calls, all306 starts, zero mismatches. The complete
-  temporary/final possession caller is still pending. An older ledger included its
-  explicitly excluded D3C6-D43D tip wrapper; removing that claim lowers the
-  displayed coverage by58 positions. This is a proof correction, not lost C.
+  temporary/final possession caller now follows actual contact, not frame220.
+  Completion164 calls, catch core22 and wrapper17 all replay without represented-
+  output mismatches. The wrapper proof fixes0942's ball-source identity10 and
+  restores its previously excluded ledger range. Initial toss/jump presentation
+  remains approximate; see `docs/gameplay-pending.md` for the fresh602-instruction
+  bounded CPU/gameplay census,19 optional human instructions, and uncounted areas.
 
 - Camera correction/callers: the remaining **99 instruction starts** now
   pass native replay: 62,243 calls across core/init/resolver/copy/cadence,
@@ -49,7 +52,7 @@ recent slices are:
   before-wait latch/after-wait copy are integrated. Native tip state is
   `$0936=0081`, then `0000` on acquisition, not the old persistent `0001`.
   Correcting that connection reduces early post-tip vertical error, but
-  does NOT replace the frame-based tip ball trajectory/winner bridge.
+  does NOT certify the remaining frame-based initial toss/jump presentation.
   See `docs/camera-handoff-plan.md` for numeric/visual limits and reproduction.
 
 - Camera/presentation: all **510 requested instruction starts** were audited
@@ -93,9 +96,10 @@ recent slices are:
   These are asset-pack animations, with controlled-ROM cadence coverage
   and natural latched-selector calls, not full-game frequency parity.
   Unforced C runs reach both poses; special-shot reachability/release is
-  now guarded by two 200,000-frame matchups. The current Orlando/Chicago
-  run selects/releases specials at 165,262/165,290 and 179,622/179,650;
-  exact owner-call ordering supersedes the earlier deterministic trajectory.
+  now guarded by two 200,000-frame matchups. With the event-driven tip flow,
+  Chicago/Orlando selects/releases a special at76,883/76,910; the reverse
+  matchup reaches no special in200,000 frames. Both reach states13/18 but
+  neither naturally selects state7. This supersedes earlier trajectories.
   Detailed evidence, remaining boundaries and visual proof:
   `docs/owner-pose-animation-plan.md`.
 
@@ -379,8 +383,8 @@ See `tools/README.md` for capture, replay, Ghidra, and regression commands.
 ## Active gaps and next work
 
 - Camera: the additional 99 correction/caller instructions are complete.
-  The frame-based tip ball trajectory, forced winner/ownership timing and
-  upstream camera/control selector ownership remain separate; raw camera
+  The frame-based initial toss/jump trajectory and upstream camera/control
+  selector ownership remain separate; raw camera
   correctness does not make those input trajectories ROM-identical.
   Crowd CHR animation and the downstream basket/window compositor remain.
   The raw map geometry matches 12 native viewports; static art has 0-461
@@ -389,8 +393,9 @@ See `tools/README.md` for capture, replay, Ghidra, and regression commands.
   implemented; see `docs/shot-state-plan.md`. Remaining in this neighborhood:
   timeout/period caller integration (including stamina grants, period reset,
   quarter-clock initialization and end-of-period flow), substitutions and
-  bench promotion, and wider natural-shot distribution comparison. The old
-  frame-220 tip handoff and initial 43,200 clock seed remain bounded scaffolds;
+  bench promotion, and wider natural-shot distribution comparison. The
+  initial 43,200 clock seed remains a bounded scaffold; the forced frame220
+  tip handoff has been removed. The
   verified clock-writer semantics do not certify all clock setup/callers.
   Human controls remain out of scope.
 - The command helpers and common queued completion now have live replay

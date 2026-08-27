@@ -2,6 +2,22 @@
   "comment": "Routines verified against emulator ground truth. Byte ranges are 24-bit SNES bus addresses. evidence points at the capture/replay artifacts; tools/progress.py counts these bytes as verified.",
   "routines": [
     {
+      "range": "86D3C6-86D43D",
+      "name": "nba_tipoff_select_tip_receiver / tip wrapper",
+      "source": "src/nba_tipoff.c",
+      "method": "native caller replay + runtime binding",
+      "evidence": "tests/fixtures/tip-acquisition.json: 17 native wrapper calls (2 natural,15 controlled), all60 instruction starts observed, zero represented-output mismatches. Compare RNG, ball/actor/core state, winner group, controller, event descriptor, fraction/height preservation and both center inhibits; child launch independently replayed. DP C2 is ball record10, not jumping actor. C locals replace SNES stack/DP save/restore; no CPU ABI or cycle parity claimed. Initial pose/toss inputs remain scaffolds. tools/verify_tip_acquisition.py and tip_possession_runtime_probe.c.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "86D365-86D3B0",
+      "name": "nba_tip_complete_acquisition",
+      "source": "src/nba_tipoff_flow.c + src/nba_tipoff.c",
+      "method": "native completion replay + event-driven binding",
+      "evidence": "tests/fixtures/tip-completion.json: 164 native calls, zero mismatches, all28 instruction starts. First tip vs final possession vs inbound/whistle branches; wrapper child has independent proof. tip-acquisition.json additionally replays22 BAA2 core calls (4 natural,18 controlled), zero represented-output mismatches. Runtime natural/delayed physical contact, both sides/RNG bits/whistles, no frame220 award or RNG/clock reset. B649/B66A pose attachment and upstream initial toss are not attributed to this completion slice.",
+      "date": "2026-08-27"
+    },
+    {
       "range": "8699C4-869C6E",
       "name": "nba_tip_launch",
       "source": "src/nba_tipoff_flow.c + src/nba_tipoff.c",

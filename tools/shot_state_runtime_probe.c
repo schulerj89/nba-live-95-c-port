@@ -26,9 +26,9 @@ static int exercise(const NbaAssetPack *pack,unsigned enabled) {
             before.shot_clock_mirror_raw_09c6,before.dead_clock_enabled_raw_0a04,
             expected.timer,before.free_throw_flight_timer_raw_0930,
             session.config.rules[8],before.elapsed_clock_raw_13f9,before.elapsed_shot_clock_raw_13f7};
-        if(frame>NBA_TIPOFF_BREAK_FRAME)nba_shot_clock_step(&clock);
+        if(before.tip_contact_actor>=0)nba_shot_clock_step(&clock);
         expected.timer=clock.fatigue_timer;
-        if(frame>=NBA_TIPOFF_BREAK_FRAME && !(frame&1)) {
+        if(before.tip_contact_actor>=0 && !(frame&1)) {
             expected.live_state=before.live_state_raw;
             expected.enabled=(uint16_t)enabled;
             expected.quarter=session.config.main_values[3];
@@ -39,7 +39,7 @@ static int exercise(const NbaAssetPack *pack,unsigned enabled) {
             if(!nba_shot_fatigue_step(pack,&expected))return 2;
         }
         nba_tipoff_update(&game,&input);
-        if(frame>NBA_TIPOFF_BREAK_FRAME && game.match_clock_raw_0928!=clock.clock) {
+        if(before.tip_contact_actor>=0 && game.match_clock_raw_0928!=clock.clock) {
             fprintf(stderr,"clock binding frame=%u live=%04x got=%04x expected=%04x\n",
                 frame,before.live_state_raw,game.match_clock_raw_0928,clock.clock);
             return 11;
@@ -50,7 +50,7 @@ static int exercise(const NbaAssetPack *pack,unsigned enabled) {
             if((i%12)>=5 && (game.fatigue.stamina[i]!=0x7FFF || game.fatigue.playing_seconds[i]))return 4;
             if(!enabled && game.fatigue.stamina[i]!=0x7FFF)return 5;
         }
-        if(frame>=NBA_TIPOFF_BREAK_FRAME)for(unsigned i=0;i<10;++i)
+        if(before.tip_contact_actor>=0)for(unsigned i=0;i<10;++i)
             if(game.actors[i].shot_stamina_raw_18!=game.fatigue.stamina[game.fatigue.active_roster[i]])return 6;
         if(scores[0]!=session.score[0] || scores[1]!=session.score[1]) {
             NbaShotMomentum expected_make={0};

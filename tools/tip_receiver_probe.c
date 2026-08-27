@@ -13,7 +13,7 @@ int main(int argc,char **argv) {
             if(!nba_tipoff_select_tip_receiver(&game))return 4;
             unsigned receiver=side*5+3+bit;
             if(game.pass_receiver_raw!=(int)receiver || game.receiver_actor!=receiver ||
-               game.pass_actor_raw!=(int)side*5 || game.actors[receiver].control_mode!=10 ||
+               game.pass_actor_raw!=10 || game.actors[receiver].control_mode!=10 ||
                game.tip_event_bits_raw_13e9!=(0x40|(side?2:4)) ||
                game.tip_event.duration_1477!=600)return 5;
             uint16_t rng=game.rng.state;

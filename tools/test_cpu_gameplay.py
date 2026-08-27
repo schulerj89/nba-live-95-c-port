@@ -20,14 +20,13 @@ EXPECTED_RGB = {
     # Reviewed after complete F34F caller ordering and coarse contact facing;
     # these are C visual regression anchors, not emulator-parity claims.
     # Independent ROM vectors and semantic endurance guards remain separate.
-    # Native B04C RNG draw changes subsequent CPU choices. Reviewed stage2
-    # captures; frame1300 still exposes wider loose-ball/camera composition.
-    # Stage3 native tip launch/initial dead-side latch changes the trajectory.
-    600: "27a82c36b6d0acc68fd4b33ee0117e2a9524f2d879d99a7ca73704cd8ea45c04",
-    1300: "3d5e7a972ee3967b626c1a46006300ae10a990215209cc2ecb0cc70a6cad6dfe",
-    3480: "6d75a8a898c6ac3b10032c7cd91d90ee3908f7be9b15cec5aef1c934cade1472",
-    6932: "7e688c505e08c483668b1cb20c3d898e1e20927ef5f61fb138f72a04de0b37ab",
-    6954: "b924ef7bd0619401aa88b95dc673015a60cf7ff7ad0fe8f10a180adca3a90cf3",
+    # Stage4 physical acquisition replaces the forced actor8/frame220 reset.
+    # All five captures inspected; wider loose-ball framing remains a gap.
+    600: "cde7568f71bde5e7eb00f622f083c09ce5a4e4ba8f5daa6fa4679e85a617bf6b",
+    1300: "89024c06ee51e82381cbb3ecdb80c063cd5b78f92420bc36a20e99528655da24",
+    3480: "77832fb9b371ae8c02c1a102e4109168177beb34a9db561a9b036d584ce103e2",
+    6932: "a4823b9a22ef7b2b64ac7597252d26ef7619a4f9beaf0d63e10344961ebee1fa",
+    6954: "2a9602d448b24095d019e176e62ada60a23c8efc39882b0ec351090b9980e390",
 }
 
 
@@ -159,13 +158,22 @@ def main():
         def frame(number):
             return rows[number - 1]
 
+        first_tip = next(row for row in rows if row['tipoff']['contact_frame'])
+        first_catch = next(row for row in rows if row['tipoff']['possession_frame'])
+        catch_frame = first_catch['frame']
+        if first_tip['frame'] >= catch_frame or first_tip['possession']['actor'] != -1:
+            raise AssertionError('temporary tip contact was mistaken for possession')
+        if any(row['possession']['actor'] != -1 for row in rows[:catch_frame-1]):
+            raise AssertionError('ownership was awarded before physical acquisition')
+        if first_catch['possession']['actor'] != rows[catch_frame-2]['possession']['pass_receiver_raw']:
+            raise AssertionError('first catch did not collect the selected tip receiver')
         live = frame(240)
         # Only the pre-whistle prefix is an uninterrupted clock. Correct
         # owner dispatch now reaches an inbound pause before frame1800.
         # shot_state_runtime_probe checks the ROM clock helper binding on
         # every outer frame, including paused/resumed play (two 16k runs).
         for number in (220, 400):
-            expected_clock = 43200 - max(0, number - 220)
+            expected_clock = 43200 - max(0, number - catch_frame)
             if frame(number)["match"]["match_clock_raw_0928"] != expected_clock:
                 raise AssertionError(
                     f"$0928 outer-frame clock changed at {number}: "
@@ -226,10 +234,12 @@ def main():
         if not any(any(actor["raw"]["control_mode"] == 6
                        for actor in row["actors"]) for row in rows[219:]):
             raise AssertionError("`$85:C018-$C036` never selected a help defender")
-        match = live["match"]
-        if match["team_context_mode_raw_30"] != [4, 4] or \
-                match["team_context_flags_raw_32"] != [1, 1] or \
-                match["team_context_activity_raw_39"] != [1, 1]:
+        # Initialization is checked before the actual tip can advance the
+        # strategy/context; frame240 is not an initialization boundary.
+        initial_match = frame(1)["match"]
+        if initial_match["team_context_mode_raw_30"] != [4, 4] or \
+                initial_match["team_context_flags_raw_32"] != [1, 1] or \
+                initial_match["team_context_activity_raw_39"] != [1, 1]:
             raise AssertionError("`$46EB/$476B` team context initialization changed")
 
         pack_raw = Path(args.pack).read_bytes()
@@ -341,31 +351,17 @@ def main():
         if 0x35 not in play_codes or 0x01 not in play_codes or \
                 len(play_codes) < 8 or any(not 0 <= code < 61 for code in play_codes):
             raise AssertionError(f"ROM strategy play selection did not sustain: {play_codes}")
-        play_35 = frame(220)["possession"]
-        expected_35 = {
-            "play_step_raw": 0, "play_countdown_raw": 4,
-            "play_event_wait_raw": 1, "play_selector_raw": [-1, -1, -1],
-        }
-        if any(play_35[key] != value for key, value in expected_35.items()):
-            raise AssertionError(f"$85:B377/$B2DC play $35 load changed: {play_35}")
-        play_35_next = frame(222)["possession"]
-        if play_35_next["play_step_raw"] != 0 or \
-                play_35_next["play_countdown_raw"] != 2 or \
-                play_35_next["play_event_wait_raw"] != 1:
-            raise AssertionError(
-                f"$85:B24C event barrier lost DP $AA loop-counter cadence: {play_35_next}")
+        # No forced frame220 strategy reset. The existing B24C stream tests
+        # below verify consumption/barriers at actual requests, not a script.
         assignments = [actor["raw"]["controller_assignment_16"]
-                       for actor in frame(220)["actors"]]
+                       for actor in first_catch["actors"]]
         if assignments != [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1]:
             raise AssertionError(f"actor +$16 ownership mapping changed: {assignments}")
-        jump_owner = frame(220)["actors"][8]
-        if (jump_owner["vx"], jump_owner["vy"],
-                jump_owner["raw"]["motion_38"], jump_owner["animation"]) != \
-                (0, 0, 0, 0):
-            raise AssertionError(
-                "$86:D3F9/$86:BAA2 acquisition ran mode 11 before the next "
-                f"$85:963D actor pass: {jump_owner}")
-        first_owner_pass = frame(222)["actors"][8]
+        catcher = first_catch['possession']['actor']
+        jump_owner = first_catch["actors"][catcher]
+        if jump_owner['raw']['control_mode'] != 11:
+            raise AssertionError('actual acquisition did not install owner mode11')
+        first_owner_pass = frame(catch_frame+2)["actors"][catcher]
         if first_owner_pass["raw"]["control_mode"] != 11 or \
                 first_owner_pass["raw"]["motion_38"] != 5 or \
                 first_owner_pass["animation"] != 5 or \
@@ -658,8 +654,11 @@ def main():
                     # A613's boundary cancel can reset 0948 to zero during
                     # an existing jump. B7CD still advances that value by 2;
                     # it does not assert that the actor is on the ground.
-                    expected_vz = 0 if before["z"] == 0 and before["vz"] == 0 else before["vz"] - 0x30
-                    if after["z"] == 0 and expected_vz < 0:
+                    # 96B5 clamps only a NEGATIVE post-step height. Landing
+                    # exactly on zero preserves VZ until the next step;
+                    # rounded display Z cannot distinguish that boundary.
+                    expected_vz = 0 if before["z_fp"] == 0 and before["vz"] == 0 else before["vz"] - 0x30
+                    if before["z_fp"] + expected_vz * 2 < 0:
                         expected_vz = 0
                     if 0 <= activity < 30:
                         if activity + 2 < 30:
@@ -1214,7 +1213,7 @@ def main():
                    "$87:B832", "$87:B649", "$87:B66A", "$85:9192",
                    "$87:8F01-$8F8D", "nba_gameplay_camera_step",
                    "nba_gameplay_camera_place", "nba_gameplay_camera_ready",
-                   "cpu_begin_possession", "cpu_update_possession",
+                   "nba_tip_complete_acquisition", "cpu_update_possession",
                    "ball_attach_to_actor", "ball_launch",
                    "$85:A079-$A345", "$4711/$4791", "score_made_basket",
                     "$86:A110", "$86:A17D", "$86:BAA2-$BC99",
