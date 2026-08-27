@@ -293,6 +293,49 @@ static uint8_t animation_lower_state(uint8_t upper_state) {
     }
 }
 
+/* `$87:AEC3-$AF74`: immediate resource refresh after an action install.
+ * Unlike tick rendering this reads literal +$3A/+3C, never advances them,
+ * and never wraps them by descriptor count. +$52 is preserved for facing 8.
+ * ASL before ADC #8 supplies carry (zero for the valid 0..8 directions). */
+bool nba_player_resolve_pose(const NbaAssetPack *assets,
+    const NbaPlayerAnimationChannels *channels, uint16_t direction,
+    bool alternate_lower, uint16_t variant, NbaPlayerResolvedPose *pose) {
+    if (!channels || !pose || direction > 8u ||
+        channels->upper_state >= PLAYER_ANIMATION_STATES ||
+        channels->lower_state >= PLAYER_ANIMATION_STATES) return false;
+    const uint8_t *bank = animation_bank84(assets, NULL);
+    const uint8_t *descriptors[2] = {
+        animation_descriptor(assets, PLAYER_UPPER_STATE_TABLE, (uint8_t)channels->upper_state),
+        animation_descriptor(assets, alternate_lower ? PLAYER_LOWER_ALT_STATE_TABLE :
+                            PLAYER_LOWER_STATE_TABLE, (uint8_t)channels->lower_state)
+    };
+    uint16_t phases[2] = {channels->upper_phase, channels->lower_phase};
+    uint16_t resources[2];
+    if (!bank || !descriptors[0] || !descriptors[1]) return false;
+    for (unsigned i = 0; i < 2u; ++i) {
+        size_t offset = (size_t)(descriptors[i] - bank) + 8u + direction * 2u;
+        if (offset + 2u > PLAYER_ANIMATION_BANK84_SIZE) return false;
+        uint16_t pointer = read_u16(bank + offset);
+        /* ASL wraps the 16-bit index, but [dp],Y can carry into another
+         * bank. Reject that out-of-pack address instead of wrapping it. */
+        uint32_t address = pointer + (uint16_t)(phases[i] * 2u);
+        if (address < 0x8000u || address >= 0xFFFFu) return false;
+        resources[i] = read_u16(bank + address - 0x8000u);
+    }
+    if (resources[0] < 0xF0u &&
+        (uint16_t)(variant ^ (direction < 3u ? 1u : 0u)) == 0u)
+        resources[0] = (uint16_t)(resources[0] + 0x28u);
+    NbaPlayerResolvedPose next = *pose;
+    next.mirror_flags = (uint16_t)((next.mirror_flags & 0x7FFFu) |
+                                  (direction < 3u ? 0x8000u : 0u));
+    next.upper_resource = resources[0]; next.lower_resource = resources[1];
+    next.upper_state = channels->upper_state; next.lower_state = channels->lower_state;
+    next.upper_phase = channels->upper_phase; next.lower_phase = channels->lower_phase;
+    if (direction != 8u) next.direction = direction;
+    *pose = next;
+    return true;
+}
+
 static bool draw_player_pose(NbaRenderer *ren, const NbaAssetPack *assets,
                              const PlayerLabRecord *player, int team) {
     const NbaAssetItem *tiles = nba_assets_get(assets, NBA_ASSET_PLAYER_TILE_SOURCES);
@@ -561,6 +604,36 @@ static bool player_record(const NbaAssetPack *assets, int team, int player,
     out->free_throw_rating_38 = p[26];
     out->shot_range_49 = p[27];
     memcpy(out->name, p + 32, 32); out->name[32] = '\0';
+    return true;
+}
+
+/* `$87:AFA2-$B053`: ten active roster entries, not twelve roster reserves.
+ * Y counts words (0,2,...18), so the second uniform begins at Y >= $0A.
+ * This owns only the appearance/cache seed, not the preceding pointer setup
+ * `$86:D7B8` or the following jersey-tile composition `$87:B059`. */
+bool nba_player_appearance_setup(const NbaAssetPack *assets,
+    const uint8_t teams[NBA_PLAYER_APPEARANCE_COUNT],
+    const uint8_t roster[NBA_PLAYER_APPEARANCE_COUNT],
+    NbaPlayerAppearanceSetup *setup) {
+    if (!teams || !roster || !setup) return false;
+    NbaPlayerAppearanceSetup next = {0};
+    /* Overlapping STA $180C=$8080, STA $180B=$800C. */
+    next.upload_address = 0x80800Cu;
+    for (unsigned i = 0; i < NBA_PLAYER_APPEARANCE_COUNT; ++i) {
+        PlayerLabRecord player;
+        if (!player_record(assets, teams[i], roster[i], &player)) return false;
+        NbaPlayerAppearance *out = &next.players[i];
+        unsigned skin = player.palette_variant;
+        if (skin >= 3u) skin = 2u;
+        out->palette_offset = (uint16_t)((i >= 5u ? 0x600u : 0u) + skin * 0x200u);
+        out->alternate_lower = player.height >= 0x51u;
+        out->upper_variant = player.appearance_modifier;
+        uint16_t head = player.head_raw;
+        if (head >= 0x27u) head &= 0x1Fu;
+        out->head_resource = (uint16_t)(0x049Cu + head * 5u);
+        out->dirty = 0xFFFFu;
+    }
+    *setup = next;
     return true;
 }
 
@@ -1148,6 +1221,19 @@ bool nba_player_animation_self_test(const NbaAssetPack *assets) {
             0x200, false, 0, &rng, &ur, &lr) ||
         memcmp(&unsupported, &before, sizeof(before)) ||
         rng != 0x9146 || ur != 0x1234 || lr != 0x5678) return false;
+    /* Invalid public resolver inputs fail atomically; this is safety, not
+     * additional live-ROM coverage. */
+    NbaPlayerResolvedPose pose = {0x1234,0x5678,0x9ABC,1,2,3,4,5};
+    NbaPlayerResolvedPose pose_before = pose;
+    if (nba_player_resolve_pose(assets, &before, 9u, false, 0u, &pose) ||
+        memcmp(&pose, &pose_before, sizeof(pose))) return false;
+    uint8_t teams[10] = {0}, roster[10] = {0};
+    NbaPlayerAppearanceSetup appearance, appearance_before;
+    memset(&appearance, 0xA5, sizeof(appearance));
+    appearance_before = appearance;
+    roster[9] = NBA_PLAYER_ROSTER_SIZE;
+    if (nba_player_appearance_setup(assets, teams, roster, &appearance) ||
+        memcmp(&appearance, &appearance_before, sizeof(appearance))) return false;
     return true;
 }
 

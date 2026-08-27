@@ -88,6 +88,11 @@ if ($Test) {
         --normalized --vectors (Join-Path $Root 'tests\fixtures\action-animation-witnesses.json') `
         --probe (Join-Path $BuildDir 'action_animation_vector_probe.exe') --pack $AssetPack
     if ($LASTEXITCODE -ne 0) { throw 'Action/animation ROM witness regression failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name action_pose_vector_probe
+    & python (Join-Path $Root 'tools\verify_action_pose_vectors.py') `
+        --normalized --vectors (Join-Path $Root 'tests\fixtures\action-pose-witnesses.json') `
+        --probe (Join-Path $BuildDir 'action_pose_vector_probe.exe') --pack $AssetPack
+    if ($LASTEXITCODE -ne 0) { throw 'Action pose/appearance ROM witness regression failed.' }
     & python (Join-Path $Root "tools\test_title_pipeline.py") `
         --pack $AssetPack --exe $ConsoleExePath --rom $RomPath
     if ($LASTEXITCODE -ne 0) {

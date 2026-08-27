@@ -272,6 +272,20 @@ static void actor_animation_command(NbaTipoff *tipoff, NbaTipoffActor *actor,
             actor->free_throw_launch_half_raw_a8 != 0)) return;
     actor_store_animation_channels(actor, &channels);
     actor->animation_resources_valid = false;
+    /* `$87:AEC3` refreshes the new pose without consuming a cadence tick.
+     * Adopt this only for the already-integrated live-pass action path. */
+    if (actor->exact_pass_animation) {
+        NbaPlayerResolvedPose pose = {0};
+        pose.direction = actor->direction;
+        actor->animation_resources_valid = nba_player_resolve_pose(
+            tipoff->assets, &channels, actor->direction,
+            actor->free_throw_launch_half_raw_a8 != 0u,
+            actor->animation_variant_raw_6c, &pose);
+        if (actor->animation_resources_valid) {
+            actor->upper_animation_resource_raw_2a = pose.upper_resource;
+            actor->lower_animation_resource_raw_2c = pose.lower_resource;
+        }
+    }
 }
 
 static void actor_set_upper_animation(NbaTipoffActor *actor, uint8_t upper) {
@@ -1272,7 +1286,7 @@ static bool actor_animation_resources(const NbaTipoff *tipoff,
                                       uint16_t *lower_resource) {
     /* Adopted live-play passes share the rendered ROM phase with their hand
      * point and release gate. Inbound remains a separate integration boundary.
-     * Unresolved just-installed resources fall back to phase zero below. */
+     * `$87:AEC3` also resolves a just-installed action before its first tick. */
     if (actor->control_mode == 15u && actor->exact_pass_animation &&
         actor->animation_resources_valid &&
         direction == actor->direction) {
@@ -6231,6 +6245,15 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
     tipoff->ball.z_fp = 80 * 256;
     tipoff->ball.owner_actor = -1;
     static const uint8_t active_lineup[5] = {2u, 0u, 1u, 3u, 4u};
+    uint8_t appearance_teams[NBA_PLAYER_APPEARANCE_COUNT];
+    uint8_t appearance_roster[NBA_PLAYER_APPEARANCE_COUNT];
+    for (unsigned i = 0; i < NBA_PLAYER_APPEARANCE_COUNT; ++i) {
+        appearance_teams[i] = i < 5u ? session->left_team : session->right_team;
+        appearance_roster[i] = active_lineup[i % 5u];
+    }
+    NbaPlayerAppearanceSetup appearance;
+    if (!nba_player_appearance_setup(assets, appearance_teams, appearance_roster,
+                                     &appearance)) return false;
     for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
         NbaTipoffActor *state = &tipoff->actors[actor];
         state->x_fp = (int32_t)formation[actor].world_x * 256;
@@ -6258,12 +6281,8 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
         state->assignment_role_raw_92 = (uint8_t)(actor % 5u);
         (void)nba_player_gameplay_position(
             assets, team, state->roster_slot, &state->assignment_role_raw_92);
-        uint8_t free_throw_half = 0u;
-        (void)nba_player_gameplay_free_throw_launch_half(
-            assets, team, state->roster_slot, &free_throw_half);
-        state->free_throw_launch_half_raw_a8 = free_throw_half;
-        (void)nba_player_gameplay_animation_variant(
-            assets, team, state->roster_slot, &state->animation_variant_raw_6c);
+        state->free_throw_launch_half_raw_a8 = appearance.players[actor].alternate_lower;
+        state->animation_variant_raw_6c = appearance.players[actor].upper_variant;
         state->reaction_threshold = nba_gameplay_reaction_threshold(
             &tipoff->rng, formation[actor].world_x, formation[actor].world_y,
             0, 0);

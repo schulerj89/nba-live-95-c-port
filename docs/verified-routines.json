@@ -640,6 +640,22 @@
       "method": "function-vectors",
       "evidence": ".analysis/func-vectors-action-cadence-20260826 (6,000 live post-locomotion calls, zero mismatches/exclusions for 17 channel/queue words, RNG and both resources; includes 12 state-changing completions, queued 31->34 and 40->36, 21 state-7 entries and 2 RNG-changing calls. Upper special states 13/18 are excluded from this claim. Ordinary idle mode-2 runtime RNG integration remains deferred.)",
       "date": "2026-08-26"
+    },
+    {
+      "range": "87AEC3-87AF74",
+      "name": "nba_player_resolve_pose (immediate non-advancing action pose)",
+      "source": "src/nba_player_lab.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-action-pose-20260826 and .analysis/func-vectors-action-pose-long-20260826; verify_action_pose_vectors.py compares all eight owned pose words with no exclusions. Channels/accumulators/locks must remain unchanged. Durable exits in tests/fixtures/action-pose-witnesses.json. Live pass action poses are exercised; facing-8 and low-resource variant paths are not claimed as exhaustively exercised. Recomp bank_87_AEC3_M0X0 plus tools/ghidra/DumpActionPose.java.",
+      "date": "2026-08-26"
+    },
+    {
+      "range": "87AFA2-87B053",
+      "name": "nba_player_appearance_setup (ten-player appearance/cache seed)",
+      "source": "src/nba_player_lab.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-action-pose-20260826: both live ten-player initializations, 50 per-player words plus the three-byte upload seed match with zero mismatches. Asset-pack records are selected by captured ROM pointers; no fabricated roster inputs. Durable exits in tests/fixtures/action-pose-witnesses.json. Excludes preceding pointer setup and following jersey compositor; native rendering does not emulate the upload queue. Recomp bank_87_AF95_M0X0 owned middle plus tools/ghidra/DumpActionPose.java.",
+      "date": "2026-08-26"
     }
   ]
 }

@@ -17,8 +17,8 @@ Current measured coverage:
 | metric | bytes | % of observed executed code |
 |---|---:|---:|
 | observed executed code | 27,901 | 100.0% |
-| documented by ROM-address provenance | 9,240 | 33.1% |
-| verified against live ROM calls | 6,159 | 22.07% |
+| documented by ROM-address provenance | 9,343 | 33.5% |
+| verified against live ROM calls | 6,298 | 22.57% |
 
 These values are generated, not estimated. The detailed per-bank report is
 `docs/progress.md`; the authoritative verified list and evidence paths are in
@@ -26,9 +26,14 @@ These values are generated, not estimated. The detailed per-bank report is
 
 ## Verified gameplay checkpoint
 
-Eighty routine slices currently pass emulator-ground-truth replay. The most important
+Eighty-two routine slices currently pass emulator-ground-truth replay. The most important
 recent slices are:
 
+- `$87:AEC3-$AF74` and `$87:AFA2-$B053`: immediate non-advancing pose
+  resolution and ten-player appearance initialization. Live-pass installs
+  now resolve their resources immediately, without a temporary tick-based
+  fallback. Appearance uses asset-pack roster records. This does not adopt
+  all shot/contact callers or emulate the SNES sprite-upload queue.
 - `$87:B37C-$B571`: independent action install/cancel/reverse helpers (471
   live calls). Locked completion/queued continuation slices of `$87:ABC2-$AD18`
   and mode-2 idle state 7 also pass a 6,000-call post-locomotion replay.
@@ -154,7 +159,7 @@ frames, `cpu-motion.mp4`, and gameplay JSONL. Frames 600/1300 were inspected
 before updating the integration hashes. This is progress toward smoother
 movement, not a claim that all gameplay motion now matches the ROM.
 
-The current action/pass increment adds 258 observed-executed verified bytes:
+The preceding action/pass increment added 258 observed-executed verified bytes:
 21.15% -> 22.07% (+0.92 percentage points, the bounded ~1% checkpoint).
 All 6,471 new calls and the existing 15 pass-init/100 release calls replay
 without owned-output mismatches. Forty-two checked-in WRAM witnesses run with
@@ -167,6 +172,21 @@ The final `build.ps1 -Test` passes every suite, including 63,800 CPU frames,
 `regression.log` in the proof directory records that run.
 Visual proof: `.analysis/action-animation-proof-20260826/pass-animation.mp4`,
 1,300 source frames and gameplay JSONL. Broader movement fidelity is unfinished.
+
+The current pose/appearance increment adds 139 observed-executed verified bytes:
+22.07% -> 22.57% (+0.50 percentage points). Both ten-player initialization
+calls and 26 live action-pose refreshes match every owned output. The resolver
+does not advance phases, accumulators, or locks. All 28 checked-in exit witnesses
+run in `build.ps1 -Test`, independently of local Mesen captures. The prior
+6,471 action/cadence, 15 pass-init, and 100 release calls still match exactly.
+The 63,800-frame CPU test passes with 2,158 exact-pass frame checks and 99
+automatic unlocks; visual hashes are unchanged. Fresh 1,300-frame video,
+screenshots, JSONL, and the full-suite log live in
+`.analysis/action-pose-proof-20260826/` (`pose-refresh.mp4`).
+Ghidra labels/dump: `tools/ghidra/DumpActionPose.java`, with local output in
+`.analysis/action-pose-ghidra-20260826/`. Low-resource variant/facing-8 branches
+are not exhaustively exercised by these live action calls; do not confuse
+this measured routine coverage with complete branch or whole-game fidelity.
 
 Do not infer that a surrounding routine is verified from one verified slice.
 Only ranges present in `docs/verified-routines.json` count as ground-truth

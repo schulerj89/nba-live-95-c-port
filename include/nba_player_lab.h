@@ -67,6 +67,29 @@ typedef struct {
     uint16_t upper_queue[3], lower_queue[3];
 } NbaPlayerAnimationChannels;
 
+/* Snapshot resolver: no cadence advance, RNG, or action lock changes. */
+typedef struct {
+    uint16_t mirror_flags, upper_resource, lower_resource;
+    uint16_t upper_state, lower_state, upper_phase, lower_phase, direction;
+} NbaPlayerResolvedPose;
+bool nba_player_resolve_pose(const NbaAssetPack *assets,
+    const NbaPlayerAnimationChannels *channels, uint16_t direction,
+    bool alternate_lower, uint16_t variant, NbaPlayerResolvedPose *pose);
+
+#define NBA_PLAYER_APPEARANCE_COUNT 10
+typedef struct {
+    uint16_t palette_offset, alternate_lower, upper_variant, head_resource;
+    uint16_t dirty;
+} NbaPlayerAppearance;
+typedef struct {
+    uint32_t upload_address;
+    NbaPlayerAppearance players[NBA_PLAYER_APPEARANCE_COUNT];
+} NbaPlayerAppearanceSetup;
+bool nba_player_appearance_setup(const NbaAssetPack *assets,
+    const uint8_t teams[NBA_PLAYER_APPEARANCE_COUNT],
+    const uint8_t roster[NBA_PLAYER_APPEARANCE_COUNT],
+    NbaPlayerAppearanceSetup *setup);
+
 typedef enum {
     NBA_ANIMATION_INSTALL_BOTH,
     NBA_ANIMATION_INSTALL_UPPER,

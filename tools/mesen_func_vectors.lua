@@ -24,6 +24,7 @@
 --   NBA95_CPU_VS_CPU    1 = with NBA95_VEC_DRIVE, clear human assignments so
 --                       both teams play under CPU control
 --   NBA95_VEC_DELAY     on-court frames to skip before recording (default 0)
+--   NBA95_VEC_PREGAME   1 = record immediately even while driving the menus
 --   NBA95_VEC_SHARED_EXITS 1 = exit PCs are internal/shared boundaries;
 --                       callbacks without a pending entry are counted
 --                       separately instead of as orphaned returns
@@ -158,8 +159,9 @@ local shared_exits = os.getenv("NBA95_VEC_SHARED_EXITS") == "1"
 local drive = os.getenv("NBA95_VEC_DRIVE") == "1"
 local force_cpu_vs_cpu = os.getenv("NBA95_CPU_VS_CPU") == "1"
 local record_delay = tonumber(os.getenv("NBA95_VEC_DELAY")) or 0
--- Without driving, record immediately; with driving, wait for on-court play.
-local recording = not drive
+-- Default to on-court play while driving; pregame captures need the roster
+-- initialization that runs before the first gameplay frame.
+local recording = not drive or os.getenv("NBA95_VEC_PREGAME") == "1"
 
 local function finish()
     done = true
