@@ -112,6 +112,11 @@ typedef struct {
     uint16_t catcher_latch_raw_ae;    /* actor `+$AE`, `$86:BAE0` */
     uint16_t free_throw_launch_half_raw_a8; /* actor `+$A8`, `$86:A2A7` */
     uint16_t animation_variant_raw_6c; /* roster +$08, `$87:AD3D-$AD57` */
+    uint16_t animation_upper_queue_cursor_raw_18;
+    uint16_t animation_lower_queue_cursor_raw_1a;
+    uint16_t animation_upper_queue_raw_1c[3];
+    uint16_t animation_lower_queue_raw_22[3];
+    bool exact_pass_animation; /* ordinary live-play adoption, not inbound */
     uint16_t recovery_inhibit_raw;    /* actor `+$7A` */
     uint16_t behavior_flags_raw;      /* actor `+$7E` */
     uint16_t help_request_raw_80;     /* actor `+$80`, `$85:C006` */

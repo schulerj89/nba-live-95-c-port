@@ -228,26 +228,50 @@ static void cpu_update_special_actor(NbaTipoff *tipoff, unsigned slot) {
         (uint8_t)slot, &tipoff->special_actor_raw);
 }
 
-/* `$87:B37C/$B3BD/$B47A/$B4DB` install independent resources and restart
- * only the animation channel whose state changed. */
-static void actor_set_animation(NbaTipoffActor *actor, uint8_t upper,
-                                uint8_t lower) {
-    if (actor->animation_state != upper) {
-        actor->animation_state = upper;
-        actor->upper_animation_tick = 0u;
-        actor->upper_animation_phase_raw = 0u;
-        actor->rom_upper_animation_phase_raw_3a = 0u;
-        actor->upper_animation_accumulator_raw_42 = 0u;
-        actor->animation_resources_valid = false;
+static NbaPlayerAnimationChannels actor_animation_channels(const NbaTipoffActor *a) {
+    NbaPlayerAnimationChannels c = {
+        a->animation_upper_queue_cursor_raw_18, a->animation_lower_queue_cursor_raw_1a,
+        a->animation_state, a->lower_animation_state, a->base_animation_state_raw_38,
+        a->rom_upper_animation_phase_raw_3a, a->rom_lower_animation_phase_raw_3c,
+        a->upper_animation_accumulator_raw_42, a->lower_animation_accumulator_raw_44,
+        a->upper_animation_lock_raw_46, a->lower_animation_lock_raw_48, {0}, {0}
+    };
+    memcpy(c.upper_queue, a->animation_upper_queue_raw_1c, sizeof(c.upper_queue));
+    memcpy(c.lower_queue, a->animation_lower_queue_raw_22, sizeof(c.lower_queue));
+    return c;
+}
+
+static void actor_store_animation_channels(NbaTipoffActor *a,
+                                           const NbaPlayerAnimationChannels *c) {
+    if (a->animation_state != c->upper_state) {
+        a->upper_animation_tick = 0;
+        a->upper_animation_phase_raw = 0;
     }
-    if (actor->lower_animation_state != lower) {
-        actor->lower_animation_state = lower;
-        actor->lower_animation_tick = 0u;
-        actor->lower_animation_phase_raw = 0u;
-        actor->rom_lower_animation_phase_raw_3c = 0u;
-        actor->lower_animation_accumulator_raw_44 = 0u;
-        actor->animation_resources_valid = false;
+    if (a->lower_animation_state != c->lower_state) {
+        a->lower_animation_tick = 0;
+        a->lower_animation_phase_raw = 0;
     }
+    a->animation_state = (uint8_t)c->upper_state;
+    a->lower_animation_state = (uint8_t)c->lower_state;
+    a->base_animation_state_raw_38 = (uint8_t)c->base_state;
+    a->rom_upper_animation_phase_raw_3a = c->upper_phase;
+    a->rom_lower_animation_phase_raw_3c = c->lower_phase;
+    a->upper_animation_accumulator_raw_42 = c->upper_accumulator;
+    a->lower_animation_accumulator_raw_44 = c->lower_accumulator;
+    a->upper_animation_lock_raw_46 = c->upper_lock;
+    a->lower_animation_lock_raw_48 = c->lower_lock;
+    a->animation_upper_queue_cursor_raw_18 = c->upper_queue_cursor;
+    a->animation_lower_queue_cursor_raw_1a = c->lower_queue_cursor;
+}
+
+static void actor_animation_command(NbaTipoff *tipoff, NbaTipoffActor *actor,
+    NbaPlayerAnimationCommand command, uint16_t state) {
+    NbaPlayerAnimationChannels channels = actor_animation_channels(actor);
+    if (!nba_player_animation_command(tipoff->assets, &channels, command,
+            &state, actor->movement_boost_timer != 0,
+            actor->free_throw_launch_half_raw_a8 != 0)) return;
+    actor_store_animation_channels(actor, &channels);
+    actor->animation_resources_valid = false;
 }
 
 static void actor_set_upper_animation(NbaTipoffActor *actor, uint8_t upper) {
@@ -258,6 +282,21 @@ static void actor_set_upper_animation(NbaTipoffActor *actor, uint8_t upper) {
     actor->rom_upper_animation_phase_raw_3a = 0u;
     actor->upper_animation_accumulator_raw_42 = 0u;
     actor->animation_resources_valid = false;
+}
+
+static void actor_set_animation(NbaTipoffActor *actor, uint8_t upper,
+                                uint8_t lower) {
+    /* Non-pass callers still have provisional action scheduling. Migrate
+     * those with their own release/cancel boundaries, not all at once. */
+    actor_set_upper_animation(actor, upper);
+    if (actor->lower_animation_state != lower) {
+        actor->lower_animation_state = lower;
+        actor->lower_animation_tick = 0u;
+        actor->lower_animation_phase_raw = 0u;
+        actor->rom_lower_animation_phase_raw_3c = 0u;
+        actor->lower_animation_accumulator_raw_44 = 0u;
+        actor->animation_resources_valid = false;
+    }
 }
 
 void nba_tipoff_ease_display_direction(uint8_t desired,
@@ -341,19 +380,37 @@ static void cpu_advance_actor_animation(NbaTipoff *tipoff,
                                         NbaTipoffActor *actor) {
     ++actor->upper_animation_tick;
     ++actor->lower_animation_tick;
-    actor->animation_resources_valid = nba_player_animation_rom_step(
-        tipoff->assets, actor->animation_state,
-        actor->lower_animation_state, actor->direction,
-        (uint16_t)(actor->movement_magnitude_raw << 1),
-        actor->free_throw_launch_half_raw_a8 != 0u,
-        actor->animation_variant_raw_6c,
-        &actor->upper_animation_accumulator_raw_42,
-        &actor->lower_animation_accumulator_raw_44,
-        &actor->rom_upper_animation_phase_raw_3a,
-        &actor->rom_lower_animation_phase_raw_3c,
-        &actor->upper_animation_resource_raw_2a,
-        &actor->lower_animation_resource_raw_2c);
-    /* Action branches ported before the descriptor accumulator still consume
+    if (actor->upper_animation_lock_raw_46 != 0u ||
+        actor->lower_animation_lock_raw_48 != 0u ||
+        (actor->control_mode == 15u && actor->exact_pass_animation)) {
+        NbaPlayerAnimationChannels channels = actor_animation_channels(actor);
+        actor->animation_resources_valid = nba_player_animation_step_channels(
+            tipoff->assets, &channels, actor->direction,
+            (uint16_t)(actor->movement_magnitude_raw << 1), 0x200u,
+            actor->free_throw_launch_half_raw_a8 != 0u, actor->animation_variant_raw_6c,
+            &tipoff->rng.state,
+            &actor->upper_animation_resource_raw_2a,
+            &actor->lower_animation_resource_raw_2c);
+        if (actor->animation_resources_valid)
+            actor_store_animation_channels(actor, &channels);
+    } else {
+        /* Keep ordinary locomotion on the already-verified common cadence.
+         * Integrating mode-2 idle RNG here would move the AI RNG stream and
+         * is intentionally outside this action-only checkpoint. */
+        actor->animation_resources_valid = nba_player_animation_rom_step(
+            tipoff->assets, actor->animation_state,
+            actor->lower_animation_state, actor->direction,
+            (uint16_t)(actor->movement_magnitude_raw << 1),
+            actor->free_throw_launch_half_raw_a8 != 0u,
+            actor->animation_variant_raw_6c,
+            &actor->upper_animation_accumulator_raw_42,
+            &actor->lower_animation_accumulator_raw_44,
+            &actor->rom_upper_animation_phase_raw_3a,
+            &actor->rom_lower_animation_phase_raw_3c,
+            &actor->upper_animation_resource_raw_2a,
+            &actor->lower_animation_resource_raw_2c);
+    }
+    /* Other action branches ported before the descriptor accumulator consume
      * their verified logical-tick phase. Keep that integration boundary
      * stable while the exact ROM phases above drive the visible resources. */
     uint16_t lower_phase = 0u;
@@ -363,6 +420,16 @@ static void cpu_advance_actor_animation(NbaTipoff *tipoff,
             actor->lower_animation_tick,
             &actor->upper_animation_phase_raw, &lower_phase))
         actor->lower_animation_phase_raw = lower_phase;
+    /* Action release gates consume the same phase that the locked resource
+     * advances. Keeping the old half-rate tick here can finish/unlock a pass
+     * before its release threshold is ever reached. Ordinary locomotion's
+     * legacy contact/ball phase remains the next integration boundary. */
+    if (actor->animation_resources_valid &&
+        (actor->upper_animation_lock_raw_46 != 0u ||
+         (actor->control_mode == 15u && actor->exact_pass_animation)))
+        actor->upper_animation_phase_raw = actor->rom_upper_animation_phase_raw_3a;
+    if (actor->animation_resources_valid && actor->lower_animation_lock_raw_48 != 0u)
+        actor->lower_animation_phase_raw = actor->rom_lower_animation_phase_raw_3c;
 }
 
 static int16_t pass_predict_component(int16_t value, unsigned shift) {
@@ -409,6 +476,9 @@ bool nba_tipoff_begin_rom_pass(NbaTipoff *tipoff, unsigned passer_slot,
     uint8_t relative = (uint8_t)(
         (pass_direction - passer->movement_direction) & 7u);
     if (fp_integer_word(passer->z_fp) != 0) return false;
+    /* `$86:AB3D` cancels the prior upper action before installing a pass. */
+    actor_animation_command(tipoff, passer, NBA_ANIMATION_CANCEL_UPPER, 0u);
+    passer->exact_pass_animation = tipoff->live_state_raw < 0x80u;
     uint8_t upper = 0u;
     int16_t family = -1;
     bool airborne_family = false;
@@ -523,10 +593,15 @@ bool nba_tipoff_begin_rom_pass(NbaTipoff *tipoff, unsigned passer_slot,
     passer->behavior_flags_raw |= 0x0006u;
     receiver->control_mode = 10u;
     receiver->reaction_threshold = receiver_timer;
-    if (airborne_family)
+    if (passer->exact_pass_animation) {
+        actor_animation_command(tipoff, passer, NBA_ANIMATION_INSTALL_UPPER, upper);
+        if (airborne_family)
+            actor_animation_command(tipoff, passer, NBA_ANIMATION_INSTALL_LOWER, 0x1Fu);
+    } else if (airborne_family) {
         actor_set_animation(passer, upper, 0x1Fu);
-    else
+    } else {
         actor_set_upper_animation(passer, upper);
+    }
     passer->upper_animation_phase_raw = 0u;
     tipoff->pass_actor_raw = (int16_t)passer_slot;
     tipoff->pass_receiver_raw = (int16_t)receiver_slot;
@@ -1195,7 +1270,17 @@ static bool actor_animation_resources(const NbaTipoff *tipoff,
                                       uint8_t direction,
                                       uint16_t *upper_resource,
                                       uint16_t *lower_resource) {
-    /* Collision/contact routines still use their separately verified logical
+    /* Adopted live-play passes share the rendered ROM phase with their hand
+     * point and release gate. Inbound remains a separate integration boundary.
+     * Unresolved just-installed resources fall back to phase zero below. */
+    if (actor->control_mode == 15u && actor->exact_pass_animation &&
+        actor->animation_resources_valid &&
+        direction == actor->direction) {
+        *upper_resource = actor->upper_animation_resource_raw_2a;
+        *lower_resource = actor->lower_animation_resource_raw_2c;
+        return true;
+    }
+    /* Other collision/contact routines still use their separately verified logical
      * tick representation. The exact +$2A/+$2C resources drive rendering;
      * switching physics here belongs with the remaining `$87:B649-$B952`
      * integration branch, not this animation-only increment. */
@@ -3161,7 +3246,12 @@ bool nba_tipoff_update_rom_passer(NbaTipoff *tipoff, unsigned slot) {
         ball_attach_to_actor(tipoff, slot);
         if (passer->velocity_z < 0) {
             passer->pass_family_raw = 4;
-            actor_set_animation(passer, 0x2Cu, 0x24u);
+            if (passer->exact_pass_animation) {
+                actor_animation_command(tipoff, passer, NBA_ANIMATION_INSTALL_UPPER, 0x2Cu);
+                actor_animation_command(tipoff, passer, NBA_ANIMATION_INSTALL_LOWER, 0x24u);
+            } else {
+                actor_set_animation(passer, 0x2Cu, 0x24u);
+            }
             passer->upper_animation_phase_raw = 3u;
         }
         return true;
@@ -6153,6 +6243,8 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
         state->pass_family_raw = -1;
         state->controller_assignment_raw = -1;
         state->lower_animation_state = 0u;
+        state->animation_upper_queue_cursor_raw_18 = 0xFFFFu;
+        state->animation_lower_queue_cursor_raw_1a = 0xFFFFu;
         /* `$86:D86C-$D89B`: +$76 is derived from the active-lineup
          * permutation, then copied to mutable +$74. It is an even byte
          * offset into `$87:9C7B`, not a same-index matchup. */
@@ -6553,9 +6645,9 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
         /* `$87:B572-$B648` consumes these exact actor words. Export the
          * represented values instead of hiding them behind FFFF so a Mesen
          * trace can distinguish locomotion-state errors from descriptor
-         * phase errors. `lower_animation_tick` is the port's raw +$3C
-         * timing accumulator; the resolved lower resource remains separate
-         * in `lower_resource_raw`. */
+         * phase errors. Historical motion_3c/lower_phase keys remain legacy
+         * ticks for existing consumers; animation_rom below exports literal
+         * ROM phases/accumulators/resources without conflating the clocks. */
         out->motion_38_raw = live ? state->base_animation_state_raw_38 : 0u;
         out->motion_3a_raw = live ? state->upper_animation_phase_raw : 0u;
         out->motion_3c_raw = live ? state->lower_animation_tick : 0u;
@@ -6607,6 +6699,16 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
         out->upper_restart_raw = out->lower_restart_raw = 0;
         out->upper_phase_raw = live ? state->upper_animation_phase_raw : 0u;
         out->lower_phase_raw = live ? state->lower_animation_tick : 0u;
+        const uint16_t animation_words[10] = {
+            state->upper_animation_resource_raw_2a, state->lower_animation_resource_raw_2c,
+            state->rom_upper_animation_phase_raw_3a, state->rom_lower_animation_phase_raw_3c,
+            state->upper_animation_accumulator_raw_42, state->lower_animation_accumulator_raw_44,
+            state->upper_animation_lock_raw_46, state->lower_animation_lock_raw_48,
+            state->animation_upper_queue_cursor_raw_18, state->animation_lower_queue_cursor_raw_1a
+        };
+        memcpy(out->animation_rom_words, animation_words, sizeof(animation_words));
+        out->animation_resources_valid = live && state->animation_resources_valid;
+        out->animation_action_integrated = live && state->exact_pass_animation;
         out->behavior_flags_raw = state->behavior_flags_raw;
         out->palette_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
         out->actor_routine = live ? 0x85963Du : 0x80AD92u;

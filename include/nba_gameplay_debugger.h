@@ -80,6 +80,9 @@ typedef struct {
     uint16_t lower_restart_raw;
     uint16_t upper_phase_raw;
     uint16_t lower_phase_raw;
+    uint16_t animation_rom_words[10]; /* resources, phases, accumulators, locks, cursors */
+    bool animation_resources_valid;
+    bool animation_action_integrated;
     uint16_t behavior_flags_raw;
     uint16_t palette_raw;
     uint32_t actor_routine;

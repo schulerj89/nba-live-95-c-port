@@ -1,6 +1,7 @@
 #include "nba_player_lab.h"
 #include "nba_font.h"
 #include "nba_snes_ppu.h"
+#include "nba_gameplay_ai.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -704,6 +705,190 @@ bool nba_player_sprite_render_resources(NbaRenderer *renderer,
                                     origin_x, origin_y, scale);
 }
 
+/* `$87:B37C-$B571`: exact independent-channel action installation/cancel.
+ * An unlocked replacement preserves a valid phase; nonzero descriptor +2
+ * restarts the channel. Negative CURRENT locks reject replacement. */
+bool nba_player_animation_command(const NbaAssetPack *assets,
+    NbaPlayerAnimationChannels *c, NbaPlayerAnimationCommand command,
+    uint16_t *request, bool boosted, bool alternate_lower) {
+    if (!c || !request) return false;
+    if (command == NBA_ANIMATION_CANCEL_UPPER ||
+        command == NBA_ANIMATION_CANCEL_LOWER) {
+        bool upper = command == NBA_ANIMATION_CANCEL_UPPER;
+        uint16_t *lock = upper ? &c->upper_lock : &c->lower_lock;
+        if (*lock) {
+            *(upper ? &c->upper_state : &c->lower_state) = c->base_state;
+            *(upper ? &c->upper_phase : &c->lower_phase) = 0;
+            *(upper ? &c->upper_accumulator : &c->lower_accumulator) = 0;
+            *(upper ? &c->upper_queue_cursor : &c->lower_queue_cursor) = 0xFFFF;
+            *lock = 0;
+        }
+        return true;
+    }
+    if (command == NBA_ANIMATION_REVERSE_BOTH) {
+        NbaPlayerAnimationChannels next = *c;
+        uint16_t requested = *request;
+        if (!nba_player_animation_command(assets, &next,
+                NBA_ANIMATION_INSTALL_BOTH, &requested, boosted,
+                alternate_lower)) return false;
+        const uint8_t *lower = animation_descriptor(assets,
+            alternate_lower ? PLAYER_LOWER_ALT_STATE_TABLE :
+                              PLAYER_LOWER_STATE_TABLE,
+            (uint8_t)next.lower_state);
+        if (!lower) return false;
+        uint16_t reversed = (uint16_t)(read_u16(lower + 6) - c->lower_phase - 1u);
+        next.lower_phase = (int16_t)reversed < 0 ? 0 : reversed;
+        next.upper_phase = c->upper_phase;
+        *c = next;
+        *request = requested;
+        return true;
+    }
+    bool both = command == NBA_ANIMATION_INSTALL_BOTH;
+    bool upper = command == NBA_ANIMATION_INSTALL_UPPER;
+    if (!both && !upper && command != NBA_ANIMATION_INSTALL_LOWER) return false;
+    uint16_t state = *request;
+    if (both && boosted && (state == 3 || state == 5)) ++state;
+    *request = state; /* DP $00 is rewritten even if the current lock rejects. */
+    if ((both && c->upper_state == state && c->lower_state == state) ||
+        (!both && (upper ? c->upper_state : c->lower_state) == state)) return true;
+    if (((both || upper) && (int16_t)c->upper_lock < 0) ||
+        ((both || !upper) && (int16_t)c->lower_lock < 0)) return true;
+    if (state >= PLAYER_ANIMATION_STATES) return false;
+    const uint8_t *ud = animation_descriptor(assets, PLAYER_UPPER_STATE_TABLE,
+                                             (uint8_t)state);
+    const uint8_t *ld = animation_descriptor(assets,
+        alternate_lower ? PLAYER_LOWER_ALT_STATE_TABLE : PLAYER_LOWER_STATE_TABLE,
+        (uint8_t)state);
+    if ((both || upper) && !ud) return false;
+    if ((both || !upper) && !ld) return false;
+    if (both || upper) {
+        c->upper_queue_cursor = 0xFFFF;
+        c->upper_state = state;
+        c->upper_lock = read_u16(ud + 2);
+    }
+    if (both || !upper) {
+        c->lower_queue_cursor = 0xFFFF;
+        c->lower_state = state;
+        c->lower_lock = read_u16(ld + 2);
+    }
+    bool locked = both ? (c->upper_lock | c->lower_lock) != 0 :
+                        (upper ? c->upper_lock : c->lower_lock) != 0;
+    if (locked) {
+        if (both || upper) c->upper_phase = c->upper_accumulator = 0;
+        if (both || !upper) c->lower_phase = c->lower_accumulator = 0;
+    } else {
+        c->base_state = state;
+        if ((both || !upper) && c->lower_phase >= read_u16(ld + 6)) c->lower_phase = 0;
+        if (both || upper) {
+            if ((int16_t)read_u16(ud) < 0) {
+                c->upper_phase = c->lower_phase;
+                c->upper_accumulator = c->lower_accumulator;
+            } else if (c->upper_phase >= read_u16(ud + 6)) c->upper_phase = 0;
+        }
+    }
+    return true;
+}
+
+static bool animation_channel_advance(const NbaAssetPack *assets,
+    NbaPlayerAnimationChannels *c, bool upper, bool alternate, uint16_t speed,
+    uint16_t delta, NbaGameplayRng *rng, const uint8_t **result) {
+    uint16_t *state = upper ? &c->upper_state : &c->lower_state;
+    uint16_t *phase = upper ? &c->upper_phase : &c->lower_phase;
+    uint16_t *acc = upper ? &c->upper_accumulator : &c->lower_accumulator;
+    uint16_t *lock = upper ? &c->upper_lock : &c->lower_lock;
+    uint16_t *cursor = upper ? &c->upper_queue_cursor : &c->lower_queue_cursor;
+    uint32_t table = upper ? PLAYER_UPPER_STATE_TABLE :
+        alternate ? PLAYER_LOWER_ALT_STATE_TABLE : PLAYER_LOWER_STATE_TABLE;
+    const uint8_t *bank = animation_bank84(assets, NULL);
+    const uint8_t *d = animation_descriptor(assets, table, (uint8_t)*state);
+    if (!bank || !d || *state >= PLAYER_ANIMATION_STATES) return false;
+    *result = d;
+    uint16_t mode = read_u16(d), count = read_u16(d + 6);
+    if (!count) return false;
+    if (upper && (int16_t)mode < 0) {
+        /* `$87:AC55-$AC67`: phase sync requires matching state IDs. DP $AA
+         * remains the lower accumulator even when the IDs differ. */
+        *acc = c->lower_accumulator;
+        if (c->upper_state == c->lower_state) *phase = c->lower_phase;
+        return *phase < count;
+    }
+    if (mode == 2) {
+        if (!upper) {
+            if (*state == 7 || *state == 18) *phase = 0;
+            return *phase < count;
+        }
+        /* `$87:AD86-$ADBB`: idle look-around is held by a randomized timer,
+         * not a cyclic resource stream. Lower +44 holds its next duration. */
+        if (*state != 7) return false;
+        *acc = (uint16_t)(*acc + delta);
+        if (*acc >= c->lower_accumulator) {
+            uint16_t choice;
+            do { choice = nba_gameplay_rng_next(rng) & 3; } while (!choice);
+            *phase = (uint16_t)(choice - 1);
+            *acc = 0;
+            c->lower_accumulator = (uint16_t)((nba_gameplay_rng_next(rng) & 0xFFF) + 0x1000);
+        }
+        return *phase < count;
+    }
+    uint16_t duration = read_u16(d + 4);
+    if (*phase >= count) return false;
+    if (mode == 1) {
+        size_t offset = duration >= 0x8000 ? duration - 0x8000u + *phase * 2u :
+                                           PLAYER_ANIMATION_BANK84_SIZE;
+        if (offset + 2 > PLAYER_ANIMATION_BANK84_SIZE) return false;
+        duration = read_u16(bank + offset);
+    }
+    *acc = (uint16_t)(*acc + (mode >= 3 ? speed : delta));
+    if (*acc < duration) return true;
+    uint16_t next = (uint16_t)(*phase + 1);
+    if (next < count || !*lock) {
+        *phase = next < count ? next : 0;
+        *acc = (uint16_t)(*acc - duration);
+        return true;
+    }
+    /* `$87:ABC2-$ABFF/$ACE1-$AD16`: exhaust the channel queue, then unlock
+     * into +38. Loading the next descriptor does NOT reload its lock. */
+    *acc = 0;
+    *phase = 0;
+    if ((int16_t)*cursor >= 0) {
+        if (*cursor >= 3) return false;
+        *state = (upper ? c->upper_queue : c->lower_queue)[*cursor];
+        --*cursor;
+    } else {
+        *lock = 0;
+        *state = c->base_state;
+    }
+    if (*state >= PLAYER_ANIMATION_STATES) return false;
+    *result = animation_descriptor(assets, table, (uint8_t)*state);
+    if (!*result) return false;
+    if (upper && (int16_t)read_u16(*result) < 0 && *state == c->lower_state) {
+        *phase = c->lower_phase;
+        /* DP $AA was cleared on the upper completion path, not reloaded. */
+    }
+    return *phase < read_u16(*result + 6);
+}
+
+bool nba_player_animation_step_channels(const NbaAssetPack *assets,
+    NbaPlayerAnimationChannels *channels, uint16_t direction, uint16_t speed,
+    uint16_t delta, bool alternate, uint16_t variant, uint16_t *rng_state,
+    uint16_t *upper_resource, uint16_t *lower_resource) {
+    if (!channels || !rng_state || !upper_resource || !lower_resource || direction >= 8) return false;
+    NbaPlayerAnimationChannels next = *channels;
+    NbaGameplayRng rng = {*rng_state};
+    const uint8_t *upper, *lower;
+    if (!animation_channel_advance(assets, &next, false, alternate, speed, delta, &rng, &lower) ||
+        !animation_channel_advance(assets, &next, true, alternate, speed, delta, &rng, &upper)) return false;
+    const uint8_t *bank = animation_bank84(assets, NULL);
+    uint16_t ur = animation_frame_resource(upper, bank, (uint8_t)direction, (uint8_t)next.upper_phase);
+    uint16_t lr = animation_frame_resource(lower, bank, (uint8_t)direction, (uint8_t)next.lower_phase);
+    if (ur < 0xF0 && (uint16_t)(variant ^ (direction < 3 ? 1 : 0)) == 0) ur += 0x28;
+    *channels = next;
+    *rng_state = rng.state;
+    *upper_resource = ur;
+    *lower_resource = lr;
+    return true;
+}
+
 bool nba_player_animation_frame_count(const NbaAssetPack *assets,
                                       bool upper, uint8_t state,
                                       bool alternate_lower,
@@ -952,6 +1137,17 @@ bool nba_player_animation_self_test(const NbaAssetPack *assets) {
                 assets, heights[i][0], heights[i][1], &height) ||
             height != heights[i][2]) return false;
     }
+    /* Unsupported upper mode 2 must not partially commit the already-stepped
+     * lower channel or the RNG. This is a safety test, not ROM coverage. */
+    NbaPlayerAnimationChannels unsupported = {0};
+    unsupported.upper_state = 18;
+    unsupported.upper_queue_cursor = unsupported.lower_queue_cursor = 0xFFFF;
+    NbaPlayerAnimationChannels before = unsupported;
+    uint16_t rng = 0x9146, ur = 0x1234, lr = 0x5678;
+    if (nba_player_animation_step_channels(assets, &unsupported, 0, 100,
+            0x200, false, 0, &rng, &ur, &lr) ||
+        memcmp(&unsupported, &before, sizeof(before)) ||
+        rng != 0x9146 || ur != 0x1234 || lr != 0x5678) return false;
     return true;
 }
 

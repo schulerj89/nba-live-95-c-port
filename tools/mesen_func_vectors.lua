@@ -9,7 +9,9 @@
 --
 -- Environment:
 --   NBA95_CAPTURE_DIR   output directory (required)
---   NBA95_VEC_ENTRY     24-bit entry PC, hex, e.g. 86D035 (required)
+--   NBA95_VEC_ENTRY     comma-separated 24-bit entry PCs (required).
+--                       Multiple routines must have distinct return PCs;
+--                       nested calls pair through the same LIFO stack.
 --   NBA95_VEC_EXITS     comma-separated 24-bit PCs of the routine's RTS/RTL
 --                       (or other return points), hex (required)
 --   NBA95_VEC_READS     WRAM ranges captured at entry, e.g. 0900-097F,1615
@@ -40,7 +42,12 @@ local function parse_pc(text, name)
     return value
 end
 
-local entry_pc = parse_pc(os.getenv("NBA95_VEC_ENTRY"), "NBA95_VEC_ENTRY")
+local entry_pcs = {}
+for item in (os.getenv("NBA95_VEC_ENTRY") or ""):gmatch("[^,]+") do
+    entry_pcs[#entry_pcs + 1] = parse_pc(item, "NBA95_VEC_ENTRY")
+end
+assert(#entry_pcs > 0, "NBA95_VEC_ENTRY is not set")
+local entry_pc = entry_pcs[1]
 
 local exit_pcs = {}
 for item in (os.getenv("NBA95_VEC_EXITS") or ""):gmatch("[^,]+") do
@@ -118,8 +125,8 @@ end
 local vectors = assert(io.open(out .. "/" .. label .. ".vectors.jsonl", "wb"))
 local meta = assert(io.open(out .. "/" .. label .. ".meta.json", "wb"))
 meta:write(string.format(
-    '{"entry":"%06x","exits":%s,"reads":%s,"writes":%s,"max_calls":%d}\n',
-    entry_pc,
+    '{"entry":"%s","exits":%s,"reads":%s,"writes":%s,"max_calls":%d}\n',
+    os.getenv("NBA95_VEC_ENTRY"),
     (function()
         local parts = {}
         for _, pc in ipairs(exit_pcs) do
@@ -167,16 +174,19 @@ end
 
 emu.addEventCallback(function() frame = frame + 1 end, emu.eventType.endFrame)
 
+for _, pc in ipairs(entry_pcs) do
 emu.addMemoryCallback(function()
     if done or not recording then return end
     -- LIFO so recursive or interrupt-nested calls pair with the right exit.
     pending[#pending + 1] = {
+        pc = pc,
         frame = frame,
         cpu = cpu_snapshot(),
         mem = mem_snapshot(read_ranges),
     }
-end, emu.callbackType.exec, entry_pc, entry_pc,
+end, emu.callbackType.exec, pc, pc,
     emu.cpuType.snes, emu.memType.snesMemory)
+end
 
 for _, exit_pc in ipairs(exit_pcs) do
     emu.addMemoryCallback(function()
@@ -206,9 +216,9 @@ for _, exit_pc in ipairs(exit_pcs) do
         end
         table.sort(exit_parts)
         vectors:write(string.format(
-            '{"call":%d,"entry_frame":%d,"exit_frame":%d,"exit_pc":"%06x",' ..
+            '{"call":%d,"entry_frame":%d,"exit_frame":%d,"entry_pc":"%06x","exit_pc":"%06x",' ..
             '"entry":{"cpu":%s,"mem":{%s}},"exit":{"cpu":%s,"mem":{%s}}}\n',
-            recorded, entry.frame, frame, exit_pc,
+            recorded, entry.frame, frame, entry.pc, exit_pc,
             json_object(entry.cpu), table.concat(mem_parts, ","),
             json_object(cpu_snapshot()), table.concat(exit_parts, ",")))
         vectors:flush()

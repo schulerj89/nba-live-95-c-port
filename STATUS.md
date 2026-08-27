@@ -17,8 +17,8 @@ Current measured coverage:
 | metric | bytes | % of observed executed code |
 |---|---:|---:|
 | observed executed code | 27,901 | 100.0% |
-| documented by ROM-address provenance | 9,035 | 32.4% |
-| verified against live ROM calls | 5,901 | 21.15% |
+| documented by ROM-address provenance | 9,240 | 33.1% |
+| verified against live ROM calls | 6,159 | 22.07% |
 
 These values are generated, not estimated. The detailed per-bank report is
 `docs/progress.md`; the authoritative verified list and evidence paths are in
@@ -26,9 +26,16 @@ These values are generated, not estimated. The detailed per-bank report is
 
 ## Verified gameplay checkpoint
 
-Sixty-eight routine slices currently pass emulator-ground-truth replay. The most important
+Eighty routine slices currently pass emulator-ground-truth replay. The most important
 recent slices are:
 
+- `$87:B37C-$B571`: independent action install/cancel/reverse helpers (471
+  live calls). Locked completion/queued continuation slices of `$87:ABC2-$AD18`
+  and mode-2 idle state 7 also pass a 6,000-call post-locomotion replay.
+  Ordinary live-play mode-15 passes integrate exact locks, release phases
+  and hand resources; inbound passes retain their compatibility path.
+  Other callers and the idle RNG stream are **verified helpers, not yet fully
+  adopted gameplay paths**; see the active gaps below.
 - `$87:8F13-$8F5E`, `$87:B572-$B648`, and owned common slices of
   `$87:AAB2-$AD5A`: facing easing, phase-preserving locomotion, exact
   accumulator cadence, and independent upper/lower resources. The replay
@@ -134,7 +141,7 @@ assigned-defender velocity/nudge ordering, catch timer `+$60` ownership,
 same-side catch clock preservation, non-snapping acquisition state, and both
 65816 carry quirks in fractional-Z shot velocity construction.
 
-The current motion/pose increment adds 837 observed-executed verified bytes,
+The preceding motion/pose increment added 837 observed-executed verified bytes,
 raising coverage from 18.15% to 21.15% (+3.00 percentage points). Its 6,287
 retained live calls pass with zero owned-output mismatches. It corrects
 phase-zero snapping, low upper-resource variant selection, inflated contact
@@ -146,6 +153,20 @@ Motion proof is in `.analysis/motion-cadence-proof-20260826/`: 1,300 rendered
 frames, `cpu-motion.mp4`, and gameplay JSONL. Frames 600/1300 were inspected
 before updating the integration hashes. This is progress toward smoother
 movement, not a claim that all gameplay motion now matches the ROM.
+
+The current action/pass increment adds 258 observed-executed verified bytes:
+21.15% -> 22.07% (+0.92 percentage points, the bounded ~1% checkpoint).
+All 6,471 new calls and the existing 15 pass-init/100 release calls replay
+without owned-output mismatches. Forty-two checked-in WRAM witnesses run with
+`build.ps1 -Test`; local Mesen captures are not required by that regression.
+The `raw.animation_rom` trace object distinguishes literal resources, phases,
+accumulators, locks and queue cursors from the older compatibility fields.
+Ordinary pass start/release/completion and its hand use the same ROM phase.
+The final `build.ps1 -Test` passes every suite, including 63,800 CPU frames,
+1,848 exact-pass frame checks and 99 automatic action unlocks. The local
+`regression.log` in the proof directory records that run.
+Visual proof: `.analysis/action-animation-proof-20260826/pass-animation.mp4`,
+1,300 source frames and gameplay JSONL. Broader movement fidelity is unfinished.
 
 Do not infer that a surrounding routine is verified from one verified slice.
 Only ranges present in `docs/verified-routines.json` count as ground-truth
@@ -169,10 +190,18 @@ See `tools/README.md` for capture, replay, Ghidra, and regression commands.
 
 ## Active gaps and next work
 
-- Finish upper mode-2 `$87:AD5B` and rare locked-animation lifecycle branches.
-  The exact visual resource phases currently remain separate from the older
-  logical-tick action/contact gates; that integration boundary is explicit
-  and is the next motion-focused target. Do not call it fully ROM-exact yet.
+- Migrate the next non-pass action caller together with its release/cancel
+  branches. The command helpers and common queued completion now have live
+  replay proof, but generic shot/contact callers still use compatibility
+  setters; do not replace all of them blindly. Ordinary mode-15 adoption is
+  done, but inbound stays on the compatibility path: adopting its changed
+  release/hand geometry exposed a >2,400-frame dead-ball stall in endurance
+  testing. Keep that regression guard; trace the inbound continuation next.
+- Finish upper mode-2 states 13/18. State 7's randomized timer is verified,
+  but adopting its RNG consumption in ordinary runtime locomotion is deferred
+  until the whole idle path is connected. Ordinary dribble/contact physics
+  still uses legacy tick-derived phases; exact rendering alone is not proof
+  that those gates are ROM-identical.
 - Capture enough calls to verify the rare latched owner/CPU pose branch at
   `$86:E4F5-$E544`; the existing six-call sample is insufficient.
 - Continue converting small post-tip CPU decision/animation slices from the

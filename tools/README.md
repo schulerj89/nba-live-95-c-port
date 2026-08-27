@@ -172,6 +172,32 @@ reports success.
 
 ## Investigation utilities
 
+### Action/animation replay
+
+`build.ps1 -Test` builds `action_animation_vector_probe` and replays 42 compact
+WRAM witnesses from `tests/fixtures/action-animation-witnesses.json`. Expected
+values come from live Mesen, not a duplicate Python animation implementation.
+
+For a full local capture, use `mesen_func_vectors.lua` with comma-separated
+`NBA95_VEC_ENTRY` addresses. Every selected routine must have its return PCs
+in `NBA95_VEC_EXITS`; nested calls are paired LIFO and the verifier rejects
+invalid entry/exit pairs. The capture stores each entry PC in its JSONL row.
+`ghidra/DumpActionAnimation.java` dumps and labels the complete bank-$87 action
+and cadence paths, including instructions absent from the older live listing.
+
+```powershell
+.\tools\build_vector_probe.ps1 -Name action_animation_vector_probe
+python tools/verify_action_animation_vectors.py --vectors .analysis/func-vectors-action-install-full-20260826/action_install.vectors.jsonl --probe build/action_animation_vector_probe.exe --pack build/nba95_assets.pak
+python tools/verify_action_animation_vectors.py --vectors .analysis/func-vectors-action-cadence-20260826/action_cadence.vectors.jsonl --probe build/action_animation_vector_probe.exe --pack build/nba95_assets.pak
+```
+
+The gameplay JSONL `raw.animation_rom` object is the literal channel state.
+Historical `upper_phase`/`lower_phase` compatibility fields are not a substitute
+for it outside the integrated pass path. Rendering still uses asset-pack data;
+Mesen is only the verification oracle.
+
+### Other utilities
+
 The remaining `mesen_*.lua`, Python render/decoder helpers, `spc_render_main.c`,
 and `spc_replay_main.c` are diagnostic tools. They are not runtime dependencies
 or part of the normal build. Set `NBA95_CAPTURE_DIR` to the desired output

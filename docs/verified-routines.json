@@ -544,6 +544,102 @@
       "method": "function-vectors",
       "evidence": ".analysis/func-vectors-effect-step-live-20260826 (1,000 delayed live dispatches, 0 mismatches for resource/effect/gate/frame/timer: 18 active ID-3/4 calls plus 982 inactive/net calls; the initial 200-call presentation sample is kept separately and not mistaken for active-effect coverage)",
       "date": "2026-08-26"
+    },
+    {
+      "range": "87B37C-87B3BC",
+      "name": "nba_player_animation_command (reverse)",
+      "source": "src/nba_player_lab.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-action-install-full-20260826 (156 live reverse calls; 471 total calls, zero mismatches for all 17 channel/queue words plus DP $00. Recomp generated_contact/bank87_v2.c and fresh DumpActionAnimation.java agree. Runtime adoption is limited to mode-15 pass commands; other callers remain an integration follow-up.)",
+      "date": "2026-08-26"
+    },
+    {
+      "range": "87B3BD-87B479",
+      "name": "nba_player_animation_command (both)",
+      "source": "src/nba_player_lab.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-action-install-full-20260826 (260 live both-channel calls; 471 total calls, zero mismatches for all 17 channel/queue words plus DP $00. Recomp generated_contact/bank87_v2.c and fresh DumpActionAnimation.java agree. Runtime adoption is limited to mode-15 pass commands; other callers remain an integration follow-up.)",
+      "date": "2026-08-26"
+    },
+    {
+      "range": "87B47A-87B4DA",
+      "name": "nba_player_animation_command (upper)",
+      "source": "src/nba_player_lab.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-action-install-full-20260826 (25 live upper installs; 471 total calls, zero mismatches for all 17 channel/queue words plus DP $00. Recomp generated_contact/bank87_v2.c and fresh DumpActionAnimation.java agree. Runtime adoption is limited to mode-15 pass commands; other callers remain an integration follow-up.)",
+      "date": "2026-08-26"
+    },
+    {
+      "range": "87B4DB-87B537",
+      "name": "nba_player_animation_command (lower)",
+      "source": "src/nba_player_lab.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-action-install-full-20260826 (3 live lower installs; 471 total calls, zero mismatches for all 17 channel/queue words plus DP $00. Recomp generated_contact/bank87_v2.c and fresh DumpActionAnimation.java agree. Runtime adoption is limited to mode-15 pass commands; other callers remain an integration follow-up.)",
+      "date": "2026-08-26"
+    },
+    {
+      "range": "87B538-87B554",
+      "name": "nba_player_animation_command (cancel upper)",
+      "source": "src/nba_player_lab.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-action-install-full-20260826 (19 live upper cancellations; 471 total calls, zero mismatches for all 17 channel/queue words plus DP $00. Recomp generated_contact/bank87_v2.c and fresh DumpActionAnimation.java agree. Runtime adoption is limited to mode-15 pass commands; other callers remain an integration follow-up.)",
+      "date": "2026-08-26"
+    },
+    {
+      "range": "87B555-87B571",
+      "name": "nba_player_animation_command (cancel lower)",
+      "source": "src/nba_player_lab.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-action-install-full-20260826 (8 live lower cancellations; 471 total calls, zero mismatches for all 17 channel/queue words plus DP $00. Recomp generated_contact/bank87_v2.c and fresh DumpActionAnimation.java agree. Runtime adoption is limited to mode-15 pass commands; other callers remain an integration follow-up.)",
+      "date": "2026-08-26"
+    },
+    {
+      "range": "87ABC2-87ABFF",
+      "name": "nba_player_animation_step_channels (lower locked-action completion/queue)",
+      "source": "src/nba_player_lab.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-action-cadence-20260826 (6,000 live post-locomotion calls, zero mismatches/exclusions for 17 channel/queue words, RNG and both resources; includes 12 state-changing completions, queued 31->34 and 40->36, 21 state-7 entries and 2 RNG-changing calls. Upper special states 13/18 are excluded from this claim. Ordinary idle mode-2 runtime RNG integration remains deferred.)",
+      "date": "2026-08-26"
+    },
+    {
+      "range": "87ACE1-87AD18",
+      "name": "nba_player_animation_step_channels (upper locked-action completion/queue)",
+      "source": "src/nba_player_lab.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-action-cadence-20260826 (6,000 live post-locomotion calls, zero mismatches/exclusions for 17 channel/queue words, RNG and both resources; includes 12 state-changing completions, queued 31->34 and 40->36, 21 state-7 entries and 2 RNG-changing calls. Upper special states 13/18 are excluded from this claim. Ordinary idle mode-2 runtime RNG integration remains deferred.)",
+      "date": "2026-08-26"
+    },
+    {
+      "range": "87AB90-87AB97",
+      "name": "nba_player_animation_step_channels (lower special-cadence dispatch)",
+      "source": "src/nba_player_lab.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-action-cadence-20260826 (6,000 live post-locomotion calls, zero mismatches/exclusions for 17 channel/queue words, RNG and both resources; includes 12 state-changing completions, queued 31->34 and 40->36, 21 state-7 entries and 2 RNG-changing calls. Upper special states 13/18 are excluded from this claim. Ordinary idle mode-2 runtime RNG integration remains deferred.)",
+      "date": "2026-08-26"
+    },
+    {
+      "range": "87ACAC-87ACB3",
+      "name": "nba_player_animation_step_channels (upper special-cadence dispatch)",
+      "source": "src/nba_player_lab.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-action-cadence-20260826 (6,000 live post-locomotion calls, zero mismatches/exclusions for 17 channel/queue words, RNG and both resources; includes 12 state-changing completions, queued 31->34 and 40->36, 21 state-7 entries and 2 RNG-changing calls. Upper special states 13/18 are excluded from this claim. Ordinary idle mode-2 runtime RNG integration remains deferred.)",
+      "date": "2026-08-26"
+    },
+    {
+      "range": "87AD5B-87ADBB",
+      "name": "nba_player_animation_step_channels (mode-2 lower and upper state-7 timer)",
+      "source": "src/nba_player_lab.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-action-cadence-20260826 (6,000 live post-locomotion calls, zero mismatches/exclusions for 17 channel/queue words, RNG and both resources; includes 12 state-changing completions, queued 31->34 and 40->36, 21 state-7 entries and 2 RNG-changing calls. Upper special states 13/18 are excluded from this claim. Ordinary idle mode-2 runtime RNG integration remains deferred.)",
+      "date": "2026-08-26"
+    },
+    {
+      "range": "87AEBD-87AEC2",
+      "name": "nba_player_animation_step_channels (special-cadence accumulator return)",
+      "source": "src/nba_player_lab.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-action-cadence-20260826 (6,000 live post-locomotion calls, zero mismatches/exclusions for 17 channel/queue words, RNG and both resources; includes 12 state-changing completions, queued 31->34 and 40->36, 21 state-7 entries and 2 RNG-changing calls. Upper special states 13/18 are excluded from this claim. Ordinary idle mode-2 runtime RNG integration remains deferred.)",
+      "date": "2026-08-26"
     }
   ]
 }

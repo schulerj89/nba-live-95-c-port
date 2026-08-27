@@ -1463,7 +1463,56 @@ telemetry bound permits rounded 82.x to display as 83 while `$85:9D4B` still
 tests the native integer word below `$53`. Motion evidence and the inspected
 600/1300-frame anchors are in `.analysis/motion-cadence-proof-20260826/`.
 
-Remaining boundary: exact visual resource phases are not yet substituted for
-the older logical-tick action/contact gates. Upper mode-2 `$87:AD5B` and rare
-locked lifecycle branches remain unverified. Continue there before claiming
-all motion or dribbling is ROM-identical.
+The boundary left by 4AP was action/contact adoption. The next checkpoint
+below narrows that boundary for passes; it does not claim all motion exact.
+
+### Increment 4AQ — action channels and bounded pass integration
+
+Measured gain: 258 observed-executed verified bytes, 21.15% -> 22.07%
+(+0.92 percentage points). The denominator remains 27,901; no new coverage
+trace was added to inflate this checkpoint. The ledger now owns 80 slices.
+
+The focused recomp `generated_contact/bank87_v2.c` and a fresh headless
+`DumpActionAnimation.java` dump agree on `$87:B37C-$B571`: installs reject
+negative current locks, load replacement locks from descriptor +2, preserve
+in-range phases for unlocked replacements, reset locked actions, and cancel
+to actor +38. Reverse preserves upper phase while reflecting the lower one.
+All six entry points pass 471 captured calls with zero mismatches across all
+17 owned channel/queue words and the rewritten DP $00 request.
+
+6,000 post-locomotion `$87:AB38` calls compare those same words, RNG and both
+resources. Twelve calls change state at completion, including queued lower
+31->34 and upper 40->36. Twenty-one state-7 calls include two randomized
+timer changes. Upper mode-2 states 13/18 are not claimed. The return-to-base
+path clears the action lock; queued successors retain it. A failed unsupported
+step is atomic and cannot partly advance lower state or consume RNG.
+
+Runtime scope is deliberately ordinary live-play mode 15: initialization cancels the old
+upper action and installs the descriptor lock, release uses the exact visible
+phase, and hand attachment reads those exact resources. Completion returns
+the channel to locomotion. Generic shot/contact callers are still compatibility
+setters. Inbound passes retain their compatibility phase/attachment path;
+adopting them at the same time exposed a stalled dead-ball continuation at
+frame 12,264. That failure was not waived: narrowing adoption restores the
+63,800-frame endurance guard. `action_integrated` identifies adopted actors
+in the trace, so a compatibility pass cannot be mistaken for exact adoption.
+Verified both/reverse/cancel-lower helpers are ready for subsequent
+caller-by-caller integration, and ordinary idle RNG adoption is deferred.
+The older 15-call pass initializer and 100-call release replay still match.
+
+Regression additions: 42 durable WRAM witnesses, packed-lock/queue checks,
+phase/resource identity while passing and repeated automatic unlock checks.
+The long-run test no longer demands an ordinary cutter anchor from mode 14
+(which owns its receiver target), nor every possible pass direction in one
+trajectory. It still requires multiple passing families and sustained releases;
+the ROM witnesses independently protect individual descriptor variants.
+Static attachment checks now require the ball to remain attached through the
+whole comparison interval, not just retain an owner across a bounce.
+
+`raw.animation_rom` exports resources +2A/+2C, phases +3A/+3C, accumulators
++42/+44, locks +46/+48 and queue cursors +18/+1A. Existing compatibility
+fields retain their old meaning. Visual evidence and updated 600/1300-frame
+anchors are in `.analysis/action-animation-proof-20260826/`.
+The final full `build.ps1 -Test` run passes, including 63,800 CPU frames,
+1,848 exact-pass frame checks and 99 automatic unlocks; its stdout is retained
+in that directory's `regression.log`.

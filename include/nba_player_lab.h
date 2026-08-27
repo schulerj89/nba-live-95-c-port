@@ -55,6 +55,38 @@ bool nba_player_sprite_render_resources(NbaRenderer *renderer,
                                     int origin_y, int scale);
 /* ROM `$87:B572-$B648` preserves a channel phase when the replacement
  * descriptor can represent it. */
+/* Literal animation words owned by `$87:B37C-$B571` and `$87:AB72-$AD5A`.
+ * Queue cursors are signed (-1 means return to base), with three entries
+ * per channel at actor +$1C/+22. No tiles or emulator state live here. */
+typedef struct {
+    uint16_t upper_queue_cursor, lower_queue_cursor; /* +18/+1A */
+    uint16_t upper_state, lower_state, base_state;   /* +30/+32/+38 */
+    uint16_t upper_phase, lower_phase;              /* +3A/+3C */
+    uint16_t upper_accumulator, lower_accumulator;  /* +42/+44 */
+    uint16_t upper_lock, lower_lock;                /* +46/+48 */
+    uint16_t upper_queue[3], lower_queue[3];
+} NbaPlayerAnimationChannels;
+
+typedef enum {
+    NBA_ANIMATION_INSTALL_BOTH,
+    NBA_ANIMATION_INSTALL_UPPER,
+    NBA_ANIMATION_INSTALL_LOWER,
+    NBA_ANIMATION_CANCEL_UPPER,
+    NBA_ANIMATION_CANCEL_LOWER,
+    NBA_ANIMATION_REVERSE_BOTH
+} NbaPlayerAnimationCommand;
+
+bool nba_player_animation_command(const NbaAssetPack *assets,
+    NbaPlayerAnimationChannels *channels, NbaPlayerAnimationCommand command,
+    uint16_t *requested_state, bool boosted, bool alternate_lower);
+/* Full common cadence with action completion. Special mode-2 upper state 7
+ * consumes the same $07F6 LFSR as the ROM. Other mode-2 upper states return
+ * false without changing channels, RNG, or outputs. */
+bool nba_player_animation_step_channels(const NbaAssetPack *assets,
+    NbaPlayerAnimationChannels *channels, uint16_t direction, uint16_t speed,
+    uint16_t delta, bool alternate_lower, uint16_t variant, uint16_t *rng,
+    uint16_t *upper_resource, uint16_t *lower_resource);
+
 bool nba_player_animation_frame_count(const NbaAssetPack *assets,
                                       bool upper, uint8_t state,
                                       bool alternate_lower,

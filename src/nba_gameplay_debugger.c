@@ -400,6 +400,11 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
                 "\"upper_restart\":%u,"
                 "\"lower_restart\":%u,\"upper_phase\":%u,"
                 "\"lower_phase\":%u,\"behavior_flags\":%u,"
+                "\"animation_rom\":{\"upper_resource_2a\":%u,\"lower_resource_2c\":%u,"
+                "\"upper_phase_3a\":%u,\"lower_phase_3c\":%u,"
+                "\"upper_accumulator_42\":%u,\"lower_accumulator_44\":%u,"
+                "\"upper_lock_46\":%u,\"lower_lock_48\":%u,"
+                "\"upper_queue_18\":%u,\"lower_queue_1a\":%u,\"resources_valid\":%s,\"action_integrated\":%s},"
                 "\"palette\":%u}}",
                 i ? "," : "", a->index, a->team_side, a->roster_slot,
                 a->control, a->visible ? "true" : "false", a->world_x,
@@ -431,7 +436,14 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
                 a->contact_height_aa_raw, a->recovery_inhibit_7a_raw,
                 a->upper_restart_raw,
                 a->lower_restart_raw, a->upper_phase_raw, a->lower_phase_raw,
-                a->behavior_flags_raw, a->palette_raw);
+                a->behavior_flags_raw,
+                a->animation_rom_words[0], a->animation_rom_words[1],
+                a->animation_rom_words[2], a->animation_rom_words[3],
+                a->animation_rom_words[4], a->animation_rom_words[5],
+                a->animation_rom_words[6], a->animation_rom_words[7],
+                a->animation_rom_words[8], a->animation_rom_words[9],
+                a->animation_resources_valid ? "true" : "false",
+                a->animation_action_integrated ? "true" : "false", a->palette_raw);
     }
     fputs("]}\n", stream);
 }

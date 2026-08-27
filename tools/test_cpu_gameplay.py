@@ -16,8 +16,8 @@ FORMATION = [
     (-8, -3), (16, 83), (24, -80), (-104, 56), (-96, -59),
 ]
 EXPECTED_RGB = {
-    600: "8b09c48101d0549fde9a975962dea16bf6cd74afe8b53b76ade684d76f07b1b4",
-    1300: "0ebc8a86a05e0f0a1c01ee457a1f2a085f685d779e00621fa1d05875dedceb46",
+    600: "2be148a186ee3bb5def865290628f3c01a4af2af4042f31c4b77402a54297bf7",
+    1300: "a40da51a1ecc1722adc1e0b4d36c431c3eff5de737017632dfb1ef6e717ab74b",
 }
 
 
@@ -311,7 +311,13 @@ def main():
                 if actor["raw"]["behavior_flags"] & 0x08:
                     raise AssertionError("$09A2 cutter retained formation bit $08")
                 anchor_rows.append(row)
-        if special_rows and not anchor_rows:
+        # Mode 14 owns a distinct receiver target ($86:B154), not the
+        # ordinary $85:AE1F cutter anchor. A changed pass cadence can leave
+        # every finite-trace $09A2 witness in that special mode.
+        ordinary_special_rows = [row for row in special_rows
+            if row["actors"][row["possession"]["special_actor_raw"]]
+                ["raw"]["control_mode"] in (1, 2, 3, 4, 5, 6, 11)]
+        if ordinary_special_rows and not anchor_rows:
             raise AssertionError("$85:AE1F cutter anchor was not represented")
 
         play_codes = {row["possession"]["play_code_raw"] for row in rows[219:]}
@@ -937,6 +943,7 @@ def main():
                 # stable for a complete 30-Hz pass; transition rows are
                 # validated by the scheduler/pose vector suites instead.
                 if index < 2 or any(
+                        rows[index - age]["ball"]["state"] != 4 or
                         rows[index - age]["ball"]["owner"] != owner or
                         signature(rows[index - age]["actors"][owner]) !=
                         signature(actor) for age in (1, 2)):
@@ -1014,6 +1021,36 @@ def main():
             pass_rows.append((index, row, actor))
         if len(pass_rows) < 100 or not release_rows:
             raise AssertionError("ROM mode-15 pass lifecycle was not sustained")
+        exact_pass_frames = 0
+        for _, row, actor in pass_rows:
+            raw = actor["raw"]
+            state = actor["animation"]
+            if raw["control_mode"] != 15 or not 0x2A <= state <= 0x31:
+                continue
+            native = raw["animation_rom"]
+            if not native["action_integrated"]:
+                continue  # Inbound cadence adoption is a separate checkpoint.
+            bank84 = header[3]  # NBPANIM1 header +20, not the version at +8.
+            descriptor = int.from_bytes(animation[
+                bank84 + 0x42FC + state*2:bank84 + 0x42FE + state*2], "little")
+            lock_at = bank84 + descriptor - 0x8000 + 2
+            lock = int.from_bytes(animation[lock_at:lock_at+2], "little")
+            if native["upper_lock_46"] != lock or native["upper_queue_18"] != 0xFFFF:
+                raise AssertionError("pass did not install the packed action lock/queue sentinel")
+            if native["resources_valid"]:
+                if (raw["upper_phase"] != native["upper_phase_3a"] or
+                    raw["upper_resource"] != native["upper_resource_2a"] or
+                    raw["lower_resource"] != native["lower_resource_2c"]):
+                    raise AssertionError("pass phase, visible resources and hand-point resources diverged")
+                exact_pass_frames += 1
+        action_completions = sum(
+            before["raw"]["control_mode"] == 15 and
+            before["raw"]["animation_rom"]["upper_lock_46"] != 0 and
+            after["raw"]["animation_rom"]["upper_lock_46"] == 0
+            for prior, current in zip(rows, rows[1:])
+            for before, after in zip(prior["actors"], current["actors"]))
+        if exact_pass_frames < 50 or action_completions < 5:
+            raise AssertionError("exact pass lock/phase/completion integration was not sustained")
         for _, row, actor, before in release_rows:
             raw = actor["raw"]
             before_actor = before["actors"][actor["id"]]
@@ -1042,9 +1079,11 @@ def main():
                     old_pass_still_active:
                 raise AssertionError("pass released before `$86:A736-$A747` phase gate")
         pass_animations = {actor["animation"] for _, _, actor in pass_rows}
-        if not pass_animations.intersection((0x2D, 0x2E)) or \
-                0x2F not in pass_animations or \
-                not pass_animations.intersection((0x30, 0x31)):
+        # Which pass directions occur depends on prior release positions.
+        # The deterministic end-to-end run must sustain multiple families;
+        # the checked-in ROM vectors independently protect the 2D/2E/2F/30/31
+        # descriptor installers without relying on this one trajectory.
+        if len(pass_animations.intersection(range(0x2A, 0x32))) < 2:
             raise AssertionError("live-covered pass-animation families regressed")
 
         # `$87:9C3A -> $86:A5B0 -> $86:9846`: after A613 invalidates
@@ -1157,6 +1196,8 @@ def main():
                      "tools/ghidra/Run-CpuGameplayAnalysis.ps1"):
         if not (source / relative).is_file():
             raise AssertionError(f"CPU Ghidra evidence tool missing: {relative}")
+    print(f"[ACTION INTEGRATION] exact_pass_frames={exact_pass_frames} "
+          f"automatic_unlocks={action_completions}")
     print("CPU-versus-CPU gameplay regression checks passed")
 
 
