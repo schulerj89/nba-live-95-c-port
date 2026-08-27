@@ -637,6 +637,14 @@ bool nba_player_appearance_setup(const NbaAssetPack *assets,
     return true;
 }
 
+bool nba_player_gameplay_roster_address(const NbaAssetPack *assets,
+    uint8_t team, uint8_t roster_slot, uint32_t *address) {
+    PlayerLabRecord player;
+    if (!address || !player_record(assets, team, roster_slot, &player)) return false;
+    *address = player.rom_address;
+    return true;
+}
+
 bool nba_player_gameplay_shot_ratings(const NbaAssetPack *assets,
                                       uint8_t team, uint8_t roster_slot,
                                       uint8_t *two_point, uint8_t *three_point) {

@@ -50,4 +50,36 @@ typedef enum {
 } NbaShotOwnerGate;
 NbaShotOwnerGate nba_shot_action_owner_gate(const NbaShotAction *state,
                                             bool owns_ball);
+
+typedef struct {
+    uint16_t lane_result, movement, anchor_distance, anchor_direction;
+    uint16_t facing, appearance;
+    bool boosted, alternate_lower;
+} NbaSpecialShotSelection;
+/* Returns false only on invalid assets. Mode 12/17 identifies the selected
+ * path; direction_66 can change even when the appearance gate falls back. */
+bool nba_special_shot_select(const NbaAssetPack *assets, NbaShotAction *state,
+                             uint16_t *direction_66,
+                             const NbaSpecialShotSelection *input);
+
+typedef struct {
+    int16_t x, y, z, controller;
+    uint16_t facing, direction_66, upper_resource, lower_resource;
+    uint16_t delta, buttons, team_group, active_group;
+    bool owns_ball, boosted, alternate_lower;
+} NbaSpecialShotFrame;
+typedef struct {
+    uint16_t x, y, z, previous_actor_x;
+    uint16_t live_state, attachment_state, height_latch;
+    int16_t velocity_z;
+} NbaSpecialShotBall;
+typedef enum {
+    NBA_SPECIAL_SHOT_ERROR = -1, NBA_SPECIAL_SHOT_HOLD,
+    NBA_SPECIAL_SHOT_JUMP, NBA_SPECIAL_SHOT_LOST,
+    NBA_SPECIAL_SHOT_CANCEL, NBA_SPECIAL_SHOT_RELEASE
+} NbaSpecialShotResult;
+/* RELEASE stops immediately before the shared 9DA6 launch. The caller must
+ * execute the launch then clear timer/flags through the shared BA4A tail. */
+NbaSpecialShotResult nba_special_shot_step(const NbaAssetPack *assets,
+    NbaShotAction *state, NbaSpecialShotFrame *frame, NbaSpecialShotBall *ball);
 #endif

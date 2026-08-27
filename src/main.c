@@ -67,6 +67,7 @@ int main(int argc, char *argv[]) {
     const char *setup_transition_trace_path = NULL;
     const char *gameplay_trace_path = NULL;
     const char *dump_sequence_dir = NULL;
+    int dump_sequence_from = 1;
     int menu_sfx_srcn = 0x1B;
     bool is_headless = false;
     bool audio_debug_test = false;
@@ -74,6 +75,7 @@ int main(int argc, char *argv[]) {
     bool player_lab = false;
     bool gameplay_lab = false;
     int gameplay_actor = 0;
+    int gameplay_special_shot_at = 0;
     int gameplay_page = 1;
     bool gameplay_paused = false;
     int gameplay_step_count = 0;
@@ -150,6 +152,12 @@ int main(int argc, char *argv[]) {
             player_lab = true;
         } else if (strcmp(argv[i], "--gameplay-lab") == 0) {
             gameplay_lab = true;
+        } else if (strcmp(argv[i], "--gameplay-special-shot-at") == 0 && i + 1 < argc) {
+            gameplay_special_shot_at = atoi(argv[++i]);
+            if (gameplay_special_shot_at < 1) {
+                fprintf(stderr, "[HEADLESS] --gameplay-special-shot-at must be positive.\n");
+                return 1;
+            }
         } else if (strcmp(argv[i], "--gameplay-actor") == 0 && i + 1 < argc) {
             gameplay_actor = atoi(argv[++i]);
             if (gameplay_actor < 0 || gameplay_actor >= NBA_GAMEPLAY_ACTOR_COUNT) {
@@ -235,6 +243,12 @@ int main(int argc, char *argv[]) {
             team_action_gap = atoi(argv[++i]);
         } else if (strcmp(argv[i], "--dump-sequence-dir") == 0 && i + 1 < argc) {
             dump_sequence_dir = argv[++i];
+        } else if (strcmp(argv[i], "--dump-sequence-from") == 0 && i + 1 < argc) {
+            dump_sequence_from = atoi(argv[++i]);
+            if (dump_sequence_from < 1) {
+                fprintf(stderr, "[HEADLESS] --dump-sequence-from must be positive.\n");
+                return 1;
+            }
         } else if (strcmp(argv[i], "--spc-self-test") == 0) {
             spc_self_test = true;
         } else if (strcmp(argv[i], "--setup-menu") == 0 && i + 1 < argc) {
@@ -297,6 +311,7 @@ int main(int argc, char *argv[]) {
             printf("  --asset-debug <ID>    Render the F12 ROM asset browser at asset ID\n");
             printf("  --player-lab          Render the F9 Player Lab from packed ROM data\n");
             printf("  --gameplay-lab        Render the F8 gameplay telemetry overlay\n");
+            printf("  --gameplay-special-shot-at N  Controlled rare-shot input at frame N (uses --gameplay-actor)\n");
             printf("  --gameplay-actor N    Select gameplay actor 0..9\n");
             printf("  --gameplay-page N     Select Gameplay Lab page 1..3\n");
             printf("  --gameplay-paused     Start Gameplay Lab with simulation paused\n");
@@ -330,6 +345,7 @@ int main(int argc, char *argv[]) {
             printf("  --team-demo           Script right cycle, side toggle, then left cycle\n");
             printf("  --team-action-gap N   Frames between scripted Team Select inputs\n");
             printf("  --dump-sequence-dir D Save every rendered headless frame in directory D\n");
+            printf("  --dump-sequence-from N  Begin sequence capture at stepped frame N\n");
             printf("  --setup-menu <name>   Open Rules or Options in headless mode\n");
             printf("  --setup-menu-row <N>  Move to submenu row N\n");
             printf("  --setup-menu-right N  Apply N right-value adjustments\n");
@@ -564,6 +580,16 @@ int main(int argc, char *argv[]) {
 
         /* Step frames to reach desired screen */
         for (int frame = 0; frame < step_frames; frame++) {
+            if (frame+1 == gameplay_special_shot_at) {
+                if (game.state != NBA_STATE_TIPOFF ||
+                    !nba_tipoff_debug_special_shot(&game.scene.tipoff,(unsigned)gameplay_actor)) {
+                    fprintf(stderr,"[SHOT DEBUG] Unable to seed controlled special-shot inputs.\n");
+                    nba_game_shutdown(&game);
+                    return 1;
+                }
+                printf("[SHOT DEBUG] CONTROLLED INPUT frame=%d actor=%d; native B625 -> B979 -> 9DA6\n",
+                       frame+1,gameplay_actor);
+            }
             game.input.pressed = 0;
 
             if (game.player_lab.is_active) {
@@ -755,7 +781,7 @@ int main(int argc, char *argv[]) {
                 printf("[DEBUG SAMPLE] stepped=%d\n", frame + 1);
                 nba_game_debug_print(&game);
             }
-            if (dump_sequence_dir) {
+            if (dump_sequence_dir && frame + 1 >= dump_sequence_from) {
                 char sequence_path[1024];
                 nba_game_render(&game);
                 snprintf(sequence_path, sizeof(sequence_path), "%s/frame_%04d.bmp",
@@ -791,7 +817,8 @@ int main(int argc, char *argv[]) {
         }
         if (dump_sequence_dir)
             printf("[HEADLESS] Wrote %d rendered sequence frames to: %s\n",
-                   step_frames, dump_sequence_dir);
+                   step_frames >= dump_sequence_from ? step_frames - dump_sequence_from + 1 : 0,
+                   dump_sequence_dir);
         if (asset_debug_id >= 0) {
             game.asset_debugger.is_active = true;
             bool found = false;

@@ -10,6 +10,7 @@
 #include "nba_gameplay_ball.h"
 #include "nba_gameplay_effect.h"
 #include "nba_gameplay_foul.h"
+#include "nba_shot_launch.h"
 
 /* ROM routines correlated with live Mesen execution. */
 #define SNES_ADDR_TIPOFF_PLAYER_FORMATION 0x86DDA7
@@ -104,6 +105,10 @@ typedef struct {
     uint16_t movement_boost_timer; /* actor `+$72`, consumed by `$85:A82C` */
     int8_t controller_assignment_raw; /* signed actor `+$16` */
     uint16_t movement_magnitude_raw;  /* actor `+$4C` */
+    uint16_t movement_speed_raw_4a;
+    uint16_t shot_modifier_raw_b2;
+    uint16_t shot_stamina_raw_18; /* player statistics record, not actor +$18 */
+    uint16_t shot_statistics[5]; /* player stats +$00..+$08 */
     int16_t mode13_baseline_velocity_x; /* modes 13/14 actor `+$BA` */
     int16_t mode13_baseline_velocity_y; /* modes 13/14 actor `+$BC` */
     uint16_t contact_inhibit_raw_5a;  /* actor `+$5A`, `$86:CD03/D460` */
@@ -236,6 +241,9 @@ typedef struct {
     uint8_t shot_chance_raw;
     uint8_t shot_miss_index_raw;
     bool shot_inner_veto_raw;  /* `$09F8` */
+    uint16_t hot_team_raw_09c0;
+    uint16_t shot_previous_actor_x_raw_0922;
+    NbaShotLaunchState last_shot_launch; /* diagnostic snapshot, not actor/ball authority */
     uint8_t last_scoring_side;
     bool shot_result_resolved;
     uint8_t offense_side;
@@ -260,6 +268,8 @@ void nba_tipoff_render(const NbaTipoff *tipoff, NbaRenderer *renderer);
 void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
                                   const NbaInput *input,
                                   NbaGameplayTelemetry *telemetry);
+/* Controlled CLI fixture, not normal gameplay/user-player control. */
+bool nba_tipoff_debug_special_shot(NbaTipoff *tipoff, unsigned slot);
 
 /* ROM-vector replay boundaries. Runtime gameplay uses these same functions;
  * they are public so captured native calls can be replayed without copying

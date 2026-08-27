@@ -29,7 +29,8 @@ EXPECTED_FRAME_HASHES = {
     "right_philadelphia": "487b0efe17269dcf04d1f004fd4ca1f5647ecd60e3a4b72099427bd03fab3acf",
     "east": "09902c67a6ce3b516c83b079ae8f609494459cf100a13c0ec735c9e0f5a5dfe7",
     "west": "94d3d4fe72c06911a9c27748dd1e5fdfcd83ec6e407706ca2c20326b7d9d0662",
-    "logo_debug": "db347dfe608602a1677140cd13f80d5e3ebf149c69b7a9a6416fdb50e33c886d",
+    # Asset 277 changes only the F12 count; test_shot_assets proves the delta.
+    "logo_debug": "34e1045cf883d24a9f966d568a9b21249d7bd4c30201aa07db5298576b3dc9c2",
 }
 
 EXPECTED_LOGO_HASHES = {

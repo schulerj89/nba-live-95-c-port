@@ -17,8 +17,8 @@ Current measured coverage:
 | metric | captured address positions | % of captured addresses |
 |---|---:|---:|
 | observed executed code | 27,901 | 100.0% |
-| documented by ROM-address provenance | 9,497 | 34.0% |
-| verified against ROM calls | 6,454 | 23.13% |
+| documented by ROM-address provenance | 9,549 | 34.2% |
+| verified against ROM calls | 6,785 | 24.32% |
 
 These values are generated, not estimated. The detailed per-bank report is
 `docs/progress.md`; the authoritative verified list and evidence paths are in
@@ -30,8 +30,17 @@ for a requested slice are reported separately.
 
 ## Verified gameplay checkpoint
 
-Ninety-six routine slices currently pass emulator-ground-truth replay. The most important
+109 routine slices currently pass emulator-ground-truth replay. The most important
 recent slices are:
+
+- Special selector `$86:B629-$B6D2`, mode-17 executor `$B979-$BAA1`, and
+  complete launch `$86:9D6E/$9DA6` through `$A476` are integrated. 181 new
+  ROM calls match exactly (42 natural, 139 controlled); both basket sides
+  have controlled runtime release tests. Asset 277 provides literal shot
+  tables. Full regression passes, including 63,800 CPU frames (38–39).
+  Detailed evidence, code-only ledger boundaries, screenshots/video and
+  caveats: `docs/shot-completion-plan.md`. The natural run did not select
+  mode 17; controlled proof is not a natural-frequency claim.
 
 - `$87:AEC3-$AF74` and `$87:AFA2-$B053`: immediate non-advancing pose
   resolution and ten-player appearance initialization. Live-pass installs
@@ -212,7 +221,7 @@ Ghidra labels/comments are in `tools/ghidra/DumpShotAction.java`; fresh bank
 $85/$86 dumps are in `.analysis/shot-action-ghidra-20260827/`, with focused
 recomp output in `.analysis/shot-action-recomp-20260827/generated/`.
 
-### Current stationary-shot / lost-possession checkpoint
+### Preceding stationary-shot / lost-possession checkpoint
 
 The requested 35 stationary-shot/sidestep instructions (`$86:B7F7-$B849`)
 and 22 lost-owner/pump-fake instructions (`$86:B867-$B86B`,
@@ -229,9 +238,8 @@ exec captures.
 owner/latch gates, nine extra release-facing cases). The controlled harness
 changes WRAM inputs on real calls, never ROM/PC/flags/stack. No natural
 lost-owner or cancellation call occurred in the 30,000-frame capture.
-The extra `$86:9D7A-$9D98` facing helper is replayed but **not runtime-adopted
-or included in this checkpoint's coverage ledger**; the full launch remains
-a separate caller boundary.
+The extra `$86:9D7A-$9D98` facing helper was replayed but not adopted in
+that checkpoint; it is now part of the complete launch above.
 
 Ordinary startup now distinguishes stationary wind-up from an already-moving
 jump. Its persistent `$0948` counter reaches the native jump/sidestep gate.
@@ -287,11 +295,12 @@ See `tools/README.md` for capture, replay, Ghidra, and regression commands.
 
 ## Active gaps and next work
 
-- Complete the preceding `$86:B625` special-shot selector and the full
-  `$86:9D6E` launch caller. Ordinary startup/wind-up/sidestep and
-  lost-owner/pump-fake handling are integrated, but those surrounding callers
-  and human player control are not fully adopted.
-  The command helpers and common queued completion now have live replay
+- Selector/complete-launch goal is implemented and verified; see
+  `docs/shot-completion-plan.md`. Follow-up: natural special-shot frequency
+  and upstream fatigue/modifier/hot-streak writers (currently initialized to
+  7FFF/0/FFFF). Their launch effects have controlled replay, not full upstream
+  integration. Human controls remain out of scope.
+- The command helpers and common queued completion now have live replay
   proof, but generic shot/contact callers still use compatibility
   setters; do not replace all of them blindly. Ordinary mode-15 adoption is
   done, but inbound stays on the compatibility path: adopting its changed

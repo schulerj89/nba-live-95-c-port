@@ -169,6 +169,8 @@ bool nba_player_ball_attachment_point_offsets(const NbaAssetPack *assets,
                                         uint16_t mirror_flags_raw,
                                         uint8_t point_selector,
                                         int16_t *x, int16_t *y, int16_t *z);
+bool nba_player_gameplay_roster_address(const NbaAssetPack *assets,
+    uint8_t team, uint8_t roster_slot, uint32_t *address);
 bool nba_player_gameplay_shot_ratings(const NbaAssetPack *assets,
                                       uint8_t team, uint8_t roster_slot,
                                       uint8_t *two_point, uint8_t *three_point);

@@ -832,6 +832,27 @@ def build_player_animation_asset(rom_data):
     return bytes(payload)
 
 
+def build_shot_gameplay_asset(rom_data):
+    """Literal data reads made by $86:9D6E/$9DA6, not executable code.
+
+    A02A doubles an already word-stepped Y; its final lookup can read ten
+    bytes beyond A555's six-word table. Retain that ROM behavior as data.
+    """
+    ranges = ((0x9EB2, 38), (0x9F32, 18), (0xA17D, 64),
+              (0xA344, 144), (0xA4AB, 192))
+    offset = 12 + len(ranges) * 12
+    directory, payload = bytearray(), bytearray()
+    for address, size in ranges:
+        block = rom_data[0x30000 + address - 0x8000:
+                         0x30000 + address - 0x8000 + size]
+        if len(block) != size:
+            raise ValueError('Truncated shot table')
+        directory.extend(struct.pack('<III', address, size, offset))
+        payload.extend(block)
+        offset += size
+    return struct.pack('<8sI', b'NBSHOT1\0', len(ranges)) + directory + payload
+
+
 def build_cpu_gameplay_ai_asset(rom_data):
     """Pack proven CPU strategy/pass tables used by banks $85/$86."""
     header_size = struct.calcsize("<8s9I")
@@ -1632,6 +1653,7 @@ def create_asset_pack(rom_path, output_path):
     gameplay_formations = build_gameplay_formation_asset(rom_data)
     gameplay_play_control = build_gameplay_play_control_asset(rom_data)
     gameplay_cpu_tables = build_cpu_gameplay_ai_asset(rom_data)
+    gameplay_shot_tables = build_shot_gameplay_asset(rom_data)
     (player_default_pose, player_tile_sources, player_palette_tables,
      player_pose_layout) = build_player_front_pose(rom_data)
     player_animations = build_player_animation_asset(rom_data)
@@ -1837,6 +1859,7 @@ def create_asset_pack(rom_path, output_path):
         (274, 61, 5, 1595, gameplay_formations),
         (275, 61, 320, 0x85C6AF, gameplay_play_control),
         (276, 29, 7, 0x85C661, gameplay_cpu_tables),
+        (277, 5, 0, 0x869EB2, gameplay_shot_tables),
     ])
     assets.extend([
         (124, 0, 0, 0, rules_vram_bytes),

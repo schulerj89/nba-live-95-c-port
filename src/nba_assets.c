@@ -144,6 +144,8 @@ static bool asset_metadata_valid(uint32_t id, uint32_t size, uint32_t width,
         return size == 8868u && width == 61u && height == 5u && flags == 1595u;
     if (id == NBA_ASSET_GAMEPLAY_CPU_TABLES)
         return size == 246u && width == 29u && height == 7u && flags == 0x85C661u;
+    if (id == NBA_ASSET_GAMEPLAY_SHOT_TABLES)
+        return size == 528u && width == 5u && height == 0u && flags == 0x869EB2u;
     if (id == NBA_ASSET_EA_A_FIXED_SEQUENCE) {
         uint32_t x = flags >> 16;
         uint32_t y = flags & 0xFFFFu;

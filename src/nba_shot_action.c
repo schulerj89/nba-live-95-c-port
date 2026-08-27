@@ -1,6 +1,116 @@
 #include "nba_shot_action.h"
 #include "nba_gameplay_ball.h"
 
+/* `$86:B629-$B6D2`: B625's caller supplies the freshly evaluated F5E4 lane
+ * result. Keep the literal appearance-mask test: it is not a boolean gate.
+ * The ordinary fallback includes the already verified B6D3 startup. */
+bool nba_special_shot_select(const NbaAssetPack *assets, NbaShotAction *state,
+                             uint16_t *direction_66,
+                             const NbaSpecialShotSelection *in) {
+    NbaShotAction next = *state;
+    uint16_t direction = *direction_66;
+    uint16_t request = 0;
+    if (in->lane_result && !in->movement && in->anchor_distance < 0x60u) {
+        uint16_t toward = in->anchor_direction >> 1;
+        uint16_t relative = (uint16_t)(toward - in->facing) & 7u;
+        if (relative >= 2u && relative != 7u) {
+            bool clockwise = relative >= 5u ||
+                             (relative == 4u && in->appearance != 0u);
+            direction = (uint16_t)(toward + (clockwise ? 2 : -2)) & 7u;
+            request = clockwise ? 0x14u : 0x15u;
+            if (((in->appearance ^ 1u) & request) == 0u) request = 0;
+        }
+    }
+    if (request == 0u) {
+        if (!nba_shot_action_start(assets, &next, in->boosted,
+                                   in->alternate_lower)) return false;
+    } else {
+        if (direction < 3u) request ^= 1u;
+        if (!nba_player_animation_command(assets, &next.animation,
+                NBA_ANIMATION_INSTALL_UPPER, &request, in->boosted,
+                in->alternate_lower)) return false;
+        request = 0x1Fu;
+        if (!nba_player_animation_command(assets, &next.animation,
+                NBA_ANIMATION_INSTALL_LOWER, &request, in->boosted,
+                in->alternate_lower)) return false;
+        next.timer = 0; next.mode = 17; next.speed = 0;
+        next.activity = 1; next.bounce_count = 0; next.bounce_timer = 0;
+        next.flags |= 6u;
+    }
+    *state = next;
+    *direction_66 = direction;
+    return true;
+}
+
+/* `$86:B979-$BAA1`, excluding the separately replayed 9DA6 launch itself.
+ * B9B4-B9CF only write integer coordinates; fractions remain caller-owned.
+ * No RNG is consumed. A phase-3 release does not install ordinary pose 17. */
+NbaSpecialShotResult nba_special_shot_step(const NbaAssetPack *assets,
+    NbaShotAction *state, NbaSpecialShotFrame *frame, NbaSpecialShotBall *ball) {
+    if (!frame->owns_ball) {
+        nba_shot_action_restore(state, frame->team_group, frame->active_group);
+        return NBA_SPECIAL_SHOT_LOST;
+    }
+    NbaShotAction next = *state;
+    NbaSpecialShotBall projected = *ball;
+    next.flags |= 2u;
+    next.timer = (uint16_t)(next.timer + frame->delta);
+    projected.live_state = 2;
+    if (next.animation.upper_phase < 3u) {
+        int16_t dx, dy, dz;
+        if (!nba_player_ball_attachment_point_offsets(assets,
+                frame->upper_resource, frame->lower_resource, next.status, 0,
+                &dx, &dy, &dz)) return NBA_SPECIAL_SHOT_ERROR;
+        projected.x = (uint16_t)(frame->x + dx);
+        projected.y = (uint16_t)(frame->y + dy);
+        projected.z = (uint16_t)(frame->z + dz);
+        projected.previous_actor_x = (uint16_t)frame->x;
+    }
+    NbaSpecialShotResult result = NBA_SPECIAL_SHOT_HOLD;
+    bool cancel = false;
+    if ((int16_t)next.activity >= 0) {
+        uint16_t activity = (uint16_t)(next.activity + frame->delta);
+        if ((int16_t)(uint16_t)(activity - 5u) >= 0) {
+            next.activity = 0xFFFFu;
+            next.velocity_z = 0x258;
+            result = NBA_SPECIAL_SHOT_JUMP;
+        } else {
+            next.activity = activity;
+            cancel = frame->controller >= 0 && !(frame->buttons & 0x80u);
+        }
+    } else if (frame->z == 0) {
+        cancel = true;
+    } else {
+        if (next.timer >= 10u && frame->facing != frame->direction_66) {
+            uint16_t difference = (uint16_t)(frame->facing - frame->direction_66) & 7u;
+            frame->facing = (uint16_t)(frame->facing + (difference < 4u ? -1 : 1)) & 7u;
+        }
+        if (next.animation.upper_phase >= 3u) result = NBA_SPECIAL_SHOT_RELEASE;
+    }
+    if (cancel) {
+        uint16_t request = 0;
+        if (!nba_player_animation_command(assets, &next.animation,
+                NBA_ANIMATION_CANCEL_UPPER, &request, frame->boosted,
+                frame->alternate_lower) ||
+            !nba_player_animation_command(assets, &next.animation,
+                NBA_ANIMATION_CANCEL_LOWER, &request, frame->boosted,
+                frame->alternate_lower)) return NBA_SPECIAL_SHOT_ERROR;
+        request = 0x0Cu;
+        if (!nba_player_animation_command(assets, &next.animation,
+                NBA_ANIMATION_INSTALL_BOTH, &request, frame->boosted,
+                frame->alternate_lower)) return NBA_SPECIAL_SHOT_ERROR;
+        next.activity = 0; next.mode = 11;
+        nba_shot_action_clear(&next);
+        projected.live_state = 0; projected.velocity_z = 0;
+        projected.height_latch = 40;
+        if (projected.attachment_state) projected.attachment_state = 2;
+        result = NBA_SPECIAL_SHOT_CANCEL;
+    }
+    *state = next;
+    *ball = projected;
+    return result;
+}
+
 /* `$85:F02D-$F099` uses strict N-flag comparisons, unlike the nearby
  * target-distance routine's tie handling. Table bytes are `$85:F09A`. */
 static uint16_t shot_facing(int16_t dx,int16_t dy) {

@@ -130,7 +130,9 @@ typedef enum {
     NBA_ASSET_GAMEPLAY_PLAY_CONTROL                 = 275,
     /* NBCAI1: ROM CPU strategy, pass-flight, and release-threshold tables. */
     NBA_ASSET_GAMEPLAY_CPU_TABLES                   = 276,
-    NBA_ASSET_MAX                   = 277
+    /* NBSHOT1: ROM shot probability, timing and free-throw launch tables. */
+    NBA_ASSET_GAMEPLAY_SHOT_TABLES                  = 277,
+    NBA_ASSET_MAX                   = 278
 } NbaAssetId;
 
 typedef struct {

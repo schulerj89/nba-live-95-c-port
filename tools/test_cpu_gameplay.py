@@ -20,9 +20,10 @@ EXPECTED_RGB = {
     1300: "a40da51a1ecc1722adc1e0b4d36c431c3eff5de737017632dfb1ef6e717ab74b",
     # First jumper now uses the packed action locks and pose attachment.
     3480: "9502395cd897e64c2d6872a0c23fe847f3de65f81fc4e5e76acbd5b7c8ba8890",
-    # Stationary wind-up, then the lower-body jump install.
-    6932: "e6e1a0d5f62a492222e094fbe48bc6ab4ba60c76442d03bc790b06c8ee252ca9",
-    6954: "e338f25ecd9eb89eb892356d64faa542a0e8d721ca0c1e7e4b6fdd97c19e6dc5",
+    # Complete shot quality/RNG changes the later possession. Wind-up/jump
+    # remain locked separately by cpu_shot_branches_self_test and ROM replays.
+    6932: "3c49e1e2fc85b811553761ec0b61ed665819545c7b25839292c2e03fb1d7d532",
+    6954: "5e3a331a4c73536509878e1a6471a5a2d057531cc48451f8d659ba05780c78ee",
 }
 
 
@@ -696,13 +697,20 @@ def main():
         # `$0936=$82` holds the dead ball until the inbound reset.
         score_changes = []
         previous_score = (0, 0)
-        for row in rows[219:]:
+        for score_index, row in enumerate(rows[219:], start=219):
             match = row["match"]
             score = (match["score_left_raw"], match["score_right_raw"])
             if score != previous_score:
                 delta = (score[0] - previous_score[0],
                          score[1] - previous_score[1])
-                if sorted(delta) not in ([0, 2], [0, 3]):
+                # Complete 9D6E now also serves the stripe scene. Accept one
+                # point ONLY from a prior live one-point free-throw attempt;
+                # retain the same scoring, rim and inbound assertions below.
+                prior=rows[score_index-1]
+                free_throw_point=(sorted(delta)==[0,1] and
+                    prior['fouls']['free_throw_state_raw']!=0 and
+                    prior['match']['shot_value_raw']==1)
+                if sorted(delta) not in ([0, 2], [0, 3]) and not free_throw_point:
                     raise AssertionError(f"invalid ROM score increment {delta}")
                 # `$85:A262` clears `$094C` in the same inline scoring
                 # substep; the score delta is the durable shot-value witness.
@@ -1163,7 +1171,7 @@ def main():
     implementation = "\n".join((source / relative).read_text() for relative in (
         "src/nba_tipoff.c", "src/nba_gameplay_ai.c",
         "src/nba_gameplay_ball.c", "src/nba_gameplay_effect.c",
-        "src/nba_gameplay_foul.c", "src/nba_player_lab.c"))
+        "src/nba_gameplay_foul.c", "src/nba_player_lab.c", "src/nba_shot_launch.c"))
     for marker in ("$85:963D-$985F", "$85:BC52-$BC81", "$85:B95C",
                    "$87:B832", "$87:B649", "$87:B66A", "$85:9192",
                    "$87:8F01-$8F8D", "nba_gameplay_camera_update",
@@ -1190,7 +1198,7 @@ def main():
                    "$87:A9E3-$AA01", "$87:AA02-$AAB1",
                    "nba_gameplay_effect_step",
                    "$86:AB2D-$AF65", "$86:A6B3-$A790",
-                   "$86:9DDB-$9DE4", "$86:9B84-$9B8F",
+                   "nba_shot_launch", "$86:9B84-$9B8F",
                    "nba_gameplay_pass_direction", "nba_tipoff_begin_rom_pass",
                    "nba_gameplay_select_pass_receiver",
                    "$85:B50E-$B60A", "$85:B60B-$B677",

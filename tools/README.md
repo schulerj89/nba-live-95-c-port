@@ -259,8 +259,8 @@ The second group uses entries `86B7CD,86B84C`, exits
 
 Facing/release decisions, recovery and cleanup are adopted gameplay paths.
 Ordinary startup, wind-up and lower-jump helpers are now connected by the
-shot-branch checkpoint below. The full B625 special-shot selector and 9D6E
-ball-launch caller remain separate integration work. Asset-pack descriptors
+shot-branch checkpoint below. The full B625 selector and 9D6E launch are now
+integrated by the complete-shot checkpoint below. Asset-pack descriptors
 remain the runtime animation source; Mesen captures supply test data only.
 
 ### Stationary-shot, lost-owner and pump-fake replay
@@ -312,6 +312,46 @@ Run `Mesen.exe --testrunner --timeout=300 <ROM> <mesen_shot_branch_cases.lua>`.
 The deliberately unused driver entry/exit prevents duplicate captures; the
 case script owns its real callback boundaries. Check the 43-case completion
 sentinel and process exit before replaying. No desktop automation is needed.
+
+### Special selector, mode 17 and complete launch
+
+`docs/shot-completion-plan.md` maps exact routines, owned boundaries, findings,
+capture provenance and remaining upstream gaps. `DumpShotCompletion.java`
+refreshes bank86 labels/comments through the true launch return A476;
+`DumpShotScheduler.java` documents the independent 85:EE30 countdown writer.
+
+```powershell
+.\tools\build_vector_probe.ps1 -Name special_shot_vector_probe
+.\tools\build_vector_probe.ps1 -Name complete_shot_vector_probe
+python tools/verify_special_shot_vectors.py --normalized --vectors tests/fixtures/special-shot-witnesses.json --probe build/special_shot_vector_probe.exe --pack build/nba95_assets.pak
+python tools/verify_complete_shot_vectors.py --normalized --vectors tests/fixtures/complete-shot-witnesses.json --probe build/complete_shot_vector_probe.exe --pack build/nba95_assets.pak
+python tools/test_special_shot_integration.py --exe build/nba95_port.exe --rom 'F:/Games/SNES/NBA Live 95 (USA).sfc' --pack build/nba95_assets.pak
+```
+
+These 79 + 102 witnesses and both runtime basket sides run in `build.ps1 -Test`.
+`test_shot_assets.py` also checks asset 277 against ROM and isolates F12 count-
+header changes from asset pixels. Capture inputs are not production graphics.
+
+Headless recapture uses the unused driver entry/exit configuration described
+above, `NBA95_VEC_FRAMES=100000`, a new `NBA95_CAPTURE_DIR` and the same
+absolute `NBA95_VECTOR_DRIVER`. `mesen_special_shot_cases.lua` owns the 58
+special cases. `mesen_complete_shot_capture.lua` owns full 9D6E/9DA6 entry to
+A476 snapshots; `NBA95_LAUNCH_CONTROL=1` enables 70 ordinary cases, otherwise
+it observes natural calls. It can wrap the special driver using
+`NBA95_SHOT_CAPTURE_DRIVER` (absolute path to the special-case script). Confirm the
+completion sentinel and process exit, then replay raw JSONL with `--rom`
+instead of `--normalized`. Full-launch capture records the launch-owned
+timeout and each asynchronous NMI countdown byte, not a timing tolerance.
+
+The C-only diagnostic `--gameplay-special-shot-at 3420 --gameplay-actor 0`
+prepares clearly labeled controlled inputs; it does not force a made basket.
+Use actor 5 for the opposite basket. `--dump-sequence-from 3420` limits
+capture to the selected interval without replaying a separate gameplay state.
+
+```powershell
+.\build\nba95_port.exe --headless --rom 'F:/Games/SNES/NBA Live 95 (USA).sfc' --assets build/nba95_assets.pak --tipoff-only --frames 3560 --gameplay-special-shot-at 3420 --gameplay-actor 0 --gameplay-trace .analysis/special-proof.jsonl --dump-sequence-from 3420 --dump-sequence-dir .analysis/special-proof
+ffmpeg -framerate 60 -start_number 3420 -i .analysis/special-proof/frame_%04d.bmp -vf scale=768:672:flags=neighbor -c:v libx264 -crf 18 -pix_fmt yuv420p .analysis/special-proof.mp4
+```
 
 ### Other utilities
 

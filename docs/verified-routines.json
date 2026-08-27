@@ -768,6 +768,110 @@
       "method": "controlled-ROM-vectors",
       "evidence": "tests/fixtures/shot-branch-witnesses.json; tools/verify_shot_branch_vectors.py; fresh Ghidra .analysis/shot-branches-ghidra-20260827 and tools/ghidra/DumpShotAction.java. Five controlled ROM calls cover owner continue, lost ownership overriding a ready pump latch, phase wait, accumulator wait, and ready cancellation. Exact chosen exit and preserved state match. Runtime adopted.",
       "date": "2026-08-27"
+    },
+    {
+      "range": "86B629-86B6D2",
+      "name": "nba_special_shot_select",
+      "source": "src/nba_shot_action.c",
+      "method": "function-vectors",
+      "evidence": "tests/fixtures/special-shot-witnesses.json; tools/verify_special_shot_vectors.py; tools/ghidra/DumpShotCompletion.java. 79 total selector/executor calls, including 21 natural ordinary fallbacks and controlled lane/movement/distance/facing/appearance/lock cases. Zero state/exit mismatches. Entry is AFTER separately verified F5E4 lane call; runtime re-evaluates that predicate. Asset-pack animations only.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "86B979-86BAA1",
+      "name": "nba_special_shot_step and CPU release connector",
+      "source": "src/nba_shot_action.c",
+      "method": "function-vectors",
+      "evidence": "tests/fixtures/special-shot-witnesses.json plus tests/fixtures/complete-shot-witnesses.json; tools/verify_special_shot_vectors.py; tools/verify_complete_shot_vectors.py. Controlled genuine ROM mode-17 calls cover held/airborne/turn/jump/owner-loss/cancel and 11 phase-3 releases; step compares pre-launch outputs, nested 9DA6 calls compare full launch, runtime integration checks retained special pose and cleanup on both basket sides. No natural special branch observed in sampled gameplay. tools/test_special_shot_integration.py protects connector.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "869D6E-869EB1",
+      "name": "nba_shot_launch (entry, facing, detach, initial value and FT aim)",
+      "source": "src/nba_shot_launch.c",
+      "method": "function-vectors",
+      "evidence": "tests/fixtures/complete-shot-witnesses.json; tools/verify_complete_shot_vectors.py; tools/ghidra/DumpShotCompletion.java. 102 zero-mismatch full calls: 21 natural ordinary, 70 controlled ordinary (quality/difficulty/fatigue/movement/hot team, fractional coordinates, human timing/manual, CPU/human free throws), 11 controlled special entries. Complete persistent outputs, preserved state, attempt stats and RNG order compared. Asynchronous $85:EE30 countdown writes are separately recorded and exactly reconstructed; launch-owned timeout is compared at post-STA boundary. Tables excluded from code ranges. Runtime adopted; upstream fatigue/hot-streak writers and human controls remain separate.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "869ED8-869F31",
+      "name": "nba_shot_launch (rating and long-range difficulty)",
+      "source": "src/nba_shot_launch.c",
+      "method": "function-vectors",
+      "evidence": "tests/fixtures/complete-shot-witnesses.json; tools/verify_complete_shot_vectors.py; tools/ghidra/DumpShotCompletion.java. 102 zero-mismatch full calls: 21 natural ordinary, 70 controlled ordinary (quality/difficulty/fatigue/movement/hot team, fractional coordinates, human timing/manual, CPU/human free throws), 11 controlled special entries. Complete persistent outputs, preserved state, attempt stats and RNG order compared. Asynchronous $85:EE30 countdown writes are separately recorded and exactly reconstructed; launch-owned timeout is compared at post-STA boundary. Tables excluded from code ranges. Runtime adopted; upstream fatigue/hot-streak writers and human controls remain separate.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "869F44-86A17C",
+      "name": "nba_shot_launch (quality, RNG and miss displacement)",
+      "source": "src/nba_shot_launch.c",
+      "method": "function-vectors",
+      "evidence": "tests/fixtures/complete-shot-witnesses.json; tools/verify_complete_shot_vectors.py; tools/ghidra/DumpShotCompletion.java. 102 zero-mismatch full calls: 21 natural ordinary, 70 controlled ordinary (quality/difficulty/fatigue/movement/hot team, fractional coordinates, human timing/manual, CPU/human free throws), 11 controlled special entries. Complete persistent outputs, preserved state, attempt stats and RNG order compared. Asynchronous $85:EE30 countdown writes are separately recorded and exactly reconstructed; launch-owned timeout is compared at post-STA boundary. Tables excluded from code ranges. Runtime adopted; upstream fatigue/hot-streak writers and human controls remain separate.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "86A1BD-86A343",
+      "name": "nba_shot_launch (velocity and CPU free throws)",
+      "source": "src/nba_shot_launch.c",
+      "method": "function-vectors",
+      "evidence": "tests/fixtures/complete-shot-witnesses.json; tools/verify_complete_shot_vectors.py; tools/ghidra/DumpShotCompletion.java. 102 zero-mismatch full calls: 21 natural ordinary, 70 controlled ordinary (quality/difficulty/fatigue/movement/hot team, fractional coordinates, human timing/manual, CPU/human free throws), 11 controlled special entries. Complete persistent outputs, preserved state, attempt stats and RNG order compared. Asynchronous $85:EE30 countdown writes are separately recorded and exactly reconstructed; launch-owned timeout is compared at post-STA boundary. Tables excluded from code ranges. Runtime adopted; upstream fatigue/hot-streak writers and human controls remain separate.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "86A3D4-86A476",
+      "name": "nba_shot_launch (human free throws and return)",
+      "source": "src/nba_shot_launch.c",
+      "method": "function-vectors",
+      "evidence": "tests/fixtures/complete-shot-witnesses.json; tools/verify_complete_shot_vectors.py; tools/ghidra/DumpShotCompletion.java. 102 zero-mismatch full calls: 21 natural ordinary, 70 controlled ordinary (quality/difficulty/fatigue/movement/hot team, fractional coordinates, human timing/manual, CPU/human free throws), 11 controlled special entries. Complete persistent outputs, preserved state, attempt stats and RNG order compared. Asynchronous $85:EE30 countdown writes are separately recorded and exactly reconstructed; launch-owned timeout is compared at post-STA boundary. Tables excluded from code ranges. Runtime adopted; upstream fatigue/hot-streak writers and human controls remain separate.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "86A561-86A5AF",
+      "name": "nba_shot_launch (shot-value arc)",
+      "source": "src/nba_shot_launch.c",
+      "method": "function-vectors",
+      "evidence": "tests/fixtures/complete-shot-witnesses.json; tools/verify_complete_shot_vectors.py; tools/ghidra/DumpShotCompletion.java. 102 zero-mismatch full calls: 21 natural ordinary, 70 controlled ordinary (quality/difficulty/fatigue/movement/hot team, fractional coordinates, human timing/manual, CPU/human free throws), 11 controlled special entries. Complete persistent outputs, preserved state, attempt stats and RNG order compared. Asynchronous $85:EE30 countdown writes are separately recorded and exactly reconstructed; launch-owned timeout is compared at post-STA boundary. Tables excluded from code ranges. Runtime adopted; upstream fatigue/hot-streak writers and human controls remain separate.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "869CDB-869D06",
+      "name": "nba_shot_launch (attempt identity and FT branch)",
+      "source": "src/nba_shot_launch.c",
+      "method": "function-vectors",
+      "evidence": "tests/fixtures/complete-shot-witnesses.json; tools/verify_complete_shot_vectors.py; tools/ghidra/DumpShotCompletion.java. 102 zero-mismatch full calls: 21 natural ordinary, 70 controlled ordinary (quality/difficulty/fatigue/movement/hot team, fractional coordinates, human timing/manual, CPU/human free throws), 11 controlled special entries. Complete persistent outputs, preserved state, attempt stats and RNG order compared. Asynchronous $85:EE30 countdown writes are separately recorded and exactly reconstructed; launch-owned timeout is compared at post-STA boundary. Tables excluded from code ranges. Runtime adopted; upstream fatigue/hot-streak writers and human controls remain separate. Only A=0 attempt paths of 9CDB; made-stat increment branches explicitly excluded.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "869D0C-869D17",
+      "name": "nba_shot_launch (field-attempt branches)",
+      "source": "src/nba_shot_launch.c",
+      "method": "function-vectors",
+      "evidence": "tests/fixtures/complete-shot-witnesses.json; tools/verify_complete_shot_vectors.py; tools/ghidra/DumpShotCompletion.java. 102 zero-mismatch full calls: 21 natural ordinary, 70 controlled ordinary (quality/difficulty/fatigue/movement/hot team, fractional coordinates, human timing/manual, CPU/human free throws), 11 controlled special entries. Complete persistent outputs, preserved state, attempt stats and RNG order compared. Asynchronous $85:EE30 countdown writes are separately recorded and exactly reconstructed; launch-owned timeout is compared at post-STA boundary. Tables excluded from code ranges. Runtime adopted; upstream fatigue/hot-streak writers and human controls remain separate. Only A=0 attempt paths of 9CDB; made-stat increment branches explicitly excluded.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "869D20-869D4D",
+      "name": "nba_shot_launch (three-point attempts and controller gates)",
+      "source": "src/nba_shot_launch.c",
+      "method": "function-vectors",
+      "evidence": "tests/fixtures/complete-shot-witnesses.json; tools/verify_complete_shot_vectors.py; tools/ghidra/DumpShotCompletion.java. 102 zero-mismatch full calls: 21 natural ordinary, 70 controlled ordinary (quality/difficulty/fatigue/movement/hot team, fractional coordinates, human timing/manual, CPU/human free throws), 11 controlled special entries. Complete persistent outputs, preserved state, attempt stats and RNG order compared. Asynchronous $85:EE30 countdown writes are separately recorded and exactly reconstructed; launch-owned timeout is compared at post-STA boundary. Tables excluded from code ranges. Runtime adopted; upstream fatigue/hot-streak writers and human controls remain separate. Only A=0 attempt paths of 9CDB; made-stat increment branches explicitly excluded.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "869D53-869D5E",
+      "name": "nba_shot_launch (controller two-point attempts and three-point gate)",
+      "source": "src/nba_shot_launch.c",
+      "method": "function-vectors",
+      "evidence": "tests/fixtures/complete-shot-witnesses.json; tools/verify_complete_shot_vectors.py; tools/ghidra/DumpShotCompletion.java. 102 zero-mismatch full calls: 21 natural ordinary, 70 controlled ordinary (quality/difficulty/fatigue/movement/hot team, fractional coordinates, human timing/manual, CPU/human free throws), 11 controlled special entries. Complete persistent outputs, preserved state, attempt stats and RNG order compared. Asynchronous $85:EE30 countdown writes are separately recorded and exactly reconstructed; launch-owned timeout is compared at post-STA boundary. Tables excluded from code ranges. Runtime adopted; upstream fatigue/hot-streak writers and human controls remain separate. Only A=0 attempt paths of 9CDB; made-stat increment branches explicitly excluded.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "869D67-869D6D",
+      "name": "nba_shot_launch (controller three-point attempts and return)",
+      "source": "src/nba_shot_launch.c",
+      "method": "function-vectors",
+      "evidence": "tests/fixtures/complete-shot-witnesses.json; tools/verify_complete_shot_vectors.py; tools/ghidra/DumpShotCompletion.java. 102 zero-mismatch full calls: 21 natural ordinary, 70 controlled ordinary (quality/difficulty/fatigue/movement/hot team, fractional coordinates, human timing/manual, CPU/human free throws), 11 controlled special entries. Complete persistent outputs, preserved state, attempt stats and RNG order compared. Asynchronous $85:EE30 countdown writes are separately recorded and exactly reconstructed; launch-owned timeout is compared at post-STA boundary. Tables excluded from code ranges. Runtime adopted; upstream fatigue/hot-streak writers and human controls remain separate. Only A=0 attempt paths of 9CDB; made-stat increment branches explicitly excluded.",
+      "date": "2026-08-27"
     }
   ]
 }

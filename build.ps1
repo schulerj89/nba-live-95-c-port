@@ -83,6 +83,20 @@ if ($Test) {
     if ([string]::IsNullOrEmpty($AssetPack) -or !(Test-Path -LiteralPath $AssetPack)) {
         throw "-Test requires a generated asset pack."
     }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name special_shot_vector_probe
+    & python (Join-Path $Root 'tools\verify_special_shot_vectors.py') `
+        --normalized --vectors (Join-Path $Root 'tests\fixtures\special-shot-witnesses.json') `
+        --probe (Join-Path $BuildDir 'special_shot_vector_probe.exe') --pack $AssetPack
+    if ($LASTEXITCODE -ne 0) { throw 'Special-shot ROM witness regression failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name complete_shot_vector_probe
+    & python (Join-Path $Root 'tools\verify_complete_shot_vectors.py') `
+        --normalized --vectors (Join-Path $Root 'tests\fixtures\complete-shot-witnesses.json') `
+        --probe (Join-Path $BuildDir 'complete_shot_vector_probe.exe') --pack $AssetPack
+    if ($LASTEXITCODE -ne 0) { throw 'Complete launch ROM witness regression failed.' }
+    & python (Join-Path $Root 'tools\test_shot_assets.py') --pack $AssetPack --rom $RomPath --exe $ConsoleExePath
+    if ($LASTEXITCODE -ne 0) { throw 'Shot asset ROM comparison failed.' }
+    & python (Join-Path $Root 'tools\test_special_shot_integration.py') --pack $AssetPack --rom $RomPath --exe $ConsoleExePath
+    if ($LASTEXITCODE -ne 0) { throw 'Special-shot gameplay integration failed.' }
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name action_animation_vector_probe
     & python (Join-Path $Root 'tools\verify_action_animation_vectors.py') `
         --normalized --vectors (Join-Path $Root 'tests\fixtures\action-animation-witnesses.json') `
