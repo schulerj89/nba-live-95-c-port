@@ -20,7 +20,9 @@ EXPECTED_FRAMES = {
     170: ("TIP PH:JUMP BALL", "1c9fa44a36d3fd8923fc40364db0ceac8254a3bfe47d96b83b5cf384c47c61a6"),
     # Native camera cadence and $0936:0081 -> 0000 ownership transition;
     # changes framing, not assets. See camera-handoff-plan.md/native witnesses.
-    220: ("TIP PH:LIVE", "5b63df09d261adc966699470ec8857b388d1d168f6d5cd62c6f4ebf5d933baac"),
+    # Geometric contact delays the placeholder trajectory and hence camera.
+    # Reviewed stage1/native frames; this is a C regression, NOT ROM parity.
+    220: ("TIP PH:LIVE", "9f703fef6418e1aabd792096037bb5b6ea28cc4787d2a3ff719f64e3019156ef"),
 }
 
 

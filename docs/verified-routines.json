@@ -418,12 +418,20 @@
       "date": "2026-08-26"
     },
     {
-      "range": "86CCCD-86D548",
+      "range": "86CCCD-86D3C5",
       "name": "nba_tipoff_replay_collision_order (ball contact core)",
       "source": "src/nba_tipoff.c + src/nba_gameplay_ball.c",
       "method": "function-vectors",
-      "evidence": ".analysis/func-vectors-collision-sweep-long-20260826 (15 retained ball/pass/shot/loose acquisition sweeps, 0 mismatches; state-$81 jump-ball and effect-only callbacks explicitly excluded)",
+      "evidence": ".analysis/func-vectors-collision-sweep-long-20260826 (15 retained ball/pass/shot/loose acquisition sweeps, 0 mismatches; state-$81 jump-ball and effect-only callbacks explicitly excluded). Range corrected 2026-08-27 to exclude unverified D3C6-D43D tip wrapper. Additional geometric state81 proof: tests/fixtures/tip-contact-{natural,controlled}.json, 340 calls / zero mismatches; native pose child outputs supplied as inputs, not new pose-body proof.",
       "date": "2026-08-26"
+    },
+    {
+      "range": "86D43E-86D548",
+      "name": "nba_tipoff_replay_collision_order (deflection continuation)",
+      "source": "src/nba_tipoff.c + src/nba_gameplay_ball.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-collision-sweep-long-20260826; split from the former CCCD-D548 claim to avoid crediting the excluded state81 wrapper.",
+      "date": "2026-08-27"
     },
     {
       "range": "86D25A-86D349",

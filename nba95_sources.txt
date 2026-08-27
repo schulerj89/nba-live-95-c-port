@@ -30,4 +30,5 @@ src/nba_team_select.c
 src/nba_player_setup.c
 src/nba_player_intro.c
 src/nba_tipoff.c
+src/nba_tipoff_flow.c
 src/nba_game.c

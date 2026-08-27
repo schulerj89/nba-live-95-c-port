@@ -200,6 +200,15 @@ if ($Test) {
     if ($LASTEXITCODE -ne 0) {
         throw "Player Introduction regression tests failed with exit code $LASTEXITCODE"
     }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name tip_contact_probe
+    foreach ($witness in @('tip-contact-natural.json', 'tip-contact-controlled.json')) {
+        & python (Join-Path $Root 'tools\verify_tip_contact.py') --normalized `
+            --vectors (Join-Path $Root "tests\fixtures\$witness") --probe (Join-Path $BuildDir 'tip_contact_probe.exe')
+        if ($LASTEXITCODE -ne 0) { throw 'Tip contact ROM replay failed.' }
+    }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name tip_contact_runtime_probe
+    & (Join-Path $BuildDir 'tip_contact_runtime_probe.exe') $AssetPack
+    if ($LASTEXITCODE -ne 0) { throw 'Tip contact runtime binding failed.' }
     & python (Join-Path $Root "tools\test_tipoff.py") `
         --pack $AssetPack --exe $ConsoleExePath --rom $RomPath
     if ($LASTEXITCODE -ne 0) {

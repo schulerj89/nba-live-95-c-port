@@ -108,6 +108,9 @@ typedef struct {
     uint32_t input_held;
     uint32_t input_released;
     uint32_t simulation_tick;
+    int16_t tip_contact_actor;
+    uint32_t tip_contact_frame;
+    uint16_t tip_reach_mask;
     uint8_t scheduler_due_raw;
     uint8_t actor_pass_dt_raw;
     uint16_t actor_pass_mask_raw;

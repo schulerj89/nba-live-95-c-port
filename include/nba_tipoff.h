@@ -13,6 +13,7 @@
 #include "nba_gameplay_foul.h"
 #include "nba_shot_launch.h"
 #include "nba_shot_state.h"
+#include "nba_tipoff_flow.h"
 
 /* ROM routines correlated with live Mesen execution. */
 #define SNES_ADDR_TIPOFF_PLAYER_FORMATION 0x86DDA7
@@ -171,6 +172,9 @@ typedef struct {
     uint16_t period_raw_0926;
     uint16_t match_clock_raw_0928;
     int8_t possession_actor;
+    int8_t tip_contact_actor;
+    uint32_t tip_contact_frame;
+    uint16_t tip_reach_mask;
     int8_t possession_team;
     uint8_t camera_side_group_raw; /* persistent `$093A`: 0/5, FF before tip */
     uint16_t camera_alternate_raw_08bc, camera_alternate_mode_raw_08cc;
@@ -277,6 +281,7 @@ typedef struct {
 bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
                      NbaSession *session);
 void nba_tipoff_update(NbaTipoff *tipoff, const NbaInput *input);
+bool nba_tipoff_try_tip_contact(NbaTipoff *tipoff);
 void nba_tipoff_render(const NbaTipoff *tipoff, NbaRenderer *renderer);
 void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
                                   const NbaInput *input,

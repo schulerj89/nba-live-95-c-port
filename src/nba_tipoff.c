@@ -4771,7 +4771,7 @@ static bool cpu_ball_substep_self_test(void) {
 static void cpu_update_tip_ball(NbaTipoff *tipoff) {
     NbaTipoffBall *ball = &tipoff->ball;
     int32_t old_x = ball->x_fp, old_y = ball->y_fp, old_z = ball->z_fp;
-    if (tipoff->frame < NBA_TIPOFF_CONTACT_FRAME) {
+    if (tipoff->tip_contact_actor < 0) {
         int t = tipoff->frame - 170;
         int z = tipoff->frame < NBA_TIPOFF_TOSS_FRAME ? 80 :
             108 - (t * t * (t < 0 ? 28 : 40)) / (t < 0 ? 625 : 784);
@@ -4780,7 +4780,9 @@ static void cpu_update_tip_ball(NbaTipoff *tipoff) {
         ball->state = tipoff->frame < NBA_TIPOFF_BALL_APPEAR_FRAME ?
                       NBA_BALL_HIDDEN : NBA_BALL_TOSS;
     } else {
-        int t = tipoff->frame - NBA_TIPOFF_CONTACT_FRAME;
+        /* The temporary trajectory may only start AFTER a geometric hit.
+         * The next checkpoint replaces this interpolation with $8699C4. */
+        int t = tipoff->frame - (int)tipoff->tip_contact_frame;
         if (t > 22) t = 22;
         ball->x_fp = (int32_t)(-92 * t) * 256 / 22;
         ball->y_fp = (int32_t)(36 * t) * 256 / 22;
@@ -6758,6 +6760,7 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
     /* Native pre-tip 0936 is 0081, not shot-flight 0001. The distinction
      * selects normal court framing at 85:92F1 instead of ball-height framing. */
     tipoff->live_state_raw = 0x81u;
+    tipoff->tip_contact_actor = -1;
     tipoff->camera_side_group_raw = 0xFFu;
     tipoff->inbound_actor_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
     tipoff->pass_actor_raw = -1;
@@ -6908,11 +6911,11 @@ void nba_tipoff_update(NbaTipoff *tipoff, const NbaInput *input) {
     }
     if (tipoff->frame < NBA_TIPOFF_BREAK_FRAME)
         cpu_update_tip_ball(tipoff);
-    if (tipoff->frame == NBA_TIPOFF_POSSESSION_FRAME) {
-        /* `$85:B100-$B28B` resolves the tip and writes play code $35.
-         * `$0946` selects actor 8 as the prospective receiver, but signed
-         * owner `$093E` remains FFFF through frame 219. `$86:D3F9/BAA2`
-         * installs actor 8 only after the frame-220 physics loop. */
+    if (tipoff->frame < NBA_TIPOFF_BREAK_FRAME && nba_tipoff_try_tip_contact(tipoff)) {
+        /* Contact is now geometric, not a scheduled frame200 result.
+         * Stage2 still must replace this fixed receiver with B04C;
+         * stage3 replaces the tip trajectory and stage4 the frame220 catch.
+         * B100 is ordinary play control, NOT the tip selector. */
         tipoff->handler_actor = 8u;
         tipoff->receiver_actor = 8u;
         tipoff->possession_team = 1;
@@ -6950,7 +6953,7 @@ void nba_tipoff_update(NbaTipoff *tipoff, const NbaInput *input) {
     }
     cpu_update_camera(tipoff);
     if (tipoff->frame >= NBA_TIPOFF_BREAK_FRAME) tipoff->phase = NBA_TIPOFF_LIVE;
-    else if (tipoff->frame >= NBA_TIPOFF_POSSESSION_FRAME)
+    else if (tipoff->tip_contact_actor >= 0)
         tipoff->phase = NBA_TIPOFF_POSSESSION;
     else if (tipoff->frame >= NBA_TIPOFF_TOSS_FRAME)
         tipoff->phase = NBA_TIPOFF_JUMP_BALL;
@@ -6966,14 +6969,15 @@ static int center_jump_height(int frame) {
     return height > 0 ? height : 0;
 }
 
-static void ball_position(int frame, int *x, int *y) {
+static void ball_position(const NbaTipoff *tipoff, int *x, int *y) {
+    int frame=tipoff->frame;
     if (frame < NBA_TIPOFF_TOSS_FRAME) { *x = 125; *y = 40; return; }
-    if (frame < NBA_TIPOFF_CONTACT_FRAME) {
+    if (tipoff->tip_contact_actor < 0) {
         int t = frame - 170;
         int z = 108 - (t * t * (t < 0 ? 28 : 40)) / (t < 0 ? 625 : 784);
         *x = 125; *y = 120 - z; return;
     }
-    int t = frame - NBA_TIPOFF_CONTACT_FRAME;
+    int t = frame - (int)tipoff->tip_contact_frame;
     if (t > 22) t = 22;
     *x = 125 + (38 - 125) * t / 22;
     *y = 51 + (83 - 51) * t / 22;
@@ -6995,12 +6999,66 @@ static uint8_t actor_animation(const NbaTipoff *tipoff, unsigned actor) {
     return 0;
 }
 
+static uint32_t actor_animation_tick(const NbaTipoff *tipoff,unsigned actor) {
+    /* Keep contact and rendering on the same existing presentation clock.
+     * Native jump-channel startup/cadence is a separate remaining slice. */
+    (void)actor;
+    return (uint32_t)tipoff->frame;
+}
+
+bool nba_tipoff_try_tip_contact(NbaTipoff *tipoff) {
+    if(!tipoff || tipoff->tip_contact_actor>=0 || tipoff->live_state_raw!=0x81u ||
+       tipoff->ball.owner_actor>=0 || tipoff->ball.state==NBA_BALL_HIDDEN ||
+       (tipoff->simulation_tick&1u)!=0u)return false;
+    uint8_t order[NBA_GAMEPLAY_ACTOR_COUNT];cpu_actor_contact_order(tipoff,order);
+    for(unsigned i=0;i<NBA_GAMEPLAY_ACTOR_COUNT;++i) {
+        unsigned slot=order[i];const NbaTipoffActor *actor=&tipoff->actors[slot];
+        if(!cpu_actor_ball_contact_allowed(actor))continue;
+        NbaTipContactInput in={0};
+        in.actor_id=(uint16_t)slot;in.actor_inhibit=actor->contact_inhibit_raw_5a;
+        in.actor_group=slot>=5?5:0;in.upper_state=actor_animation(tipoff,slot);
+        in.upper_lock=actor->upper_animation_lock_raw_46;in.live_state=tipoff->live_state_raw;
+        in.owner=tipoff->possession_actor;in.receiver=tipoff->pass_receiver_raw;
+        in.side_group=tipoff->camera_side_group_raw==255?-1:tipoff->camera_side_group_raw;
+        in.hoop_x=tipoff->court_presentation.basket_x_3fef;
+        in.actor_x=fp_integer_word(actor->x_fp);in.actor_y=fp_integer_word(actor->y_fp);
+        /* Until the jump startup checkpoint, use precisely the existing
+         * rendered pose/height, not an invisible idle collision sprite. */
+        in.actor_z=(int16_t)(slot==5?center_jump_height(tipoff->frame):0);
+        in.ball_x=fp_integer_word(tipoff->ball.x_fp);in.ball_y=fp_integer_word(tipoff->ball.y_fp);
+        in.ball_z=fp_integer_word(tipoff->ball.z_fp);in.ball_vz=tipoff->ball.velocity_z;
+        uint16_t upper,lower;uint8_t direction=formation[slot].direction;
+        uint8_t team=slot>=5?tipoff->session->right_team:tipoff->session->left_team;
+        if(!nba_player_animation_resources(tipoff->assets,(uint8_t)in.upper_state,(uint8_t)in.upper_state,
+                direction,actor_animation_tick(tipoff,slot),actor_animation_tick(tipoff,slot),&upper,&lower) ||
+           !nba_player_animation_contact_height(tipoff->assets,team,actor->roster_slot,upper,lower,direction,&in.head_height))continue;
+        for(unsigned point=0;point<2;++point) {
+            int16_t x,y,z;
+            if(!nba_player_ball_attachment_point_offsets(tipoff->assets,upper,lower,
+                    direction<3?0x8000u:0u,(uint8_t)point,&x,&y,&z))break;
+            in.points[point]=(NbaGameplayPosePoint){(int16_t)(in.actor_x+x),(int16_t)(in.actor_y+y),(int16_t)(in.actor_z+z)};
+            ++in.point_count;
+        }
+        NbaTipContactResult result=nba_tip_contact_geometry(&in);
+        if(result.request_reach)tipoff->tip_reach_mask|=(uint16_t)(1u<<slot);
+        if(result.route!=NBA_TIP_CONTACT_ACCEPT)continue;
+        tipoff->tip_contact_actor=(int8_t)slot;tipoff->tip_contact_frame=(uint32_t)tipoff->frame;
+        tipoff->collision_actor_a_raw=(int8_t)slot;tipoff->collision_actor_b_raw=-1;
+        tipoff->collision_routine_raw=0x86CCFCu;
+        return true;
+    }
+    return false;
+}
+
 void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
                                   const NbaInput *input,
                                   NbaGameplayTelemetry *telemetry) {
     if (!tipoff || !telemetry) return;
     memset(telemetry, 0, sizeof(*telemetry));
     telemetry->scene_frame = (uint32_t)tipoff->frame;
+    telemetry->tip_contact_actor=tipoff->tip_contact_actor;
+    telemetry->tip_contact_frame=tipoff->tip_contact_frame;
+    telemetry->tip_reach_mask=tipoff->tip_reach_mask;
     telemetry->simulation_tick = tipoff->simulation_tick;
     telemetry->phase = (uint8_t)tipoff->phase;
     telemetry->scheduler_due_raw =
@@ -7401,10 +7459,10 @@ void nba_tipoff_render(const NbaTipoff *tipoff, NbaRenderer *ren) {
                               tipoff->actors[actor].lower_animation_state : state;
         uint32_t upper_tick = tipoff->frame >= NBA_TIPOFF_BREAK_FRAME ?
                               tipoff->actors[actor].upper_animation_tick :
-                              (uint32_t)tipoff->frame;
+                              actor_animation_tick(tipoff,actor);
         uint32_t lower_tick = tipoff->frame >= NBA_TIPOFF_BREAK_FRAME ?
                               tipoff->actors[actor].lower_animation_tick :
-                              (uint32_t)tipoff->frame;
+                              actor_animation_tick(tipoff,actor);
         if (tipoff->frame >= NBA_TIPOFF_BREAK_FRAME &&
             tipoff->actors[actor].animation_resources_valid) {
             nba_player_sprite_render_resources(
@@ -7422,7 +7480,7 @@ void nba_tipoff_render(const NbaTipoff *tipoff, NbaRenderer *ren) {
     }
     int ball_x, ball_y;
     if (tipoff->frame < NBA_TIPOFF_BREAK_FRAME) {
-        ball_position(tipoff->frame, &ball_x, &ball_y);
+        ball_position(tipoff, &ball_x, &ball_y);
     } else {
         int x = fp_round(tipoff->ball.x_fp), y = fp_round(tipoff->ball.y_fp);
         int z = fp_round(tipoff->ball.z_fp);
