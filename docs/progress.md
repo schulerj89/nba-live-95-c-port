@@ -10,7 +10,7 @@ Counts address positions in the captured exec intervals. Some captures record in
 |---|---|---|
 | executed (denominator) | 27901 | 100.0% |
 | documented by port provenance | 9670 | 34.7% |
-| verified against ground truth | 6906 | 24.8% |
+| verified against ground truth | 6917 | 24.8% |
 
 ## Per bank
 
@@ -31,7 +31,7 @@ Counts address positions in the captured exec intervals. Some captures record in
 - recomp-discovered functions: 136 (banks 00/80/81/82 only; static analysis stops at indirect dispatch)
 - of those observed executing in captures: 126
 - of those referenced by port provenance: 6
-- verified routines (ledger): 118
+- verified routines (ledger): 121
 
 ## Largest undocumented executed regions
 

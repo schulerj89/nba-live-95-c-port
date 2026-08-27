@@ -908,6 +908,54 @@ static bool animation_channel_advance(const NbaAssetPack *assets,
             if (*state == 7 || *state == 18) *phase = 0;
             return *phase < count;
         }
+        /* `$87:ADBE-$AE88`: held-ball eight-phase traversal. +B0 is not
+         * a frame counter: its high bit selects descending traversal and
+         * the low bits hold a target. Advance at most once per call. */
+        if (*state == 18) {
+            if ((c->upper_phase_target & 0x7FFFu) >= 8u)
+                c->upper_phase_target = 0;
+            if (c->lower_accumulator < 0x400u) c->lower_accumulator = 0x600u;
+            *acc = (uint16_t)(*acc + delta);
+            if (*acc >= c->lower_accumulator) {
+                *acc = (uint16_t)(*acc - c->lower_accumulator);
+                if ((c->upper_phase_target & 0x7FFFu) != *phase) {
+                    if (c->upper_phase_target & 0x8000u) {
+                        *phase = (uint16_t)(*phase - 1u);
+                        if ((int16_t)*phase < 0) *phase = 7;
+                    } else {
+                        *phase = (uint16_t)(*phase + 1u);
+                        if (*phase >= 8u) *phase = 0;
+                    }
+                } else {
+                    uint16_t opposite_half = (*phase & 4u) ^ 4u;
+                    uint16_t choice = nba_gameplay_rng_next(rng);
+                    if ((choice & 0x18u) == 0x18u) {
+                        c->upper_phase_target = (choice & 0x8000u) | *phase;
+                        /* AE5D's provisional duration is overwritten at AE84. */
+                        c->lower_accumulator = (uint16_t)(((choice & 7u) << 8) + 0x600u);
+                    }
+                    c->upper_phase_target = (uint16_t)(
+                        ((c->upper_phase_target & 0x8000u) ^ 0x8000u) |
+                        ((choice & 3u) ^ opposite_half));
+                    c->lower_accumulator = (uint16_t)(
+                        ((nba_gameplay_rng_next(rng) & 3u) << 8) + 0x600u);
+                }
+            }
+            return *phase < count;
+        }
+        /* `$87:AE89-$AEBC`: two-phase held-ball pose shares its phase with
+         * lower +3C, but the lower resource was resolved earlier at AC38. */
+        if (*state == 13) {
+            *acc = (uint16_t)(*acc + delta);
+            if (*acc >= c->lower_accumulator) {
+                *phase = nba_gameplay_rng_next(rng) & 1u;
+                c->lower_phase = *phase;
+                *acc = 0;
+                c->lower_accumulator = (uint16_t)(
+                    (nba_gameplay_rng_next(rng) & 0x1FFFu) + 0x1000u);
+            }
+            return *phase < count;
+        }
         /* `$87:AD86-$ADBB`: idle look-around is held by a randomized timer,
          * not a cyclic resource stream. Lower +44 holds its next duration. */
         if (*state != 7) return false;
@@ -967,11 +1015,12 @@ bool nba_player_animation_step_channels(const NbaAssetPack *assets,
     NbaPlayerAnimationChannels next = *channels;
     NbaGameplayRng rng = {*rng_state};
     const uint8_t *upper, *lower;
-    if (!animation_channel_advance(assets, &next, false, alternate, speed, delta, &rng, &lower) ||
-        !animation_channel_advance(assets, &next, true, alternate, speed, delta, &rng, &upper)) return false;
+    if (!animation_channel_advance(assets, &next, false, alternate, speed, delta, &rng, &lower)) return false;
     const uint8_t *bank = animation_bank84(assets, NULL);
-    uint16_t ur = animation_frame_resource(upper, bank, (uint8_t)direction, (uint8_t)next.upper_phase);
+    /* `$87:AC38` precedes upper cadence, which may change lower +3C. */
     uint16_t lr = animation_frame_resource(lower, bank, (uint8_t)direction, (uint8_t)next.lower_phase);
+    if (!animation_channel_advance(assets, &next, true, alternate, speed, delta, &rng, &upper)) return false;
+    uint16_t ur = animation_frame_resource(upper, bank, (uint8_t)direction, (uint8_t)next.upper_phase);
     if (ur < 0xF0 && (uint16_t)(variant ^ (direction < 3 ? 1 : 0)) == 0) ur += 0x28;
     *channels = next;
     *rng_state = rng.state;
@@ -1228,10 +1277,10 @@ bool nba_player_animation_self_test(const NbaAssetPack *assets) {
                 assets, heights[i][0], heights[i][1], &height) ||
             height != heights[i][2]) return false;
     }
-    /* Unsupported upper mode 2 must not partially commit the already-stepped
+    /* Invalid upper state must not partially commit the already-stepped
      * lower channel or the RNG. This is a safety test, not ROM coverage. */
     NbaPlayerAnimationChannels unsupported = {0};
-    unsupported.upper_state = 18;
+    unsupported.upper_state = NBA_PLAYER_ANIMATION_STATES;
     unsupported.upper_queue_cursor = unsupported.lower_queue_cursor = 0xFFFF;
     NbaPlayerAnimationChannels before = unsupported;
     uint16_t rng = 0x9146, ur = 0x1234, lr = 0x5678;

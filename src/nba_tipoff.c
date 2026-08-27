@@ -242,6 +242,7 @@ static NbaPlayerAnimationChannels actor_animation_channels(const NbaTipoffActor 
     };
     memcpy(c.upper_queue, a->animation_upper_queue_raw_1c, sizeof(c.upper_queue));
     memcpy(c.lower_queue, a->animation_lower_queue_raw_22, sizeof(c.lower_queue));
+    c.upper_phase_target = a->upper_phase_target_raw_b0;
     return c;
 }
 
@@ -266,6 +267,7 @@ static void actor_store_animation_channels(NbaTipoffActor *a,
     a->lower_animation_lock_raw_48 = c->lower_lock;
     a->animation_upper_queue_cursor_raw_18 = c->upper_queue_cursor;
     a->animation_lower_queue_cursor_raw_1a = c->lower_queue_cursor;
+    a->upper_phase_target_raw_b0 = c->upper_phase_target;
 }
 
 static void actor_animation_command(NbaTipoff *tipoff, NbaTipoffActor *actor,
@@ -399,6 +401,7 @@ static void cpu_advance_actor_animation(NbaTipoff *tipoff,
     ++actor->upper_animation_tick;
     ++actor->lower_animation_tick;
     if (actor->upper_animation_lock_raw_46 != 0u ||
+        actor->animation_state == 13u || actor->animation_state == 18u ||
         actor->lower_animation_lock_raw_48 != 0u ||
         (actor->control_mode == 15u && actor->exact_pass_animation) ||
         ((actor->control_mode == 12u || actor->control_mode == 17u) && actor->exact_shot_animation)) {
@@ -414,8 +417,8 @@ static void cpu_advance_actor_animation(NbaTipoff *tipoff,
             actor_store_animation_channels(actor, &channels);
     } else {
         /* Keep ordinary locomotion on the already-verified common cadence.
-         * Integrating mode-2 idle RNG here would move the AI RNG stream and
-         * is intentionally outside this action-only checkpoint. */
+         * Non-owner state-7 idle RNG adoption remains separate. The held-ball
+         * state-13/18 cadence above is now integrated with exact +B0 state. */
         actor->animation_resources_valid = nba_player_animation_rom_step(
             tipoff->assets, actor->animation_state,
             actor->lower_animation_state, actor->direction,
@@ -1065,8 +1068,8 @@ static void cpu_dispatch_normal_actor_behavior(NbaTipoff *tipoff,
     int x = fp_round(actor->x_fp), y = fp_round(actor->y_fp);
     /* `$86:E593-$E5AA`, the verified terminal fallback of the larger
      * `$86:E4A7-$E5AA` selector: the catcher/dead-ball latch selects base 12;
-     * an ordinary owner selects base 5. The earlier proximity/facing branches
-     * remain a separate porting increment. `$86:E3CB-$E3DD` repairs special
+     * an ordinary owner selects base 5. Nearby owners instead take the
+     * unlatched or latched branch below. `$86:E3CB-$E3DD` repairs special
      * mode 1-6 bases. Writes affect the next logical physics pass. */
     if (actor->control_mode == 11u) {
         NbaGameplayOwnerDribbleGate gate = nba_gameplay_owner_dribble_gate(
@@ -1095,6 +1098,14 @@ static void cpu_dispatch_normal_actor_behavior(NbaTipoff *tipoff,
                     nba_gameplay_owner_unlatched_pose(
                         actor->velocity_x, actor->velocity_y,
                         actor->requested_direction, &actor->direction);
+            } else if (proximity == NBA_GAMEPLAY_OWNER_PROXIMITY_LATCHED) {
+                actor->base_animation_state_raw_38 =
+                    nba_gameplay_owner_latched_pose(
+                        actor->controller_assignment_raw,
+                        tipoff->attached_ball_state_raw_09f6,
+                        tipoff->dead_ball_raw_0968,
+                        actor->assignment_distance, actor->requested_direction,
+                        &actor->movement_direction);
             } else {
                 actor->base_animation_state_raw_38 =
                     nba_gameplay_owner_dribble_fallback_pose(
@@ -1218,6 +1229,55 @@ static void cpu_dispatch_normal_actor_behavior(NbaTipoff *tipoff,
         actor->requested_direction = velocity_direction;
     }
     actor->action_state = tipoff->cpu_play_state;
+}
+
+/* Binding checks, not additional ROM witnesses: the independently replayed
+ * helpers must receive +4E (not +52), retain +B0, and publish pack resources. */
+static bool cpu_owner_pose_animation_self_test(const NbaAssetPack *assets,
+                                               NbaSession *session) {
+    for (unsigned distance=16;distance<=17;++distance) {
+        NbaTipoff game={0};
+        game.assets=assets;game.session=session;game.possession_actor=0;
+        game.ball.owner_actor=0;game.live_state_raw=2;game.rng.state=0x9146;
+        game.special_actor_raw=NBA_GAMEPLAY_UNKNOWN_WORD;
+        NbaTipoffActor *a=&game.actors[0];
+        a->control_mode=11;a->controller_assignment_raw=-1;a->behavior_timer=100;
+        a->reaction_threshold=100; /* +60: no new CPU decision during this held-pose case */
+        a->assignment_actor=1;a->assignment_distance=(uint16_t)distance;
+        a->catcher_latch_raw_ae=1;a->direction=4;a->movement_direction=4;
+        a->upper_phase_target_raw_b0=0x8007;
+        a->animation_upper_queue_cursor_raw_18=a->animation_lower_queue_cursor_raw_1a=0xFFFF;
+        game.actors[1].assignment_direction=6;
+        cpu_dispatch_normal_actor_behavior(&game,0);
+        if(a->base_animation_state_raw_38!=(distance==16?13:18) ||
+           a->movement_direction!=(distance==16?6:2) || a->direction!=4) {
+            fprintf(stderr,"[OWNER POSE BINDING] distance=%u base=%u facing=%u display=%u latch=%u mode=%u\n",
+                distance,a->base_animation_state_raw_38,a->movement_direction,a->direction,a->catcher_latch_raw_ae,a->control_mode);
+            return false;
+        }
+        cpu_resolve_locomotion_animation(&game,0);
+        if(a->animation_state!=a->base_animation_state_raw_38 ||
+           a->lower_animation_state!=a->base_animation_state_raw_38) {
+            fprintf(stderr,"[OWNER POSE BINDING] locomotion distance=%u upper=%u lower=%u base=%u\n",distance,a->animation_state,a->lower_animation_state,a->base_animation_state_raw_38);
+            return false;
+        }
+        for(unsigned tick=0;tick<40;++tick) {
+            NbaPlayerAnimationChannels expected=actor_animation_channels(a);
+            uint16_t rng=game.rng.state,ur=0,lr=0;
+            if(!nba_player_animation_step_channels(assets,&expected,a->direction,0,
+                    0x200,false,0,&rng,&ur,&lr)) {
+                fprintf(stderr,"[OWNER POSE BINDING] expected cadence rejected distance=%u tick=%u\n",distance,tick);return false;
+            }
+            cpu_advance_actor_animation(&game,a);
+            NbaPlayerAnimationChannels actual=actor_animation_channels(a);
+            if(memcmp(&actual,&expected,sizeof(expected)) || game.rng.state!=rng ||
+               !a->animation_resources_valid || a->upper_animation_resource_raw_2a!=ur ||
+               a->lower_animation_resource_raw_2c!=lr) {
+                fprintf(stderr,"[OWNER POSE BINDING] cadence distance=%u tick=%u valid=%u rng=%04x/%04x\n",distance,tick,a->animation_resources_valid,game.rng.state,rng);return false;
+            }
+        }
+    }
+    return true;
 }
 
 static void cpu_move_actor(NbaTipoff *tipoff, unsigned slot) {
@@ -6522,6 +6582,7 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
         cpu_inbound_recovery_carrier_self_test(assets, session));
     NBA_TIPOFF_REQUIRE("attachment assets", ball_attachment_assets_valid(assets));
     NBA_TIPOFF_REQUIRE("ROM animation cadence", nba_player_animation_self_test(assets));
+    NBA_TIPOFF_REQUIRE("latched owner pose/cadence binding", cpu_owner_pose_animation_self_test(assets, session));
     NBA_TIPOFF_REQUIRE("boosted pass", cpu_boosted_pass_self_test(assets, session));
     NBA_TIPOFF_REQUIRE("shot branches", cpu_shot_branches_self_test(assets, session));
     NBA_TIPOFF_REQUIRE("special shot lifecycle", cpu_special_shot_self_test(assets, session));
@@ -7114,6 +7175,7 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
         };
         memcpy(out->animation_rom_words, animation_words, sizeof(animation_words));
         out->animation_resources_valid = live && state->animation_resources_valid;
+        out->animation_phase_target_raw_b0 = state->upper_phase_target_raw_b0;
         out->animation_action_integrated = live &&
             (state->exact_pass_animation ||
              ((state->control_mode == 12u || state->control_mode == 17u) && state->exact_shot_animation));

@@ -92,6 +92,20 @@ uint8_t nba_gameplay_owner_unlatched_pose(
     return ((velocity_direction - requested_direction) & 7u) >= 4u ? 9u : 11u;
 }
 
+/* `$86:E4F5-$E544`: latched owner pose. CMP/BPL tests the wrapped subtraction
+ * sign, not an unsigned distance comparison. Human branch preserves +4E. */
+uint8_t nba_gameplay_owner_latched_pose(int16_t controller_raw_16,
+        uint16_t attachment_raw_09f6, uint16_t dead_ball_raw_0968,
+        uint16_t pair_distance_raw_8a, uint8_t requested_raw_50,
+        uint8_t *facing_raw_4e) {
+    if (controller_raw_16 >= 0 &&
+        (attachment_raw_09f6 < 2u || dead_ball_raw_0968 != 0u))
+        return facing_raw_4e && *facing_raw_4e == (requested_raw_50 ^ 4u) ? 18u : 13u;
+    bool close = (int16_t)(uint16_t)(pair_distance_raw_8a - 0x11u) < 0;
+    if (facing_raw_4e) *facing_raw_4e = requested_raw_50 ^ (close ? 0u : 4u);
+    return close ? 13u : 18u;
+}
+
 /* Three-point arc table `$85:ABFB`, indexed by even Y offsets 0..356. */
 static const int16_t three_point_arc[179] = {
     259,251,246,243,241,238,236,234,232,229,226,224,222,218,215,212,

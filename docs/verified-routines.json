@@ -938,6 +938,30 @@
       "date": "2026-08-27"
     },
     {
+      "range": "87AE89-87AEBC",
+      "name": "animation_channel_advance (upper state 13 shared phase)",
+      "source": "src/nba_player_lab.c",
+      "method": "function-vectors",
+      "evidence": "tests/fixtures/owner-pose-animation-witnesses.json; tools/verify_owner_pose_animation_vectors.py; tools/ghidra/DumpOwnerPoseAnimation.java. All 20 decoded instruction starts observed in controlled native-ROM calls, with exact RNG, channel and resource outputs. Lower resource resolves before upper writes shared +3C. Part of 12049 zero-mismatch calls (326 durable witnesses); state13/18 animation witnesses controlled, not natural-frequency proof. Runtime adopted and binding-tested; unforced C state13 at33660.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "87ADBE-87AE88",
+      "name": "animation_channel_advance (upper state 18 target/direction cadence)",
+      "source": "src/nba_player_lab.c",
+      "method": "function-vectors",
+      "evidence": "tests/fixtures/owner-pose-animation-witnesses.json; tools/verify_owner_pose_animation_vectors.py. All 78 decoded instruction starts observed/replayed: actor+B0 target normalization, both traversal directions/wraps, timer boundaries and RNG forks. 70 controlled native-ROM state18 calls, every channel word/RNG/resource compared. Runtime retains+B0 and publishes asset-pack resources, tested by cpu_owner_pose_animation_self_test and two 200k-frame unforced games. Does not claim whole-game RNG or pose-frequency parity.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "86E4F5-86E544",
+      "name": "nba_gameplay_owner_latched_pose",
+      "source": "src/nba_gameplay_ball.c",
+      "method": "function-vectors",
+      "evidence": "tests/fixtures/owner-pose-animation-witnesses.json; tools/verify_owner_pose_animation_vectors.py; tools/ghidra/DumpOwnerPoseAnimation.java. All 31 instruction starts captured/replayed, 42 controlled calls plus seven natural calls. Checks all four exits, signed subtraction boundaries, CPU/human attachment/dead-ball gates, preserved actor words and RNG. CPU dispatcher now routes LATCHED proximity here, writes desired+4E rather than display+52; human controls remain outside runtime scope.",
+      "date": "2026-08-27"
+    },
+    {
       "range": "878EF3-878EF6",
       "name": "nba_tipoff_update (pre-actor fatigue call)",
       "source": "src/nba_tipoff.c",

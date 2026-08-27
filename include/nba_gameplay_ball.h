@@ -133,6 +133,11 @@ NbaGameplayOwnerProximityResult nba_gameplay_owner_dribble_proximity(
 uint8_t nba_gameplay_owner_unlatched_pose(
     int16_t velocity_x, int16_t velocity_y, uint8_t requested_direction,
     uint8_t *display_direction);
+/* `$86:E4F5-$E544`: +4E desired facing, NOT eased/display +52. */
+uint8_t nba_gameplay_owner_latched_pose(int16_t controller_raw_16,
+    uint16_t attachment_raw_09f6, uint16_t dead_ball_raw_0968,
+    uint16_t pair_distance_raw_8a, uint8_t requested_raw_50,
+    uint8_t *facing_raw_4e);
 NbaGameplayRimResult nba_gameplay_rim_step(NbaGameplayRimState *state,
                                            uint16_t live_state,
                                            bool alternate_height,

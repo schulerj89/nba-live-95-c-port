@@ -65,6 +65,7 @@ typedef struct {
     uint16_t upper_accumulator, lower_accumulator;  /* +42/+44 */
     uint16_t upper_lock, lower_lock;                /* +46/+48 */
     uint16_t upper_queue[3], lower_queue[3];
+    uint16_t upper_phase_target;                   /* +B0: target + direction */
 } NbaPlayerAnimationChannels;
 
 /* Snapshot resolver: no cadence advance, RNG, or action lock changes. */
@@ -102,9 +103,8 @@ typedef enum {
 bool nba_player_animation_command(const NbaAssetPack *assets,
     NbaPlayerAnimationChannels *channels, NbaPlayerAnimationCommand command,
     uint16_t *requested_state, bool boosted, bool alternate_lower);
-/* Full common cadence with action completion. Special mode-2 upper state 7
- * consumes the same $07F6 LFSR as the ROM. Other mode-2 upper states return
- * false without changing channels, RNG, or outputs. */
+/* Common/action cadence plus mode-2 states 7/13/18, using the ROM $07F6 LFSR.
+ * Invalid inputs fail atomically without changing channels/RNG/resources. */
 bool nba_player_animation_step_channels(const NbaAssetPack *assets,
     NbaPlayerAnimationChannels *channels, uint16_t direction, uint16_t speed,
     uint16_t delta, bool alternate_lower, uint16_t variant, uint16_t *rng,

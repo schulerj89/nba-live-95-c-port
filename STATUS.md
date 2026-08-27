@@ -18,7 +18,7 @@ Current measured coverage:
 |---|---:|---:|
 | observed executed code | 27,901 | 100.0% |
 | documented by ROM-address provenance | 9,670 | 34.7% |
-| verified against ROM calls | 6,906 | 24.75% |
+| verified against ROM calls | 6,917 | 24.79% |
 
 These values are generated, not estimated. The detailed per-bank report is
 `docs/progress.md`; the authoritative verified list and evidence paths are in
@@ -30,8 +30,23 @@ for a requested slice are reported separately.
 
 ## Verified gameplay checkpoint
 
-118 routine slices currently pass emulator-ground-truth replay/binding checks. The most important
+121 routine slices currently pass emulator-ground-truth replay/binding checks. The most important
 recent slices are:
+
+- Held-ball states 13/18 and the latched owner pose branch are complete:
+  `$87:AE89-$AEBC` (20 instructions), `$87:ADBE-$AE88` (78), and
+  `$86:E4F5-$E544` (31). All **129 instruction starts** were observed in
+  independent ROM calls and replayed; 12,049 calls match, with 326 durable
+  witnesses. Actor `+$B0` now persists and appears in JSONL telemetry.
+  State 13 resolves the lower resource before changing its shared phase;
+  the selector writes desired facing `+$4E`, not eased display `+$52`.
+  These are asset-pack animations, with controlled-ROM cadence coverage
+  and natural latched-selector calls, not full-game frequency parity.
+  Unforced C runs reach both poses; special-shot reachability/release is
+  now guarded by two 200,000-frame matchups (Orlando/Chicago special at
+  164,418, release 164,446), since exact cadence changes the RNG stream.
+  Detailed evidence, remaining boundaries and visual proof:
+  `docs/owner-pose-animation-plan.md`.
 
 - Shot-state writers now update the live CPU game instead of leaving stamina,
   made-run modifiers and assistance at defaults. The pre-code census was
@@ -41,8 +56,9 @@ recent slices are:
   `$09C0` is late-game trailing-team **CPU Assistance**, not a hot-streak flag.
   Actor `+$B2` is the made-run counter; opposing `+$B2/+$B4` clear on a make.
   Asset 278 and roster 251 supply stamina tables/ratings for all 24 slots.
-  The unforced 63,800-frame C run selects mode 17 at frame 50,338 and releases
-  at 50,366 (actor 4, pose `$15`), finishing 25–30. It is not ROM frequency
+  Its historical unforced 63,800-frame C run selected mode 17 at 50,338 and
+  released at 50,366; the later held-pose RNG integration supersedes that
+  trajectory (see above). This is not ROM frequency
   parity. Timeout/period grant helpers are replayed but their complete caller
   flows remain unimplemented. Evidence and exact boundaries:
   `docs/shot-state-plan.md`.
@@ -323,13 +339,14 @@ See `tools/README.md` for capture, replay, Ghidra, and regression commands.
   done, but inbound stays on the compatibility path: adopting its changed
   release/hand geometry exposed a >2,400-frame dead-ball stall in endurance
   testing. Keep that regression guard; trace the inbound continuation next.
-- Finish upper mode-2 states 13/18. State 7's randomized timer is verified,
-  but adopting its RNG consumption in ordinary runtime locomotion is deferred
-  until the whole idle path is connected. Ordinary dribble/contact physics
+- Upper mode-2 states 13/18 are implemented and adopted. State 7's randomized
+  timer is verified, but its RNG consumption in ordinary runtime locomotion
+  remains deferred. Ordinary dribble/contact physics
   still uses legacy tick-derived phases; exact rendering alone is not proof
   that those gates are ROM-identical.
-- Capture enough calls to verify the rare latched owner/CPU pose branch at
-  `$86:E4F5-$E544`; the existing six-call sample is insufficient.
+- The latched owner branch is verified/adopted. Broader caller/facing parity
+  (including older unlatched compatibility writes) still needs end-to-end
+  comparison; verified helper bodies do not certify the entire dispatcher.
 - Continue converting small post-tip CPU decision/animation slices from the
   recomp and Ghidra, re-verifying after each increment.
 - Expand ball physics, scoring, and CPU decisions beyond the early-gameplay

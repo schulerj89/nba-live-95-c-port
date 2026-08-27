@@ -119,6 +119,7 @@ typedef struct {
     uint16_t catcher_latch_raw_ae;    /* actor `+$AE`, `$86:BAE0` */
     uint16_t free_throw_launch_half_raw_a8; /* actor `+$A8`, `$86:A2A7` */
     uint16_t animation_variant_raw_6c; /* roster +$08, `$87:AD3D-$AD57` */
+    uint16_t upper_phase_target_raw_b0; /* `$87:ADC6-$AE75` held-ball phase target */
     uint16_t animation_upper_queue_cursor_raw_18;
     uint16_t animation_lower_queue_cursor_raw_1a;
     uint16_t animation_upper_queue_raw_1c[3];
