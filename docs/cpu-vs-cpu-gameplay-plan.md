@@ -1418,3 +1418,52 @@ integer subtraction restarts carry instead of accepting the fractional
 borrow, while the final `ADC #$0018` does accept carry from the preceding
 velocity addition. This increment raises verified executed coverage from
 15.14% to 18.15% (+3.01 percentage points).
+
+### Increment 5W: phase-preserving motion, attachment, and contact anchors
+
+This checkpoint adds 837 observed-executed verified bytes, moving 18.15% to
+21.15% (+3.00 percentage points). The exact ledger owns 68 slices; it does
+not claim the whole renderer from one contact-height output.
+
+The `$87:8F13-$8F5E` facing ease and `$87:B572-$B648` locomotion mapping
+each match 1,000 live calls. Locomotion changes clear the channel accumulator
+while preserving a phase that fits the new descriptor, removing the old
+frame-zero snap. Common `$87:AAB2-$AD5A` descriptor cadence matches 1,920
+supported calls from 2,000 captured entries, comparing accumulators, phases,
+and both resource IDs. Thirteen upper-mode-2 calls and state-changing locked
+lifecycle calls are explicitly separated. The ROM advances at most one frame
+per logical call. `$87:AC76/$AD38` also applies the `$28` low-resource variant
+selected by roster `+$08`/actor `+$6C`, toggled for facing 0..2; omitting that
+variant left 17 resource mismatches even when phase timing matched.
+
+The 565-call `$87:B832-$B952` replay proves both pose-point selectors. Separate
+200-call `$87:B649` and `$87:B66A` replays prove final actor-relative ball
+X/Y/Z. The 200-call contact-height replay exposed an inflated C bounding-box
+approximation: `$80:ADEB/$AE1E` constructs the head anchor in DP `$B8`, and
+`$87:A6A9-$A6B4` stores `foot_y-head_anchor_y+11`. Head tile extents, jersey
+parts, and hairstyle do not participate in that collision-height formula.
+
+The 100-call offense normalization replay proves cached post-physics focal
+coordinates, five actor anchor directions/distances, nearest actor record,
+and ownerless modes. The focal point must be cached after ball physics, not
+recomputed later inside role selection. Another 100 play-control calls prove
+that `$85:B259-$B288` reuses DP `$AA` as the descending five-actor counter;
+the shared `$B353` exit stores `4..0`, not the original negative countdown.
+
+Two live effect starts (IDs 3/4) and 1,000 delayed `$87:AA02-$AAB1` calls
+match all effect outputs, including 18 active calls and 982 inactive/net
+calls. The original 200-call presentation sample is retained separately and
+is not presented as active-effect coverage.
+
+Seven captured cadence/resource witnesses and five head-anchor heights now
+run in the normal C regression. The 63,800-frame CPU test passes sustained
+movement, decisions, possession, passes, scoring, and inbound recovery. Its
+play-barrier assertion now locks the ROM's `4,2,0` cadence; the made-basket
+telemetry bound permits rounded 82.x to display as 83 while `$85:9D4B` still
+tests the native integer word below `$53`. Motion evidence and the inspected
+600/1300-frame anchors are in `.analysis/motion-cadence-proof-20260826/`.
+
+Remaining boundary: exact visual resource phases are not yet substituted for
+the older logical-tick action/contact gates. Upper mode-2 `$87:AD5B` and rare
+locked lifecycle branches remain unverified. Continue there before claiming
+all motion or dribbling is ROM-identical.

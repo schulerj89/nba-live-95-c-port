@@ -11,6 +11,7 @@
 #define PLAYER_ANIMATION_BANK84_SIZE 0x8000u
 #define PLAYER_ATTACHMENT_TABLE_SIZE 0x830u
 #define PLAYER_LOWER_STATE_TABLE 0x4218u
+#define PLAYER_LOWER_ALT_STATE_TABLE 0x428Au
 #define PLAYER_UPPER_STATE_TABLE 0x42FCu
 
 typedef struct {
@@ -452,32 +453,19 @@ static bool compose_jersey_tile(const NbaAssetPack *assets, uint8_t jersey,
     return true;
 }
 
-static bool draw_player_animation_at(NbaRenderer *ren, const NbaAssetPack *assets,
-                                     const PlayerLabRecord *player, uint8_t team,
-                                     uint8_t side, uint8_t upper_state,
-                                     uint8_t lower_state, uint8_t direction,
-                                     uint32_t upper_tick, uint32_t lower_tick,
+static bool draw_player_resources_at(NbaRenderer *ren,
+                                     const NbaAssetPack *assets,
+                                     const PlayerLabRecord *player,
+                                     uint8_t team, uint8_t side,
+                                     uint8_t direction,
+                                     uint16_t upper_resource,
+                                     uint16_t lower_resource,
                                      int lower_x, int lower_y, int scale) {
     const uint8_t *bank = animation_bank84(assets, NULL);
-    const uint8_t *upper = animation_descriptor(
-        assets, PLAYER_UPPER_STATE_TABLE, upper_state);
-    const uint8_t *lower = animation_descriptor(
-        assets, PLAYER_LOWER_STATE_TABLE, lower_state);
-    if (!bank || !upper) return false;
-    if (!lower) lower = animation_descriptor(assets, PLAYER_LOWER_STATE_TABLE, 0);
-    if (!lower) return false;
+    if (!bank) return false;
     const uint8_t *palette = player_palette(assets, team, side,
                                             player->palette_variant);
     if (!palette) return false;
-
-    uint8_t lower_frame = animation_frame_index(lower, bank, lower_tick);
-    uint8_t upper_frame = (int16_t)read_u16(upper) < 0
-        ? (uint8_t)(lower_frame % read_u16(upper + 6))
-        : animation_frame_index(upper, bank, upper_tick);
-    uint16_t lower_resource = animation_frame_resource(
-        lower, bank, direction, lower_frame);
-    uint16_t upper_resource = animation_frame_resource(
-        upper, bank, direction, upper_frame);
     uint16_t head_resource = (uint16_t)(player->head_resource_base +
         read_u16(bank + 0x436eu + (direction & 7u) * 2u));
     bool flip = (direction & 7u) < 3u;
@@ -513,6 +501,33 @@ static bool draw_player_animation_at(NbaRenderer *ren, const NbaAssetPack *asset
     draw_animation_resource(ren, assets, head_resource, palette, head_x, head_y,
                             flip, NULL, scale);
     return true;
+}
+
+static bool draw_player_animation_at(NbaRenderer *ren, const NbaAssetPack *assets,
+                                     const PlayerLabRecord *player, uint8_t team,
+                                     uint8_t side, uint8_t upper_state,
+                                     uint8_t lower_state, uint8_t direction,
+                                     uint32_t upper_tick, uint32_t lower_tick,
+                                     int lower_x, int lower_y, int scale) {
+    const uint8_t *bank = animation_bank84(assets, NULL);
+    const uint8_t *upper = animation_descriptor(
+        assets, PLAYER_UPPER_STATE_TABLE, upper_state);
+    const uint8_t *lower = animation_descriptor(
+        assets, PLAYER_LOWER_STATE_TABLE, lower_state);
+    if (!bank || !upper) return false;
+    if (!lower) lower = animation_descriptor(assets, PLAYER_LOWER_STATE_TABLE, 0);
+    if (!lower) return false;
+    uint8_t lower_frame = animation_frame_index(lower, bank, lower_tick);
+    uint8_t upper_frame = (int16_t)read_u16(upper) < 0
+        ? (uint8_t)(lower_frame % read_u16(upper + 6))
+        : animation_frame_index(upper, bank, upper_tick);
+    uint16_t lower_resource = animation_frame_resource(
+        lower, bank, direction, lower_frame);
+    uint16_t upper_resource = animation_frame_resource(
+        upper, bank, direction, upper_frame);
+    return draw_player_resources_at(ren, assets, player, team, side, direction,
+                                    upper_resource, lower_resource, lower_x,
+                                    lower_y, scale);
 }
 
 static bool player_record(const NbaAssetPack *assets, int team, int player,
@@ -674,6 +689,147 @@ bool nba_player_sprite_render_split(NbaRenderer *renderer,
                                     scale);
 }
 
+bool nba_player_sprite_render_resources(NbaRenderer *renderer,
+                                    const NbaAssetPack *assets, uint8_t team,
+                                    uint8_t roster_slot, uint8_t side,
+                                    uint8_t direction,
+                                    uint16_t upper_resource,
+                                    uint16_t lower_resource, int origin_x,
+                                    int origin_y, int scale) {
+    PlayerLabRecord player;
+    if (!renderer || !assets || side > 1u || scale < 1 ||
+        !player_record(assets, team, roster_slot, &player)) return false;
+    return draw_player_resources_at(renderer, assets, &player, team, side,
+                                    direction, upper_resource, lower_resource,
+                                    origin_x, origin_y, scale);
+}
+
+bool nba_player_animation_frame_count(const NbaAssetPack *assets,
+                                      bool upper, uint8_t state,
+                                      bool alternate_lower,
+                                      uint16_t *count) {
+    uint32_t table = upper ? PLAYER_UPPER_STATE_TABLE :
+        alternate_lower ? PLAYER_LOWER_ALT_STATE_TABLE :
+                          PLAYER_LOWER_STATE_TABLE;
+    const uint8_t *descriptor = animation_descriptor(assets, table, state);
+    if (!descriptor || !count) return false;
+    *count = read_u16(descriptor + 6u);
+    return *count != 0u;
+}
+
+uint8_t nba_player_locomotion_state(uint8_t state, bool stationary,
+                                    bool boosted, bool owns_ball,
+                                    bool airborne) {
+    static const uint8_t owner[19] = {
+        12,2,2,5,6,5,6,2,5,9,5,11,12,13,5,5,2,2,18
+    };
+    static const uint8_t nonowner[19] = {
+        0,1,0,3,4,3,4,7,8,3,10,3,0,0,14,15,16,17,0
+    };
+    static const uint8_t stationary_map[19] = {
+        0,1,2,0,0,2,2,7,8,9,10,11,12,13,16,17,16,17,18
+    };
+    static const uint8_t moving[19] = {
+        3,3,5,3,4,5,6,3,8,9,10,11,5,5,14,15,14,15,5
+    };
+    static const uint8_t airborne_map[19] = {
+        0,0,12,0,0,12,12,0,0,12,0,12,12,12,16,17,16,17,12
+    };
+    static const uint8_t boost[19] = {
+        0,1,2,4,4,6,6,7,8,9,10,11,12,13,14,15,16,17,18
+    };
+    static const uint8_t normal[19] = {
+        0,1,2,3,3,5,5,7,8,9,10,11,12,13,14,15,16,17,18
+    };
+    if (state >= 19u) return state;
+    state = stationary ? stationary_map[state] : moving[state];
+    state = boosted ? boost[state] : normal[state];
+    state = owns_ball ? owner[state] : nonowner[state];
+    return airborne ? airborne_map[state] : state;
+}
+
+static bool animation_rom_advance(const uint8_t *bank,
+                                  const uint8_t *descriptor, uint16_t delta,
+                                  uint16_t *accumulator, uint16_t *phase) {
+    uint16_t mode = read_u16(descriptor);
+    uint16_t count = read_u16(descriptor + 6u);
+    if (!count || mode == 2u) return false; /* `$87:AD5B` is a separate path. */
+    *phase %= count;
+    *accumulator = (uint16_t)(*accumulator + delta);
+    {
+        uint16_t duration = read_u16(descriptor + 4u);
+        if (mode == 1u) {
+            uint16_t pointer = duration;
+            size_t offset = pointer >= 0x8000u
+                ? (size_t)(pointer - 0x8000u) + (size_t)*phase * 2u
+                : PLAYER_ANIMATION_BANK84_SIZE;
+            if (offset + 2u > PLAYER_ANIMATION_BANK84_SIZE) return false;
+            duration = read_u16(bank + offset);
+        }
+        /* `$87:ABAD-$AC0C/$ACCD-$AD24` advances at most one frame per
+         * logical pass, even when the accumulator exceeds two durations. */
+        if (*accumulator >= duration) {
+            *accumulator = (uint16_t)(*accumulator - duration);
+            *phase = (uint16_t)((*phase + 1u) % count);
+        }
+    }
+    return true;
+}
+
+bool nba_player_animation_rom_step(const NbaAssetPack *assets,
+                                   uint8_t upper_state, uint8_t lower_state,
+                                   uint8_t direction, uint16_t speed_raw_4a,
+                                   bool alternate_lower, uint16_t variant_raw_6c,
+                                   uint16_t *upper_accumulator,
+                                   uint16_t *lower_accumulator,
+                                   uint16_t *upper_phase,
+                                   uint16_t *lower_phase,
+                                   uint16_t *upper_resource,
+                                   uint16_t *lower_resource) {
+    const uint8_t *bank = animation_bank84(assets, NULL);
+    const uint8_t *upper = animation_descriptor(
+        assets, PLAYER_UPPER_STATE_TABLE, upper_state);
+    const uint8_t *lower = animation_descriptor(
+        assets, alternate_lower ? PLAYER_LOWER_ALT_STATE_TABLE :
+                                  PLAYER_LOWER_STATE_TABLE, lower_state);
+    if (!bank || !upper || !lower || !upper_accumulator ||
+        !lower_accumulator || !upper_phase || !lower_phase ||
+        !upper_resource || !lower_resource) return false;
+    uint16_t lower_mode = read_u16(lower);
+    uint16_t lower_delta = lower_mode == 3u ? speed_raw_4a : 0x0200u;
+    if (!animation_rom_advance(bank, lower, lower_delta,
+                               lower_accumulator, lower_phase)) return false;
+    if ((int16_t)read_u16(upper) < 0) {
+        uint16_t count = read_u16(upper + 6u);
+        if (!count) return false;
+        *upper_accumulator = *lower_accumulator;
+        *upper_phase = (uint16_t)(*lower_phase % count);
+    } else if (!animation_rom_advance(bank, upper, 0x0200u,
+                                      upper_accumulator, upper_phase)) {
+        return false;
+    }
+    *lower_resource = animation_frame_resource(
+        lower, bank, direction, (uint8_t)*lower_phase);
+    *upper_resource = animation_frame_resource(
+        upper, bank, direction, (uint8_t)*upper_phase);
+    /* `$87:AC76-$AC95/$AD38-$AD57`: low upper resources have a second
+     * 40-resource variant. Roster +$08 is copied to actor +$6C at
+     * `$87:B010-$B01A`; facing 0..2 toggles that word before selection. */
+    if (*upper_resource < 0x00F0u &&
+        (uint16_t)(variant_raw_6c ^ (direction < 3u ? 1u : 0u)) == 0u)
+        *upper_resource = (uint16_t)(*upper_resource + 0x0028u);
+    return true;
+}
+
+bool nba_player_gameplay_animation_variant(const NbaAssetPack *assets,
+        uint8_t team, uint8_t roster_slot, uint16_t *variant_raw_6c) {
+    PlayerLabRecord player;
+    if (!variant_raw_6c || !player_record(assets, team, roster_slot, &player))
+        return false;
+    *variant_raw_6c = player.appearance_modifier;
+    return true;
+}
+
 bool nba_player_animation_resources(const NbaAssetPack *assets,
                                     uint8_t upper_state, uint8_t lower_state,
                                     uint8_t direction, uint32_t upper_tick,
@@ -725,26 +881,23 @@ bool nba_player_animation_phases(const NbaAssetPack *assets,
     return true;
 }
 
-static bool animation_resource_top(const NbaAssetPack *assets,
-                                   uint16_t resource_id, int *top) {
-    uint32_t size = 0u;
-    const uint8_t *resource = animation_resource(assets, resource_id, &size);
-    if (!resource || size < 10u || !top) return false;
-    uint16_t count = read_u16(resource) & 0x7FFFu;
-    if (count > 32u || 10u + (size_t)count * 7u > size) return false;
-    int value = 0x7FFF;
-    for (uint16_t i = 0; i < count; ++i) {
-        int y = (int16_t)read_u16(resource + 10u + (size_t)i * 7u + 2u);
-        if (y < value) value = y;
-    }
-    if (value == 0x7FFF) return false;
-    *top = value;
+/* `$87:A6A9-$A6B2` stores `foot_y-head_anchor_y+11` in actor +$AA.
+ * `$80:ADE8-$ADEB/$AE1B-$AE1E` builds that head anchor in DP $B8 by adding
+ * lower and upper $A9:D03E offsets to the foot origin. It is NOT the top of
+ * the head's OBJ parts; head style, jersey overlay and tile extents do not
+ * participate. Preserve the ROM's 16-bit arithmetic. */
+bool nba_player_animation_contact_height_from_resources(
+        const NbaAssetPack *assets, uint16_t upper_resource,
+        uint16_t lower_resource, uint16_t *height) {
+    if (!height || !animation_resource(assets, upper_resource, NULL) ||
+        !animation_resource(assets, lower_resource, NULL))
+        return false;
+    int head_origin = animation_attachment(assets, lower_resource, true) +
+                      animation_attachment(assets, upper_resource, true);
+    *height = (uint16_t)(11 - head_origin);
     return true;
 }
 
-/* `$87:A60D-$A6B2`: after `$80:AD92` composes lower body, upper body,
- * jersey number, and head, the renderer stores `foot_y-top_y+11` in actor
- * +$AA. Rebuild the same extent from raw asset-pack descriptors. */
 bool nba_player_animation_contact_height(const NbaAssetPack *assets,
                                          uint8_t team, uint8_t roster_slot,
                                          uint16_t upper_resource,
@@ -752,41 +905,53 @@ bool nba_player_animation_contact_height(const NbaAssetPack *assets,
                                          uint8_t direction,
                                          uint16_t *height) {
     PlayerLabRecord player;
-    if (!height || !player_record(
-            assets, team, roster_slot, &player)) return false;
-    const uint8_t *bank = animation_bank84(assets, NULL);
-    if (!bank) return false;
-    int lower_top, upper_top, head_top;
-    uint16_t head_resource = (uint16_t)(player.head_resource_base +
-        read_u16(bank + 0x436Eu + (direction & 7u) * 2u));
-    if (!animation_resource_top(assets, lower_resource, &lower_top) ||
-        !animation_resource_top(assets, upper_resource, &upper_top) ||
-        !animation_resource_top(assets, head_resource, &head_top))
-        return false;
-    int upper_origin = animation_attachment(assets, lower_resource, true);
-    int head_origin = upper_origin +
-        animation_attachment(assets, upper_resource, true);
-    int top = lower_top;
-    if (upper_origin + upper_top < top) top = upper_origin + upper_top;
-    static const uint16_t number_resources[8] = {
-        0x0593u, 0xFFFFu, 0x0591u, 0x0592u,
-        0x0593u, 0xFFFFu, 0x0591u, 0x0592u
+    if (!player_record(assets, team, roster_slot, &player)) return false;
+    (void)direction;
+    return nba_player_animation_contact_height_from_resources(
+        assets, upper_resource, lower_resource, height);
+}
+
+/* Small durable witnesses from the live Mesen captures. These run in the
+ * normal gameplay regression without requiring ignored local JSONL files. */
+bool nba_player_animation_self_test(const NbaAssetPack *assets) {
+    static const struct {
+        uint16_t input[10];
+        uint16_t output[6];
+    } cadence[] = {
+        {{0, 0, 2, 0, 1, 0, 0, 0, 0, 0},
+         {0, 0, 0, 0, 0x00F1, 0x068A}},
+        {{5, 5, 3, 0x0328, 0, 0, 0, 0x069E, 0, 7},
+         {0x0200, 0x00C6, 0, 0, 0x002A, 0x0474}},
+        {{5, 5, 3, 0x0370, 0, 0, 0x0200, 0x00C6, 0, 0},
+         {0x0400, 0x0436, 0, 0, 0x002A, 0x0474}},
+        {{5, 5, 3, 0x03CA, 0, 0, 0x0400, 0x0436, 0, 0},
+         {0, 0x0800, 1, 0, 0x002B, 0x0474}},
+        {{3, 3, 6, 0x0326, 0, 0, 0x0400, 0x0400, 7, 7},
+         {0x0726, 0x0726, 7, 7, 0x0114, 0x0493}},
+        {{3, 3, 6, 0x04DA, 0, 0, 0x04BA, 0x04BA, 0, 0},
+         {0x0094, 0x0094, 1, 1, 0x010E, 0x048D}},
+        {{3, 3, 0, 0x036E, 0, 0, 0x0864, 0x0864, 7, 7},
+         {0x02D2, 0x02D2, 0, 0, 0x010D, 0x048C}}
     };
-    uint16_t number_resource = number_resources[direction & 7u];
-    int number_top;
-    if (number_resource != 0xFFFFu &&
-        number_allowed_for_upper(assets, upper_resource) &&
-        animation_resource_top(assets, number_resource, &number_top)) {
-        int number_origin = upper_origin +
-            number_attachment(assets, upper_resource, true);
-        if (number_origin + number_top < top)
-            top = number_origin + number_top;
+    for (size_t i = 0; i < sizeof(cadence) / sizeof(cadence[0]); ++i) {
+        const uint16_t *in = cadence[i].input;
+        uint16_t out[6] = {in[6], in[7], in[8], in[9], 0, 0};
+        if (!nba_player_animation_rom_step(assets, (uint8_t)in[0],
+                (uint8_t)in[1], (uint8_t)in[2], in[3], in[4] != 0u, in[5],
+                &out[0], &out[1], &out[2], &out[3], &out[4], &out[5]) ||
+            memcmp(out, cadence[i].output, sizeof(out)) != 0) return false;
     }
-    if (head_origin + head_top < top) top = head_origin + head_top;
-    int value = 11 - top;
-    if (value < 0) value = 0;
-    if (value > 0xFFFF) value = 0xFFFF;
-    *height = (uint16_t)value;
+    static const uint16_t heights[][3] = {
+        {0x00F0, 0x044C, 55}, {0x00F1, 0x044D, 55},
+        {0x00F1, 0x068A, 61}, {0x00F3, 0x068C, 60},
+        {0x00F4, 0x0450, 54}
+    };
+    for (size_t i = 0; i < sizeof(heights) / sizeof(heights[0]); ++i) {
+        uint16_t height = 0u;
+        if (!nba_player_animation_contact_height_from_resources(
+                assets, heights[i][0], heights[i][1], &height) ||
+            height != heights[i][2]) return false;
+    }
     return true;
 }
 

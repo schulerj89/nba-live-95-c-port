@@ -392,6 +392,158 @@
       "method": "function-vectors",
       "evidence": ".analysis/func-vectors-shot-launch-core-20260826 (12 live launches, 0 mismatches; X/Y and vertical velocity compared across positive/negative and fractional-Z inputs)",
       "date": "2026-08-26"
+    },
+    {
+      "range": "878F13-878F5E",
+      "name": "nba_tipoff_ease_display_direction",
+      "source": "src/nba_tipoff.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-facing-ease-20260826 (1,000 live actor passes, 0 mismatches for shown direction +$52 and cadence +$BE; replay resolves dynamic actor base from DP $96)",
+      "date": "2026-08-26"
+    },
+    {
+      "range": "87B572-87B648",
+      "name": "nba_player_locomotion_state and phase-preserving channel install",
+      "source": "src/nba_player_lab.c + src/nba_tipoff.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-locomotion-map-ownerfix-20260826 (1,000 live calls, 0 mismatches after recapturing complete 16-bit owner pointer $0940/$0941; both channels preserve valid phases and clear only their accumulator)",
+      "date": "2026-08-26"
+    },
+    {
+      "range": "87AAB2-87AB82",
+      "name": "nba_player_animation_rom_step (descriptor setup)",
+      "source": "src/nba_player_lab.c + src/nba_tipoff.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-animation-resolve-live-20260826 (2,000 captured calls; 1,920 unchanged-state common descriptor calls replayed with 0 cadence mismatches; lower mode-2 branch $AB83-$AB97 excluded)",
+      "date": "2026-08-26"
+    },
+    {
+      "range": "87AB85-87AB8F",
+      "name": "nba_player_animation_rom_step (speed-coupled lower delta)",
+      "source": "src/nba_player_lab.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-animation-resolve-live-20260826 (lower descriptor mode 3 uses actor speed +$4A; 1,920 common calls, 0 cadence mismatches)",
+      "date": "2026-08-26"
+    },
+    {
+      "range": "87AB98-87ABC1",
+      "name": "nba_player_animation_rom_step (lower timing and wrap gate)",
+      "source": "src/nba_player_lab.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-animation-resolve-live-20260826 (per-frame/fixed lower timing, accumulator and unlocked wrap gate; 1,920 common calls, 0 cadence mismatches)",
+      "date": "2026-08-26"
+    },
+    {
+      "range": "87AC01-87ACAB",
+      "name": "nba_player_animation_rom_step (lower resource and upper descriptor dispatch)",
+      "source": "src/nba_player_lab.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-animation-resolve-live-20260826 (lower phase/resource and negative/ordinary upper dispatch; rare locked-lower lifecycle $ABC2-$AC00 and mode-2 helper call $ACAC-$ACB3 excluded)",
+      "date": "2026-08-26"
+    },
+    {
+      "range": "87ACB4-87ACE0",
+      "name": "nba_player_animation_rom_step (upper timing and wrap gate)",
+      "source": "src/nba_player_lab.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-animation-resolve-live-20260826 (per-frame/fixed upper timing, accumulator and unlocked wrap gate; 1,920 common calls, 0 cadence mismatches)",
+      "date": "2026-08-26"
+    },
+    {
+      "range": "87AD19-87AD5A",
+      "name": "nba_player_animation_rom_step and resource renderer (upper wrap/resource tail)",
+      "source": "src/nba_player_lab.c + src/nba_tipoff.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-animation-resolve-live-20260826 (upper accumulator/phase/resource tail; 1,920 common calls, 0 cadence mismatches; locked-action lifecycle $ACE1-$AD18 excluded)",
+      "date": "2026-08-26"
+    },
+    {
+      "range": "87B832-87B952",
+      "name": "nba_player_ball_attachment_point_offsets",
+      "source": "src/nba_player_lab.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-pose-point-20260826 (565 live calls, 0 mismatches; 495 selector-0 held-ball points and 70 selector-1 alternate contact points across both native exits)",
+      "date": "2026-08-26"
+    },
+    {
+      "range": "85AF5C-85B127",
+      "name": "nba_tipoff_refresh_offense_roles_end_frame (normalization prefix)",
+      "source": "src/nba_tipoff.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-offense-normalize2-20260826 (100 live calls, 0 mismatches for cached focal point, ownerless flag, nearest actor record, five offense modes, anchor directions and distances; play-strategy continuation at $B128 excluded)",
+      "date": "2026-08-26"
+    },
+    {
+      "range": "85B24C-85B353",
+      "name": "nba_tipoff_update_play_control_end_frame (request-zero cadence)",
+      "source": "src/nba_tipoff.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-play-control2-20260826 (100 live request-zero calls, 0 mismatches; replay completes the shared-exit $B353 store from live DP $AA and preserves its reuse as the descending five-actor counter; request dispatcher $B128-$B24B excluded)",
+      "date": "2026-08-26"
+    },
+    {
+      "range": "87B953-87B995",
+      "name": "nba_player_ball_attachment_point_offsets (vertical composition tail)",
+      "source": "src/nba_player_lab.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-pose-point-20260826 (565 live calls, 0 mismatches for X/Y/Z; Z replays $AC:A9CF - lower-Z - $AC:A583 for both selectors and both native exits)",
+      "date": "2026-08-26"
+    },
+    {
+      "range": "87B649-87B669",
+      "name": "nba_player_ball_attachment_point_offsets (actor-relative X/Y wrapper)",
+      "source": "src/nba_player_lab.c + src/nba_tipoff.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-ball-attach-xy-20260826 (200 live calls, 0 mismatches for final ball $3EEF/$3EF3; actor record is resolved from live DP $96 exactly as the ROM wrapper does)",
+      "date": "2026-08-26"
+    },
+    {
+      "range": "87A6A9-87A6B4",
+      "name": "nba_player_animation_contact_height_from_resources",
+      "source": "src/nba_player_lab.c + src/nba_tipoff.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-contact-height-20260826 (200 live player composites, 0 mismatches for actor +$AA; $80:AE1E proves DP $B8 is the composed head anchor, not the top of the head's OBJ parts; exact lower/upper $A9:D03E offsets replace the inflated visible-bounds approximation)",
+      "date": "2026-08-26"
+    },
+    {
+      "range": "80ADD9-80ADEB",
+      "name": "nba_player_animation_contact_height_from_resources (lower Y anchor)",
+      "source": "src/nba_player_lab.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-contact-height-20260826 (200 live composites verify the signed lower-resource Y anchor contributing to DP $B8 and actor +$AA; unrelated OAM rendering is not claimed)",
+      "date": "2026-08-26"
+    },
+    {
+      "range": "80AE0C-80AE1E",
+      "name": "nba_player_animation_contact_height_from_resources (upper Y anchor)",
+      "source": "src/nba_player_lab.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-contact-height-20260826 (200 live composites verify the signed upper-resource Y offset added to the lower anchor and stored in DP $B8; unrelated OAM rendering is not claimed)",
+      "date": "2026-08-26"
+    },
+    {
+      "range": "87B66A-87B67B",
+      "name": "nba_player_ball_attachment_point_offsets (actor-relative Z wrapper)",
+      "source": "src/nba_player_lab.c + src/nba_tipoff.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-ball-attach-z-20260826 (200 live calls, 0 mismatches for final ball $3EF7; actor record is resolved from live DP $96 and adds the exact composed lower/upper Z offset)",
+      "date": "2026-08-26"
+    },
+    {
+      "range": "87A9E3-87AA01",
+      "name": "nba_gameplay_effect_start",
+      "source": "src/nba_gameplay_effect.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-effect-start-20260826 (2 live effect starts, IDs 3 and 4, 0 mismatches for resource/effect/gate/frame/timer; this proves the shared initializer, not live exercise of every descriptor ID)",
+      "date": "2026-08-26"
+    },
+    {
+      "range": "87AA02-87AAB1",
+      "name": "nba_gameplay_effect_step",
+      "source": "src/nba_gameplay_effect.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-effect-step-live-20260826 (1,000 delayed live dispatches, 0 mismatches for resource/effect/gate/frame/timer: 18 active ID-3/4 calls plus 982 inactive/net calls; the initial 200-call presentation sample is kept separately and not mistaken for active-effect coverage)",
+      "date": "2026-08-26"
     }
   ]
 }

@@ -16,8 +16,8 @@ FORMATION = [
     (-8, -3), (16, 83), (24, -80), (-104, 56), (-96, -59),
 ]
 EXPECTED_RGB = {
-    600: "00728bd409009961093975b89eea8462f6255dd5948622b9dea26d65e9f42e84",
-    1300: "99056ccbf40db2c59036f268565ff4564782706d44494f48c58cbafa2488f0ab",
+    600: "8b09c48101d0549fde9a975962dea16bf6cd74afe8b53b76ade684d76f07b1b4",
+    1300: "0ebc8a86a05e0f0a1c01ee457a1f2a085f685d779e00621fa1d05875dedceb46",
 }
 
 
@@ -322,17 +322,17 @@ def main():
             raise AssertionError(f"ROM strategy play selection did not sustain: {play_codes}")
         play_35 = frame(220)["possession"]
         expected_35 = {
-            "play_step_raw": 0, "play_countdown_raw": -2,
+            "play_step_raw": 0, "play_countdown_raw": 4,
             "play_event_wait_raw": 1, "play_selector_raw": [-1, -1, -1],
         }
         if any(play_35[key] != value for key, value in expected_35.items()):
             raise AssertionError(f"$85:B377/$B2DC play $35 load changed: {play_35}")
         play_35_next = frame(222)["possession"]
         if play_35_next["play_step_raw"] != 0 or \
-                play_35_next["play_countdown_raw"] != -4 or \
+                play_35_next["play_countdown_raw"] != 2 or \
                 play_35_next["play_event_wait_raw"] != 1:
             raise AssertionError(
-                f"$85:B24C event barrier did not retain signed underflow: {play_35_next}")
+                f"$85:B24C event barrier lost DP $AA loop-counter cadence: {play_35_next}")
         assignments = [actor["raw"]["controller_assignment_16"]
                        for actor in frame(220)["actors"]]
         if assignments != [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1]:
@@ -679,10 +679,13 @@ def main():
                 # continues through the shared free-ball tail at `$85:A34A`.
                 # SHOT (5) and BOUNCE (6) are host labels for that same native
                 # path, so either is valid at the score-write observation.
+                # `$85:9D4B` accepts integer Z < $53. Telemetry rounds
+                # the retained fraction after the shared physics tail,
+                # so 82.x may display 83.
                 if match["shot_value_raw"] != 0 or \
                         match["live_state_raw"] != 0x82 or \
                         row["ball"]["state"] not in (5, 6) or \
-                        not 74 <= row["ball"]["z"] <= 82:
+                        not 74 <= row["ball"]["z"] <= 83:
                     raise AssertionError(f"made basket state incomplete: {row}")
                 scoring_side = 0 if delta[0] else 1
                 expected_group = (scoring_side ^ 1) * 5

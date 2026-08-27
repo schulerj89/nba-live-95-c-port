@@ -44,6 +44,23 @@ reports success.
 
 ## Verification tools
 
+- Motion/pose replay tools: `verify_facing_ease_vectors.py`,
+  `verify_locomotion_state_vectors.py`, `verify_animation_cadence_vectors.py`,
+  `verify_pose_point_vectors.py`, `verify_ball_attachment_xy_vectors.py`,
+  `verify_ball_attachment_z_vectors.py`, and `verify_contact_height_vectors.py`
+  each invoke their matching compiled `*_vector_probe.c`. Animation replay
+  compares accumulator/phase/resource outputs and reports upper mode-2 calls
+  separately. Attachment wrappers resolve the actor from live DP `$96`.
+- `verify_offense_normalize_vectors.py` and `verify_play_control_vectors.py`
+  replay cached focal/anchor normalization and the five-actor event barrier.
+  The play-control capture stops before `$85:B353`'s final store, so the
+  verifier completes that store from captured DP `$AA`, not old `$099A`.
+- `verify_effect_vectors.py --mode start|step` uses `effect_vector_probe.c`
+  for `$87:A9E3/$AA02`; delayed captures are required to include active
+  descriptors rather than only the presentation's inactive fallback.
+- `nba_player_animation_self_test` retains seven live cadence/resource and
+  five head-anchor witnesses in production C; the ordinary gameplay tests
+  therefore protect them without needing local `.analysis` captures.
 - `mesen_func_vectors.lua`: generic per-function I/O vector capture. Set
   `NBA95_VEC_ENTRY` to a routine's 24-bit entry PC, `NBA95_VEC_EXITS` to its
   RTS/RTL addresses, and `NBA95_VEC_READS`/`NBA95_VEC_WRITES` to the WRAM

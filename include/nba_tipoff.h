@@ -62,7 +62,15 @@ typedef struct {
     uint8_t lower_animation_state;
     uint16_t upper_animation_tick;
     uint16_t lower_animation_tick;
-    uint16_t upper_animation_phase_raw; /* actor `+$3A` */
+    uint16_t upper_animation_phase_raw; /* compatibility action-gate phase */
+    uint16_t lower_animation_phase_raw;
+    uint16_t rom_upper_animation_phase_raw_3a;
+    uint16_t rom_lower_animation_phase_raw_3c;
+    uint16_t upper_animation_accumulator_raw_42;
+    uint16_t lower_animation_accumulator_raw_44;
+    uint16_t upper_animation_resource_raw_2a;
+    uint16_t lower_animation_resource_raw_2c;
+    bool animation_resources_valid;
     uint8_t base_animation_state_raw_38; /* actor `+$38`, locomotion intent */
     uint16_t upper_animation_lock_raw_46; /* actor `+$46` */
     uint16_t lower_animation_lock_raw_48; /* actor `+$48` */
@@ -103,6 +111,7 @@ typedef struct {
     uint16_t contact_height_raw_aa;   /* actor `+$AA`, `$87:A6A9-A6B2` */
     uint16_t catcher_latch_raw_ae;    /* actor `+$AE`, `$86:BAE0` */
     uint16_t free_throw_launch_half_raw_a8; /* actor `+$A8`, `$86:A2A7` */
+    uint16_t animation_variant_raw_6c; /* roster +$08, `$87:AD3D-$AD57` */
     uint16_t recovery_inhibit_raw;    /* actor `+$7A` */
     uint16_t behavior_flags_raw;      /* actor `+$7E` */
     uint16_t help_request_raw_80;     /* actor `+$80`, `$85:C006` */
@@ -117,6 +126,11 @@ typedef struct {
     int8_t owner_actor;
     uint8_t state;
 } NbaTipoffBall;
+
+/* Exact `$87:8F13-$8F61` facing-ease state transition. */
+void nba_tipoff_ease_display_direction(uint8_t desired,
+                                       uint16_t upper_animation_lock,
+                                       uint8_t *shown, uint8_t *timer);
 
 typedef struct {
     const NbaAssetPack *assets;
@@ -153,6 +167,8 @@ typedef struct {
     uint16_t role_rebuild_raw_09d6;
     uint16_t role_ownerless_raw_09d8;
     uint16_t role_cadence_raw_09d2;
+    uint16_t role_near_orientation_raw_09d4;
+    uint16_t role_nearest_offense_raw_09de;
     int16_t role_focal_x_raw_0918; /* cached `$85:A76D` lookahead X */
     int16_t role_focal_y_raw_091a; /* cached `$85:A76D` lookahead Y */
     uint16_t special_actor_raw;  /* `$09A2`, clear-lane cutter or `$FFFF` */
@@ -245,6 +261,8 @@ bool nba_tipoff_begin_rom_pass(NbaTipoff *tipoff, unsigned passer_slot,
                                unsigned receiver_slot);
 bool nba_tipoff_update_rom_passer(NbaTipoff *tipoff, unsigned slot);
 void nba_tipoff_refresh_team_roles_end_frame(NbaTipoff *tipoff);
+void nba_tipoff_refresh_offense_roles_end_frame(NbaTipoff *tipoff);
+void nba_tipoff_update_play_control_end_frame(NbaTipoff *tipoff);
 void nba_tipoff_refresh_defense_roles_end_frame(NbaTipoff *tipoff);
 /* Verification entry for the ownerless `$85:9A6A-$A7C7` ball driver. */
 NbaGameplayRimResult nba_tipoff_replay_ownerless_ball_entry(

@@ -46,6 +46,34 @@ bool nba_player_sprite_render_split(NbaRenderer *renderer,
                                     uint8_t direction, uint32_t upper_tick,
                                     uint32_t lower_tick, int origin_x,
                                     int origin_y, int scale);
+bool nba_player_sprite_render_resources(NbaRenderer *renderer,
+                                    const NbaAssetPack *assets, uint8_t team,
+                                    uint8_t roster_slot, uint8_t side,
+                                    uint8_t direction,
+                                    uint16_t upper_resource,
+                                    uint16_t lower_resource, int origin_x,
+                                    int origin_y, int scale);
+/* ROM `$87:B572-$B648` preserves a channel phase when the replacement
+ * descriptor can represent it. */
+bool nba_player_animation_frame_count(const NbaAssetPack *assets,
+                                      bool upper, uint8_t state,
+                                      bool alternate_lower,
+                                      uint16_t *count);
+uint8_t nba_player_locomotion_state(uint8_t base_state, bool stationary,
+                                    bool boosted, bool owns_ball,
+                                    bool airborne);
+/* Common descriptor cadence in `$87:AAB2-$AD5A`. Accumulators and phases are
+ * the actor's literal +$42/+$44 and +$3A/+$3C words. */
+bool nba_player_animation_rom_step(const NbaAssetPack *assets,
+                                   uint8_t upper_state, uint8_t lower_state,
+                                   uint8_t direction, uint16_t speed_raw_4a,
+                                   bool alternate_lower, uint16_t variant_raw_6c,
+                                   uint16_t *upper_accumulator,
+                                   uint16_t *lower_accumulator,
+                                   uint16_t *upper_phase,
+                                   uint16_t *lower_phase,
+                                   uint16_t *upper_resource,
+                                   uint16_t *lower_resource);
 bool nba_player_animation_resources(const NbaAssetPack *assets,
                                     uint8_t upper_state, uint8_t lower_state,
                                     uint8_t direction, uint32_t upper_tick,
@@ -65,6 +93,12 @@ bool nba_player_animation_contact_height(const NbaAssetPack *assets,
                                          uint16_t lower_resource,
                                          uint8_t direction,
                                          uint16_t *height);
+bool nba_player_animation_contact_height_from_resources(
+    const NbaAssetPack *assets, uint16_t upper_resource,
+    uint16_t lower_resource, uint16_t *height);
+bool nba_player_gameplay_animation_variant(const NbaAssetPack *assets,
+    uint8_t team, uint8_t roster_slot, uint16_t *variant_raw_6c);
+bool nba_player_animation_self_test(const NbaAssetPack *assets);
 /* Exact `$87:B832-$B952` ball offset composition from ROM animation-resource
  * tables. `mirror_flags_raw` is actor `+$28`; no host directional offsets. */
 bool nba_player_ball_attachment_offsets(const NbaAssetPack *assets,

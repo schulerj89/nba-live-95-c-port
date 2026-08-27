@@ -17,8 +17,8 @@ Current measured coverage:
 | metric | bytes | % of observed executed code |
 |---|---:|---:|
 | observed executed code | 27,901 | 100.0% |
-| documented by ROM-address provenance | 8,855 | 31.7% |
-| verified against live ROM calls | 5,064 | 18.15% |
+| documented by ROM-address provenance | 9,035 | 32.4% |
+| verified against live ROM calls | 5,901 | 21.15% |
 
 These values are generated, not estimated. The detailed per-bank report is
 `docs/progress.md`; the authoritative verified list and evidence paths are in
@@ -26,8 +26,21 @@ These values are generated, not estimated. The detailed per-bank report is
 
 ## Verified gameplay checkpoint
 
-Forty-nine routine slices currently pass emulator-ground-truth replay. The most important
+Sixty-eight routine slices currently pass emulator-ground-truth replay. The most important
 recent slices are:
+
+- `$87:8F13-$8F5E`, `$87:B572-$B648`, and owned common slices of
+  `$87:AAB2-$AD5A`: facing easing, phase-preserving locomotion, exact
+  accumulator cadence, and independent upper/lower resources. The replay
+  compares resource IDs as well as phases; roster `+$08`/actor `+$6C` selects
+  the low upper-body resource variant.
+- `$85:AF5C-$B127` and `$85:B24C-$B353`: cached post-physics focal point,
+  offense anchors, and the five-actor play barrier's live DP `$AA` counter.
+- `$87:B649/$B66A/$B832/$B953`: exact actor-relative ball X/Y/Z from the
+  asset pack. `$80:ADEB/$AE1E` and `$87:A6A9-$A6B4` prove contact height
+  uses the composed head anchor, not the visible top of the head tiles.
+- `$87:A9E3-$AA01/$AA02-$AAB1`: effect initialization and frame dispatch;
+  active IDs 3/4 plus inactive/net paths are replayed, not every effect ID.
 
 - `$86:D652-$D720`, `$86:C88F-$C91D`, `$86:CBC4-$CCCC`,
   `$86:BD41-$BF08`, `$86:C239-$C475`: the native sorted player-contact
@@ -121,6 +134,19 @@ assigned-defender velocity/nudge ordering, catch timer `+$60` ownership,
 same-side catch clock preservation, non-snapping acquisition state, and both
 65816 carry quirks in fractional-Z shot velocity construction.
 
+The current motion/pose increment adds 837 observed-executed verified bytes,
+raising coverage from 18.15% to 21.15% (+3.00 percentage points). Its 6,287
+retained live calls pass with zero owned-output mismatches. It corrects
+phase-zero snapping, low upper-resource variant selection, inflated contact
+heights, cached offense focal timing, and the play barrier's scratch-counter
+cadence. Seven cadence/resource witnesses and five head-anchor heights now
+run in the normal C regression, independent of ignored local captures.
+
+Motion proof is in `.analysis/motion-cadence-proof-20260826/`: 1,300 rendered
+frames, `cpu-motion.mp4`, and gameplay JSONL. Frames 600/1300 were inspected
+before updating the integration hashes. This is progress toward smoother
+movement, not a claim that all gameplay motion now matches the ROM.
+
 Do not infer that a surrounding routine is verified from one verified slice.
 Only ranges present in `docs/verified-routines.json` count as ground-truth
 verified.
@@ -143,6 +169,10 @@ See `tools/README.md` for capture, replay, Ghidra, and regression commands.
 
 ## Active gaps and next work
 
+- Finish upper mode-2 `$87:AD5B` and rare locked-animation lifecycle branches.
+  The exact visual resource phases currently remain separate from the older
+  logical-tick action/contact gates; that integration boundary is explicit
+  and is the next motion-focused target. Do not call it fully ROM-exact yet.
 - Capture enough calls to verify the rare latched owner/CPU pose branch at
   `$86:E4F5-$E544`; the existing six-call sample is insufficient.
 - Continue converting small post-tip CPU decision/animation slices from the
