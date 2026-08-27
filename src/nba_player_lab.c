@@ -796,6 +796,26 @@ bool nba_player_sprite_render_resources(NbaRenderer *renderer,
                                     origin_x, origin_y, scale);
 }
 
+/* $86:E545-$E592: complete unlatched selector, including B37C reversals.
+ * Pack descriptors provide the native bank84 context (also for hard locks). */
+bool nba_player_owner_unlatched_pose(const NbaAssetPack *assets,
+    NbaPlayerAnimationChannels *channels, int16_t vx, int16_t vy,
+    uint16_t requested_direction, uint16_t *facing,
+    bool boosted, bool alternate_lower) {
+    if (!channels || !facing) return false;
+    NbaPlayerAnimationChannels next=*channels;
+    /* E545 copies +50 to +4E before evaluating the wrapped direction gap. */
+    uint8_t direction=nba_gameplay_target_direction(vx,vy,NULL);
+    uint16_t state=((direction-requested_direction)&7u)>=4u?9u:11u;
+    if ((state==9u && next.upper_state==11u) ||
+        (state==11u && next.upper_state==9u)) {
+        if (!nba_player_animation_command(assets,&next,NBA_ANIMATION_REVERSE_BOTH,
+                                         &state,boosted,alternate_lower)) return false;
+    } else next.base_state=state;
+    *channels=next;*facing=requested_direction;
+    return true;
+}
+
 /* `$87:B37C-$B571`: exact independent-channel action installation/cancel.
  * An unlocked replacement preserves a valid phase; nonzero descriptor +2
  * restarts the channel. Negative CURRENT locks reject replacement. */
@@ -956,7 +976,7 @@ static bool animation_channel_advance(const NbaAssetPack *assets,
             }
             return *phase < count;
         }
-        /* `$87:AD86-$ADBB`: idle look-around is held by a randomized timer,
+        /* `$87:AD86-$ADBD`: idle look-around is held by a randomized timer,
          * not a cyclic resource stream. Lower +44 holds its next duration. */
         if (*state != 7) return false;
         *acc = (uint16_t)(*acc + delta);

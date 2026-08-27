@@ -17,14 +17,14 @@ FORMATION = [
     (-8, -3), (16, 83), (24, -80), (-104, 56), (-96, -59),
 ]
 EXPECTED_RGB = {
-    600: "2be148a186ee3bb5def865290628f3c01a4af2af4042f31c4b77402a54297bf7",
-    1300: "a40da51a1ecc1722adc1e0b4d36c431c3eff5de737017632dfb1ef6e717ab74b",
-    # First jumper now uses the packed action locks and pose attachment.
-    3480: "9502395cd897e64c2d6872a0c23fe847f3de65f81fc4e5e76acbd5b7c8ba8890",
-    # Complete shot quality/RNG changes the later possession. Wind-up/jump
-    # remain locked separately by cpu_shot_branches_self_test and ROM replays.
-    6932: "3c49e1e2fc85b811553761ec0b61ed665819545c7b25839292c2e03fb1d7d532",
-    6954: "5e3a331a4c73536509878e1a6471a5a2d057531cc48451f8d659ba05780c78ee",
+    # Reviewed after complete F34F caller ordering and coarse contact facing;
+    # these are C visual regression anchors, not emulator-parity claims.
+    # Independent ROM vectors and semantic endurance guards remain separate.
+    600: "2ec43078864be8fee5627827718b277f1d5f13b07f13e7d9c4b605ba68068d11",
+    1300: "1bf67a06c9213fa0a6c08b8f9b38fe59f335cf4866cca63466787421d31a986f",
+    3480: "dddbef498216467d32aa16bfe350dd696601c0f9c38e8ec9d58ff985c619d35b",
+    6932: "1f2d77a9e5593157fce5bb1eef4cf4641971662b1d0852783aa5821d8d629d9b",
+    6954: "5db1922de7ec1a97776c971012277202bff935acebc8291a4f5f2c3ceacfdea9",
 }
 
 
@@ -157,7 +157,11 @@ def main():
             return rows[number - 1]
 
         live = frame(240)
-        for number in (220, 400, 1800):
+        # Only the pre-whistle prefix is an uninterrupted clock. Correct
+        # owner dispatch now reaches an inbound pause before frame1800.
+        # shot_state_runtime_probe checks the ROM clock helper binding on
+        # every outer frame, including paused/resumed play (two 16k runs).
+        for number in (220, 400):
             expected_clock = 43200 - max(0, number - 220)
             if frame(number)["match"]["match_clock_raw_0928"] != expected_clock:
                 raise AssertionError(

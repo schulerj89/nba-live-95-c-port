@@ -165,6 +165,7 @@ bool nba_gameplay_defense_context_reselect(
     uint16_t random_word, uint16_t *opponent_mode_raw_30);
 uint8_t nba_gameplay_target_direction(int16_t dx, int16_t dy,
                                       uint16_t *distance);
+uint8_t nba_gameplay_contact_facing(int16_t dx, int16_t dy);
 uint8_t nba_gameplay_pass_direction(int16_t dx, int16_t dy,
                                     uint16_t *distance);
 bool nba_gameplay_receiver_candidate_valid(

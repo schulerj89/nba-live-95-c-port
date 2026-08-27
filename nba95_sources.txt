@@ -14,6 +14,7 @@ src/nba_gameplay_debugger.c
 src/nba_gameplay_camera.c
 src/nba_gameplay_ai.c
 src/nba_gameplay_ball.c
+src/nba_owner_flow.c
 src/nba_shot_launch.c
 src/nba_shot_state.c
 src/nba_gameplay_effect.c

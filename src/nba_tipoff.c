@@ -1,6 +1,7 @@
 #include "nba_tipoff.h"
 #include "nba_player_lab.h"
 #include "nba_shot_action.h"
+#include "nba_owner_flow.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -401,7 +402,7 @@ static void cpu_advance_actor_animation(NbaTipoff *tipoff,
     ++actor->upper_animation_tick;
     ++actor->lower_animation_tick;
     if (actor->upper_animation_lock_raw_46 != 0u ||
-        actor->animation_state == 13u || actor->animation_state == 18u ||
+        actor->animation_state == 7u || actor->animation_state == 13u || actor->animation_state == 18u ||
         actor->lower_animation_lock_raw_48 != 0u ||
         (actor->control_mode == 15u && actor->exact_pass_animation) ||
         ((actor->control_mode == 12u || actor->control_mode == 17u) && actor->exact_shot_animation)) {
@@ -416,9 +417,8 @@ static void cpu_advance_actor_animation(NbaTipoff *tipoff,
         if (actor->animation_resources_valid)
             actor_store_animation_channels(actor, &channels);
     } else {
-        /* Keep ordinary locomotion on the already-verified common cadence.
-         * Non-owner state-7 idle RNG adoption remains separate. The held-ball
-         * state-13/18 cadence above is now integrated with exact +B0 state. */
+        /* Ordinary locomotion uses the common descriptor cadence. Mode-2
+         * idle/held states above consume their exact shared RNG/duration. */
         actor->animation_resources_valid = nba_player_animation_rom_step(
             tipoff->assets, actor->animation_state,
             actor->lower_animation_state, actor->direction,
@@ -935,7 +935,6 @@ static bool cpu_move_inbound_actor(NbaTipoff *tipoff, unsigned slot) {
         (tipoff->inbound_transfer_raw != 0u &&
          tipoff->actors[slot].control_mode != 11u)) return false;
     NbaTipoffActor *actor = &tipoff->actors[slot];
-    cpu_update_special_actor(tipoff, slot);
     /* `$86:F4F2-$F520` tests the current actor against the compensated
      * target on every dispatch. `$09BA` is written after arrival and is not
      * a substitute for this geometry test; a recovery carrier may inherit
@@ -1041,6 +1040,121 @@ static bool cpu_update_knockdown_actor(NbaTipoff *tipoff, unsigned slot) {
  * ball/contact work. Keeping the dispatcher separate means a new owner can
  * receive its mode-11 target and velocity without retroactively moving in
  * the already-completed physics pass. */
+typedef struct { NbaTipoff *game; unsigned slot; } CpuOwnerContext;
+
+static NbaOwnerFlow cpu_owner_flow_read(const CpuOwnerContext *c) {
+    NbaTipoff *t=c->game;NbaTipoffActor *a=&t->actors[c->slot];
+    uint8_t rating=0,unused=0;
+    uint8_t team=c->slot<5?t->session->left_team:t->session->right_team;
+    (void)nba_player_gameplay_decision_profiles(t->assets,team,a->roster_slot,&rating,&unused);
+    NbaOwnerFlow s={
+        (uint16_t)c->slot,(uint16_t)(int16_t)t->possession_actor,t->shot_inner_veto_raw,
+        t->fouls.shooting_foul_raw_09bc,t->deferred_shot_foul_phase_raw_0a02,
+        a->team_group_raw_6e,t->owner_team_group_raw_09f4,t->play_code,t->inbound_actor_raw,
+        t->inbound_transfer_raw,t->play_request_raw,t->dead_ball_raw_0968,t->attached_ball_state_raw_09f6,
+        (uint16_t)a->velocity_x,(uint16_t)a->velocity_y,a->movement_direction,a->assignment_base_raw,
+        /* $87:8E7F-8E9C: C6=2 physical ticks, C8=C6<<4=$20 decision units. */
+        t->live_state_raw,t->camera_side_group_raw,a->reaction_threshold,0x20,a->control_mode,
+        a->behavior_timer,a->behavior_flags_raw,(uint16_t)(int16_t)a->controller_assignment_raw,
+        a->recovery_inhibit_raw,rating
+    };
+    return s;
+}
+
+static void cpu_owner_flow_commit(const CpuOwnerContext *c,const NbaOwnerFlow *s) {
+    NbaTipoff *t=c->game;NbaTipoffActor *a=&t->actors[c->slot];
+    /* Only words owned by the caller. Child-specific writes stay in their
+     * normal C subsystem and are re-read after each callback. */
+    t->shot_inner_veto_raw=s->veto_09f8!=0;
+    t->deferred_shot_foul_phase_raw_0a02=s->deferred_0a02;
+    t->owner_team_group_raw_09f4=s->owner_team_09f4;
+    t->play_request_raw=s->request_0994;
+    t->camera_side_group_raw=(uint8_t)s->offense_093a;
+    a->velocity_x=(int16_t)s->vx_0e;a->velocity_y=(int16_t)s->vy_10;
+    a->movement_direction=(uint8_t)s->facing_4e;
+    a->reaction_threshold=s->timer_60;a->control_mode=(uint8_t)s->mode_5e;
+    a->behavior_timer=s->behavior_64;a->behavior_flags_raw=s->flags_7e;
+}
+
+static bool cpu_owner_pose_call(NbaTipoff *t,unsigned slot,unsigned paired) {
+    NbaTipoffActor *a=&t->actors[slot],*other=&t->actors[paired];
+    NbaGameplayOwnerDribbleGate gate=nba_gameplay_owner_dribble_gate(
+        fp_integer_word(a->z_fp),t->fouls.free_throw_state_raw_0978,
+        t->live_state_raw,a->movement_magnitude_raw);
+    if(gate==NBA_GAMEPLAY_OWNER_DRIBBLE_SKIP)return true;
+    NbaGameplayOwnerProximityResult proximity=NBA_GAMEPLAY_OWNER_PROXIMITY_FALLBACK;
+    if(gate==NBA_GAMEPLAY_OWNER_DRIBBLE_CONTINUE)
+        proximity=nba_gameplay_owner_dribble_proximity(t->team_context[slot/5].anchor_x_raw_0a,
+            fp_integer_word(a->x_fp),other->movement_magnitude_raw,a->assignment_distance,
+            other->assignment_direction,t->dead_ball_raw_0968,a->catcher_latch_raw_ae,
+            &a->requested_direction);
+    if(proximity==NBA_GAMEPLAY_OWNER_PROXIMITY_UNLATCHED) {
+        NbaPlayerAnimationChannels channels=actor_animation_channels(a);
+        uint16_t facing=a->movement_direction;
+        if(!nba_player_owner_unlatched_pose(t->assets,&channels,a->velocity_x,a->velocity_y,
+                a->requested_direction,&facing,a->movement_boost_timer!=0,
+                a->free_throw_launch_half_raw_a8!=0))return false;
+        actor_store_animation_channels(a,&channels);
+        a->movement_direction=(uint8_t)facing;
+    } else if(proximity==NBA_GAMEPLAY_OWNER_PROXIMITY_LATCHED) {
+        a->base_animation_state_raw_38=nba_gameplay_owner_latched_pose(a->controller_assignment_raw,
+            t->attached_ball_state_raw_09f6,t->dead_ball_raw_0968,a->assignment_distance,
+            a->requested_direction,&a->movement_direction);
+    } else a->base_animation_state_raw_38=nba_gameplay_owner_dribble_fallback_pose(
+        t->dead_ball_raw_0968,a->catcher_latch_raw_ae);
+    return true;
+}
+
+/* Native formation completion includes the A82C accelerator. Commit it
+ * before B50E selects/leads a receiver, not after the pass has been built. */
+static void cpu_owner_accelerate(NbaTipoff *t,unsigned slot,uint8_t direction) {
+    NbaTipoffActor *a=&t->actors[slot];uint8_t profile=0x58;
+    uint8_t team=slot<5?t->session->left_team:t->session->right_team;
+    (void)nba_player_gameplay_movement_profile(t->assets,team,a->roster_slot,&profile);
+    nba_gameplay_velocity_step(&a->velocity_x,&a->velocity_y,&a->movement_boost_timer,
+        direction,profile,2,t->live_state_raw==0x81 || fp_integer_word(a->z_fp)!=0,
+        (int16_t)t->possession_actor);
+    a->movement_magnitude_raw=actor_distance(a->velocity_x,a->velocity_y);
+    a->velocity_direction_raw_a2=nba_gameplay_target_direction(a->velocity_x,a->velocity_y,NULL);
+    if(direction<8)a->requested_direction=direction;
+}
+
+static bool cpu_owner_flow_call(void *context,NbaOwnerFlow *s,NbaOwnerCall call,unsigned paired) {
+    CpuOwnerContext *c=context;NbaTipoff *t=c->game;
+    NbaTipoffActor *a=&t->actors[c->slot];bool returns=true;
+    cpu_owner_flow_commit(c,s);
+    if(call==NBA_OWNER_CALL_POSE)returns=cpu_owner_pose_call(t,c->slot,paired);
+    else if(call==NBA_OWNER_CALL_CPU) {
+        uint8_t direction=a->movement_direction;
+        CpuMode11Outcome outcome=cpu_dispatch_rom_mode11(t,c->slot,&direction);
+        returns=outcome==CPU_MODE11_NORMAL_RETURN;
+        if(!returns && a->control_mode==13)ball_attach_to_actor(t,c->slot);
+        else if(outcome==CPU_MODE11_CONSUMED_ACTION && direction<8)
+            cpu_owner_accelerate(t,c->slot,direction);
+    } else if(call==NBA_OWNER_CALL_FORMATION) {
+        uint8_t direction=cpu_formation_target_direction(t,c->slot);
+        cpu_owner_accelerate(t,c->slot,direction);
+    } else {
+        int selected=cpu_select_rom_receiver(t,(uint8_t)c->slot);
+        bool special=selected>=0 && (uint16_t)selected==t->special_actor_raw;
+        if(selected>=0) {
+            if(!special)a->reaction_threshold=1;
+            if(nba_tipoff_begin_rom_pass(t,c->slot,(unsigned)selected)) {
+                t->receiver_actor=(uint8_t)selected;
+                NbaTipoffActor *receiver=&t->actors[selected];
+                receiver->control_mode=special?14:10;
+                if(special) {
+                    receiver->mode13_baseline_velocity_x=receiver->velocity_x;
+                    receiver->mode13_baseline_velocity_y=receiver->velocity_y;
+                }
+                cpu_enter_play_state(t,NBA_CPU_PLAY_PASS);
+            }
+        }
+    }
+    *s=cpu_owner_flow_read(c);
+    return returns;
+}
+
 static void cpu_dispatch_normal_actor_behavior(NbaTipoff *tipoff,
                                                unsigned slot) {
     NbaTipoffActor *actor = &tipoff->actors[slot];
@@ -1048,14 +1162,20 @@ static void cpu_dispatch_normal_actor_behavior(NbaTipoff *tipoff,
           actor->control_mode == 11u)) return;
 
     cpu_update_special_actor(tipoff, slot);
-    if (actor->control_mode == 11u &&
-        slot != (unsigned)tipoff->possession_actor) {
-        /* `$86:F3F6-$F40A`: stale mode-11 actors normalize in the behavior
-         * pass, after their previous motion has already been committed. */
-        actor->control_mode = 1u;
-        actor->behavior_timer = 47u;
-        actor->reaction_threshold = 0u;
-        actor->behavior_flags_raw = 0u;
+    if (actor->control_mode == 11u) {
+        CpuOwnerContext context={tipoff,slot};
+        NbaOwnerFlow flow=cpu_owner_flow_read(&context);
+        NbaOwnerFlowResult result=nba_owner_flow_run(&flow,cpu_owner_flow_call,&context);
+        cpu_owner_flow_commit(&context,&flow);
+        /* F43A consumes the prefix's flags/pose writes, but never the
+         * ordinary countdown. Keep its existing continuation separate. */
+        if (result==NBA_OWNER_FLOW_INBOUND)
+            (void)cpu_move_inbound_actor(tipoff,slot);
+        if (result==NBA_OWNER_FLOW_INVALID)
+            fprintf(stderr,"[OWNER FLOW] invalid asset/pair slot=%u base=%04x\n",
+                    slot,actor->assignment_base_raw);
+        actor->action_state=tipoff->cpu_play_state;
+        return;
     }
     if (actor->control_mode == 5u &&
         slot != (unsigned)tipoff->possession_actor) {
@@ -1066,59 +1186,10 @@ static void cpu_dispatch_normal_actor_behavior(NbaTipoff *tipoff,
     }
 
     int x = fp_round(actor->x_fp), y = fp_round(actor->y_fp);
-    /* `$86:E593-$E5AA`, the verified terminal fallback of the larger
-     * `$86:E4A7-$E5AA` selector: the catcher/dead-ball latch selects base 12;
-     * an ordinary owner selects base 5. Nearby owners instead take the
-     * unlatched or latched branch below. `$86:E3CB-$E3DD` repairs special
-     * mode 1-6 bases. Writes affect the next logical physics pass. */
-    if (actor->control_mode == 11u) {
-        NbaGameplayOwnerDribbleGate gate = nba_gameplay_owner_dribble_gate(
-            (int16_t)fp_round(actor->z_fp),
-            tipoff->fouls.free_throw_state_raw_0978,
-            tipoff->live_state_raw, actor->movement_magnitude_raw);
-        if (gate != NBA_GAMEPLAY_OWNER_DRIBBLE_SKIP) {
-            NbaGameplayOwnerProximityResult proximity =
-                NBA_GAMEPLAY_OWNER_PROXIMITY_FALLBACK;
-            if (gate == NBA_GAMEPLAY_OWNER_DRIBBLE_CONTINUE) {
-                unsigned paired = actor->assignment_actor;
-                if (paired < NBA_GAMEPLAY_ACTOR_COUNT) {
-                    NbaTipoffActor *paired_actor = &tipoff->actors[paired];
-                    proximity = nba_gameplay_owner_dribble_proximity(
-                        tipoff->team_context[slot / 5u].anchor_x_raw_0a,
-                        (int16_t)x, paired_actor->movement_magnitude_raw,
-                        actor->assignment_distance,
-                        paired_actor->assignment_direction,
-                        tipoff->dead_ball_raw_0968,
-                        actor->catcher_latch_raw_ae,
-                        &actor->requested_direction);
-                }
-            }
-            if (proximity == NBA_GAMEPLAY_OWNER_PROXIMITY_UNLATCHED) {
-                actor->base_animation_state_raw_38 =
-                    nba_gameplay_owner_unlatched_pose(
-                        actor->velocity_x, actor->velocity_y,
-                        actor->requested_direction, &actor->direction);
-            } else if (proximity == NBA_GAMEPLAY_OWNER_PROXIMITY_LATCHED) {
-                actor->base_animation_state_raw_38 =
-                    nba_gameplay_owner_latched_pose(
-                        actor->controller_assignment_raw,
-                        tipoff->attached_ball_state_raw_09f6,
-                        tipoff->dead_ball_raw_0968,
-                        actor->assignment_distance, actor->requested_direction,
-                        &actor->movement_direction);
-            } else {
-                actor->base_animation_state_raw_38 =
-                    nba_gameplay_owner_dribble_fallback_pose(
-                        tipoff->dead_ball_raw_0968,
-                        actor->catcher_latch_raw_ae);
-            }
-        }
-    } else if (actor->control_mode >= 1u &&
-               actor->control_mode <= 6u &&
-               (actor->animation_state == 8u ||
-                actor->animation_state == 10u)) {
+    /* $86:E3CB-E3DD: modes 1-6 repair special locomotion bases. */
+    if (actor->control_mode >= 1u && actor->control_mode <= 6u &&
+        (actor->animation_state == 8u || actor->animation_state == 10u))
         actor->base_animation_state_raw_38 = 3u;
-    }
 
     bool decision_due = cpu_active_decision_due(tipoff, slot);
     uint8_t direction = actor->movement_direction;
@@ -1150,46 +1221,7 @@ static void cpu_dispatch_normal_actor_behavior(NbaTipoff *tipoff,
         apply_velocity_step = true;
     } else if (decision_due) {
         uint8_t mode = actor->control_mode;
-        if (mode == 11u && tipoff->live_state_raw != 0x82u &&
-                slot == (unsigned)tipoff->possession_actor &&
-                actor->controller_assignment_raw < 0) {
-            CpuMode11Outcome outcome = cpu_dispatch_rom_mode11(
-                tipoff, slot, &direction);
-            if (outcome != CPU_MODE11_NORMAL_RETURN) {
-                if (actor->control_mode == 13u) {
-                    ball_attach_to_actor(tipoff, slot);
-                    actor->action_state = tipoff->cpu_play_state;
-                    return;
-                }
-                apply_velocity_step =
-                    outcome == CPU_MODE11_CONSUMED_ACTION && direction < 8u;
-            } else {
-                if (actor->recovery_inhibit_raw == 0u) {
-                    direction = cpu_formation_target_direction(tipoff, slot);
-                    apply_velocity_step = true;
-                }
-                int selected = cpu_select_rom_receiver(tipoff, (uint8_t)slot);
-                bool special_receiver = selected >= 0 &&
-                    (uint16_t)selected == tipoff->special_actor_raw;
-                if (selected >= 0) {
-                    if (!special_receiver) actor->reaction_threshold = 1u;
-                    if (nba_tipoff_begin_rom_pass(
-                            tipoff, slot, (unsigned)selected)) {
-                        tipoff->receiver_actor = (uint8_t)selected;
-                        tipoff->actors[selected].control_mode =
-                            special_receiver ? 14u : 10u;
-                        if (special_receiver) {
-                            NbaTipoffActor *receiver = &tipoff->actors[selected];
-                            receiver->mode13_baseline_velocity_x =
-                                receiver->velocity_x;
-                            receiver->mode13_baseline_velocity_y =
-                                receiver->velocity_y;
-                        }
-                        cpu_enter_play_state(tipoff, NBA_CPU_PLAY_PASS);
-                    }
-                }
-            }
-        } else if ((mode == 1u || mode == 3u || mode == 5u) &&
+        if ((mode == 1u || mode == 3u || mode == 5u) &&
                 actor->controller_assignment_raw < 0 &&
                 actor->recovery_inhibit_raw == 0u) {
             direction = cpu_formation_target_direction(tipoff, slot);
@@ -1235,6 +1267,71 @@ static void cpu_dispatch_normal_actor_behavior(NbaTipoff *tipoff,
  * helpers must receive +4E (not +52), retain +B0, and publish pack resources. */
 static bool cpu_owner_pose_animation_self_test(const NbaAssetPack *assets,
                                                NbaSession *session) {
+    /* Runtime bindings: stop-before-pose, base (+74) not current (+76),
+     * lost-owner immediate return, and no direction clobber on timer hold. */
+    {
+        NbaTipoff game={0};game.assets=assets;game.session=session;
+        game.possession_actor=0;game.live_state_raw=2;
+        game.special_actor_raw=NBA_GAMEPLAY_UNKNOWN_WORD;
+        NbaTipoffActor *a=&game.actors[0];
+        a->control_mode=11;a->controller_assignment_raw=-1;
+        a->assignment_base_raw=0xffff;a->assignment_actor=1;
+        a->reaction_threshold=100;a->direction=6;a->movement_direction=7;
+        a->velocity_x=0x100;game.dead_ball_raw_0968=1;game.attached_ball_state_raw_09f6=2;
+        cpu_dispatch_normal_actor_behavior(&game,0);
+        if(a->velocity_x || a->velocity_y || a->movement_direction!=2 ||
+           a->direction!=6 || a->reaction_threshold!=68)return false;
+        game.possession_actor=1;a->control_mode=11;a->reaction_threshold=0;
+        a->behavior_flags_raw=0xffff;a->velocity_x=0x80;
+        game.dead_ball_raw_0968=0;
+        cpu_dispatch_normal_actor_behavior(&game,0);
+        if(a->control_mode!=1 || a->reaction_threshold!=0 || a->behavior_timer!=47 ||
+           a->behavior_flags_raw || a->velocity_x!=0x80)return false;
+        game.possession_actor=0;game.live_state_raw=0x82;game.shot_inner_veto_raw=true;
+        a->control_mode=11;a->reaction_threshold=100;a->team_group_raw_6e=5;
+        cpu_dispatch_normal_actor_behavior(&game,0);
+        if(game.shot_inner_veto_raw || game.owner_team_group_raw_09f4!=5 ||
+           a->reaction_threshold!=100 || a->control_mode!=11)return false;
+        game.live_state_raw=2;a->team_group_raw_6e=0;
+        /* The real animation dispatcher, including RNG and resolved assets. */
+        a->animation_state=a->lower_animation_state=a->base_animation_state_raw_38=7;
+        a->animation_upper_queue_cursor_raw_18=a->animation_lower_queue_cursor_raw_1a=0xffff;
+        a->upper_animation_accumulator_raw_42=0x600;a->lower_animation_accumulator_raw_44=0x600;
+        a->movement_magnitude_raw=0;game.rng.state=0x9146;
+        for(unsigned tick=0;tick<100;++tick) {
+            NbaPlayerAnimationChannels expected=actor_animation_channels(a);
+            uint16_t rng=game.rng.state,ur=0,lr=0;
+            if(!nba_player_animation_step_channels(assets,&expected,a->direction,0,
+                    0x200,false,0,&rng,&ur,&lr))return false;
+            cpu_advance_actor_animation(&game,a);
+            NbaPlayerAnimationChannels actual=actor_animation_channels(a);
+            if(memcmp(&expected,&actual,sizeof(actual)) || rng!=game.rng.state ||
+               !a->animation_resources_valid || ur!=a->upper_animation_resource_raw_2a ||
+               lr!=a->lower_animation_resource_raw_2c)return false;
+        }
+        if(game.rng.state==0x9146)return false;
+        /* Opposite pose reverses its lower phase without replacing the
+         * display-facing word or resolving current resources prematurely. */
+        for(unsigned state=9;state<=11;state+=2) {
+            a->animation_state=a->lower_animation_state=(uint8_t)state;
+            a->rom_upper_animation_phase_raw_3a=1;a->rom_lower_animation_phase_raw_3c=1;
+            a->control_mode=11;a->reaction_threshold=100;game.possession_actor=0;
+            a->assignment_base_raw=2;a->assignment_actor=2;a->assignment_current_raw=4;
+            a->assignment_distance=0;a->catcher_latch_raw_ae=0;
+            a->velocity_x=0x100;a->velocity_y=0;a->direction=5;
+            game.actors[1].assignment_direction=(uint8_t)(state==9?2:6);
+            uint16_t ur=a->upper_animation_resource_raw_2a,lr=a->lower_animation_resource_raw_2c;
+            NbaPlayerAnimationChannels expected=actor_animation_channels(a);
+            uint16_t facing=0;
+            if(!nba_player_owner_unlatched_pose(assets,&expected,0x100,0,
+                    game.actors[1].assignment_direction,&facing,false,false))return false;
+            cpu_dispatch_normal_actor_behavior(&game,0);
+            NbaPlayerAnimationChannels actual=actor_animation_channels(a);
+            if(memcmp(&expected,&actual,sizeof(actual)) || a->movement_direction!=facing ||
+               a->direction!=5 || ur!=a->upper_animation_resource_raw_2a ||
+               lr!=a->lower_animation_resource_raw_2c)return false;
+        }
+    }
     for (unsigned distance=16;distance<=17;++distance) {
         NbaTipoff game={0};
         game.assets=assets;game.session=session;game.possession_actor=0;
@@ -1243,7 +1340,8 @@ static bool cpu_owner_pose_animation_self_test(const NbaAssetPack *assets,
         NbaTipoffActor *a=&game.actors[0];
         a->control_mode=11;a->controller_assignment_raw=-1;a->behavior_timer=100;
         a->reaction_threshold=100; /* +60: no new CPU decision during this held-pose case */
-        a->assignment_actor=1;a->assignment_distance=(uint16_t)distance;
+        a->assignment_actor=2;a->assignment_base_raw=2;a->assignment_current_raw=4;
+        a->assignment_distance=(uint16_t)distance;
         a->catcher_latch_raw_ae=1;a->direction=4;a->movement_direction=4;
         a->upper_phase_target_raw_b0=0x8007;
         a->animation_upper_queue_cursor_raw_18=a->animation_lower_queue_cursor_raw_1a=0xFFFF;
@@ -1816,9 +1914,9 @@ static bool cpu_try_player_knockdown_contact(NbaTipoff *tipoff,
     victim->behavior_flags_raw |= 6u;
     victim->control_mode = 8u;
     victim->pass_direction_raw = 0u;
-    uint8_t impact_direction = nba_gameplay_pass_direction(
-        victim->velocity_x, victim->velocity_y, NULL);
-    victim->movement_direction = impact_direction ^ 4u;
+    /* $86:C217 calls F02D (eight directions), NOT F3C3 (fine pass angle). */
+    victim->movement_direction = nba_gameplay_contact_facing(
+        victim->velocity_x, victim->velocity_y);
     victim->direction = victim->movement_direction;
     cpu_record_player_contact(
         tipoff, victim_slot, hitter_slot, 0x86BFBAu);
@@ -1926,9 +2024,8 @@ static void cpu_apply_pose_special_impulse(NbaTipoff *tipoff,
         tipoff->pass_receiver_raw = -1;
     t->control_mode = 8u;
     t->pass_direction_raw = 0u;
-    uint8_t impact_direction = nba_gameplay_pass_direction(
-        base_x, base_y, NULL);
-    t->movement_direction = impact_direction ^ 4u;
+    /* $86:CB5E has the same coarse F02D facing contract. */
+    t->movement_direction = nba_gameplay_contact_facing(base_x,base_y);
     t->direction = t->movement_direction;
 }
 
@@ -5723,7 +5820,8 @@ static void cpu_update_all_actors(NbaTipoff *tipoff) {
 
 static void cpu_update_actor_behaviors(NbaTipoff *tipoff) {
     for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
-        if (cpu_move_inbound_actor(tipoff, actor)) continue;
+        /* Even inbound owners enter F34F; F3DA selects the separate F43A
+         * continuation only after the common flag/pose prefix. */
         cpu_dispatch_normal_actor_behavior(tipoff, actor);
     }
 }

@@ -397,6 +397,31 @@ correspondence and prints decoded instruction lengths. The 239-instruction
 pre-code census stays fixed; `docs/shot-state-plan.md` separates finished
 helpers from pending timeout/period/substitution caller integration.
 
+### Owner caller, reversal, and idle cadence
+
+`docs/owner-flow-plan.md` records the 145-instruction table, caller/callee
+proof boundaries, raw capture locations, and remaining defensive idle
+selection work. `build.ps1 -Test` replays all 294 durable witnesses, checks
+the 31/22/92 instruction census, runtime bindings, and unforced special-shot
+reachability in two 200,000-frame games.
+
+```powershell
+.\tools\capture_owner_flow.ps1 -OutputDir .analysis/owner-new/unlatched -Kind unlatched -Controlled
+.\tools\capture_owner_flow.ps1 -OutputDir .analysis/owner-new/flow -Kind flow -Controlled
+.\tools\capture_owner_flow.ps1 -OutputDir .analysis/owner-new/idle -Kind idle -Controlled
+.\tools\build_vector_probe.ps1 -Name owner_flow_vector_probe
+python tools/verify_owner_flow_vectors.py --normalized --require-census --vectors tests/fixtures/owner-flow-witnesses.json --probe build/owner_flow_vector_probe.exe --pack build/nba95_assets.pak
+```
+
+Use a fresh capture directory and require `capture_complete.txt`.
+`DumpOwnerFlow.java` takes output-directory and bank86/87, labels/comments
+the native routines, and prints instruction lengths. Supplying that output
+to the verifier's `--listing-dir` checks exact PC sets and decode continuity.
+Negative-lock reversal fixtures supply valid bank84 descriptor context;
+arbitrary stale scratch-bank reads are not the portable asset-pack contract.
+Recorded child outputs in the owner oracle verify caller ordering, not the
+child implementation itself. No emulator process is needed by the port.
+
 ### Other utilities
 
 The remaining `mesen_*.lua`, Python render/decoder helpers, `spc_render_main.c`,

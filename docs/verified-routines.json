@@ -67,11 +67,11 @@
     },
     {
       "range": "86E545-86E592",
-      "name": "nba_gameplay_owner_unlatched_pose",
-      "source": "src/nba_gameplay_ball.c",
-      "method": "function-vectors",
-      "evidence": ".analysis/func-vectors-owner-unlatched-pose-20260825 (158 live calls, 0 mismatches, 0 orphan exits; 55 pose-9 and 103 pose-11 results; changed-byte audit limited writes to actor +$38/+$4E)",
-      "date": "2026-08-25"
+      "name": "nba_player_owner_unlatched_pose",
+      "source": "src/nba_player_lab.c + src/nba_tipoff.c",
+      "method": "full-channel ROM replay + runtime binding",
+      "evidence": "tests/fixtures/owner-flow-witnesses.json; 124 ROM calls (100 controlled, 24 natural), all 31 instruction starts, full 18 channel words plus facing/resources and unchanged-actor-byte audit. E574/E586 reverse lower phase and preserve upper phase via B37C. Hard-lock fixtures explicitly supply native descriptor bank84. Supersedes incomplete two-output claim; docs/owner-flow-plan.md.",
+      "date": "2026-08-27"
     },
     {
       "range": "859192-8593F4",
@@ -598,7 +598,7 @@
       "name": "nba_player_animation_step_channels (lower locked-action completion/queue)",
       "source": "src/nba_player_lab.c",
       "method": "function-vectors",
-      "evidence": ".analysis/func-vectors-action-cadence-20260826 (6,000 live post-locomotion calls, zero mismatches/exclusions for 17 channel/queue words, RNG and both resources; includes 12 state-changing completions, queued 31->34 and 40->36, 21 state-7 entries and 2 RNG-changing calls. Upper special states 13/18 are excluded from this claim. Ordinary idle mode-2 runtime RNG integration remains deferred.)",
+      "evidence": ".analysis/func-vectors-action-cadence-20260826 (6,000 live post-locomotion calls, zero mismatches/exclusions for 17 channel/queue words, RNG and both resources; includes 12 state-changing completions, queued 31->34 and 40->36, 21 state-7 entries and 2 RNG-changing calls. Upper special states 13/18 are excluded from this claim. Idle cadence runtime binding adopted in docs/owner-flow-plan.md; upstream defensive idle selection remains separate.)",
       "date": "2026-08-26"
     },
     {
@@ -606,7 +606,7 @@
       "name": "nba_player_animation_step_channels (upper locked-action completion/queue)",
       "source": "src/nba_player_lab.c",
       "method": "function-vectors",
-      "evidence": ".analysis/func-vectors-action-cadence-20260826 (6,000 live post-locomotion calls, zero mismatches/exclusions for 17 channel/queue words, RNG and both resources; includes 12 state-changing completions, queued 31->34 and 40->36, 21 state-7 entries and 2 RNG-changing calls. Upper special states 13/18 are excluded from this claim. Ordinary idle mode-2 runtime RNG integration remains deferred.)",
+      "evidence": ".analysis/func-vectors-action-cadence-20260826 (6,000 live post-locomotion calls, zero mismatches/exclusions for 17 channel/queue words, RNG and both resources; includes 12 state-changing completions, queued 31->34 and 40->36, 21 state-7 entries and 2 RNG-changing calls. Upper special states 13/18 are excluded from this claim. Idle cadence runtime binding adopted in docs/owner-flow-plan.md; upstream defensive idle selection remains separate.)",
       "date": "2026-08-26"
     },
     {
@@ -614,7 +614,7 @@
       "name": "nba_player_animation_step_channels (lower special-cadence dispatch)",
       "source": "src/nba_player_lab.c",
       "method": "function-vectors",
-      "evidence": ".analysis/func-vectors-action-cadence-20260826 (6,000 live post-locomotion calls, zero mismatches/exclusions for 17 channel/queue words, RNG and both resources; includes 12 state-changing completions, queued 31->34 and 40->36, 21 state-7 entries and 2 RNG-changing calls. Upper special states 13/18 are excluded from this claim. Ordinary idle mode-2 runtime RNG integration remains deferred.)",
+      "evidence": ".analysis/func-vectors-action-cadence-20260826 (6,000 live post-locomotion calls, zero mismatches/exclusions for 17 channel/queue words, RNG and both resources; includes 12 state-changing completions, queued 31->34 and 40->36, 21 state-7 entries and 2 RNG-changing calls. Upper special states 13/18 are excluded from this claim. Idle cadence runtime binding adopted in docs/owner-flow-plan.md; upstream defensive idle selection remains separate.)",
       "date": "2026-08-26"
     },
     {
@@ -622,23 +622,23 @@
       "name": "nba_player_animation_step_channels (upper special-cadence dispatch)",
       "source": "src/nba_player_lab.c",
       "method": "function-vectors",
-      "evidence": ".analysis/func-vectors-action-cadence-20260826 (6,000 live post-locomotion calls, zero mismatches/exclusions for 17 channel/queue words, RNG and both resources; includes 12 state-changing completions, queued 31->34 and 40->36, 21 state-7 entries and 2 RNG-changing calls. Upper special states 13/18 are excluded from this claim. Ordinary idle mode-2 runtime RNG integration remains deferred.)",
+      "evidence": ".analysis/func-vectors-action-cadence-20260826 (6,000 live post-locomotion calls, zero mismatches/exclusions for 17 channel/queue words, RNG and both resources; includes 12 state-changing completions, queued 31->34 and 40->36, 21 state-7 entries and 2 RNG-changing calls. Upper special states 13/18 are excluded from this claim. Idle cadence runtime binding adopted in docs/owner-flow-plan.md; upstream defensive idle selection remains separate.)",
       "date": "2026-08-26"
     },
     {
-      "range": "87AD5B-87ADBB",
+      "range": "87AD5B-87ADBD",
       "name": "nba_player_animation_step_channels (mode-2 lower and upper state-7 timer)",
       "source": "src/nba_player_lab.c",
       "method": "function-vectors",
-      "evidence": ".analysis/func-vectors-action-cadence-20260826 (6,000 live post-locomotion calls, zero mismatches/exclusions for 17 channel/queue words, RNG and both resources; includes 12 state-changing completions, queued 31->34 and 40->36, 21 state-7 entries and 2 RNG-changing calls. Upper special states 13/18 are excluded from this claim. Ordinary idle mode-2 runtime RNG integration remains deferred.)",
-      "date": "2026-08-26"
+      "evidence": ".analysis/func-vectors-action-cadence-20260826 (6,000 live post-locomotion calls, zero mismatches/exclusions for 17 channel/queue words, RNG and both resources; includes 12 state-changing completions, queued 31->34 and 40->36, 21 state-7 entries and 2 RNG-changing calls. Upper special states 13/18 are excluded from this claim. Idle cadence runtime binding adopted in docs/owner-flow-plan.md; upstream defensive idle selection remains separate.) Additional 70 state7 ROM calls (48 controlled,22 natural), all 22 AD86-ADBD instruction starts replayed with RNG and resource outputs. Runtime binding covers 100 ticks. Extended ADBB endpoint to include its full three-byte JMP; not a new instruction. No claim of natural C idle selection.",
+      "date": "2026-08-27"
     },
     {
       "range": "87AEBD-87AEC2",
       "name": "nba_player_animation_step_channels (special-cadence accumulator return)",
       "source": "src/nba_player_lab.c",
       "method": "function-vectors",
-      "evidence": ".analysis/func-vectors-action-cadence-20260826 (6,000 live post-locomotion calls, zero mismatches/exclusions for 17 channel/queue words, RNG and both resources; includes 12 state-changing completions, queued 31->34 and 40->36, 21 state-7 entries and 2 RNG-changing calls. Upper special states 13/18 are excluded from this claim. Ordinary idle mode-2 runtime RNG integration remains deferred.)",
+      "evidence": ".analysis/func-vectors-action-cadence-20260826 (6,000 live post-locomotion calls, zero mismatches/exclusions for 17 channel/queue words, RNG and both resources; includes 12 state-changing completions, queued 31->34 and 40->36, 21 state-7 entries and 2 RNG-changing calls. Upper special states 13/18 are excluded from this claim. Idle cadence runtime binding adopted in docs/owner-flow-plan.md; upstream defensive idle selection remains separate.)",
       "date": "2026-08-26"
     },
     {
@@ -967,6 +967,62 @@
       "source": "src/nba_tipoff.c",
       "method": "function-vectors",
       "evidence": "tools/ghidra/DumpShotStateMap.java proves JSL 8798EA before actor pass. Replayed fatigue body plus tools/shot_state_runtime_probe.c verifies dispatcher configuration, active roster, boost inputs, timer sequencing and committed outputs for 32000 C frames with fatigue OFF/ON. This is a caller binding, not whole-scheduler cycle parity.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "86F34F-86F389",
+      "name": "nba_owner_flow_run (owner flags / team / play request)",
+      "source": "src/nba_owner_flow.c + src/nba_tipoff.c",
+      "method": "ROM caller-boundary replay + runtime binding",
+      "evidence": "tests/fixtures/owner-flow-witnesses.json; 1,901 complete calls (44 controlled,1,857 natural), all 22 instruction starts in this slice covered (92 across caller). Compare 27 persistent/input words and each child-call entry/exit in order. Recorded child outputs verify caller composition only; child bodies keep separate proofs. Natural C8=32, CPU nonlocal-return test, runtime stop/base-pair/early-return bindings. F43A body excluded. docs/owner-flow-plan.md.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "86F38A-86F3B6",
+      "name": "nba_owner_flow_run (held-ball stop and facing)",
+      "source": "src/nba_owner_flow.c + src/nba_tipoff.c",
+      "method": "ROM caller-boundary replay + runtime binding",
+      "evidence": "tests/fixtures/owner-flow-witnesses.json; 1,901 complete calls (44 controlled,1,857 natural), all 17 instruction starts in this slice covered (92 across caller). Compare 27 persistent/input words and each child-call entry/exit in order. Recorded child outputs verify caller composition only; child bodies keep separate proofs. Natural C8=32, CPU nonlocal-return test, runtime stop/base-pair/early-return bindings. F43A body excluded. docs/owner-flow-plan.md.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "86F3B7-86F3CA",
+      "name": "nba_owner_flow_run (base-pair pose call)",
+      "source": "src/nba_owner_flow.c + src/nba_tipoff.c",
+      "method": "ROM caller-boundary replay + runtime binding",
+      "evidence": "tests/fixtures/owner-flow-witnesses.json; 1,901 complete calls (44 controlled,1,857 natural), all 8 instruction starts in this slice covered (92 across caller). Compare 27 persistent/input words and each child-call entry/exit in order. Recorded child outputs verify caller composition only; child bodies keep separate proofs. Natural C8=32, CPU nonlocal-return test, runtime stop/base-pair/early-return bindings. F43A body excluded. docs/owner-flow-plan.md.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "86F3CB-86F3DC",
+      "name": "nba_owner_flow_run (ownership and inbound boundary)",
+      "source": "src/nba_owner_flow.c + src/nba_tipoff.c",
+      "method": "ROM caller-boundary replay + runtime binding",
+      "evidence": "tests/fixtures/owner-flow-witnesses.json; 1,901 complete calls (44 controlled,1,857 natural), all 7 instruction starts in this slice covered (92 across caller). Compare 27 persistent/input words and each child-call entry/exit in order. Recorded child outputs verify caller composition only; child bodies keep separate proofs. Natural C8=32, CPU nonlocal-return test, runtime stop/base-pair/early-return bindings. F43A body excluded. docs/owner-flow-plan.md.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "86F3DD-86F3F5",
+      "name": "nba_owner_flow_run (signed decision countdown)",
+      "source": "src/nba_owner_flow.c + src/nba_tipoff.c",
+      "method": "ROM caller-boundary replay + runtime binding",
+      "evidence": "tests/fixtures/owner-flow-witnesses.json; 1,901 complete calls (44 controlled,1,857 natural), all 11 instruction starts in this slice covered (92 across caller). Compare 27 persistent/input words and each child-call entry/exit in order. Recorded child outputs verify caller composition only; child bodies keep separate proofs. Natural C8=32, CPU nonlocal-return test, runtime stop/base-pair/early-return bindings. F43A body excluded. docs/owner-flow-plan.md.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "86F3F6-86F40A",
+      "name": "nba_owner_flow_run (lost-owner normalization and return)",
+      "source": "src/nba_owner_flow.c + src/nba_tipoff.c",
+      "method": "ROM caller-boundary replay + runtime binding",
+      "evidence": "tests/fixtures/owner-flow-witnesses.json; 1,901 complete calls (44 controlled,1,857 natural), all 8 instruction starts in this slice covered (92 across caller). Compare 27 persistent/input words and each child-call entry/exit in order. Recorded child outputs verify caller composition only; child bodies keep separate proofs. Natural C8=32, CPU nonlocal-return test, runtime stop/base-pair/early-return bindings. F43A body excluded. docs/owner-flow-plan.md.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "86F40B-86F439",
+      "name": "nba_owner_flow_run (rating reload / CPU / formation / receiver)",
+      "source": "src/nba_owner_flow.c + src/nba_tipoff.c",
+      "method": "ROM caller-boundary replay + runtime binding",
+      "evidence": "tests/fixtures/owner-flow-witnesses.json; 1,901 complete calls (44 controlled,1,857 natural), all 19 instruction starts in this slice covered (92 across caller). Compare 27 persistent/input words and each child-call entry/exit in order. Recorded child outputs verify caller composition only; child bodies keep separate proofs. Natural C8=32, CPU nonlocal-return test, runtime stop/base-pair/early-return bindings. F43A body excluded. docs/owner-flow-plan.md.",
       "date": "2026-08-27"
     }
   ]

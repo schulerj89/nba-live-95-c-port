@@ -39,6 +39,11 @@ static int exercise(const NbaAssetPack *pack,unsigned enabled) {
             if(!nba_shot_fatigue_step(pack,&expected))return 2;
         }
         nba_tipoff_update(&game,&input);
+        if(frame>NBA_TIPOFF_BREAK_FRAME && game.match_clock_raw_0928!=clock.clock) {
+            fprintf(stderr,"clock binding frame=%u live=%04x got=%04x expected=%04x\n",
+                frame,before.live_state_raw,game.match_clock_raw_0928,clock.clock);
+            return 11;
+        }
         if(memcmp(&expected,&game.fatigue,sizeof(expected)))return 3;
         if(game.fatigue.playing_seconds[0]!=before.fatigue.playing_seconds[0])++updates;
         for(unsigned i=0;i<24;++i) {

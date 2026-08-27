@@ -103,6 +103,12 @@ typedef enum {
 bool nba_player_animation_command(const NbaAssetPack *assets,
     NbaPlayerAnimationChannels *channels, NbaPlayerAnimationCommand command,
     uint16_t *requested_state, bool boosted, bool alternate_lower);
+/* $86:E545-E592, including B37C reversal; writes +4E, never display +52.
+ * Current resource IDs remain untouched until the next animation cadence. */
+bool nba_player_owner_unlatched_pose(const NbaAssetPack *assets,
+    NbaPlayerAnimationChannels *channels, int16_t vx, int16_t vy,
+    uint16_t requested_direction, uint16_t *facing,
+    bool boosted, bool alternate_lower);
 /* Common/action cadence plus mode-2 states 7/13/18, using the ROM $07F6 LFSR.
  * Invalid inputs fail atomically without changing channels/RNG/resources. */
 bool nba_player_animation_step_channels(const NbaAssetPack *assets,

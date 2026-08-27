@@ -7,7 +7,7 @@ static int exercise(const NbaAssetPack *pack,bool reverse,unsigned *total_specia
     nba_session_init(&session);
     if(reverse) {session.left_team=18;session.right_team=3;}
     if(!nba_tipoff_init(&game,pack,&session))return 3;
-    unsigned states[2]={0},first[2]={0},serial=0,specials=0;
+    unsigned states[3]={0},first[3]={0},serial=0,specials=0;
     int special_actor=-1;unsigned selected_frame=0,pose=0;bool airborne=false;
     for(unsigned frame=1;frame<=200000;++frame) {
         uint16_t prior_phase=special_actor<0?0:game.actors[special_actor].rom_upper_animation_phase_raw_3a;
@@ -25,11 +25,12 @@ static int exercise(const NbaAssetPack *pack,bool reverse,unsigned *total_specia
         }
         for(unsigned i=0;i<10;++i) {
             const NbaTipoffActor *a=&game.actors[i];
-            if(a->animation_state==13 || a->animation_state==18) {
-                unsigned which=a->animation_state==18;
+            if(a->animation_state==7 || a->animation_state==13 || a->animation_state==18) {
+                unsigned which=a->animation_state==7?2:(a->animation_state==18);
+                unsigned limit=which==2?3:(which?8:2);
                 ++states[which];if(!first[which])first[which]=frame;
                 if(!a->animation_resources_valid ||
-                   a->rom_upper_animation_phase_raw_3a>=(which?8:2))return 4;
+                   a->rom_upper_animation_phase_raw_3a>=limit)return 4;
                 NbaGameplayTelemetry telemetry={0};
                 nba_tipoff_capture_telemetry(&game,&input,&telemetry);
                 if(telemetry.actors[i].animation_phase_target_raw_b0!=a->upper_phase_target_raw_b0)return 11;
@@ -45,9 +46,12 @@ static int exercise(const NbaAssetPack *pack,bool reverse,unsigned *total_specia
             }
         }
     }
-    printf("[OWNER POSE RUNTIME] teams=%u/%u state13=%u first=%u state18=%u first=%u selectors=%u specials=%u score=%u-%u\n",
-        session.left_team,session.right_team,states[0],first[0],states[1],first[1],serial,specials,session.score[0],session.score[1]);
+    printf("[OWNER POSE RUNTIME] teams=%u/%u state13=%u first=%u state18=%u first=%u idle7=%u first=%u selectors=%u specials=%u score=%u-%u\n",
+        session.left_team,session.right_team,states[0],first[0],states[1],first[1],states[2],first[2],serial,specials,session.score[0],session.score[1]);
     *total_specials+=specials;
+    /* State7 cadence is bound/verified in the production init self-test.
+     * Its defensive E39A/E3E1 selector is a separate, unported caller;
+     * report natural sightings without inventing an idle-selection rule. */
     return states[0] && states[1] && special_actor<0 ? 0:5;
 }
 

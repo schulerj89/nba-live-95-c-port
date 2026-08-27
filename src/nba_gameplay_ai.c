@@ -84,6 +84,12 @@ uint8_t nba_gameplay_target_direction(int16_t dx, int16_t dy,
     return direction_map[key];
 }
 
+/* $86:C217-$C222 / $86:CB5E-$CB69: contact facing uses F02D, not the
+ * fine pass quantizer. Preserve the native xor4 even for zero direction8. */
+uint8_t nba_gameplay_contact_facing(int16_t dx, int16_t dy) {
+    return nba_gameplay_target_direction(dx,dy,NULL)^4u;
+}
+
 /* `$85:F3C3-$F472`: the pass/catch initializer's 16-direction quantizer.
  * `$B2` returns the fine direction and `$AA` returns major+minor/4. The
  * instruction stream deliberately uses three slope bands and a 32-byte ROM

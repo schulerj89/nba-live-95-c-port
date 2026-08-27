@@ -17,8 +17,8 @@ Current measured coverage:
 | metric | captured address positions | % of captured addresses |
 |---|---:|---:|
 | observed executed code | 27,901 | 100.0% |
-| documented by ROM-address provenance | 9,670 | 34.7% |
-| verified against ROM calls | 6,917 | 24.79% |
+| documented by ROM-address provenance | 9,730 | 34.9% |
+| verified against ROM calls | 7,000 | 25.09% |
 
 These values are generated, not estimated. The detailed per-bank report is
 `docs/progress.md`; the authoritative verified list and evidence paths are in
@@ -30,8 +30,24 @@ for a requested slice are reported separately.
 
 ## Verified gameplay checkpoint
 
-121 routine slices currently pass emulator-ground-truth replay/binding checks. The most important
+128 routine slices currently pass emulator-ground-truth replay/binding checks. The most important
 recent slices are:
+
+- The **145-instruction owner table** is implemented/re-verified: unlatched
+  reversal `$86:E545-$E592` (31), idle cadence `$87:AD86-$ADBD` (22), and
+  ordinary owner caller `$86:F34F-$F439` (92). All 145 instruction starts
+  match Ghidra and appear in 2,095 zero-mismatch ROM call replays. The older
+  two-word unlatched claim is replaced by full channel/resource proof.
+  The caller stops held-ball velocity before posing, uses base pairing +74,
+  returns immediately after losing ownership, and orders CPU/formation/pass
+  calls with decision delta C8=32 (not physical C6=2).
+  Three additional native contact calls confirm coarse F02D facing; using
+  the fine pass quantizer had produced facing13 and stale attachment errors.
+  There are 294 durable witnesses and runtime bindings/endurance guards.
+  Idle cadence is integrated, but its **upstream defensive pose selector**
+  E39A/E3E1 is not: the unforced C runs do not naturally select state7 yet.
+  No full-game trajectory/frequency parity is claimed.
+  Evidence, precise remaining boundaries and visuals: `docs/owner-flow-plan.md`.
 
 - Held-ball states 13/18 and the latched owner pose branch are complete:
   `$87:AE89-$AEBC` (20 instructions), `$87:ADBE-$AE88` (78), and
@@ -43,8 +59,9 @@ recent slices are:
   These are asset-pack animations, with controlled-ROM cadence coverage
   and natural latched-selector calls, not full-game frequency parity.
   Unforced C runs reach both poses; special-shot reachability/release is
-  now guarded by two 200,000-frame matchups (Orlando/Chicago special at
-  164,418, release 164,446), since exact cadence changes the RNG stream.
+  now guarded by two 200,000-frame matchups. The current Orlando/Chicago
+  run selects/releases specials at 165,262/165,290 and 179,622/179,650;
+  exact owner-call ordering supersedes the earlier deterministic trajectory.
   Detailed evidence, remaining boundaries and visual proof:
   `docs/owner-pose-animation-plan.md`.
 
@@ -82,8 +99,8 @@ recent slices are:
   and mode-2 idle state 7 also pass a 6,000-call post-locomotion replay.
   Ordinary live-play mode-15 passes integrate exact locks, release phases
   and hand resources; inbound passes retain their compatibility path.
-  Other callers and the idle RNG stream are **verified helpers, not yet fully
-  adopted gameplay paths**; see the active gaps below.
+  State7 cadence now has a runtime binding; its defensive selection caller
+  remains separate. Other action callers are not all adopted gameplay paths.
 - `$87:8F13-$8F5E`, `$87:B572-$B648`, and owned common slices of
   `$87:AAB2-$AD5A`: facing easing, phase-preserving locomotion, exact
   accumulator cadence, and independent upper/lower resources. The replay
@@ -339,14 +356,15 @@ See `tools/README.md` for capture, replay, Ghidra, and regression commands.
   done, but inbound stays on the compatibility path: adopting its changed
   release/hand geometry exposed a >2,400-frame dead-ball stall in endurance
   testing. Keep that regression guard; trace the inbound continuation next.
-- Upper mode-2 states 13/18 are implemented and adopted. State 7's randomized
-  timer is verified, but its RNG consumption in ordinary runtime locomotion
-  remains deferred. Ordinary dribble/contact physics
+- Upper mode-2 states 7/13/18 have verified, adopted cadence. Natural state7
+  selection still needs the defensive `$86:E39A/$E3E1` pose callers; do not
+  invent a random idle-selection rule. Ordinary dribble/contact physics
   still uses legacy tick-derived phases; exact rendering alone is not proof
   that those gates are ROM-identical.
-- The latched owner branch is verified/adopted. Broader caller/facing parity
-  (including older unlatched compatibility writes) still needs end-to-end
-  comparison; verified helper bodies do not certify the entire dispatcher.
+- Latched/unlatched owner posing and the ordinary `$86:F34F-$F439` caller
+  are verified/adopted. The `$F43A` inbound continuation and defensive pose
+  callers remain distinct work; verified bodies do not certify the entire
+  dispatcher or full-game trajectories. See `docs/owner-flow-plan.md`.
 - Continue converting small post-tip CPU decision/animation slices from the
   recomp and Ghidra, re-verifying after each increment.
 - Expand ball physics, scoring, and CPU decisions beyond the early-gameplay

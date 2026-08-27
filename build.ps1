@@ -119,6 +119,11 @@ if ($Test) {
         --normalized --vectors (Join-Path $Root 'tests\fixtures\owner-pose-animation-witnesses.json') `
         --probe (Join-Path $BuildDir 'owner_pose_animation_vector_probe.exe') --pack $AssetPack
     if ($LASTEXITCODE -ne 0) { throw 'Owner pose/animation ROM witness regression failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name owner_flow_vector_probe
+    & python (Join-Path $Root 'tools\verify_owner_flow_vectors.py') `
+        --normalized --require-census --vectors (Join-Path $Root 'tests\fixtures\owner-flow-witnesses.json') `
+        --probe (Join-Path $BuildDir 'owner_flow_vector_probe.exe') --pack $AssetPack
+    if ($LASTEXITCODE -ne 0) { throw 'Owner flow/reversal/idle ROM witness regression failed.' }
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name owner_pose_runtime_probe
     & (Join-Path $BuildDir 'owner_pose_runtime_probe.exe') $AssetPack
     if ($LASTEXITCODE -ne 0) { throw 'Owner pose/natural-special runtime regression failed.' }

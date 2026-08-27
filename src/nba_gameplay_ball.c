@@ -80,13 +80,12 @@ NbaGameplayOwnerProximityResult nba_gameplay_owner_dribble_proximity(
         NBA_GAMEPLAY_OWNER_PROXIMITY_UNLATCHED;
 }
 
-/* `$86:E545-$E592`: an unlatched owner faces the paired actor and chooses
- * the forward/backward dribble base from velocity relative to that facing.
- * Live function-vector diffs confirm this slice writes only +$4E and +$38. */
+/* Direction-choice utility only, not the complete E545-E592 body.
+ * nba_player_owner_unlatched_pose also handles E574/E586 channel reversal. */
 uint8_t nba_gameplay_owner_unlatched_pose(
         int16_t velocity_x, int16_t velocity_y, uint8_t requested_direction,
-        uint8_t *display_direction) {
-    if (display_direction) *display_direction = requested_direction;
+        uint8_t *facing_direction) {
+    if (facing_direction) *facing_direction = requested_direction;
     uint8_t velocity_direction = nba_gameplay_target_direction(
         velocity_x, velocity_y, NULL);
     return ((velocity_direction - requested_direction) & 7u) >= 4u ? 9u : 11u;

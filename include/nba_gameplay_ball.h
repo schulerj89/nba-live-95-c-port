@@ -132,7 +132,7 @@ NbaGameplayOwnerProximityResult nba_gameplay_owner_dribble_proximity(
     uint16_t catcher_latch_raw_ae, uint8_t *requested_direction);
 uint8_t nba_gameplay_owner_unlatched_pose(
     int16_t velocity_x, int16_t velocity_y, uint8_t requested_direction,
-    uint8_t *display_direction);
+    uint8_t *facing_direction);
 /* `$86:E4F5-$E544`: +4E desired facing, NOT eased/display +52. */
 uint8_t nba_gameplay_owner_latched_pose(int16_t controller_raw_16,
     uint16_t attachment_raw_09f6, uint16_t dead_ball_raw_0968,
