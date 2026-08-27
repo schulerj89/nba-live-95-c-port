@@ -4379,11 +4379,11 @@ static NbaGameplayRimResult cpu_update_live_ball(NbaTipoff *tipoff) {
     bool attached = ball->state == NBA_BALL_ATTACHED;
     if (attached) {
         ball_attach_to_actor(tipoff, tipoff->handler_actor);
-    } else if (ball->state == NBA_BALL_PASS || ball->state == NBA_BALL_SHOT ||
+    } else if (ball->state == NBA_BALL_LOOSE || ball->state == NBA_BALL_PASS || ball->state == NBA_BALL_SHOT ||
                ball->state == NBA_BALL_BOUNCE) {
         NbaGameplayRimResult accumulated = NBA_GAMEPLAY_RIM_FLIGHT;
         /* `$85:9A6A/$A7A1`: DP C6 enters as two and drives two complete
-         * ownerless substeps. PASS, SHOT and BOUNCE are host labels only;
+         * ownerless substeps. LOOSE, PASS, SHOT and BOUNCE are host labels only;
          * native gravity/rim/ground physics is shared by every free ball. */
         for (unsigned substep = 0; substep < 2u; ++substep) {
         bool made_response = false;
@@ -4698,6 +4698,20 @@ static bool cpu_ball_substep_self_test(void) {
     NbaSession session;
     NbaTipoff state;
 
+    /* A host LOOSE label must not freeze an ownerless ball above a waiting
+     * inbounder. $85:9A6A runs the same substeps as PASS/SHOT/BOUNCE. */
+    const uint8_t free_modes[]={NBA_BALL_LOOSE,NBA_BALL_PASS,NBA_BALL_SHOT,NBA_BALL_BOUNCE};
+    int32_t expected_z=0;int16_t expected_vz=0;
+    for(unsigned i=0;i<sizeof(free_modes);++i) {
+        memset(&state,0,sizeof(state));memset(&session,0,sizeof(session));state.session=&session;
+        state.ball.owner_actor=-1;state.possession_actor=-1;state.pass_receiver_raw=-1;
+        state.ball.state=free_modes[i];state.ball.z_fp=63*256;state.live_state_raw=0x82;
+        state.fouls.whistle_active_raw_09b6=1;
+        (void)cpu_update_live_ball(&state);
+        if(i==0){expected_z=state.ball.z_fp;expected_vz=state.ball.velocity_z;}
+        if(state.ball.z_fp>=63*256 || state.ball.z_fp!=expected_z || state.ball.velocity_z!=expected_vz)return false;
+    }
+
     memset(&session, 0, sizeof(session));
     memset(&state, 0, sizeof(state));
     state.session = &session;
@@ -4863,6 +4877,7 @@ static void cpu_reset_play_control(NbaTipoff *tipoff) {
 }
 
 static void cpu_reselect_play_control(NbaTipoff *tipoff) {
+    ++tipoff->play_consumed_serial;
     /* `$85:B128-$B24B`: `$0994` is consumed only at the completed logical
      * pass boundary. The first RNG result updates the opposite/defending
      * team context at `$46EB/$476B +$30`. */
@@ -6912,18 +6927,13 @@ void nba_tipoff_update(NbaTipoff *tipoff, const NbaInput *input) {
     if (tipoff->frame < NBA_TIPOFF_BREAK_FRAME)
         cpu_update_tip_ball(tipoff);
     if (tipoff->frame < NBA_TIPOFF_BREAK_FRAME && nba_tipoff_try_tip_contact(tipoff)) {
-        /* Contact is now geometric, not a scheduled frame200 result.
-         * Stage2 still must replace this fixed receiver with B04C;
-         * stage3 replaces the tip trajectory and stage4 the frame220 catch.
-         * B100 is ordinary play control, NOT the tip selector. */
-        tipoff->handler_actor = 8u;
-        tipoff->receiver_actor = 8u;
-        tipoff->possession_team = 1;
-        tipoff->camera_side_group_raw = 5u;
+        (void)nba_tipoff_select_tip_receiver(tipoff);
+        /* Stage3 replaces the trajectory; stage4 removes the frame220 catch.
+         * Existing role/play setup is not part of B04C's receiver selection. */
         tipoff->play_code = 0x35u;
         for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor)
-            tipoff->actors[actor].control_mode = actor >= 5u ? 1u : 2u;
-        tipoff->actors[8].control_mode = 10u;
+            tipoff->actors[actor].control_mode = actor / 5u == (unsigned)tipoff->possession_team ? 1u : 2u;
+        tipoff->actors[tipoff->receiver_actor].control_mode = 10u;
     }
     if (tipoff->frame >= NBA_TIPOFF_BREAK_FRAME) {
         /* $87:8EF3 calls fatigue before the due actor pass. All 24 roster
@@ -7050,6 +7060,27 @@ bool nba_tipoff_try_tip_contact(NbaTipoff *tipoff) {
     return false;
 }
 
+bool nba_tipoff_select_tip_receiver(NbaTipoff *tipoff) {
+    if(!tipoff || tipoff->tip_contact_actor<0 || tipoff->tip_contact_actor>=10 ||
+       tipoff->pass_receiver_raw>=0)return false;
+    unsigned slot=(unsigned)tipoff->tip_contact_actor;
+    NbaTipoffActor *actor=&tipoff->actors[slot];
+    NbaTipReceiver s={0};s.rng=tipoff->rng.state;s.actor_id=(uint16_t)slot;
+    s.team_group=actor->team_group_raw_6e;s.event_bits=tipoff->tip_event_bits_raw_13e9;
+    nba_tip_receiver_select(&s);
+    if(s.receiver>=NBA_GAMEPLAY_ACTOR_COUNT)return false;
+    tipoff->rng.state=s.rng;tipoff->tip_event=s.event;
+    tipoff->pass_actor_raw=(int8_t)s.passer;tipoff->pass_receiver_raw=(int8_t)s.receiver;
+    actor->pass_family_raw=(int16_t)s.pass_family;actor->pass_band_raw=s.pass_band;
+    tipoff->actors[s.receiver].control_mode=(uint8_t)s.receiver_mode;
+    tipoff->handler_actor=tipoff->receiver_actor=(uint8_t)s.receiver;
+    tipoff->possession_team=(int8_t)(s.team_group/5);
+    tipoff->camera_side_group_raw=(uint8_t)s.team_group;
+    nba_tip_receiver_finish(&s);
+    tipoff->tip_event_bits_raw_13e9=s.event_bits;
+    return true;
+}
+
 void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
                                   const NbaInput *input,
                                   NbaGameplayTelemetry *telemetry) {
@@ -7094,6 +7125,7 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
     telemetry->play_mirror_raw = tipoff->play_mirror_raw;
     telemetry->play_event_wait_raw = tipoff->play_event_wait_raw;
     telemetry->play_request_raw = tipoff->play_request_raw;
+    telemetry->play_consumed_serial = tipoff->play_consumed_serial;
     telemetry->play_cycle_raw = tipoff->play_cycle_raw;
     telemetry->play_hold_raw = tipoff->play_hold_raw;
     telemetry->role_rebuild_raw_09d6 = tipoff->role_rebuild_raw_09d6;

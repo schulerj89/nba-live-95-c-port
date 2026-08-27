@@ -190,7 +190,7 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
             "\"team\":%d,\"candidate_raw\":%d,\"play_code_raw\":%u,"
             "\"play_step_raw\":%d,\"play_countdown_raw\":%d,"
             "\"play_mirror_raw\":%u,\"play_event_wait_raw\":%u,"
-            "\"play_request_raw\":%u,\"play_cycle_raw\":%u,"
+            "\"play_consumed_serial\":%u,\"play_request_raw\":%u,\"play_cycle_raw\":%u,"
             "\"play_hold_raw\":%u,\"special_actor_raw\":%u,"
             "\"role_rebuild_raw_09d6\":%u,"
             "\"pass_actor_raw\":%d,\"pass_receiver_raw\":%d,"
@@ -269,7 +269,7 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
             telemetry->possession_team, telemetry->possession_candidate_raw,
             telemetry->play_code_raw, telemetry->play_step_raw,
             telemetry->play_countdown_raw, telemetry->play_mirror_raw,
-            telemetry->play_event_wait_raw, telemetry->play_request_raw,
+            telemetry->play_event_wait_raw, telemetry->play_consumed_serial, telemetry->play_request_raw,
             telemetry->play_cycle_raw,
             telemetry->play_hold_raw, telemetry->special_actor_raw,
             telemetry->role_rebuild_raw_09d6,

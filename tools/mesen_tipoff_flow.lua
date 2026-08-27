@@ -5,6 +5,7 @@ local frames=assert(io.open(out..'/tip_frames.jsonl','wb'))
 local frame=0;local ready=false;local active={}
 local controlled=os.getenv('NBA95_TIP_CONTROL')=='1';local saved=nil;local case_index=0;local cases={}
 local variant=tonumber(os.getenv('NBA95_TIP_VARIANT')) or -1
+local launch_control=os.getenv('NBA95_TIP_LAUNCH_CONTROL')=='1';local launch_index=0
 local ranges={{0,0xff},{0x700,0xa10},{0x13e0,0x14c0},{0x34eb,0x3fff},{0x46eb,0x486b},{0x4900,0x4960}}
 local function w(a)return emu.read(a,emu.memType.snesWorkRam)|(emu.read(a+1,emu.memType.snesWorkRam)<<8)end
 local function put(a,v)emu.write(a,v&255,emu.memType.snesWorkRam);emu.write(a+1,(v>>8)&255,emu.memType.snesWorkRam)end
@@ -12,6 +13,7 @@ for _,dy in ipairs({-17,-16,0,15,16})do for _,z in ipairs({-1,0,55,60,71,72})do 
 for _,dx in ipairs({-17,-16,-8,0,7,8,15,16})do for _,z in ipairs({55,56,85,86})do cases[#cases+1]={dx=dx,z=z,hoop=0}end end
 for _,receiver in ipairs({-1,0,5,8})do for _,lock in ipairs({0,1})do for _,z in ipairs({59,60,67,95,96})do cases[#cases+1]={receiver=receiver,lock=lock,z=z}end end end
 for _,inhibit in ipairs({0,1})do for _,ft in ipairs({0,1})do cases[#cases+1]={inhibit=inhibit,ft=ft,z=50}end end
+if launch_control then cases={};for i=1,300 do cases[i]={z=50}end end
 local function restore()
     if not saved then return end
     for a,v in pairs(saved)do emu.write(a,v,emu.memType.snesWorkRam)end;saved=nil
@@ -61,7 +63,19 @@ hook(0x86b04c,function()if ready and frame<=300 then
     begin('receiver',0x86b04c)
 end end)
 for _,p in ipairs({0x86b0d7,0x86b0e1})do hook(p,function()finish('receiver',p)end)end
-hook(0x8699c4,function()if ready and frame<=300 then begin('deflection',0x8699c4)end end)
+hook(0x8699c4,function()if ready and frame<=300 then
+    if launch_control and saved then
+        local n=launch_index;launch_index=n+1
+        local a=w(0x96);local r=w(0x8e)
+        put(a+0xc0,({0xffff,0,1})[(n%3)+1]);put(a+0x62,(n%6)*6)
+        put(a+0xc,n%2==0 and 0 or 16);put(a+0x30,({0x25,0x2b,0x2c})[(n%3)+1])
+        put(a+0x5e,n%4==0 and 15 or 11);put(r+0x5e,n%5==0 and 14 or 10)
+        put(r+4,({0,360,-360,400,-400})[(n%5)+1]);put(r+8,({0,190,-190,220,-220})[(math.floor(n/5)%5)+1])
+        put(r+0xe,n%2==0 and 600 or -600);put(r+0x10,n%3==0 and 400 or -400)
+        put(0x3eed,0x1234);put(0x3ef1,0x5678);put(0x3ef5,0x9abc)
+    end
+    begin('deflection',0x8699c4)
+end end)
 hook(0x869bb0,function()finish('deflection',0x869bb0)end)
 hook(0x869846,function()if active.deflection then begin('restore_mode',0x869846)end end)
 hook(0x86986c,function()finish('restore_mode',0x86986c)end)

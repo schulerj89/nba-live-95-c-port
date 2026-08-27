@@ -99,3 +99,30 @@ intro tests then pass; only the reviewed frame220 camera regression anchor
 changed. Visual evidence: `stage1-frames`, `stage1-port.mp4`, and
 `natural-visual/native_*.png`. They show the remaining pose/trajectory gap,
 not a claim that both games are visually identical.
+
+## Checkpoint 2: receiver
+
+B04C prefix/suffix are separate reusable functions around the forthcoming
+launch child. Native RNG chooses team base+3/+4; the live caller stores passer,
+receiver, familyFFFF, band12, mode10 and the slot11 event descriptor. Five
+native calls (one natural/four controlled) cover all59 starts with zero
+mismatches. `tip_receiver_probe` tests both sides/bits and no repeat RNG draw.
+The event descriptor is preserved, but its downstream scheduler is not yet
+implemented or mislabeled as audio.
+
+The changed RNG path exposed a latent ownerless-ball physics omission:
+host LOOSE records skipped the shared 85:9A6A substeps. A foul froze the ball
+at Z63 and stranded the inbounder indefinitely. Routing LOOSE through the
+same physics as PASS/SHOT/BOUNCE fixes that, with a four-mode binding test
+and 63,800-frame stall guard. No timeout teleport or RNG rollback was added.
+Two ambiguous old test proxies were replaced with direct events: play request
+consumption has a diagnostic serial (the flag may re-raise later that frame),
+and scheduling is checked by the exact ten-actor mask/order/delta, not action
+timers that can be reinstalled during a contact.
+
+Release: 63,800-frame CPU regression passes, including all semantic guards;
+tip-off and gameplay-debugger regressions pass. Five changed CPU image anchors
+were inspected after the new RNG consumption; they are C regressions, not ROM
+parity. Frame1300 still exposes loose-ball camera framing with players mostly
+offscreen. Evidence: `stage2-{cpu,tip,debug}.log`, `stage2-frames`,
+`stage2-port.mp4`. Coverage7297/27901 (26.15%),148 ledger slices.

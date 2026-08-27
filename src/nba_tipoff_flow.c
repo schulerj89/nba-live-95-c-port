@@ -1,4 +1,5 @@
 #include "nba_tipoff_flow.h"
+#include "nba_gameplay_ai.h"
 
 static int16_t difference(int16_t a,int16_t b) {
     return (int16_t)(uint16_t)((uint16_t)a-(uint16_t)b);
@@ -60,4 +61,18 @@ NbaTipContactResult nba_tip_contact_geometry(const NbaTipContactInput *in) {
     out.route=in->shot_latch || (in->receiver>=0 && in->receiver!=(int16_t)in->actor_id)?
         NBA_TIP_CONTACT_DEFLECT:NBA_TIP_CONTACT_ACCEPT;
     return out;
+}
+
+void nba_tip_receiver_select(NbaTipReceiver *s) {
+    /* `$86:B04C-$B0C3`: preserve the raw slot11 event descriptor. Its
+     * downstream presentation scheduler is not guessed to be menu audio. */
+    s->event=(NbaTipEvent){0x32,1,1,0x258,0xF7BA,0x32,0};
+    NbaGameplayRng rng={s->rng};
+    s->receiver=(uint16_t)(s->team_group+3+(nba_gameplay_rng_next(&rng)&1));
+    s->rng=rng.state;s->passer=s->actor_id;s->pass_family=0xFFFF;
+    s->pass_band=12;s->receiver_mode=10;
+}
+void nba_tip_receiver_finish(NbaTipReceiver *s) {
+    /* `$86:B0C8-$B0E1`: runs AFTER the launch child. */
+    s->event_bits|=s->receiver>=5?2:4;
 }

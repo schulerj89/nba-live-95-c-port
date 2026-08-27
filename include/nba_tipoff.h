@@ -175,6 +175,8 @@ typedef struct {
     int8_t tip_contact_actor;
     uint32_t tip_contact_frame;
     uint16_t tip_reach_mask;
+    NbaTipEvent tip_event;
+    uint16_t tip_event_bits_raw_13e9;
     int8_t possession_team;
     uint8_t camera_side_group_raw; /* persistent `$093A`: 0/5, FF before tip */
     uint16_t camera_alternate_raw_08bc, camera_alternate_mode_raw_08cc;
@@ -185,6 +187,7 @@ typedef struct {
     uint16_t play_mirror_raw;    /* `$099C` */
     uint16_t play_event_wait_raw;/* `$099E` */
     uint16_t play_request_raw;   /* `$0994` */
+    uint32_t play_consumed_serial; /* host diagnostic, not ROM state */
     uint16_t play_cycle_raw;     /* `$09A4` */
     uint16_t play_hold_raw;      /* `$09D0` */
     uint16_t role_rebuild_raw_09d6;
@@ -282,6 +285,7 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
                      NbaSession *session);
 void nba_tipoff_update(NbaTipoff *tipoff, const NbaInput *input);
 bool nba_tipoff_try_tip_contact(NbaTipoff *tipoff);
+bool nba_tipoff_select_tip_receiver(NbaTipoff *tipoff);
 void nba_tipoff_render(const NbaTipoff *tipoff, NbaRenderer *renderer);
 void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
                                   const NbaInput *input,

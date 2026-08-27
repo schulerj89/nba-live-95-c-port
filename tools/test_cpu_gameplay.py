@@ -20,11 +20,13 @@ EXPECTED_RGB = {
     # Reviewed after complete F34F caller ordering and coarse contact facing;
     # these are C visual regression anchors, not emulator-parity claims.
     # Independent ROM vectors and semantic endurance guards remain separate.
-    600: "2ec43078864be8fee5627827718b277f1d5f13b07f13e7d9c4b605ba68068d11",
-    1300: "1bf67a06c9213fa0a6c08b8f9b38fe59f335cf4866cca63466787421d31a986f",
-    3480: "dddbef498216467d32aa16bfe350dd696601c0f9c38e8ec9d58ff985c619d35b",
-    6932: "1f2d77a9e5593157fce5bb1eef4cf4641971662b1d0852783aa5821d8d629d9b",
-    6954: "5db1922de7ec1a97776c971012277202bff935acebc8291a4f5f2c3ceacfdea9",
+    # Native B04C RNG draw changes subsequent CPU choices. Reviewed stage2
+    # captures; frame1300 still exposes wider loose-ball/camera composition.
+    600: "114bc1d302ec0098e3d95fb355ab2800604d04ee4c707ab7654f476bf967023e",
+    1300: "f3c6eb152120e6e267e809a59df0c0d493d42a1b715ccd8f4fb5883391381eec",
+    3480: "1eb3b040561fcd18df8c420782d236a5327a986d2d7e97a319eb268f1c376362",
+    6932: "03e8392b1fbdd0ea34e48d4a2d3c4ca41ced54db3b950f928143ac47dde80c52",
+    6954: "6972379c752d156db65d594575985ca21c80a97a9cc52d6ac29e1c4f41188d1b",
 }
 
 
@@ -388,7 +390,9 @@ def main():
             if next_due is None:
                 continue
             consumed_requests += 1
-            if next_due["possession"]["play_request_raw"] != 0 or \
+            # Inbound behavior runs after consumption and may re-raise 0994
+            # in this same pass. Observe the consume event, not the final bit.
+            if next_due["possession"]["play_consumed_serial"] <= possession["play_consumed_serial"] or \
                     not 0 <= next_due["possession"]["play_code_raw"] < 61 or \
                     next_due["possession"]["play_step_raw"] != 0:
                 raise AssertionError(
@@ -567,9 +571,10 @@ def main():
             # defer `$87:9244` behavior dispatch to the odd host frame; one
             # actor can legitimately reinstall the same numeric action while
             # its peers change, which is not evidence of a split physics pass.
-            if row["scheduler"]["due_raw"] and \
-                    changed_timers not in (0, stable_timers):
-                raise AssertionError("$87:8F01 actor pass split across C actors")
+            # Do not infer scheduling from action timers: completion/contact
+            # can reinstall an unchanged value even on a due pass. The exact
+            # mask, order, delta and phase assertion below is the scheduler
+            # regression guard (all ten actors, not this ambiguous proxy).
         mismatch_pairs = {(actor["animation"], actor["lower_animation"])
                           for row in rows[219:] for actor in row["actors"]
                           if actor["animation"] != actor["lower_animation"]}

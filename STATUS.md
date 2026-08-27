@@ -17,8 +17,8 @@ Current measured coverage:
 | metric | captured address positions | % of captured addresses |
 |---|---:|---:|
 | observed executed code | 27,901 | 100.0% |
-| documented by ROM-address provenance | 9,996 | 35.8% |
-| verified against ROM calls | 7,242 | 25.96% |
+| documented by ROM-address provenance | 10,050 | 36.0% |
+| verified against ROM calls | 7,297 | 26.15% |
 
 These values are generated, not estimated. The detailed per-bank report is
 `docs/progress.md`; the authoritative verified list and evidence paths are in
@@ -30,13 +30,14 @@ for a requested slice are reported separately.
 
 ## Verified gameplay checkpoint
 
-147 routine slices currently have emulator-ground-truth replay/binding evidence. The most important
+148 routine slices currently have emulator-ground-truth replay/binding evidence. The most important
 recent slices are:
 
 - Active tip-flow goal: `docs/tipoff-flow-plan.md`. Contact geometry now drives
   the first hit instead of frame200. 340 native/controlled calls replay with
-  zero mismatches. Receiver, trajectory and final possession checkpoints are
-  still pending. An older collision ledger range incorrectly included its
+  zero mismatches. Receiver B04C now matches all59 starts across five native
+  calls, with both-team/both-bit runtime guards. Trajectory and final
+  possession are still pending. An older collision ledger range included its
   explicitly excluded D3C6-D43D tip wrapper; removing that claim lowers the
   displayed coverage by58 positions. This is a proof correction, not lost C.
 

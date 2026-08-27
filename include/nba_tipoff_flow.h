@@ -23,4 +23,17 @@ typedef struct {
 /* Geometric caller, not the later rating/steal classifier or acquisition.
  * The descending-shot CD97-CE87 child retains its separate implementation. */
 NbaTipContactResult nba_tip_contact_geometry(const NbaTipContactInput *input);
+
+typedef struct {
+    uint16_t timer_140f, active_148f, enabled_14a7, duration_1477, address_14bf;
+    uint8_t kind_1430, bank_1448;
+} NbaTipEvent;
+typedef struct {
+    uint16_t rng, actor_id, team_group, event_bits;
+    uint16_t passer, receiver, pass_family, pass_band, receiver_mode;
+    NbaTipEvent event;
+} NbaTipReceiver;
+/* $86:B04C-$B0E1, excluding the $99C4 child. Call suffix after launch. */
+void nba_tip_receiver_select(NbaTipReceiver *state);
+void nba_tip_receiver_finish(NbaTipReceiver *state);
 #endif

@@ -135,6 +135,7 @@ typedef struct {
     uint16_t play_mirror_raw;
     uint16_t play_event_wait_raw;
     uint16_t play_request_raw;
+    uint32_t play_consumed_serial;
     uint16_t play_cycle_raw;
     uint16_t play_hold_raw;
     uint16_t role_rebuild_raw_09d6;

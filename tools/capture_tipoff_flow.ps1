@@ -1,8 +1,9 @@
-param([Parameter(Mandatory=$true)][string]$OutputDir,[int]$Frames=600,[switch]$Controlled,[int]$Variant=-1)
+param([Parameter(Mandatory=$true)][string]$OutputDir,[int]$Frames=600,[switch]$Controlled,[int]$Variant=-1,[switch]$LaunchControlled)
 $ErrorActionPreference='Stop'
 New-Item -ItemType Directory -Force $OutputDir | Out-Null
 $env:NBA95_CAPTURE_DIR=(Resolve-Path $OutputDir).Path
-$env:NBA95_TIP_CONTROL=if($Controlled){'1'}else{'0'}
+$env:NBA95_TIP_CONTROL=if($Controlled -or $LaunchControlled){'1'}else{'0'}
+$env:NBA95_TIP_LAUNCH_CONTROL=if($LaunchControlled){'1'}else{'0'}
 $env:NBA95_TIP_VARIANT="$Variant"
 $env:NBA95_VECTOR_DRIVER=(Resolve-Path "$PSScriptRoot/mesen_func_vectors.lua").Path
 $env:NBA95_VEC_ENTRY='86F34F';$env:NBA95_VEC_EXITS='86F439,86F40A,86F43A'

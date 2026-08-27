@@ -8,7 +8,7 @@ public class DumpTipoffFlow extends GhidraScript {
     public void run() throws Exception {
         int bank=currentProgram.getName().contains("85")?0x85:0x86;
         int[][] ranges=bank==0x86?new int[][]{
-            {0x99c4,0x9c44},{0xb04c,0xb0e1},{0xccfc,0xd43d},
+            {0x99c4,0x9c44},{0x9c45,0x9c6e},{0xb04c,0xb0e1},{0xccfc,0xd43d},
             {0xe054,0xe0ab},{0xec32,0xecf8}}:
             new int[][]{{0xb100,0xb28b}};
         for(int[] r:ranges) {
