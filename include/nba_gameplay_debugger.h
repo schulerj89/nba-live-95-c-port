@@ -3,6 +3,7 @@
 
 #include "nba_renderer.h"
 #include "nba_types.h"
+#include "nba_shot_state.h"
 #include <stdio.h>
 
 #define NBA_GAMEPLAY_ACTOR_COUNT 10
@@ -152,6 +153,10 @@ typedef struct {
     uint8_t shot_chance_raw;
     uint8_t shot_miss_index_raw;
     uint8_t shot_inner_veto_raw;
+    uint32_t shot_selection_serial;
+    uint16_t shot_selection_inputs[8];
+    NbaShotFatigue shot_fatigue;
+    uint16_t shot_made_run[10],shot_defensive_run[10],shot_assistance_team;
     uint16_t live_state_raw;
     uint16_t inbound_state_raw;
     uint16_t inbound_actor_raw;

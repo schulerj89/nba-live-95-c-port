@@ -40,10 +40,10 @@ EXPECTED_AUDIO_RMS_EIGHTHS = [
 ]
 EXPECTED_AUDIO_BAND_PPM = [889127, 48767, 32034, 14587, 14255, 1068, 162]
 EXPECTED_AUDIO_CHANNEL_RMS = [3363, 3363]
-# Asset 277 adds one directory entry. test_shot_assets.py proves the old
-# baselines still reproduce without that entry and only F12's count changes.
-EXPECTED_ASSET_DEBUGGER_SHA256 = "961ac4537f36a1f0618f5b227c2e408334d101494572f6ef39b753b7f225184d"
-EXPECTED_OAM_DEBUGGER_SHA256 = "6cafb59bd26335ba0341b930b4cc0f80e762b7eb40cc775409680ef5600d6c67"
+# Assets 277/278 add directory entries. test_shot_assets.py reproduces the
+# previous baseline without them and proves only F12's count changes.
+EXPECTED_ASSET_DEBUGGER_SHA256 = "3d18197995708f4ac4e7988ec4a7139fabfbb46fca72eac815992f50124ec5aa"
+EXPECTED_OAM_DEBUGGER_SHA256 = "ad063db8b9ac9033c4ed73d0d9d8e8a3716a7b25734cd57aee228100d2f2326f"
 EXPECTED_RENDERED_MENU_SFX_SHA256 = {
     0x1A: "447a1ea48a94e2036ff0bdf1f4c5248d6284daec0b723b9a966f841976e703c4",
     0x1B: "96de89e954e4e8f75e555625abba5bf4380b8868b3263776a4cc27a6285de664",

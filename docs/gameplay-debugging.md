@@ -61,7 +61,9 @@ without changing the comparison contract.
 | `$85:AE35–$AF5B` | crossing/edge target routes; normal arrival sets actor `+$7E bit $40` |
 | `$85:B4B9–$B50D`, `$85:F5E4–$F715` | `$09A2` clear-lane cutter cadence and blocker rectangle |
 | `$0948` | canonical detached-shot activity; ORed with `$097C` for formation edge routing |
-| `$0928` | match clock: 43200 at live gameplay frame 220, then one decrement per outer frame |
+| `$0928` | initial 43200/frame-220 handoff; `$85:EDC6-$EE3D` now gates each 60-Hz decrement by live/dead state and late-clock thresholds |
+| `$09C2`, stats `+$18/+$1A` | fatigue timer, 24-slot stamina and playing time; actor `+$18` is an unrelated animation queue |
+| `$09C0`, actor `+$B2/+$B4` | trailing-team CPU Assistance and separate run counters; pre-score writers `$85:A081-$A0EA` |
 | `$09C8/$096A` | detached-shot shooter and retained shot value used by descending contact/interference |
 | `$86:9C6F–$9CDA`, `$86:A7A0–$A7A7` | pass launch records and animation release thresholds |
 | `$85:F3C3–$F472` | fine 16-direction and weighted-distance helper used by pass setup |

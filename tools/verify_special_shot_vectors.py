@@ -37,6 +37,7 @@ def main():
     p=argparse.ArgumentParser()
     for name in ('vectors','probe','pack'):p.add_argument('--'+name,required=True)
     p.add_argument('--normalized',action='store_true')
+    p.add_argument('--write-normalized')
     args=p.parse_args();raw=Path(args.vectors).read_text()
     rows=json.loads(raw) if args.normalized else [convert(json.loads(l)) for l in raw.splitlines() if l]
     if not rows:raise SystemExit('no captured calls')
@@ -52,5 +53,6 @@ def main():
     for item in bad[:20]:print(item)
     print(f'[SPECIAL SHOT] calls={len(rows)} mismatches={len(bad)} exits={dict(Counter(r["exit_pc"] for r in rows))}')
     if bad:raise SystemExit(1)
+    if args.write_normalized:Path(args.write_normalized).write_text(json.dumps(rows,indent=2)+'\n')
 
 if __name__=='__main__':main()

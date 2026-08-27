@@ -2678,6 +2678,11 @@ static bool cpu_start_rom_shot(NbaTipoff *tipoff, unsigned slot) {
         shooter->movement_boost_timer!=0,shooter->free_throw_launch_half_raw_a8!=0};
     if (!nba_special_shot_select(tipoff->assets,&start,&shooter->pass_direction_raw,&selection))
         return false;
+    ++tipoff->shot_selection_serial;
+    const uint16_t observed_selection[8]={selection.lane_result,selection.movement,
+        selection.anchor_distance,selection.anchor_direction,selection.facing,
+        selection.appearance,start.mode,(uint16_t)slot};
+    memcpy(tipoff->shot_selection_inputs,observed_selection,sizeof(observed_selection));
     tipoff->handler_actor = (uint8_t)slot;
     tipoff->shot_origin_x = fp_round(shooter->x_fp);
     tipoff->shot_origin_y = fp_round(shooter->y_fp);
@@ -2918,7 +2923,7 @@ static void cpu_release_rom_shot(NbaTipoff *tipoff, unsigned slot) {
     in.stamina_18=shooter->shot_stamina_raw_18;
     in.difficulty=tipoff->session->config.main_values[2];
     in.shot_assistance_17bf=tipoff->session->config.options[5];
-    in.hot_team_09c0=tipoff->hot_team_raw_09c0;
+    in.hot_team_09c0=tipoff->assistance_team_raw_09c0;
     in.free_throw_0978=tipoff->fouls.free_throw_state_raw_0978;
     in.aim_0982=tipoff->free_throw_aim_y_raw_0982; in.power_0980=tipoff->free_throw_aim_x_raw_0980;
     in.clock_0928=tipoff->match_clock_raw_0928; in.period_0926=tipoff->period_raw_0926;
@@ -3449,7 +3454,7 @@ shot_physics:
 static bool cpu_special_shot_self_test(const NbaAssetPack *assets,NbaSession *session) {
     NbaTipoff s={0};
     s.assets=assets;s.session=session;s.cpu_vs_cpu=true;s.possession_actor=0;
-    s.ball.owner_actor=0;s.rng.state=1;s.hot_team_raw_09c0=0xFFFF;
+    s.ball.owner_actor=0;s.rng.state=1;s.assistance_team_raw_09c0=0xFFFF;
     s.team_context[0].anchor_x_raw_0a=336;
     for(unsigned i=5;i<10;++i)s.actors[i].x_fp=-1000*256;
     NbaTipoffActor *a=&s.actors[0];
@@ -3806,6 +3811,24 @@ static void score_made_basket(NbaTipoff *tipoff) {
     unsigned inbound_side = scoring_side ^ 1u;
     uint16_t shot_value = tipoff->shot_value_raw;
 
+    /* $85:A081-$A0EA precedes both effect RNG and the score increment. */
+    NbaShotMomentum momentum = {0};
+    for (unsigned i=0;i<NBA_GAMEPLAY_ACTOR_COUNT;++i) {
+        momentum.made_run[i]=tipoff->actors[i].shot_modifier_raw_b2;
+        momentum.defensive_run[i]=tipoff->actors[i].defensive_run_raw_b4;
+        momentum.team_group[i]=tipoff->actors[i].team_group_raw_6e;
+    }
+    momentum.assistance_team=tipoff->assistance_team_raw_09c0;
+    if (nba_shot_momentum_make(&momentum,(uint16_t)tipoff->shot_actor_raw_09c8,
+            tipoff->session->config.options[6],tipoff->match_clock_raw_0928,
+            tipoff->session->score[0],tipoff->session->score[1])) {
+        for (unsigned i=0;i<NBA_GAMEPLAY_ACTOR_COUNT;++i) {
+            tipoff->actors[i].shot_modifier_raw_b2=momentum.made_run[i];
+            tipoff->actors[i].defensive_run_raw_b4=momentum.defensive_run[i];
+        }
+        tipoff->assistance_team_raw_09c0=momentum.assistance_team;
+    }
+
     /* `$85:A0EB-$A115`: the make effect is selected before foul/stat/score
      * bookkeeping. Effect four suppresses the selector entirely; otherwise
      * zero is rejected, so the gameplay LFSR may advance more than once. */
@@ -3832,6 +3855,7 @@ static void score_made_basket(NbaTipoff *tipoff) {
     tipoff->inbound_actor_raw = (uint16_t)(tipoff->inbound_state_raw + 2u);
     tipoff->inbound_layout_raw = 0;
     tipoff->inbound_timer_raw = 300u;
+    tipoff->dead_clock_enabled_raw_0a04 = 300u; /* $85:A265-$A268 */
     /* `$85:A219-$A222`: dead-ball scoring requests play `$01`; B128 later
      * preserves it while resetting the stream at the actor-pass boundary. */
     tipoff->play_code = 1u;
@@ -4183,9 +4207,7 @@ static NbaGameplayRimResult cpu_update_live_ball(NbaTipoff *tipoff) {
      * collision/integration. Flight-table durations count these due passes. */
     if ((tipoff->simulation_tick & 1u) != 0u)
         return NBA_GAMEPLAY_RIM_FLIGHT;
-    if (tipoff->ball.owner_actor < 0 &&
-        tipoff->free_throw_flight_timer_raw_0930 != 0u)
-        --tipoff->free_throw_flight_timer_raw_0930;
+    /* $0930 is advanced by the independent $85:EE30 60-Hz writer. */
     /* `$85:9A2C-$9A34`: this counter advances by the live scheduler quantum,
      * once before the two free-ball substeps (not once per substep). */
     if (tipoff->rim_raw_094a != 0u)
@@ -6331,8 +6353,7 @@ static void cpu_update_possession(NbaTipoff *tipoff) {
         ++tipoff->play_state_frame;
         return;
     }
-    if (tipoff->possession_frame != 0u && tipoff->rim_raw_092c != 0u)
-        --tipoff->rim_raw_092c;
+    /* $092C is advanced by $85:EE38, not the possession dispatcher. */
     cpu_update_all_actors(tipoff);
     /* `$87:8F7D -> $85:963D` completes all ten actor commits before the
      * global jump-ball path reaches `$86:D3F9 -> $86:BAA2`. Installing the
@@ -6504,11 +6525,22 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
     NBA_TIPOFF_REQUIRE("boosted pass", cpu_boosted_pass_self_test(assets, session));
     NBA_TIPOFF_REQUIRE("shot branches", cpu_shot_branches_self_test(assets, session));
     NBA_TIPOFF_REQUIRE("special shot lifecycle", cpu_special_shot_self_test(assets, session));
+    NBA_TIPOFF_REQUIRE("fatigue tables", nba_shot_state_assets_valid(assets));
     NBA_TIPOFF_REQUIRE("court panorama", nba_assets_gameplay_court_panorama(assets, session->right_team));
     NBA_TIPOFF_REQUIRE("tipoff ball asset", nba_assets_get(assets, NBA_ASSET_TIPOFF_BALL));
 #undef NBA_TIPOFF_REQUIRE
     memset(tipoff, 0, sizeof(*tipoff));
-    tipoff->hot_team_raw_09c0=0xFFFFu;
+    NbaShotMomentum momentum = {0};
+    nba_shot_momentum_reset(&momentum); /* $86:DD80 */
+    tipoff->assistance_team_raw_09c0=momentum.assistance_team;
+    nba_shot_stamina_init(&tipoff->fatigue);
+    nba_shot_fatigue_timer_init(&tipoff->fatigue);
+    for (unsigned i=0;i<24;++i) {
+        uint8_t rating=0;
+        if (!nba_player_gameplay_stamina_rating(assets,
+                i<12 ? session->left_team : session->right_team,(uint8_t)(i%12),&rating) || rating<3 || rating>10)return false;
+        tipoff->fatigue.rating[i]=rating;
+    }
     nba_gameplay_effect_init(&tipoff->rim_effect);
     tipoff->special_actor_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
     tipoff->assets = assets;
@@ -6663,11 +6695,25 @@ void nba_tipoff_update(NbaTipoff *tipoff, const NbaInput *input) {
      * outer update, independent of actor scheduling or gameplay state. */
     tipoff->fouls.whistle_timer_raw_08de = (int16_t)(uint16_t)(
         (uint16_t)tipoff->fouls.whistle_timer_raw_08de - 1u);
-    /* Live Mesen capture: `$0928` is 43200 at frame 220, then decrements
-     * once per outer frame (43020 at 400; 41620 at 1800). */
-    if (tipoff->frame > NBA_TIPOFF_BREAK_FRAME &&
-        tipoff->match_clock_raw_0928 != 0u)
-        --tipoff->match_clock_raw_0928;
+    /* Existing tip presentation hands off at frame 220. Thereafter the
+     * $85:EDC6 writer, not actor cadence, owns these 60-Hz timers. */
+    if (tipoff->frame > NBA_TIPOFF_BREAK_FRAME) {
+        NbaShotClock clock={tipoff->live_state_raw,tipoff->period_raw_0926,
+            tipoff->match_clock_raw_0928,tipoff->rim_raw_092c,
+            tipoff->shot_clock_mirror_raw_09c6,tipoff->dead_clock_enabled_raw_0a04,
+            tipoff->fatigue.timer,tipoff->free_throw_flight_timer_raw_0930,
+            tipoff->session->config.rules[8],tipoff->elapsed_clock_raw_13f9,
+            tipoff->elapsed_shot_clock_raw_13f7};
+        nba_shot_clock_step(&clock);
+        tipoff->match_clock_raw_0928=clock.clock;
+        tipoff->rim_raw_092c=clock.shot_clock;
+        tipoff->shot_clock_mirror_raw_09c6=clock.shot_clock_mirror;
+        tipoff->dead_clock_enabled_raw_0a04=clock.dead_clock_enabled;
+        tipoff->fatigue.timer=clock.fatigue_timer;
+        tipoff->free_throw_flight_timer_raw_0930=clock.flight_timer;
+        tipoff->elapsed_clock_raw_13f9=clock.elapsed_clock;
+        tipoff->elapsed_shot_clock_raw_13f7=clock.elapsed_shot_clock;
+    }
     if (tipoff->frame < NBA_TIPOFF_BREAK_FRAME)
         cpu_update_tip_ball(tipoff);
     if (tipoff->frame == NBA_TIPOFF_POSSESSION_FRAME) {
@@ -6685,6 +6731,21 @@ void nba_tipoff_update(NbaTipoff *tipoff, const NbaInput *input) {
         tipoff->actors[8].control_mode = 10u;
     }
     if (tipoff->frame >= NBA_TIPOFF_BREAK_FRAME) {
+        /* $87:8EF3 calls fatigue before the due actor pass. All 24 roster
+         * records persist; actors only mirror the currently active slots. */
+        if ((tipoff->simulation_tick & 1u)==0u) {
+            tipoff->fatigue.live_state=tipoff->live_state_raw;
+            tipoff->fatigue.enabled=tipoff->session->config.rules[11];
+            tipoff->fatigue.quarter=tipoff->session->config.main_values[3];
+            for (unsigned i=0;i<NBA_GAMEPLAY_ACTOR_COUNT;++i) {
+                tipoff->fatigue.active_roster[i]=(uint16_t)((i<5 ? 0 : 12)+tipoff->actors[i].roster_slot);
+                tipoff->fatigue.boost[i]=tipoff->actors[i].movement_boost_timer;
+            }
+            (void)nba_shot_fatigue_step(tipoff->assets,&tipoff->fatigue);
+            for (unsigned i=0;i<NBA_GAMEPLAY_ACTOR_COUNT;++i)
+                tipoff->actors[i].shot_stamina_raw_18=
+                    tipoff->fatigue.stamina[tipoff->fatigue.active_roster[i]];
+        }
         cpu_update_possession(tipoff);
         /* `$86:F357-$F364`: once a detached owner and pending `$09BC` have
          * both been observed, `$0A02` becomes the immediate-resolution phase. */
@@ -6813,6 +6874,15 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
     telemetry->shot_chance_raw = tipoff->shot_chance_raw;
     telemetry->shot_miss_index_raw = tipoff->shot_miss_index_raw;
     telemetry->shot_inner_veto_raw = tipoff->shot_inner_veto_raw ? 1u : 0u;
+    telemetry->shot_selection_serial=tipoff->shot_selection_serial;
+    telemetry->shot_fatigue=tipoff->fatigue;
+    telemetry->shot_assistance_team=tipoff->assistance_team_raw_09c0;
+    for (unsigned i=0;i<10;++i) {
+        telemetry->shot_made_run[i]=tipoff->actors[i].shot_modifier_raw_b2;
+        telemetry->shot_defensive_run[i]=tipoff->actors[i].defensive_run_raw_b4;
+    }
+    memcpy(telemetry->shot_selection_inputs,tipoff->shot_selection_inputs,
+           sizeof(telemetry->shot_selection_inputs));
     telemetry->live_state_raw = tipoff->live_state_raw;
     telemetry->inbound_state_raw = tipoff->inbound_state_raw;
     telemetry->inbound_actor_raw = tipoff->inbound_actor_raw;

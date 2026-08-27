@@ -353,6 +353,50 @@ capture to the selected interval without replaying a separate gameplay state.
 ffmpeg -framerate 60 -start_number 3420 -i .analysis/special-proof/frame_%04d.bmp -vf scale=768:672:flags=neighbor -c:v libx264 -crf 18 -pix_fmt yuv420p .analysis/special-proof.mp4
 ```
 
+### Shot-state writers and natural selection
+
+`build.ps1 -Test` includes 342 ROM shot-state writer calls, 47 additional
+natural selector calls, the runtime OFF/ON roster/clock binding probe, and
+the unforced mode-17 lifecycle in the 63,800-frame CPU test. `shot_selection`
+in gameplay JSONL now reports real selector inputs, assistance team, fatigue
+timer, 24 stamina/playing-time words, and ten made/defensive-run counters.
+`hot_team_09c0` remains only the historical launch-vector protocol name;
+the field is trailing-team CPU Assistance, not a hot-streak switch.
+
+```powershell
+.\tools\build_vector_probe.ps1 -Name shot_state_vector_probe
+python tools/verify_shot_state_vectors.py --normalized --vectors tests/fixtures/shot-state-witnesses.json --probe build/shot_state_vector_probe.exe --pack build/nba95_assets.pak
+.\tools\build_vector_probe.ps1 -Name shot_state_runtime_probe
+.\build\shot_state_runtime_probe.exe build/nba95_assets.pak
+python tools/analyze_shot_selection.py .analysis/shot-state-proof-20260827/gameplay.jsonl
+python tools/count_shot_state_instructions.py --listing-dir .analysis/shot-state-ghidra-20260827
+```
+
+For recapture, use `mesen_shot_state_capture.lua`, `NBA95_VECTOR_DRIVER`
+pointing at `mesen_func_vectors.lua`, and unused driver entries `888888` /
+`888889`, read/write range `0096-0097`. `NBA95_SHOT_STATE_CONTROL=0` observes
+natural writers; `1` enables explicitly labeled boundary cases.
+Set `NBA95_VEC_DRIVE=1`, `NBA95_CPU_VS_CPU=1`,
+`NBA95_VEC_FRAMES=160000`, and invoke Mesen with `--testrunner --timeout=900`.
+Use a fresh output directory and require `capture_complete.txt` before
+normalizing with `--require-complete --rom ... --write-normalized ...`.
+`NBA95_SHOT_MAKE_OFFSET=30` with 32,000 frames completes the nine remaining
+make cases after the first period stops producing baskets. Reset this offset
+to zero for other runs.
+
+The fixed grant capture uses `NBA95_SHOT_STATE_MENU=1`, CONTROL=0,
+CPU_VS_CPU=0 and 12,000 frames: real controller input opens the ROM pause
+menu; a labeled controlled menu selection chooses timeout. Stamina boundary
+values are injected at the helper entry, not by changing PC/ROM/stack.
+Normal gameplay does not use any of these capture scripts. All stamina tables
+and ratings come from the asset pack.
+
+Ghidra `DumpShotStateMap.java` takes output directory, bank, **colon-separated**
+ranges and seeds (headless splits commas). It labels/comments the C/ROM
+correspondence and prints decoded instruction lengths. The 239-instruction
+pre-code census stays fixed; `docs/shot-state-plan.md` separates finished
+helpers from pending timeout/period/substitution caller integration.
+
 ### Other utilities
 
 The remaining `mesen_*.lua`, Python render/decoder helpers, `spc_render_main.c`,

@@ -459,6 +459,7 @@ def build_player_roster_asset(rom_data):
             # `$87:9DD4-$9DEA` and `$86:A255-$A291` grade CPU free throws
             # from roster byte +$38 before their two independent RNG gates.
             packed[26] = record[0x38]
+            packed[28] = record[0x35]  # stamina/recovery rating, $87:997D
             # `$85:B7D9-$B801` compares roster +$49 with actor +$8C before
             # selecting the +$36 or +$37 CPU shot-decision rating.
             packed[27] = record[0x49]
@@ -851,6 +852,15 @@ def build_shot_gameplay_asset(rom_data):
         payload.extend(block)
         offset += size
     return struct.pack('<8sI', b'NBSHOT1\0', len(ranges)) + directory + payload
+
+
+def build_fatigue_gameplay_asset(rom_data):
+    """Quarter-dependent normal/boost drain and roster stamina recovery."""
+    drain = rom_data[lorom_offset(0x8798DA):lorom_offset(0x8798DA) + 16]
+    recovery = rom_data[lorom_offset(0x8799C3):lorom_offset(0x8799C3) + 64]
+    if len(drain) != 16 or len(recovery) != 64:
+        raise ValueError('Truncated fatigue tables')
+    return b'NBFAT1\0\0' + drain + recovery
 
 
 def build_cpu_gameplay_ai_asset(rom_data):
@@ -1860,6 +1870,7 @@ def create_asset_pack(rom_path, output_path):
         (275, 61, 320, 0x85C6AF, gameplay_play_control),
         (276, 29, 7, 0x85C661, gameplay_cpu_tables),
         (277, 5, 0, 0x869EB2, gameplay_shot_tables),
+        (278, 4, 8, 0x8798DA, build_fatigue_gameplay_asset(rom_data)),
     ])
     assets.extend([
         (124, 0, 0, 0, rules_vram_bytes),

@@ -445,5 +445,19 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
                 a->animation_resources_valid ? "true" : "false",
                 a->animation_action_integrated ? "true" : "false", a->palette_raw);
     }
-    fputs("]}\n", stream);
+    fprintf(stream,"],\"shot_selection\":{\"serial\":%u,\"input\":[",
+            telemetry->shot_selection_serial);
+    for(unsigned i=0;i<8;++i)
+        fprintf(stream,"%s%u",i ? "," : "",telemetry->shot_selection_inputs[i]);
+    fprintf(stream,"],\"assistance_team\":%u,\"fatigue_timer\":%u,\"fatigue_enabled\":%u,\"quarter_length\":%u,\"stamina\":[",
+        telemetry->shot_assistance_team,telemetry->shot_fatigue.timer,
+        telemetry->shot_fatigue.enabled,telemetry->shot_fatigue.quarter);
+    for(unsigned i=0;i<24;++i)fprintf(stream,"%s%u",i ? "," : "",telemetry->shot_fatigue.stamina[i]);
+    fputs("],\"playing_seconds\":[",stream);
+    for(unsigned i=0;i<24;++i)fprintf(stream,"%s%u",i ? "," : "",telemetry->shot_fatigue.playing_seconds[i]);
+    fputs("],\"made_run\":[",stream);
+    for(unsigned i=0;i<10;++i)fprintf(stream,"%s%u",i ? "," : "",telemetry->shot_made_run[i]);
+    fputs("],\"defensive_run\":[",stream);
+    for(unsigned i=0;i<10;++i)fprintf(stream,"%s%u",i ? "," : "",telemetry->shot_defensive_run[i]);
+    fputs("]}}\n",stream);
 }

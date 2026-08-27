@@ -17,8 +17,8 @@ Current measured coverage:
 | metric | captured address positions | % of captured addresses |
 |---|---:|---:|
 | observed executed code | 27,901 | 100.0% |
-| documented by ROM-address provenance | 9,549 | 34.2% |
-| verified against ROM calls | 6,785 | 24.32% |
+| documented by ROM-address provenance | 9,670 | 34.7% |
+| verified against ROM calls | 6,906 | 24.75% |
 
 These values are generated, not estimated. The detailed per-bank report is
 `docs/progress.md`; the authoritative verified list and evidence paths are in
@@ -30,8 +30,22 @@ for a requested slice are reported separately.
 
 ## Verified gameplay checkpoint
 
-109 routine slices currently pass emulator-ground-truth replay. The most important
+118 routine slices currently pass emulator-ground-truth replay/binding checks. The most important
 recent slices are:
+
+- Shot-state writers now update the live CPU game instead of leaving stamina,
+  made-run modifiers and assistance at defaults. The pre-code census was
+  **239 decoded instructions**; all listed helper bodies and the pre-actor
+  call binding are now translated/verified. 342 writer calls (176 natural,
+  166 controlled) plus 47 additional natural selector calls replay exactly.
+  `$09C0` is late-game trailing-team **CPU Assistance**, not a hot-streak flag.
+  Actor `+$B2` is the made-run counter; opposing `+$B2/+$B4` clear on a make.
+  Asset 278 and roster 251 supply stamina tables/ratings for all 24 slots.
+  The unforced 63,800-frame C run selects mode 17 at frame 50,338 and releases
+  at 50,366 (actor 4, pose `$15`), finishing 25–30. It is not ROM frequency
+  parity. Timeout/period grant helpers are replayed but their complete caller
+  flows remain unimplemented. Evidence and exact boundaries:
+  `docs/shot-state-plan.md`.
 
 - Special selector `$86:B629-$B6D2`, mode-17 executor `$B979-$BAA1`, and
   complete launch `$86:9D6E/$9DA6` through `$A476` are integrated. 181 new
@@ -295,11 +309,14 @@ See `tools/README.md` for capture, replay, Ghidra, and regression commands.
 
 ## Active gaps and next work
 
-- Selector/complete-launch goal is implemented and verified; see
-  `docs/shot-completion-plan.md`. Follow-up: natural special-shot frequency
-  and upstream fatigue/modifier/hot-streak writers (currently initialized to
-  7FFF/0/FFFF). Their launch effects have controlled replay, not full upstream
-  integration. Human controls remain out of scope.
+- Selector/launch and upstream made-run/fatigue/assistance writers are
+  implemented; see `docs/shot-state-plan.md`. Remaining in this neighborhood:
+  timeout/period caller integration (including stamina grants, period reset,
+  quarter-clock initialization and end-of-period flow), substitutions and
+  bench promotion, and wider natural-shot distribution comparison. The old
+  frame-220 tip handoff and initial 43,200 clock seed remain bounded scaffolds;
+  verified clock-writer semantics do not certify all clock setup/callers.
+  Human controls remain out of scope.
 - The command helpers and common queued completion now have live replay
   proof, but generic shot/contact callers still use compatibility
   setters; do not replace all of them blindly. Ordinary mode-15 adoption is

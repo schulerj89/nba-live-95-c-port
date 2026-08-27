@@ -11,6 +11,7 @@
 #include "nba_gameplay_effect.h"
 #include "nba_gameplay_foul.h"
 #include "nba_shot_launch.h"
+#include "nba_shot_state.h"
 
 /* ROM routines correlated with live Mesen execution. */
 #define SNES_ADDR_TIPOFF_PLAYER_FORMATION 0x86DDA7
@@ -107,7 +108,8 @@ typedef struct {
     uint16_t movement_magnitude_raw;  /* actor `+$4C` */
     uint16_t movement_speed_raw_4a;
     uint16_t shot_modifier_raw_b2;
-    uint16_t shot_stamina_raw_18; /* player statistics record, not actor +$18 */
+    uint16_t defensive_run_raw_b4;
+    uint16_t shot_stamina_raw_18; /* read-only mirror of active roster statistics +$18 */
     uint16_t shot_statistics[5]; /* player stats +$00..+$08 */
     int16_t mode13_baseline_velocity_x; /* modes 13/14 actor `+$BA` */
     int16_t mode13_baseline_velocity_y; /* modes 13/14 actor `+$BC` */
@@ -193,7 +195,10 @@ typedef struct {
     uint16_t possession_frame;
     uint16_t play_state_frame;
     uint16_t possession_number;
-    uint16_t inbound_timer_raw;    /* `$092E/$0A04` */
+    uint16_t inbound_timer_raw;    /* `$092E`, separate from run-clock latch `$0A04` */
+    uint16_t dead_clock_enabled_raw_0a04;
+    uint16_t elapsed_clock_raw_13f9, elapsed_shot_clock_raw_13f7;
+    NbaShotFatigue fatigue;
     uint16_t shot_value_raw;       /* `$094C` */
     uint16_t live_state_raw;       /* `$0936` */
     uint16_t inbound_state_raw;    /* `$0952` */
@@ -241,7 +246,9 @@ typedef struct {
     uint8_t shot_chance_raw;
     uint8_t shot_miss_index_raw;
     bool shot_inner_veto_raw;  /* `$09F8` */
-    uint16_t hot_team_raw_09c0;
+    uint16_t assistance_team_raw_09c0; /* late-game trailing-team CPU Assistance */
+    uint32_t shot_selection_serial;
+    uint16_t shot_selection_inputs[8]; /* lane,move,range,direction,facing,variant,mode,actor */
     uint16_t shot_previous_actor_x_raw_0922;
     NbaShotLaunchState last_shot_launch; /* diagnostic snapshot, not actor/ball authority */
     uint8_t last_scoring_side;

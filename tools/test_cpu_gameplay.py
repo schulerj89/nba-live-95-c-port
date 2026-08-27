@@ -9,6 +9,7 @@ import tempfile
 from pathlib import Path
 
 from PIL import Image
+from test_shot_state_trace import verify as verify_shot_state_trace
 
 
 FORMATION = [
@@ -79,6 +80,7 @@ def main():
         rows = [json.loads(line) for line in trace.read_text().splitlines()]
         if len(rows) != 63800:
             raise AssertionError(f"expected 63800 CPU frames, got {len(rows)}")
+        verify_shot_state_trace(rows)
         initial_fouls = {
             "event_raw": 0, "shooting_raw": 0,
             "offender_raw": -1, "victim_raw": -1,
@@ -449,12 +451,15 @@ def main():
         if not any(row["ball"]["state"] == 5 and
                    row["ball"]["activity_raw"] == 0xFFFF for row in rows) or \
                 not mode12_attached or \
-                any(row["actors"][row["ball"]["owner"]]["raw"]["control_mode"] != 12
+                any(row["actors"][row["ball"]["owner"]]["raw"]["control_mode"] not in (12,17)
                     for row in mode12_attached) or \
                 any(row["ball"]["state"] == 4 and
                     row["ball"]["activity_raw"] not in (0, 0xFFFF) and
                     not (row["ball"]["activity_raw"] == 1 and
                          row["fouls"]["free_throw_state_raw"] != 0) and
+                    not (0 <= row["ball"]["owner"] < 10 and
+                         row["actors"][row["ball"]["owner"]]["raw"]["control_mode"] == 17 and
+                         row["ball"]["activity_raw"] in (1,3)) and
                     not (0 <= row["ball"]["owner"] < 10 and
                          row["actors"][row["ball"]["owner"]]["raw"]["control_mode"] == 12 and
                          1 <= row["ball"]["activity_raw"] < 30)
@@ -657,6 +662,16 @@ def main():
                                        after["vz"] == 0x1E0 and after["lower_animation"] == 0x32)
                     else:
                         cadence = after["vz"] == expected_vz
+                    # $86:C0D7-C0EA / C127-C13A clears the GLOBAL shot
+                    # activity before checking whether the knocked-down actor
+                    # owns the ball. A later collision can interrupt wind-up.
+                    contact=current["collision"]
+                    contact_reset=(contact["player_count"]>0 and contact["player_routine"]==0x86BFBA and
+                        current["match"]["live_state_raw"]==0 and
+                        ball["activity_raw"]==0 and after["vz"]==expected_vz and
+                        any(current["actors"][i]["raw"]["control_mode"]==8
+                            for i in (contact["player_a"],contact["player_b"])))
+                    cadence = cadence or contact_reset
                     if not cadence or ball["state"] != 4 or ball["owner"] != actor_id:
                         raise AssertionError(
                             f"$85:96B5 mode-12 jump cadence changed: "
@@ -670,9 +685,17 @@ def main():
                         (previous["possession"]["rng_state_raw"] & 0x70) == 0
                     free_throw_gate = 0 <= before["vz"] < 0x60 and \
                         previous["fouls"]["free_throw_state_raw"] != 0
+                    # A low release may reach $85:9ACB rim physics in the
+                    # same completed frame. Preserve its witnessed contact
+                    # response instead of requiring a pre-physics SHOT label.
+                    immediate_rim=(ball["state"]==6 and
+                        current["match"]["rim_contact_count_raw_0920"]>
+                        previous["match"]["rim_contact_count_raw_0920"] and
+                        current["match"]["rim_response_raw_0970"]==15 and
+                        current["match"]["shot_actor_raw_09c8"]==actor_id)
                     if not (signed_gate or low_rng_gate or free_throw_gate) or \
                             after["animation"] != 0x17 or \
-                            ball["state"] != 5 or ball["owner"] != -1 or \
+                            (ball["state"] != 5 and not immediate_rim) or ball["owner"] != -1 or \
                             current["possession"]["actor"] != -1:
                         raise AssertionError(
                             f"$86:9D6E shot release changed: {current}")
@@ -982,9 +1005,16 @@ def main():
                         signature(rows[index - age]["actors"][owner]) !=
                         signature(actor) for age in (1, 2)):
                     continue
-                actual = (row["ball"]["x"] - actor["x"],
-                          row["ball"]["y"] - actor["y"],
-                          row["ball"]["z"] - actor["z"])
+                attachment_actor=actor
+                if actor["raw"]["control_mode"]==17:
+                    # $86:B979 projects the held ball BEFORE the common
+                    # actor integration. Unlike the ordinary owned-ball
+                    # tail, use the incoming position, not post-step Z.
+                    age=1 if row["scheduler"]["due_raw"] else 2
+                    attachment_actor=rows[index-age]["actors"][owner]
+                actual = (row["ball"]["x"] - attachment_actor["x"],
+                          row["ball"]["y"] - attachment_actor["y"],
+                          row["ball"]["z"] - attachment_actor["z"])
                 expected = expected_attachment(actor)
                 attached.append((row["frame"], actual, expected,
                                  actor["raw"]["upper_phase"]))

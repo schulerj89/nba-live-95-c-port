@@ -872,6 +872,78 @@
       "method": "function-vectors",
       "evidence": "tests/fixtures/complete-shot-witnesses.json; tools/verify_complete_shot_vectors.py; tools/ghidra/DumpShotCompletion.java. 102 zero-mismatch full calls: 21 natural ordinary, 70 controlled ordinary (quality/difficulty/fatigue/movement/hot team, fractional coordinates, human timing/manual, CPU/human free throws), 11 controlled special entries. Complete persistent outputs, preserved state, attempt stats and RNG order compared. Asynchronous $85:EE30 countdown writes are separately recorded and exactly reconstructed; launch-owned timeout is compared at post-STA boundary. Tables excluded from code ranges. Runtime adopted; upstream fatigue/hot-streak writers and human controls remain separate. Only A=0 attempt paths of 9CDB; made-stat increment branches explicitly excluded.",
       "date": "2026-08-27"
+    },
+    {
+      "range": "85A081-85A0EA",
+      "name": "nba_shot_momentum_make (run counters and trailing-team assistance)",
+      "source": "src/nba_shot_state.c",
+      "method": "function-vectors",
+      "evidence": "tests/fixtures/shot-state-witnesses.json; tools/verify_shot_state_vectors.py; tools/ghidra/DumpShotStateMap.java. 342 total writer calls, including 70 make calls and all 39 controlled shooter/clock/score boundaries, zero mismatches. Updates precede score increment in C; runtime binding and natural trace tests verify that order. 09C0 is trailing-team CPU Assistance, not generic hot streak.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "86DD80-86DD88",
+      "name": "nba_shot_momentum_reset",
+      "source": "src/nba_shot_state.c",
+      "method": "function-vectors",
+      "evidence": "tests/fixtures/shot-state-witnesses.json; tools/verify_shot_state_vectors.py. Four natural reset calls preserve counters and clear owner/assistance to FFFF. Initial game adopted; later period orchestration remains separate.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "86DA49-86DA60",
+      "name": "nba_shot_stamina_init",
+      "source": "src/nba_shot_state.c",
+      "method": "function-vectors",
+      "evidence": "tests/fixtures/shot-state-witnesses.json; four natural calls initialize all 24 roster statistics records, not actor animation queue +18. Runtime adopted and slot-binding tested.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "878DF3-878DF8",
+      "name": "nba_shot_fatigue_timer_init",
+      "source": "src/nba_shot_state.c",
+      "method": "function-vectors",
+      "evidence": "tests/fixtures/shot-state-witnesses.json; three natural calls independently prove 09C2=1000, separate from stamina initialization. Runtime adopted.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "8798EA-8799C2",
+      "name": "nba_shot_fatigue_step / nba_shot_stamina_recover",
+      "source": "src/nba_shot_state.c",
+      "method": "function-vectors",
+      "evidence": "tests/fixtures/shot-state-witnesses.json; tools/verify_shot_state_vectors.py; tools/shot_state_runtime_probe.c. 74 fatigue and 16 recovery calls, natural plus controlled quarter lengths, rule ON/OFF, boost, saturating/wrapping stamina, timer and live-state boundaries. Concurrent NMI timer byte writes are recorded and strictly reconstructed; only owned timer stores feed the helper oracle. All-24 roster state and asset278 tables adopted in runtime.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "87985D-87987D",
+      "name": "nba_shot_stamina_grant",
+      "source": "src/nba_shot_state.c",
+      "method": "function-vectors",
+      "evidence": "tests/fixtures/shot-state-witnesses.json; two natural grant calls preserve caller amount and all 24 wrapped/clamped outputs. Helper verified; timeout/period caller orchestration is not yet implemented in gameplay.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "868468-868495",
+      "name": "nba_shot_stamina_fixed_grant",
+      "source": "src/nba_shot_state.c",
+      "method": "function-vectors",
+      "evidence": "tests/fixtures/shot-state-witnesses.json; controlled-ROM timeout_stamina_boundaries call entered through the actual pause-menu timeout item, not a PC jump. All 24 wrapped/clamped outputs match. 847A overwrites earlier shift/min calculation. Helper verified; timeout UI/caller integration remains pending.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "85EDC6-85EE3D",
+      "name": "nba_shot_clock_step",
+      "source": "src/nba_shot_state.c",
+      "method": "function-vectors",
+      "evidence": "tests/fixtures/shot-state-witnesses.json; 168 clock calls, natural plus 45 controlled live-state/clock/period/rule/timer boundary cases. All 11 persistent fields match. Runtime owns clock, 09C2, 0930 and 092C at 60 Hz; old duplicate decrements removed. Initial tip presentation remains the existing frame-220 handoff.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "878EF3-878EF6",
+      "name": "nba_tipoff_update (pre-actor fatigue call)",
+      "source": "src/nba_tipoff.c",
+      "method": "function-vectors",
+      "evidence": "tools/ghidra/DumpShotStateMap.java proves JSL 8798EA before actor pass. Replayed fatigue body plus tools/shot_state_runtime_probe.c verifies dispatcher configuration, active roster, boost inputs, timer sequencing and committed outputs for 32000 C frames with fatigue OFF/ON. This is a caller binding, not whole-scheduler cycle parity.",
+      "date": "2026-08-27"
     }
   ]
 }

@@ -8,6 +8,8 @@ typedef struct {
     int16_t actor_x, actor_y, controller, basket_x, origin_x, origin_y;
     uint16_t basket_fraction, team_group, distance_8c, defense_8a, movement_4c;
     uint16_t modifier_b2, stamina_18, difficulty, shot_control_17c3;
+    /* Historical replay protocol name: hot_team_09c0 actually identifies
+     * late-game trailing-team CPU Assistance; see $85:A0B8 and nba_shot_state. */
     uint16_t shot_assistance_17bf, hot_team_09c0, free_throw_0978;
     uint16_t aim_0982, power_0980, clock_0928, period_0926, assist_clock_47;
     uint16_t roster_low, roster_bank;
