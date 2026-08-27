@@ -117,6 +117,7 @@ typedef struct {
     uint16_t animation_upper_queue_raw_1c[3];
     uint16_t animation_lower_queue_raw_22[3];
     bool exact_pass_animation; /* ordinary live-play adoption, not inbound */
+    bool exact_shot_animation; /* ordinary mode-12 startup/wind-up */
     uint16_t recovery_inhibit_raw;    /* actor `+$7A` */
     uint16_t behavior_flags_raw;      /* actor `+$7E` */
     uint16_t help_request_raw_80;     /* actor `+$80`, `$85:C006` */
@@ -199,6 +200,7 @@ typedef struct {
     uint16_t inbound_ready_raw;    /* represented `$09BA` arrival latch */
     uint16_t inbound_transfer_raw; /* `$09B8` */
     uint16_t ball_activity_raw;    /* `$0948`, canonical shot detach */
+    uint16_t shot_bounce_timer_raw_091c;
     int16_t pass_actor_raw;        /* `$0942` */
     int16_t pass_aux_raw;          /* `$0944`, shared activity auxiliary */
     int16_t pass_receiver_raw;     /* `$0946` */

@@ -257,11 +257,61 @@ The second group uses entries `86B7CD,86B84C`, exits
 `86B8CA,86B7E4,86B7F7,86B866`, and reads/writes
 `0000-00FF,0900-0980,34EB-3EEA`. Both use the CPU-vs-CPU menu driver.
 
-Facing/release, recovery and cleanup are adopted gameplay paths. Startup,
-wind-up and lower-jump helpers await the surrounding special-shot/sidestep
-integration. Moving startup is replayed; stationary startup, free throws and
-human-button branches are not exhaustively exercised. Asset-pack descriptors
+Facing/release decisions, recovery and cleanup are adopted gameplay paths.
+Ordinary startup, wind-up and lower-jump helpers are now connected by the
+shot-branch checkpoint below. The full B625 special-shot selector and 9D6E
+ball-launch caller remain separate integration work. Asset-pack descriptors
 remain the runtime animation source; Mesen captures supply test data only.
+
+### Stationary-shot, lost-owner and pump-fake replay
+
+The requested disassembled slices are `$86:B7F7-$B849` (35 instructions)
+and `$86:B867-$B86B`, `$86:B886-$B88F`, `$86:B890-$B8BF` (2+4+16).
+The existing `$86:B8C0-$B8C8` cleanup is reused. The missing human/CPU
+wind-up connector `$86:B86C-$B885` and owner/latch gate `$86:B769-$B790`
+are also implemented. `DumpShotAction.java` names these boundaries; the
+fresh dump is `.analysis/shot-branches-ghidra-20260827/shot_action_bank86.txt`.
+
+The 30,000-frame natural capture retained 75 calls: five sidestep decisions
+and 70 CPU wind-up returns. It did **not** naturally exercise lost ownership
+or pump cancellation. `mesen_shot_branch_cases.lua` supplies 43 additional
+controlled-ROM calls by changing WRAM inputs on genuine shot entries. It
+does not patch ROM, CPU PC/flags or the stack. At real branch exits it records
+outputs and restores the saved WRAM. Nineteen sidestep cases cover all nine
+direction-table entries and rejection boundaries; two owner restores, four
+cancellations, four button gates and five owner/latch gates cover the rare
+paths. Nine extra release-facing cases verify `$86:9D7A-$9D98` as a helper
+only: its caller is **not** integrated or counted in this checkpoint's ledger.
+
+```powershell
+.\tools\build_vector_probe.ps1 -Name shot_branch_vector_probe
+python tools/verify_shot_branch_vectors.py --normalized --vectors tests/fixtures/shot-branch-witnesses.json --probe build/shot_branch_vector_probe.exe --pack build/nba95_assets.pak
+```
+
+All 118 retained witnesses run with `build.ps1 -Test`. Raw captures are at
+`.analysis/func-vectors-shot-branches-headless-20260827/shot_branches.vectors.jsonl`
+and `.analysis/shot-branch-release-cases-20260827/shot_branch_cases.vectors.jsonl`.
+The verifier compares all represented actor/ball state and chosen exits,
+including preserved RNG and fractional ball Z. The runtime self-test also
+exercises stationary wind-up -> jump, both cancellation thresholds, and
+lost ownership overriding a ready cancellation without touching the ball.
+The integration trace must keep attached stationary shots out of the
+ownerless rebound fallback. Shot attachment preserves ball fractions at
+`$86:B7AF-$B7CA`. Loose-ball recovery must not depend on the host REBOUND
+debug label after cancellation/free-throw continuations. The existing contact
+predicates, full strategy/scoring checks, and 2,400-frame inbound guard are
+retained; the movement-only analyzer does not prove sustained possession.
+
+For headless controlled recapture, set `NBA95_CAPTURE_DIR` to a new directory,
+`NBA95_VECTOR_DRIVER` to the absolute path of `mesen_func_vectors.lua`,
+`NBA95_VEC_ENTRY=888888`, `NBA95_VEC_EXITS=888889`,
+`NBA95_VEC_READS=0096-0097`, `NBA95_VEC_WRITES=0096-0097`,
+`NBA95_VEC_LABEL=driver`, `NBA95_VEC_DRIVE=1`, `NBA95_CPU_VS_CPU=1`,
+`NBA95_VEC_PREGAME=0`, and `NBA95_VEC_FRAMES=10000`.
+Run `Mesen.exe --testrunner --timeout=300 <ROM> <mesen_shot_branch_cases.lua>`.
+The deliberately unused driver entry/exit prevents duplicate captures; the
+case script owns its real callback boundaries. Check the 43-case completion
+sentinel and process exit before replaying. No desktop automation is needed.
 
 ### Other utilities
 

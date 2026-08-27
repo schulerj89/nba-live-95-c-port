@@ -1,5 +1,4 @@
 #include "nba_shot_action.h"
-#include "nba_gameplay_ai.h"
 #include "nba_gameplay_ball.h"
 
 /* `$85:F02D-$F099` uses strict N-flag comparisons, unlike the nearby
@@ -13,6 +12,76 @@ static uint16_t shot_facing(int16_t dx,int16_t dy) {
     if((int16_t)(uint16_t)(y-1u-x)<0){uint16_t swap=x;x=y;y=swap;key|=2;}
     if((int16_t)(uint16_t)(y-1u-(uint16_t)(x*2u))<0)key|=1;
     return map[key];
+}
+
+/* `$86:B7F7-$B849`: optional stationary-shot displacement, then B84C.
+ * B802 tests N on the wrapped subtraction, B815 tests unsigned carry.
+ * ROM table `$86:B745-$B768` has nine XY pairs (including facing 8).
+ * These are velocity constants, not sprite data. RNG is only sampled. */
+bool nba_shot_action_sidestep(NbaShotAction *state,
+                              const NbaShotSidestepInput *in) {
+    static const int16_t velocity[9][2] = {
+        {0,-80}, {-80,-80}, {-80,0}, {-80,80}, {0,80},
+        {80,80}, {80,0}, {80,-80}, {0,-80}
+    };
+    if (in->movement || (int16_t)(uint16_t)(in->anchor_distance - 0x78u) >= 0 ||
+        in->free_throw) return false;
+    uint16_t abs_x = in->x < 0 ? (uint16_t)(0u - (uint16_t)in->x) :
+                                      (uint16_t)in->x;
+    if (abs_x < 0x38u || !(in->rng & 1u)) return false;
+    uint16_t facing = shot_facing((int16_t)(in->basket_x - in->x),
+                                 (int16_t)(0u - (uint16_t)in->y));
+    state->velocity_x = velocity[facing][0];
+    state->velocity_y = velocity[facing][1];
+    return true;
+}
+
+/* `$86:9D7A-$9D98`: release snaps to the basket; unlike B8CA's wind-up,
+ * it does not take just one octant step. The same F02D quantizer is used. */
+uint16_t nba_shot_action_release_facing(int16_t x, int16_t y, int16_t basket_x) {
+    return shot_facing((int16_t)(basket_x-x),(int16_t)(0u-(uint16_t)y));
+}
+
+/* `$86:B769-$B790`: ownership takes priority over the pump-fake latch.
+ * The latch waits for BOTH upper phase >= 4 and accumulator >= $600. */
+NbaShotOwnerGate nba_shot_action_owner_gate(const NbaShotAction *state,
+                                            bool owns_ball) {
+    if (!owns_ball) return NBA_SHOT_LOST_OWNER;
+    if (!(state->flags & 0x80u)) return NBA_SHOT_CONTINUE;
+    return state->animation.upper_phase >= 4u &&
+           state->animation.upper_accumulator >= 0x600u ?
+           NBA_SHOT_PUMP_CANCEL : NBA_SHOT_PUMP_WAIT;
+}
+
+/* `$86:B86C-$B88F/$B8C9`: CPU wind-up holds without reading controller
+ * buttons. Only a non-free-throw human releasing B sets the $80 latch. */
+void nba_shot_action_windup_button(NbaShotAction *state, int16_t controller,
+                                   uint16_t free_throw, uint16_t buttons) {
+    if (controller >= 0 && !free_throw && !(buttons & 0x80u))
+        state->flags |= 0x80u;
+}
+
+/* `$86:B890-$B8C8`: cancel both animation channels, lower the ball to 40,
+ * clear its vertical speed and action flags. Preserve actor +$28 and the
+ * ball's fractional Z word; $09F6 becomes 2 only when previously nonzero. */
+bool nba_shot_action_cancel(const NbaAssetPack *assets, NbaShotAction *state,
+                            NbaShotCancelBall *ball, bool alternate_lower) {
+    NbaShotAction next = *state;
+    uint16_t request = 0;
+    if (!nba_player_animation_command(assets, &next.animation,
+            NBA_ANIMATION_CANCEL_UPPER, &request, false, alternate_lower) ||
+        !nba_player_animation_command(assets, &next.animation,
+            NBA_ANIMATION_CANCEL_LOWER, &request, false, alternate_lower))
+        return false;
+    next.activity = 0;
+    next.mode = 11;
+    nba_shot_action_clear(&next);
+    *state = next;
+    ball->live_state = 0;
+    ball->ball_velocity_z = 0;
+    ball->ball_z = ball->height_latch = 0x28;
+    if (ball->attachment_state) ball->attachment_state = 2;
+    return true;
 }
 
 /* `$86:B6D3-$B744`: ordinary shot entry after the special-shot selector.

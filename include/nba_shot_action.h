@@ -27,4 +27,27 @@ NbaShotGate nba_shot_action_gate(NbaShotGateInput *state);
 typedef enum { NBA_SHOT_DELAY, NBA_SHOT_JUMP, NBA_SHOT_AIRBORNE } NbaShotStage;
 NbaShotStage nba_shot_action_delay(uint16_t *activity, uint16_t delta,
                                   bool free_throw);
+
+typedef struct {
+    int16_t x, y, basket_x;
+    uint16_t movement, anchor_distance, free_throw, rng;
+} NbaShotSidestepInput;
+bool nba_shot_action_sidestep(NbaShotAction *state,
+                              const NbaShotSidestepInput *input);
+uint16_t nba_shot_action_release_facing(int16_t x, int16_t y, int16_t basket_x);
+
+typedef struct {
+    uint16_t live_state, ball_z, attachment_state, height_latch;
+    int16_t ball_velocity_z;
+} NbaShotCancelBall;
+bool nba_shot_action_cancel(const NbaAssetPack *assets, NbaShotAction *state,
+                            NbaShotCancelBall *ball, bool alternate_lower);
+void nba_shot_action_windup_button(NbaShotAction *state, int16_t controller,
+                                   uint16_t free_throw, uint16_t buttons);
+typedef enum {
+    NBA_SHOT_CONTINUE, NBA_SHOT_LOST_OWNER, NBA_SHOT_PUMP_WAIT,
+    NBA_SHOT_PUMP_CANCEL
+} NbaShotOwnerGate;
+NbaShotOwnerGate nba_shot_action_owner_gate(const NbaShotAction *state,
+                                            bool owns_ball);
 #endif

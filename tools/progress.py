@@ -159,8 +159,12 @@ def main():
              "recomp function set. Do not edit by hand.", ""]
     exec_total = total(executed)
     lines += [
-        "## Executed-code bytes (banks the captures observed)", "",
-        "| metric | bytes | % of executed |", "|---|---|---|",
+        "## Captured-address coverage (banks the captures observed)", "",
+        "Counts address positions in the captured exec intervals. Some captures "
+        "record instruction starts; older captures also bridge small gaps. "
+        "These are not a disassembled instruction census, byte-accurate "
+        "execution coverage, or a whole-game completion percentage.", "",
+        "| metric | address positions | % of captured |", "|---|---|---|",
         f"| executed (denominator) | {exec_total} | 100.0% |",
         f"| documented by port provenance | {total(covered)} | "
         f"{100 * total(covered) / exec_total:.1f}% |",
@@ -182,7 +186,7 @@ def main():
               f"- of those referenced by port provenance: {len(recomp_ported)}",
               f"- verified routines (ledger): {len(verified_entries)}", "",
               "## Largest undocumented executed regions", "",
-              "| range | bytes |", "|---|---|"]
+              "| range | address positions |", "|---|---|"]
     for start, end in gaps:
         lines.append(f"| {fmt(start)}-{fmt(end)} | {end - start + 1} |")
     report = "\n".join(lines) + "\n"

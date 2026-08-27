@@ -98,6 +98,11 @@ if ($Test) {
         --normalized --vectors (Join-Path $Root 'tests\fixtures\shot-action-witnesses.json') `
         --probe (Join-Path $BuildDir 'shot_action_vector_probe.exe') --pack $AssetPack
     if ($LASTEXITCODE -ne 0) { throw 'Shot action ROM witness regression failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name shot_branch_vector_probe
+    & python (Join-Path $Root 'tools\verify_shot_branch_vectors.py') `
+        --normalized --vectors (Join-Path $Root 'tests\fixtures\shot-branch-witnesses.json') `
+        --probe (Join-Path $BuildDir 'shot_branch_vector_probe.exe') --pack $AssetPack
+    if ($LASTEXITCODE -ne 0) { throw 'Shot branch ROM witness regression failed.' }
     & python (Join-Path $Root "tools\test_title_pipeline.py") `
         --pack $AssetPack --exe $ConsoleExePath --rom $RomPath
     if ($LASTEXITCODE -ne 0) {

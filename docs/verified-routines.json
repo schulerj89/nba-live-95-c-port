@@ -662,7 +662,7 @@
       "name": "nba_shot_action_start",
       "source": "src/nba_shot_action.c",
       "method": "function-vectors",
-      "evidence": ".analysis/func-vectors-shot-action-20260827 and .analysis/func-vectors-shot-delay-20260827; 42-call shot-action capture: 2 ordinary shot starts; all 17 animation/queue words and owned velocity/flags/activity fields match. Moving-start replay only; stationary-start branch is not exhaustively exercised. Helper not yet adopted by runtime startup because the preceding special-shot and intervening sidestep paths remain separate. Durable witnesses: tests/fixtures/shot-action-witnesses.json; verifier: tools/verify_shot_action_vectors.py; Ghidra: tools/ghidra/DumpShotAction.java.",
+      "evidence": ".analysis/func-vectors-shot-action-20260827 and .analysis/func-vectors-shot-delay-20260827; 42-call shot-action capture: 2 ordinary shot starts; all 17 animation/queue words and owned velocity/flags/activity fields match. Moving-start replay only; stationary-start branch is not exhaustively exercised. Ordinary runtime startup adopted in the shot-branch checkpoint; preceding full B625 special-shot selection remains separate. Durable witnesses: tests/fixtures/shot-action-witnesses.json; verifier: tools/verify_shot_action_vectors.py; Ghidra: tools/ghidra/DumpShotAction.java.",
       "date": "2026-08-27"
     },
     {
@@ -710,7 +710,7 @@
       "name": "nba_shot_action_delay",
       "source": "src/nba_shot_action.c",
       "method": "function-vectors",
-      "evidence": ".analysis/func-vectors-shot-action-20260827 and .analysis/func-vectors-shot-delay-20260827; 125-call shot-delay capture: 123 timer calls (93 airborne, 28 wind-up holds, 2 jump thresholds), zero output/exit mismatches. Helper-only pending complete stationary caller integration. Durable witnesses: tests/fixtures/shot-action-witnesses.json; verifier: tools/verify_shot_action_vectors.py; Ghidra: tools/ghidra/DumpShotAction.java.",
+      "evidence": ".analysis/func-vectors-shot-action-20260827 and .analysis/func-vectors-shot-delay-20260827; 125-call shot-delay capture: 123 timer calls (93 airborne, 28 wind-up holds, 2 jump thresholds), zero output/exit mismatches. Runtime wind-up integrated in the shot-branch checkpoint. Durable witnesses: tests/fixtures/shot-action-witnesses.json; verifier: tools/verify_shot_action_vectors.py; Ghidra: tools/ghidra/DumpShotAction.java.",
       "date": "2026-08-27"
     },
     {
@@ -718,7 +718,55 @@
       "name": "nba_shot_action_jump",
       "source": "src/nba_shot_action.c",
       "method": "function-vectors",
-      "evidence": ".analysis/func-vectors-shot-action-20260827 and .analysis/func-vectors-shot-delay-20260827; 125-call shot-delay capture: 2 lower-jump installations, all channel words and vertical velocity match. Free-throw branch not exhaustively exercised. Helper-only pending stationary/sidestep integration. Durable witnesses: tests/fixtures/shot-action-witnesses.json; verifier: tools/verify_shot_action_vectors.py; Ghidra: tools/ghidra/DumpShotAction.java.",
+      "evidence": ".analysis/func-vectors-shot-action-20260827 and .analysis/func-vectors-shot-delay-20260827; 125-call shot-delay capture: 2 lower-jump installations, all channel words and vertical velocity match. Free-throw branch not exhaustively exercised. Runtime stationary/sidestep integration adopted in the shot-branch checkpoint. Durable witnesses: tests/fixtures/shot-action-witnesses.json; verifier: tools/verify_shot_action_vectors.py; Ghidra: tools/ghidra/DumpShotAction.java.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "86B7F7-86B849",
+      "name": "nba_shot_action_sidestep",
+      "source": "src/nba_shot_action.c",
+      "method": "function-vectors",
+      "evidence": "tests/fixtures/shot-branch-witnesses.json; tools/verify_shot_branch_vectors.py; fresh Ghidra .analysis/shot-branches-ghidra-20260827 and tools/ghidra/DumpShotAction.java. Five natural calls plus 19 controlled ROM cases match velocities and all represented preserved actor/ball words, including all nine direction entries, signed distance boundary, unsigned abs-X threshold, free throw and RNG rejection. RNG is unchanged. Runtime adopted after wind-up threshold.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "86B867-86B86B",
+      "name": "cpu_update_rom_shooter (lost-owner recovery)",
+      "source": "src/nba_tipoff.c",
+      "method": "controlled-ROM-vectors",
+      "evidence": "tests/fixtures/shot-branch-witnesses.json; tools/verify_shot_branch_vectors.py; fresh Ghidra .analysis/shot-branches-ghidra-20260827 and tools/ghidra/DumpShotAction.java. Two controlled ROM calls replay both team-group outcomes through nba_shot_action_restore. Preserves animation locks, activity and ball; clears actor status/flags/timer and installs cooldown 2F. Runtime adopted; no natural lost-owner call in the 30,000-frame sample.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "86B86C-86B88F",
+      "name": "nba_shot_action_windup_button",
+      "source": "src/nba_shot_action.c",
+      "method": "function-vectors",
+      "evidence": "tests/fixtures/shot-branch-witnesses.json; tools/verify_shot_branch_vectors.py; fresh Ghidra .analysis/shot-branches-ghidra-20260827 and tools/ghidra/DumpShotAction.java. 70 natural CPU returns plus four controlled ROM cases for CPU, human held/released button and free throw. Captured outputs match; human release latches bit 80. The terminal latch is also used by the grounded shot gate. Runtime CPU path adopted; user control remains out of scope.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "86B890-86B8BF",
+      "name": "nba_shot_action_cancel",
+      "source": "src/nba_shot_action.c",
+      "method": "controlled-ROM-vectors",
+      "evidence": "tests/fixtures/shot-branch-witnesses.json; tools/verify_shot_branch_vectors.py; fresh Ghidra .analysis/shot-branches-ghidra-20260827 and tools/ghidra/DumpShotAction.java. Four controlled ROM cancellations with 09F6=0,1,2,FFFF match both animation channels and ball outputs. Integer ball Z and 0968 become 40, vertical speed/activity/live state clear; status28 and fractional Z preserved. Runtime adopted; no natural cancellation in the 30,000-frame sample.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "86B8C9-86B8C9",
+      "name": "nba_shot_action_windup_button (return)",
+      "source": "src/nba_shot_action.c",
+      "method": "function-vectors",
+      "evidence": "tests/fixtures/shot-branch-witnesses.json; tools/verify_shot_branch_vectors.py; fresh Ghidra .analysis/shot-branches-ghidra-20260827 and tools/ghidra/DumpShotAction.java. 70 natural CPU wind-up returns and controlled held-button/free-throw exits. Runtime adopted.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "86B769-86B790",
+      "name": "nba_shot_action_owner_gate",
+      "source": "src/nba_shot_action.c",
+      "method": "controlled-ROM-vectors",
+      "evidence": "tests/fixtures/shot-branch-witnesses.json; tools/verify_shot_branch_vectors.py; fresh Ghidra .analysis/shot-branches-ghidra-20260827 and tools/ghidra/DumpShotAction.java. Five controlled ROM calls cover owner continue, lost ownership overriding a ready pump latch, phase wait, accumulator wait, and ready cancellation. Exact chosen exit and preserved state match. Runtime adopted.",
       "date": "2026-08-27"
     }
   ]

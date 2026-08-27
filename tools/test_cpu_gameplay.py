@@ -18,8 +18,11 @@ FORMATION = [
 EXPECTED_RGB = {
     600: "2be148a186ee3bb5def865290628f3c01a4af2af4042f31c4b77402a54297bf7",
     1300: "a40da51a1ecc1722adc1e0b4d36c431c3eff5de737017632dfb1ef6e717ab74b",
-    # First jumper after the native shot gate's two facing corrections.
-    3480: "c024eb6a6ac16a306d755d7db2915d51ac17142a11ae1c0e613d7b1a4df659cb",
+    # First jumper now uses the packed action locks and pose attachment.
+    3480: "9502395cd897e64c2d6872a0c23fe847f3de65f81fc4e5e76acbd5b7c8ba8890",
+    # Stationary wind-up, then the lower-body jump install.
+    6932: "e6e1a0d5f62a492222e094fbe48bc6ab4ba60c76442d03bc790b06c8ee252ca9",
+    6954: "e338f25ecd9eb89eb892356d64faa542a0e8d721ca0c1e7e4b6fdd97c19e6dc5",
 }
 
 
@@ -450,7 +453,10 @@ def main():
                 any(row["ball"]["state"] == 4 and
                     row["ball"]["activity_raw"] not in (0, 0xFFFF) and
                     not (row["ball"]["activity_raw"] == 1 and
-                         row["fouls"]["free_throw_state_raw"] != 0)
+                         row["fouls"]["free_throw_state_raw"] != 0) and
+                    not (0 <= row["ball"]["owner"] < 10 and
+                         row["actors"][row["ball"]["owner"]]["raw"]["control_mode"] == 12 and
+                         1 <= row["ball"]["activity_raw"] < 30)
                     for row in rows):
             raise AssertionError("$0948 canonical shot/attach lifecycle changed")
         # `$86:9DBF/$9DFF` install these latches at the mode-12 release
@@ -619,25 +625,43 @@ def main():
                             f"$86:A9D0 close-finish release changed: {after} {ball}")
                     mode13_finishes += 1
                 if old_mode == 11 and new_mode == 12:
-                    # `$86:B625` installs +$12=$0210 after the current
-                    # `$85:963D` integration. A deferred acquisition-boundary
-                    # behavior may install it on the intervening odd host
-                    # frame, so the next sampled 30-Hz row has either $0210
-                    # or the first exact $30 gravity decrement ($01E0).
+                    # B6D3 distinguishes moving jumps from stationary wind-up.
+                    moving_start = (after["lower_animation"] == 0x32 and
+                                    after["vz"] in (0x210, 0x1E0) and
+                                    ball["activity_raw"] == 0xFFFF)
+                    stationary_start = (after["lower_animation"] == 0x16 and
+                                        after["vz"] == 0 and
+                                        ball["activity_raw"] in (1, 3))
                     if after["animation"] != 0x16 or \
-                            after["lower_animation"] != 0x32 or \
-                            after["vz"] not in (0x210, 0x1E0) or \
+                            not (moving_start or stationary_start) or \
                             ball["state"] != 4 or \
-                            ball["owner"] != actor_id or \
-                            ball["activity_raw"] != 0xFFFF:
+                            ball["owner"] != actor_id:
                         raise AssertionError(
                             f"$86:B625 mode-12 initialization changed: {current}")
                     shot_starts += 1
                 elif old_mode == 12 and new_mode == 12:
-                    if after["vz"] != before["vz"] - 0x30 or \
-                            ball["state"] != 4 or ball["owner"] != actor_id:
+                    activity = previous["ball"]["activity_raw"]
+                    # A613's boundary cancel can reset 0948 to zero during
+                    # an existing jump. B7CD still advances that value by 2;
+                    # it does not assert that the actor is on the ground.
+                    expected_vz = 0 if before["z"] == 0 and before["vz"] == 0 else before["vz"] - 0x30
+                    if after["z"] == 0 and expected_vz < 0:
+                        expected_vz = 0
+                    if 0 <= activity < 30:
+                        if activity + 2 < 30:
+                            cadence = (ball["activity_raw"] == activity + 2 and
+                                       after["vz"] == expected_vz)
+                        else:
+                            cadence = (ball["activity_raw"] == 0xFFFF and
+                                       after["vz"] == 0x1E0 and after["lower_animation"] == 0x32)
+                    else:
+                        cadence = after["vz"] == expected_vz
+                    if not cadence or ball["state"] != 4 or ball["owner"] != actor_id:
                         raise AssertionError(
                             f"$85:96B5 mode-12 jump cadence changed: "
+                            f"frame={current['frame']} actor={actor_id} "
+                            f"activity={activity}->{ball['activity_raw']} "
+                            f"flags={after['raw']['behavior_flags']} "
                             f"{before['vz']}->{after['vz']}")
                 elif old_mode == 12 and new_mode == 1:
                     signed_gate = before["vz"] < 0

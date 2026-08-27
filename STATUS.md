@@ -14,19 +14,23 @@ scope yet.
 
 Current measured coverage:
 
-| metric | bytes | % of observed executed code |
+| metric | captured address positions | % of captured addresses |
 |---|---:|---:|
 | observed executed code | 27,901 | 100.0% |
-| documented by ROM-address provenance | 9,469 | 33.9% |
-| verified against live ROM calls | 6,438 | 23.07% |
+| documented by ROM-address provenance | 9,497 | 34.0% |
+| verified against ROM calls | 6,454 | 23.13% |
 
 These values are generated, not estimated. The detailed per-bank report is
 `docs/progress.md`; the authoritative verified list and evidence paths are in
 `docs/verified-routines.json`.
+The exec interval files mix instruction-start captures and older gap-coalesced
+captures. This is an address-coverage metric, **not an instruction census or
+percentage of the whole game completed**. Disassembled instruction counts
+for a requested slice are reported separately.
 
 ## Verified gameplay checkpoint
 
-Ninety routine slices currently pass emulator-ground-truth replay. The most important
+Ninety-six routine slices currently pass emulator-ground-truth replay. The most important
 recent slices are:
 
 - `$87:AEC3-$AF74` and `$87:AFA2-$B053`: immediate non-advancing pose
@@ -188,7 +192,7 @@ Ghidra labels/dump: `tools/ghidra/DumpActionPose.java`, with local output in
 are not exhaustively exercised by these live action calls; do not confuse
 this measured routine coverage with complete branch or whole-game fidelity.
 
-The current shot-action increment adds 140 observed-executed verified bytes:
+The preceding shot-action increment added 140 captured verified address positions:
 22.57% -> 23.07% (+0.50 percentage points). All 167 fresh live calls match:
 14 recovery, two moving starts, 24 facing/release decisions, two cleanups,
 123 wind-up timer decisions, and two lower-body jump installs. Checked-in
@@ -196,20 +200,69 @@ WRAM witnesses run in `build.ps1 -Test`. The gate replay includes five real
 facing corrections; its `$85:F02D` quantizer uses strict signed comparisons,
 not the nearby target-distance helper's tie rules. RNG is sampled, not stepped.
 
-Gameplay adopts facing/release (`$86:B8CA-$B978`, excluding launch calls),
-recovery (`$86:9846-$986C`), and cleanup (`$86:B8C0-$B8C8`). The exact startup,
-wind-up timer and lower-jump helpers are **verified but not yet adopted**:
-the intervening special-shot/sidestep/pump-fake graph is incomplete. Stationary
-startup and human-control branches are not exhaustively replayed. The full
-suite passes, including 63,800 CPU frames, 2,078 exact-pass frame checks and
-94 automatic unlocks. Existing frame 600/1300 hashes are unchanged; a new
-frame-3480 anchor guards the first jumper's facing correction.
+That checkpoint adopted facing/release decisions (`$86:B8CA-$B978`, excluding
+launch calls), recovery (`$86:9846-$986C`), and cleanup (`$86:B8C0-$B8C8`).
+Its startup/timer/jump helpers were initially helper-only; the current
+shot-branch checkpoint below connects them. Its historical full-suite pass
+included 63,800 CPU frames, 2,078 exact-pass frame checks and 94 unlocks.
 
 Proof: `.analysis/shot-action-proof-20260827/` contains `shot-facing.mp4`,
 3,600 source frames, screenshots, gameplay JSONL and `regression.log`.
 Ghidra labels/comments are in `tools/ghidra/DumpShotAction.java`; fresh bank
 $85/$86 dumps are in `.analysis/shot-action-ghidra-20260827/`, with focused
 recomp output in `.analysis/shot-action-recomp-20260827/generated/`.
+
+### Current stationary-shot / lost-possession checkpoint
+
+The requested 35 stationary-shot/sidestep instructions (`$86:B7F7-$B849`)
+and 22 lost-owner/pump-fake instructions (`$86:B867-$B86B`,
+`$86:B886-$B88F`, `$86:B890-$B8BF`) are implemented. The existing shared
+cleanup is reused. The missing button/CPU connector, its return, and the
+owner/latch gate add 28 connecting instructions. This adds **16 captured
+verified address positions**, 23.07% -> **23.13%**; it is not a 57-address
+increase because most rare-path instructions were absent from the baseline
+exec captures.
+
+`tests/fixtures/shot-branch-witnesses.json` retains 118 passing ROM calls:
+75 natural calls (five sidestep, 70 CPU wind-up) and 43 controlled-ROM calls
+(19 sidestep, two owner restores, four cancels, four button gates, five
+owner/latch gates, nine extra release-facing cases). The controlled harness
+changes WRAM inputs on real calls, never ROM/PC/flags/stack. No natural
+lost-owner or cancellation call occurred in the 30,000-frame capture.
+The extra `$86:9D7A-$9D98` facing helper is replayed but **not runtime-adopted
+or included in this checkpoint's coverage ledger**; the full launch remains
+a separate caller boundary.
+
+Ordinary startup now distinguishes stationary wind-up from an already-moving
+jump. Its persistent `$0948` counter reaches the native jump/sidestep gate.
+Owner loss restores team-relative mode/cooldown without canceling locks or
+touching the ball. Pump cancellation waits for BOTH upper phase 4 and
+accumulator $600, cancels both channels, and lowers the ball's integer Z to
+40 while preserving its fraction. CPU wind-up does not read human buttons.
+Animation descriptors and hand geometry remain asset-pack data.
+
+Integration also preserves ball fractions at `$86:B7AF-$B7CA` instead of
+copying player fractions, and excludes attached stationary shots from the
+ownerless rebound fallback. Loose-ball recovery now dispatches from ball
+state instead of requiring the host REBOUND debug label: canceled-shot/free-
+throw continuations could otherwise strand a loose ball under DRIVE/ATTACK.
+The original contact predicates still decide acquisition; this is not an
+automatic floor pickup. Runtime self-tests exercise these contracts through
+the real mode-12 dispatcher. The final 63,800-frame trace sustains scoring
+(74-70); its longest dead-ball stretch is 1,552 frames, below the unchanged
+2,400-frame guard. A movement-only analyzer was insufficient to catch the
+earlier stranded-ball diagnostic run; retain the full strategy/scoring test.
+Final `build.ps1 -Test` passes every suite, including all 118 new ROM
+witnesses, 63,800 CPU frames, 2,194 exact-pass frame checks, 112 automatic
+action unlocks, and inspected screenshot anchors 600/1300/3480/6932/6954.
+
+Fresh Ghidra: `.analysis/shot-branches-ghidra-20260827/shot_action_bank86.txt`.
+Capture/replay commands and provenance are in `tools/README.md`. Final-build
+visuals and regression output belong in `.analysis/shot-branches-proof-20260827/`;
+use `final-frames`, `final-gameplay.jsonl`, `final-stationary-shot.mp4`,
+`endurance-recovery.jsonl`, and `regression.log`. Frames 6932/6954 show the
+stationary hold and subsequent jump. Earlier diagnostic `endurance-current`,
+`endurance-facing`, and `endurance-fractions` are not the final build.
 
 Do not infer that a surrounding routine is verified from one verified slice.
 Only ranges present in `docs/verified-routines.json` count as ground-truth
@@ -222,9 +275,10 @@ verified.
    is underrepresented in the denominator.
 2. **Documented code** is the intersection of those addresses with
    `$XX:XXXX` provenance comments in `src/*.c`.
-3. **Verified code** must have live Mesen entry/exit vectors replayed through
+3. **Verified code** must have Mesen entry/exit vectors replayed through
    the compiled C implementation with zero output mismatches, then be entered
-   in `docs/verified-routines.json`.
+   in `docs/verified-routines.json`. Distinguish natural gameplay calls from
+   controlled-ROM input cases; neither is proof of all surrounding callers.
 4. **Regression coverage** (trace hashes, long simulations, and screenshots)
    protects integration behavior but does not by itself make a ROM routine
    ground-truth verified.
@@ -233,9 +287,10 @@ See `tools/README.md` for capture, replay, Ghidra, and regression commands.
 
 ## Active gaps and next work
 
-- Connect the ordinary shot startup/wind-up to its special-shot, sidestep and
-  pump-fake branches before adopting the verified startup/jump helpers.
-  Facing/release and recovery are integrated; shot animation startup is not.
+- Complete the preceding `$86:B625` special-shot selector and the full
+  `$86:9D6E` launch caller. Ordinary startup/wind-up/sidestep and
+  lost-owner/pump-fake handling are integrated, but those surrounding callers
+  and human player control are not fully adopted.
   The command helpers and common queued completion now have live replay
   proof, but generic shot/contact callers still use compatibility
   setters; do not replace all of them blindly. Ordinary mode-15 adoption is
