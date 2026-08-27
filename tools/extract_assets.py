@@ -262,11 +262,13 @@ def build_gameplay_home_court_catalog(rom_data, base_vram, base_cgram,
     def render_panorama(vram, cgram):
         """Render the complete $A0:8006 court map, not a captured viewport.
 
-        `$85:8EE6` addresses this 114x52 map as
+        `$85:8EE6` addresses this 148x52 map as
         `base + coarse_camera_x * 104 + coarse_camera_y * 2`. Thus its ROM
-        storage is column-major relative to the projected 912x416 surface.
+        storage is column-major relative to the projected 1184x416 surface.
         """
-        width_tiles, height_tiles = 114, 52
+        width_tiles, height_tiles = struct.unpack_from("<HH", rom_data, 0x100000)
+        if (width_tiles, height_tiles) != (148, 52):
+            raise RuntimeError("ROM gameplay court dimensions changed")
         map_offset = 0x100006  # LoROM $A0:8006
         map_size = width_tiles * height_tiles * 2
         tilemap = rom_data[map_offset:map_offset + map_size]
@@ -351,7 +353,7 @@ def build_gameplay_home_court_catalog(rom_data, base_vram, base_cgram,
     payload = bytearray(struct.pack("<8sIIII", b"NBCOURT1", 1, 29, 256, 224))
     for court in courts:
         payload.extend(court)
-    panorama_frame_size = 912 * 416 * 4
+    panorama_frame_size = 1184 * 416 * 4
     if any(len(panorama) != panorama_frame_size for panorama in panoramas):
         raise RuntimeError("Gameplay court panorama dimensions changed")
     # The legacy viewport was decoded from the resident circular VRAM map and
@@ -359,7 +361,7 @@ def build_gameplay_home_court_catalog(rom_data, base_vram, base_cgram,
     # independently from the authoritative ROM map and is validated against
     # raw live VRAM by tools/mesen_tipoff_capture.lua.
     panorama_payload = bytearray(struct.pack(
-        "<8sIIII", b"NBCOURT2", 1, 29, 912, 416))
+        "<8sIIII", b"NBCOURT2", 2, 29, 1184, 416))
     for panorama in panoramas:
         panorama_payload.extend(panorama)
     print("[ASSET EXTRACTOR] Replayed 29 ROM home-court tile/palette selections")
@@ -1865,12 +1867,13 @@ def create_asset_pack(rom_path, output_path):
         (270, 16, 16, 0xA6BB16, starting_lineup_font),
         (271, 256, 224, 29, home_courts),
         (272, 256, 224, 29, gameplay_home_courts),
-        (273, 912, 416, 29, gameplay_court_panoramas),
+        (273, 1184, 416, 29, gameplay_court_panoramas),
         (274, 61, 5, 1595, gameplay_formations),
         (275, 61, 320, 0x85C6AF, gameplay_play_control),
         (276, 29, 7, 0x85C661, gameplay_cpu_tables),
         (277, 5, 0, 0x869EB2, gameplay_shot_tables),
         (278, 4, 8, 0x8798DA, build_fatigue_gameplay_asset(rom_data)),
+        (279, 148, 52, 0xA08000, rom_data[0x100000:0x100006 + 148 * 52 * 2]),
     ])
     assets.extend([
         (124, 0, 0, 0, rules_vram_bytes),
@@ -1930,7 +1933,7 @@ def create_asset_pack(rom_path, output_path):
                     extra_audio_id += 1
 
     header_magic = b"NBA95PAK"
-    version = 28
+    version = 29
     asset_count = len(assets)
     entry_size = 24 # 6 * 4 bytes
 

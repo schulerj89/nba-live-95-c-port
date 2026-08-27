@@ -17,8 +17,8 @@ Current measured coverage:
 | metric | captured address positions | % of captured addresses |
 |---|---:|---:|
 | observed executed code | 27,901 | 100.0% |
-| documented by ROM-address provenance | 9,730 | 34.9% |
-| verified against ROM calls | 7,000 | 25.09% |
+| documented by ROM-address provenance | 9,991 | 35.8% |
+| verified against ROM calls | 7,206 | 25.83% |
 
 These values are generated, not estimated. The detailed per-bank report is
 `docs/progress.md`; the authoritative verified list and evidence paths are in
@@ -30,8 +30,22 @@ for a requested slice are reported separately.
 
 ## Verified gameplay checkpoint
 
-128 routine slices currently pass emulator-ground-truth replay/binding checks. The most important
+136 routine slices currently pass emulator-ground-truth replay/binding checks. The most important
 recent slices are:
+
+- Camera/presentation: all **510 requested instruction starts** were audited
+  in fresh Ghidra/native captures; 3,000 calls replay with zero mismatches.
+  The wrapper's 72 state-writing instructions and the 220-instruction court
+  streamer are translated; seven existing camera slices (212) are reverified.
+  Six wrapper call/return sites are not credit for their external callees.
+  Asset 273 now contains the full ROM-header **148x52** court (1184x416),
+  fixing the old 34-column truncation and premature right-side scroll clamp.
+  Asset 279 supplies the raw map; all runtime art remains asset-pack data.
+  There are 480 durable call witnesses, 12 native viewport map/scroll checks,
+  16,000 runtime binding frames and 522 rendered viewports across 29 teams.
+  The old full-camera ledger claim was narrowed: 60 core corrections and
+  39 setup/caller instructions remain separate, as do animated crowd graphics
+  and downstream BG1/backboard composition. See `docs/camera-presentation-plan.md`.
 
 - The **145-instruction owner table** is implemented/re-verified: unlatched
   reversal `$86:E545-$E592` (31), idle cadence `$87:AD86-$ADBD` (22), and
@@ -146,8 +160,9 @@ recent slices are:
 - `$85:B734-$B820`: CPU mode-11 shot policy and its ordered RNG consumption.
 - `$85:F5E4-$F727`: opponent lane obstruction used by the cutter and mode-11
   shot branches, including its half-open rectangle edges.
-- `$85:9192-$93F4`: complete camera targeting and acceleration, including
-  the fixed-point X projection carry and no-team hold.
+- Seven slices within `$85:9192-$93F4`: initialized, normal-orientation camera
+  targeting/acceleration. See the precise ledger; no-team hold in the C port
+  is compatibility behavior, not the ROM's pending centering branch.
 - `$85:A692-$A755`, `$85:B971-$B9D1`, `$85:F3C3-$F472`: court Y/clamp tail,
   reaction threshold/RNG, and fine pass direction.
 - `$85:96B5-$9961` (three owned slices): live actor vertical and planar
@@ -342,6 +357,12 @@ See `tools/README.md` for capture, replay, Ghidra, and regression commands.
 
 ## Active gaps and next work
 
+- Camera: the additional presentation/stream/212-core audit is complete, but
+  the separate 60 core corrections and 39 setup/caller instructions are not.
+  Do not restore the old whole-camera verification claim. Crowd CHR animation
+  and the downstream basket/window compositor also remain outside this audit.
+  The raw map geometry matches 12 native viewports; static art has 0-461
+  crowd-tile pixel differences. See `docs/camera-presentation-plan.md`.
 - Selector/launch and upstream made-run/fatigue/assistance writers are
   implemented; see `docs/shot-state-plan.md`. Remaining in this neighborhood:
   timeout/period caller integration (including stamina grants, period reset,

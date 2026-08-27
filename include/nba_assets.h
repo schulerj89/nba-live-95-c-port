@@ -122,7 +122,7 @@ typedef enum {
     NBA_ASSET_HOME_COURTS                        = 271,
     /* NBCOURT1: gameplay-bright variants selected by $84:E55D-$E57A. */
     NBA_ASSET_GAMEPLAY_HOME_COURTS               = 272,
-    /* NBCOURT2: complete ROM $A0:8006 114x52-tile gameplay panoramas. */
+    /* NBCOURT2 v2: complete ROM $A0:8006 148x52-tile panoramas. */
     NBA_ASSET_GAMEPLAY_COURT_PANORAMAS            = 273,
     /* NBFORM1: exact `$85:AD6B` 61-play x five-role coordinate graph. */
     NBA_ASSET_GAMEPLAY_FORMATIONS                  = 274,
@@ -133,7 +133,8 @@ typedef enum {
     /* NBSHOT1: ROM shot probability, timing and free-throw launch tables. */
     NBA_ASSET_GAMEPLAY_SHOT_TABLES                  = 277,
     NBA_ASSET_GAMEPLAY_FATIGUE_TABLES              = 278,
-    NBA_ASSET_MAX                   = 279
+    NBA_ASSET_GAMEPLAY_COURT_MAP                 = 279,
+    NBA_ASSET_MAX                   = 280
 } NbaAssetId;
 
 typedef struct {

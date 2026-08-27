@@ -5,7 +5,7 @@
 
 #define NBA_ASSET_MAGIC "NBA95PAK"
 
-#define NBA_ASSET_PACK_VERSION 28u
+#define NBA_ASSET_PACK_VERSION 29u
 #define NBA_ASSET_HEADER_SIZE 16u
 #define NBA_ASSET_ENTRY_SIZE 24u
 
@@ -138,8 +138,11 @@ static bool asset_metadata_valid(uint32_t id, uint32_t size, uint32_t width,
         return size == 24u + 29u * 256u * 224u * sizeof(uint32_t) &&
                width == 256u && height == 224u && flags == 29u;
     if (id == NBA_ASSET_GAMEPLAY_COURT_PANORAMAS)
-        return size == 24u + 29u * 912u * 416u * sizeof(uint32_t) &&
-               width == 912u && height == 416u && flags == 29u;
+        return size == 24u + 29u * 1184u * 416u * sizeof(uint32_t) &&
+               width == 1184u && height == 416u && flags == 29u;
+    if (id == NBA_ASSET_GAMEPLAY_COURT_MAP)
+        return size == 6u + 148u * 52u * 2u && width == 148u &&
+               height == 52u && flags == 0xA08000u;
     if (id == NBA_ASSET_GAMEPLAY_FORMATIONS)
         return size == 8868u && width == 61u && height == 5u && flags == 1595u;
     if (id == NBA_ASSET_GAMEPLAY_CPU_TABLES)
@@ -446,13 +449,13 @@ const uint32_t *nba_assets_gameplay_court_panorama(const NbaAssetPack *pack,
                                                     uint8_t home_team) {
     const NbaAssetItem *item = nba_assets_get(pack,
         NBA_ASSET_GAMEPLAY_COURT_PANORAMAS);
-    const size_t frame_size = 912u * 416u * sizeof(uint32_t);
+    const size_t frame_size = 1184u * 416u * sizeof(uint32_t);
     if (!item || !item->data || home_team >= 29u ||
         item->size != 24u + 29u * frame_size)
         return NULL;
     const uint8_t *data = (const uint8_t *)item->data;
-    if (memcmp(data, "NBCOURT2", 8) || asset_u32(data + 8) != 1u ||
-        asset_u32(data + 12) != 29u || asset_u32(data + 16) != 912u ||
+    if (memcmp(data, "NBCOURT2", 8) || asset_u32(data + 8) != 2u ||
+        asset_u32(data + 12) != 29u || asset_u32(data + 16) != 1184u ||
         asset_u32(data + 20) != 416u)
         return NULL;
     return (const uint32_t *)(data + 24u + (size_t)home_team * frame_size);

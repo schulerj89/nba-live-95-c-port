@@ -29,8 +29,8 @@ EXPECTED_FRAME_HASHES = {
     "right_philadelphia": "487b0efe17269dcf04d1f004fd4ca1f5647ecd60e3a4b72099427bd03fab3acf",
     "east": "09902c67a6ce3b516c83b079ae8f609494459cf100a13c0ec735c9e0f5a5dfe7",
     "west": "94d3d4fe72c06911a9c27748dd1e5fdfcd83ec6e407706ca2c20326b7d9d0662",
-    # Assets 277/278 change only F12's count; test_shot_assets proves the delta.
-    "logo_debug": "a2331b09fcdd5b568d2868fd3073659d32221ab72da663fc19abbf2c801a941f",
+    # Assets 277/278/279 change F12's count; test_shot_assets proves the delta.
+    "logo_debug": "0c080a631497de4170b6ece2efbadcce7e167a15acaacbd186f00d2a325cefc1",
 }
 
 EXPECTED_LOGO_HASHES = {
@@ -71,7 +71,7 @@ def load_pack(path):
     if raw[:8] != b"NBA95PAK":
         raise AssertionError("invalid pack magic")
     version, count = struct.unpack_from("<II", raw, 8)
-    if version != 28 or 16 + count * 24 > len(raw):
+    if version != 29 or 16 + count * 24 > len(raw):
         raise AssertionError("invalid Team Select pack directory")
     assets = {}
     for index in range(count):

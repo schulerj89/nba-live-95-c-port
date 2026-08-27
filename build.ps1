@@ -83,6 +83,16 @@ if ($Test) {
     if ([string]::IsNullOrEmpty($AssetPack) -or !(Test-Path -LiteralPath $AssetPack)) {
         throw "-Test requires a generated asset pack."
     }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name court_presentation_probe
+    & python (Join-Path $Root 'tools\verify_court_presentation.py') --require-census `
+        --vectors (Join-Path $Root 'tests\fixtures\camera-presentation-witnesses.json') `
+        --probe (Join-Path $BuildDir 'court_presentation_probe.exe') --pack $AssetPack
+    if ($LASTEXITCODE -ne 0) { throw 'Camera/presentation ROM replay failed.' }
+    & python (Join-Path $Root 'tools\test_court_presentation.py') --pack $AssetPack --rom $RomPath
+    if ($LASTEXITCODE -ne 0) { throw 'Court panorama ROM asset checks failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name court_runtime_probe
+    & (Join-Path $BuildDir 'court_runtime_probe.exe') $AssetPack
+    if ($LASTEXITCODE -ne 0) { throw 'Court runtime integration failed.' }
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name special_shot_vector_probe
     & python (Join-Path $Root 'tools\verify_special_shot_vectors.py') `
         --normalized --vectors (Join-Path $Root 'tests\fixtures\special-shot-witnesses.json') `

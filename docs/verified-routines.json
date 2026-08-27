@@ -74,12 +74,76 @@
       "date": "2026-08-27"
     },
     {
-      "range": "859192-8593F4",
-      "name": "nba_gameplay_camera_update",
+      "range": "8591CB-8591DE",
+      "name": "camera proxy-coordinate load",
       "source": "src/nba_gameplay_camera.c",
-      "method": "function-vectors",
-      "evidence": ".analysis/func-vectors-camera-20260825 (500 live calls, 0 mismatches, 0 orphan exits; horizontal/vertical targets, prior positions, prior displacement and commanded steps compared; 499 normal and 1 ball-height calls)",
-      "date": "2026-08-25"
+      "method": "controlled/natural ROM replay + runtime binding",
+      "evidence": "tests/fixtures/camera-presentation-witnesses.json; 1000 core calls, 203 controlled and797 natural, zero mismatches; all212 selected instruction starts match fresh Ghidra census. Replaces overbroad 9192-93F4 entry: 60 init/fraction/orientation/no-team/height-gate instructions explicitly excluded. docs/camera-presentation-plan.md.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "8591FB-859218",
+      "name": "camera fixed-point projection",
+      "source": "src/nba_gameplay_camera.c",
+      "method": "controlled/natural ROM replay + runtime binding",
+      "evidence": "tests/fixtures/camera-presentation-witnesses.json; 1000 core calls, 203 controlled and797 natural, zero mismatches; all212 selected instruction starts match fresh Ghidra census. Replaces overbroad 9192-93F4 entry: 60 init/fraction/orientation/no-team/height-gate instructions explicitly excluded. docs/camera-presentation-plan.md.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "859230-8592BF",
+      "name": "camera directional look-ahead",
+      "source": "src/nba_gameplay_camera.c",
+      "method": "controlled/natural ROM replay + runtime binding",
+      "evidence": "tests/fixtures/camera-presentation-witnesses.json; 1000 core calls, 203 controlled and797 natural, zero mismatches; all212 selected instruction starts match fresh Ghidra census. Replaces overbroad 9192-93F4 entry: 60 init/fraction/orientation/no-team/height-gate instructions explicitly excluded. docs/camera-presentation-plan.md.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "8592CA-8592E3",
+      "name": "camera horizontal bounds",
+      "source": "src/nba_gameplay_camera.c",
+      "method": "controlled/natural ROM replay + runtime binding",
+      "evidence": "tests/fixtures/camera-presentation-witnesses.json; 1000 core calls, 203 controlled and797 natural, zero mismatches; all212 selected instruction starts match fresh Ghidra census. Replaces overbroad 9192-93F4 entry: 60 init/fraction/orientation/no-team/height-gate instructions explicitly excluded. docs/camera-presentation-plan.md.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "8592F9-85932E",
+      "name": "camera vertical target",
+      "source": "src/nba_gameplay_camera.c",
+      "method": "controlled/natural ROM replay + runtime binding",
+      "evidence": "tests/fixtures/camera-presentation-witnesses.json; 1000 core calls, 203 controlled and797 natural, zero mismatches; all212 selected instruction starts match fresh Ghidra census. Replaces overbroad 9192-93F4 entry: 60 init/fraction/orientation/no-team/height-gate instructions explicitly excluded. docs/camera-presentation-plan.md.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "85932F-859348",
+      "name": "camera vertical bounds",
+      "source": "src/nba_gameplay_camera.c",
+      "method": "controlled/natural ROM replay + runtime binding",
+      "evidence": "tests/fixtures/camera-presentation-witnesses.json; 1000 core calls, 203 controlled and797 natural, zero mismatches; all212 selected instruction starts match fresh Ghidra census. Replaces overbroad 9192-93F4 entry: 60 init/fraction/orientation/no-team/height-gate instructions explicitly excluded. docs/camera-presentation-plan.md.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "859352-8593F4",
+      "name": "camera adaptive acceleration",
+      "source": "src/nba_gameplay_camera.c",
+      "method": "controlled/natural ROM replay + runtime binding",
+      "evidence": "tests/fixtures/camera-presentation-witnesses.json; 1000 core calls, 203 controlled and797 natural, zero mismatches; all212 selected instruction starts match fresh Ghidra census. Replaces overbroad 9192-93F4 entry: 60 init/fraction/orientation/no-team/height-gate instructions explicitly excluded. docs/camera-presentation-plan.md.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "858E28-858EDC",
+      "name": "nba_court_presentation_update",
+      "source": "src/nba_court_presentation.c + src/nba_tipoff.c",
+      "method": "controlled/natural ROM replay + runtime binding",
+      "evidence": "tests/fixtures/camera-presentation-witnesses.json; 1000 wrapper observations incl56 controlled, zero state mismatches; all72 state-writing instructions. Six external call/return instructions are audited, not credited as verified callee bodies. 16000-frame runtime binding; BG1 compositor remains separate. docs/camera-presentation-plan.md.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "858EE6-8590C3",
+      "name": "nba_court_stream_update",
+      "source": "src/nba_court_presentation.c + src/nba_tipoff.c",
+      "method": "controlled/natural ROM replay + runtime binding",
+      "evidence": "tests/fixtures/camera-presentation-witnesses.json; 1000 streamer calls incl41 controlled; exact seven outputs,99 scratch words and ordered transfer descriptors. All220 instruction starts. 12 native viewports zero map/pixel geometry mismatch with current native CHR; static crowd art differences retained. 522 C viewport renders across29 teams and16000-frame binding. docs/camera-presentation-plan.md.",
+      "date": "2026-08-27"
     },
     {
       "range": "85A82C-85AB16",

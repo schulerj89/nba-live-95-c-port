@@ -10,7 +10,7 @@ from pathlib import Path
 
 from extract_assets import load_verified_rom
 
-PACK_VERSION = 28
+PACK_VERSION = 29
 
 def pack_entry(asset_id, offset, size, width=0, height=0, flags=0):
     return struct.pack("<6I", asset_id, offset, size, width, height, flags)
@@ -76,14 +76,16 @@ def check_asset_loader(exe, directory):
     invalid_packs = {
         "bad_magic.pak": b"NOTAPACK" + struct.pack("<II", PACK_VERSION, 1) + pack_entry(1, 40, 1) + b"\0",
         "bad_version.pak": b"NBA95PAK" + struct.pack("<II", 4, 1) + pack_entry(1, 40, 1) + b"\0",
-        "too_many.pak": b"NBA95PAK" + struct.pack("<II", PACK_VERSION, 276),
+        "too_many.pak": b"NBA95PAK" + struct.pack("<II", PACK_VERSION, 280),
         "truncated_directory.pak": b"NBA95PAK" + struct.pack("<II", PACK_VERSION, 2) + pack_entry(1, 64, 1),
         "duplicate_id.pak": duplicate,
         "directory_overlap.pak": b"NBA95PAK" + struct.pack("<II", PACK_VERSION, 1) + pack_entry(1, 16, 1) + b"\0",
         "wrapped_range.pak": b"NBA95PAK" + struct.pack("<II", PACK_VERSION, 1) + pack_entry(1, 0xFFFFFFF0, 64) + b"\0",
-        "bad_id.pak": b"NBA95PAK" + struct.pack("<II", PACK_VERSION, 1) + pack_entry(276, 40, 1) + b"\0",
+        "bad_id.pak": b"NBA95PAK" + struct.pack("<II", PACK_VERSION, 1) + pack_entry(280, 40, 1) + b"\0",
         "short_license.pak": b"NBA95PAK" + struct.pack("<II", PACK_VERSION, 1) +
             pack_entry(1, 40, 1, 128, 11) + b"\0",
+        "short_court_map.pak": b"NBA95PAK" + struct.pack("<II", PACK_VERSION, 1) +
+            pack_entry(279, 40, 2, 148, 52, 0xA08000) + b"\0\0",
         "short_legal.pak": b"NBA95PAK" + struct.pack("<II", PACK_VERSION, 1) +
             pack_entry(2, 40, 1, 256, 151, 35) + b"\0",
         "short_ea_pixels.pak": b"NBA95PAK" + struct.pack("<II", PACK_VERSION, 1) +

@@ -248,7 +248,9 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
             "\"routine\":%u,\"raw_085c\":%u,\"raw_085e\":%u,"
             "\"raw_0860\":%u,\"raw_0862\":%u,\"raw_086c\":%u,"
             "\"raw_086e\":%u,\"raw_0874\":%u,\"raw_0876\":%u,"
-            "\"raw_0878\":%u,\"raw_087a\":%u},"
+            "\"raw_0878\":%u,\"raw_087a\":%u,"
+            "\"raw_087c\":%u,\"raw_087e\":%u,\"raw_0880\":%u,\"raw_0882\":%u,"
+            "\"basket_x_raw_3fef\":%u,\"stream_row_bytes\":%u},"
             "\"collision\":{\"a\":%d,\"b\":%d,\"routine\":%u,"
             "\"player_count\":%u,\"player_a\":%d,\"player_b\":%d,"
             "\"player_routine\":%u},"
@@ -346,6 +348,9 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
             telemetry->camera_086c_raw, telemetry->camera_086e_raw,
             telemetry->camera_0874_raw, telemetry->camera_0876_raw,
             telemetry->camera_0878_raw, telemetry->camera_087a_raw,
+            telemetry->camera_087c_raw, telemetry->camera_087e_raw,
+            telemetry->camera_0880_raw, telemetry->camera_0882_raw,
+            telemetry->camera_basket_x_raw, telemetry->camera_stream_row_bytes,
             telemetry->collision_actor_a, telemetry->collision_actor_b,
             telemetry->collision_routine,
             telemetry->player_contact_count_raw,

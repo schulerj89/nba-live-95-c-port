@@ -27,7 +27,7 @@ def pack_assets(path):
     if raw[:8] != b"NBA95PAK":
         raise AssertionError("invalid pack magic")
     version, count = struct.unpack_from("<II", raw, 8)
-    if version != 28 or 16 + count * 24 > len(raw):
+    if version != 29 or 16 + count * 24 > len(raw):
         raise AssertionError("invalid tip-off pack version/directory")
     assets = {}
     for index in range(count):
@@ -70,14 +70,17 @@ def main():
             for team in range(29)}) < 27:
         raise AssertionError("gameplay home courts lost ROM-selected variation")
     panoramas, width, height, flags = assets[273]
-    panorama_size = 912 * 416 * 4
+    panorama_size = 1184 * 416 * 4
     if panoramas[:8] != b"NBCOURT2" or \
-            struct.unpack_from("<IIII", panoramas, 8) != (1, 29, 912, 416) or \
+            struct.unpack_from("<IIII", panoramas, 8) != (2, 29, 1184, 416) or \
             (width, height, flags, len(panoramas)) != \
-            (912, 416, 29, 24 + 29 * panorama_size):
+            (1184, 416, 29, 24 + 29 * panorama_size):
         raise AssertionError("complete ROM court panorama catalog changed")
-    if hashlib.sha256(panoramas[24 + 18 * panorama_size:
-                                24 + 19 * panorama_size]).hexdigest() != \
+    # Preserve the entire previously extracted region, not its truncation.
+    old_region = b''.join(panoramas[24 + 18 * panorama_size + y * 1184 * 4:
+                                    24 + 18 * panorama_size + (y * 1184 + 912) * 4]
+                          for y in range(416))
+    if hashlib.sha256(old_region).hexdigest() != \
             "f6324c6ca875ad636c4ba77b74df96e4f1a67c001404cc9040d2306409ba6cf5":
         raise AssertionError("Orlando ROM court panorama changed")
 

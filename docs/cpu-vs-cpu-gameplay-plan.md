@@ -95,7 +95,9 @@ only two pixels more acceleration than the prior displacement. `$85:8EE6`
 then computes coarse coordinates `(camera_x+$246)>>3` and
 `(camera_y+$F2)>>3`; its source pointer is exactly
 `$A0:8006 + coarse_x*104 + coarse_y*2`. The asset extractor decodes that
-114x52 ROM table into 29 team-specific 912x416 court panoramas. A focused
+ROM table into 29 team-specific panoramas. This phase originally truncated
+it to 114x52 / 912x416; the 2026-08-27 camera/presentation audit corrected it
+to the header's full 148x52 / 1184x416 (see `camera-presentation-plan.md`). A focused
 Mesen frame-650 trace confirmed source `$A0:9F60` for coarse `(77,9)` and the
 port regression guards the panorama schema, camera bounds, step cadence and
 non-default home court.

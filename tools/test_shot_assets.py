@@ -36,7 +36,10 @@ def main():
         if raw[start+28]!=rating or not 3<=rating<=10:
             raise AssertionError(f'roster recovery rating mismatch: {i}')
     old=bytearray(raw)
-    keep=[e for e in entries if e[0] not in (277,278)]
+    # The historical F12 count predates shot/fatigue tables and court map279.
+    # Remove all three for the old-count oracle; displayed asset art must
+    # remain identical and only the count row may change.
+    keep=[e for e in entries if e[0] not in (277,278,279)]
     struct.pack_into('<I',old,12,len(keep))
     for i,e in enumerate(keep):struct.pack_into('<6I',old,16+i*24,*e)
     # Keep all original payload offsets: the final unused directory slot is padding.

@@ -116,9 +116,22 @@ reports success.
   then covers `$85:B50E-$B5FE` priority/order selection through both stable
   exits, and `verify_mode11_shot_policy_vectors.py` covers `$85:B734-$B820`
   while checking both the policy result and every resulting `$07F6` RNG state.
-  `verify_camera_vectors.py` covers the complete `$85:9192-$93F4` camera
-  target/easing pass, including the no-team hold and fixed-point projection
-  carry. `verify_court_clamp_vectors.py` resumes at `$85:A692` after X
+  `verify_court_presentation.py` replays 480 durable wrapper/stream/core
+  witnesses and requires the exact 510-PC Ghidra census with `--require-census`.
+  `test_court_presentation.py` checks the full 148x52 raw ROM map, 29 complete
+  panoramas and 12 native viewport map hashes. `court_runtime_probe.c` checks
+  live binding for 16,000 frames and 522 rendered viewports. All run in
+  `build.ps1 -Test`. Use `capture_camera_presentation.ps1 -Kind core|wrapper|stream`
+  (one kind per run) with `-Controlled` for boundary cases; detailed commands,
+  Ghidra labels, pixel-proof limits and evidence are in
+  `docs/camera-presentation-plan.md`.
+  `verify_camera_vectors.py` retains the older camera target/easing replay.
+  It does not prove the entire `$85:9192-$93F4` routine: the current precise
+  census/ledger and `verify_court_presentation.py` cover seven slices totaling
+  212 instructions. Init, orientation, fractional boundary, no-team centering
+  and alternate-height corrections remain separate. The C no-team hold is
+  compatibility behavior, not the ROM branch.
+  `verify_court_clamp_vectors.py` resumes at `$85:A692` after X
   integration and compares Y integration plus both clamp axes.
   `verify_reaction_core_vectors.py` checks the distance/RNG tail at
   `$85:B971-$B9D1`; `verify_pass_direction_vectors.py` checks the fine

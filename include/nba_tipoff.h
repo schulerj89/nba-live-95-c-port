@@ -6,6 +6,7 @@
 #include "nba_session.h"
 #include "nba_gameplay_debugger.h"
 #include "nba_gameplay_camera.h"
+#include "nba_court_presentation.h"
 #include "nba_gameplay_ai.h"
 #include "nba_gameplay_ball.h"
 #include "nba_gameplay_effect.h"
@@ -155,6 +156,8 @@ typedef struct {
     NbaTipoffBall ball;
     int16_t camera_x, camera_y;
     NbaGameplayCamera camera;
+    NbaCourtPresentation court_presentation;
+    NbaCourtStream court_stream;
     NbaGameplayRng rng;
     NbaGameplayFoulState fouls;
     uint16_t team_pose_contact_count_raw[2]; /* team context +$50 */

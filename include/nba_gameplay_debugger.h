@@ -225,6 +225,8 @@ typedef struct {
     uint16_t camera_0876_raw;
     uint16_t camera_0878_raw;
     uint16_t camera_087a_raw;
+    uint16_t camera_087c_raw, camera_087e_raw, camera_0880_raw, camera_0882_raw;
+    uint16_t camera_basket_x_raw, camera_stream_row_bytes;
     uint32_t controller_routine;
     uint32_t selection_routine;
     uint32_t camera_routine;

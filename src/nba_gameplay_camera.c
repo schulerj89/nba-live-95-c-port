@@ -80,17 +80,19 @@ void nba_gameplay_camera_update(NbaGameplayCamera *camera,
     camera->prior_displacement_y = (uint16_t)abs(camera->y - camera->previous_y);
     camera->previous_x = camera->x;
     camera->previous_y = camera->y;
-    /* `$85:9219-$922D`: signed `$093A == FFFF` has no team context yet and
-     * preserves the horizontal camera coordinate. Only raw groups 0 and 5
-     * enter the asymmetric look-ahead tables. */
+    /* Compatibility fallback for an absent team: hold X. This is NOT the
+     * ROM's no-team centering branch (bank85:92C0). Its correction remains
+     * outside the seven verified camera slices; see camera-presentation-plan.
+     * Only raw groups 0 and 5 enter the asymmetric look-ahead tables here. */
     camera->target_x = side_group == 0u || side_group == 5u ?
         (int16_t)horizontal_target(
             (int16_t)(subject_x + subject_y + fractional_carry), side_group) :
         camera->x;
     int base_y = (subject_y - subject_x) >> 2;
     if (ball_height_path) {
-        /* `$85:92E4-$932C`: tip/ball-height camera. Heights below 56 are
-         * treated as zero before the projected base is raised by Z. */
+        /* Tip/ball-height camera: the verified 9312-932E arithmetic treats
+         * heights below 56 as zero. Upstream alternate-height flag selection
+         * remains a compatibility boolean, not a verified ROM caller. */
         int height = subject_z >= 56 ? subject_z : 0;
         camera->target_y = (int16_t)clamp_int(
             base_y - height - 56, -242, -53);

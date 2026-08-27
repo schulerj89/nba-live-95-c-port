@@ -6632,6 +6632,16 @@ static void cpu_update_camera(NbaTipoff *tipoff) {
     }
     tipoff->camera_x = tipoff->camera.x;
     tipoff->camera_y = tipoff->camera.y;
+    /* 85:8E28 -> 8EDD: camera commits before presentation and streaming. */
+    nba_court_presentation_update(&tipoff->court_presentation,
+        tipoff->camera_x,tipoff->camera_y,tipoff->period_raw_0926,
+        tipoff->team_context[0].anchor_x_raw_0a,
+        tipoff->team_context[1].anchor_x_raw_0a);
+    (void)nba_court_stream_update(&tipoff->court_stream,tipoff->assets,
+        tipoff->camera_x,tipoff->camera_y,tipoff->camera.previous_x,
+        tipoff->camera.previous_y,NULL,NULL);
+    tipoff->court_stream.scroll_x=tipoff->court_stream.next_scroll_x;
+    tipoff->court_stream.scroll_y=tipoff->court_stream.next_scroll_y;
 }
 
 static void draw_ball(const NbaTipoff *tipoff, NbaRenderer *ren, int x, int y) {
@@ -6686,6 +6696,7 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
     NBA_TIPOFF_REQUIRE("special shot lifecycle", cpu_special_shot_self_test(assets, session));
     NBA_TIPOFF_REQUIRE("fatigue tables", nba_shot_state_assets_valid(assets));
     NBA_TIPOFF_REQUIRE("court panorama", nba_assets_gameplay_court_panorama(assets, session->right_team));
+    NBA_TIPOFF_REQUIRE("court stream map", nba_assets_get(assets, NBA_ASSET_GAMEPLAY_COURT_MAP));
     NBA_TIPOFF_REQUIRE("tipoff ball asset", nba_assets_get(assets, NBA_ASSET_TIPOFF_BALL));
 #undef NBA_TIPOFF_REQUIRE
     memset(tipoff, 0, sizeof(*tipoff));
@@ -6708,6 +6719,7 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
     tipoff->camera_x = -128;
     tipoff->camera_y = -124;
     nba_gameplay_camera_init(&tipoff->camera, -128, -124);
+    nba_court_stream_init(&tipoff->court_stream,-128,-124);
     nba_gameplay_rng_seed(&tipoff->rng, 0x9146u);
     nba_gameplay_foul_init(&tipoff->fouls);
     static const uint8_t context_actor_order[2][5] = {
@@ -7137,10 +7149,16 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
     telemetry->camera_0862_raw = (uint16_t)tipoff->camera.previous_y;
     telemetry->camera_086c_raw = tipoff->camera.coarse_x;
     telemetry->camera_086e_raw = tipoff->camera.coarse_y;
-    telemetry->camera_0874_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
-    telemetry->camera_0876_raw = tipoff->camera.stream_source;
-    telemetry->camera_0878_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
-    telemetry->camera_087a_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
+    telemetry->camera_0874_raw = tipoff->court_stream.destination;
+    telemetry->camera_0876_raw = tipoff->court_stream.source;
+    telemetry->camera_0878_raw = tipoff->court_stream.next_scroll_x;
+    telemetry->camera_087a_raw = tipoff->court_stream.next_scroll_y;
+    telemetry->camera_087c_raw = tipoff->court_presentation.window_x_087c;
+    telemetry->camera_087e_raw = tipoff->court_presentation.window_y_087e;
+    telemetry->camera_0880_raw = tipoff->court_presentation.window_left_0880;
+    telemetry->camera_0882_raw = tipoff->court_presentation.window_right_0882;
+    telemetry->camera_basket_x_raw = tipoff->court_presentation.basket_x_3fef;
+    telemetry->camera_stream_row_bytes = tipoff->court_stream.row_bytes;
     telemetry->camera_routine = 0x859192u;
 
     telemetry->ball.world_x = fp_round(tipoff->ball.x_fp);
@@ -7289,15 +7307,11 @@ void nba_tipoff_render(const NbaTipoff *tipoff, NbaRenderer *ren) {
     if (!tipoff || !tipoff->is_initialized || !ren) return;
     const uint32_t *court = nba_assets_gameplay_court_panorama(
         tipoff->assets, tipoff->session->right_team);
-    int crop_x = tipoff->camera_x + 582;
-    int crop_y = tipoff->camera_y + 243;
-    if (crop_x < 0) crop_x = 0;
-    if (crop_x > 912 - 256) crop_x = 912 - 256;
-    if (crop_y < 0) crop_y = 0;
-    if (crop_y > 416 - 224) crop_y = 416 - 224;
+    int crop_x,crop_y;
+    nba_court_viewport(tipoff->camera_x,tipoff->camera_y,&crop_x,&crop_y);
     for (unsigned y = 0; y < 224u; ++y)
         memcpy(ren->pixels + y * 256u,
-               court + (size_t)(crop_y + (int)y) * 912u + crop_x,
+               court + (size_t)(crop_y + (int)y) * NBA_COURT_WIDTH + crop_x,
                256u * sizeof(uint32_t));
 
     uint8_t render_order[NBA_GAMEPLAY_ACTOR_COUNT];

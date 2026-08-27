@@ -1,0 +1,273 @@
+[
+  {
+    "frame": "native_1200_state",
+    "home": 18,
+    "published_camera": [
+      135,
+      -220
+    ],
+    "static_art_pixel_differences": 257,
+    "geometry_pixel_mismatches": 0,
+    "different_art_tiles": [
+      810,
+      811,
+      813,
+      816,
+      819,
+      820
+    ],
+    "visible_map_words_sha256": "671581cd696ab684dd1ac104a4472fb38e7eb27f225e73e282a6301e963547d6",
+    "native_bg2_sha256": "b360625fa5345a2614bc691c15ea66813c4f2d73d8619c63711499df4088e15f"
+  },
+  {
+    "frame": "native_1500_state",
+    "home": 18,
+    "published_camera": [
+      194,
+      -220
+    ],
+    "static_art_pixel_differences": 363,
+    "geometry_pixel_mismatches": 0,
+    "different_art_tiles": [
+      808,
+      810,
+      811,
+      813,
+      816,
+      819,
+      820
+    ],
+    "visible_map_words_sha256": "4dc2446c24f4d1ba42866a356cbea2914232faf490dce6f4fc364af460ab2469",
+    "native_bg2_sha256": "0d8446cb5aefcc7320ff0ed61b167515b3733b19243c63c4b350f5d043528d0f"
+  },
+  {
+    "frame": "native_1800_state",
+    "home": 18,
+    "published_camera": [
+      111,
+      -203
+    ],
+    "static_art_pixel_differences": 118,
+    "geometry_pixel_mismatches": 0,
+    "different_art_tiles": [
+      810,
+      811,
+      813,
+      819,
+      820,
+      859,
+      860
+    ],
+    "visible_map_words_sha256": "edcdeb90085a1b6655e37ddeb485940bc8130dbc90419288a51a2195c36f0289",
+    "native_bg2_sha256": "a09d01470d575b5ff7399956250b5e8c481fb35ef2b0ea75faa77e085b1a6ef6"
+  },
+  {
+    "frame": "native_2100_state",
+    "home": 18,
+    "published_camera": [
+      111,
+      -203
+    ],
+    "static_art_pixel_differences": 89,
+    "geometry_pixel_mismatches": 0,
+    "different_art_tiles": [
+      810,
+      811,
+      813,
+      819,
+      820
+    ],
+    "visible_map_words_sha256": "edcdeb90085a1b6655e37ddeb485940bc8130dbc90419288a51a2195c36f0289",
+    "native_bg2_sha256": "bc44475feac7082cc01e8a976d883ca5d2cb412ea3eaa78104f19ca7db1bec4c"
+  },
+  {
+    "frame": "native_2400_state",
+    "home": 18,
+    "published_camera": [
+      117,
+      -206
+    ],
+    "static_art_pixel_differences": 103,
+    "geometry_pixel_mismatches": 0,
+    "different_art_tiles": [
+      810,
+      811,
+      819,
+      820
+    ],
+    "visible_map_words_sha256": "18e86cbd670c230faf307a7b2463e05c673641a152dd6bc4c72107847d3446ef",
+    "native_bg2_sha256": "cbe9dedd11bcf69457935dc716216687d17c3d14706bed29529c1f70d12b592c"
+  },
+  {
+    "frame": "native_2700_state",
+    "home": 18,
+    "published_camera": [
+      98,
+      -210
+    ],
+    "static_art_pixel_differences": 348,
+    "geometry_pixel_mismatches": 0,
+    "different_art_tiles": [
+      811,
+      816,
+      820,
+      853,
+      854,
+      855,
+      856,
+      857,
+      858,
+      859,
+      860,
+      862,
+      863
+    ],
+    "visible_map_words_sha256": "b36229d652023f16adff0b358b4d51d3ee954b153ef36ff7d7e028e0960cf783",
+    "native_bg2_sha256": "309f31f257237301bee0809b8ec7927feecb6322b76417944270790aa714aa23"
+  },
+  {
+    "frame": "native_3000_state",
+    "home": 18,
+    "published_camera": [
+      109,
+      -183
+    ],
+    "static_art_pixel_differences": 84,
+    "geometry_pixel_mismatches": 0,
+    "different_art_tiles": [
+      817,
+      858,
+      859,
+      860,
+      862,
+      863
+    ],
+    "visible_map_words_sha256": "36bf4b8324624e6cc1f1f92a2ef23accba18d7e891f08efe82bccfa2fac19100",
+    "native_bg2_sha256": "05458d64fa1fc0fd80334fb0c8db25c7b0e8203e325f984e9982a8daf05b30ff"
+  },
+  {
+    "frame": "native_300_state",
+    "home": 18,
+    "published_camera": [
+      -126,
+      -111
+    ],
+    "static_art_pixel_differences": 0,
+    "geometry_pixel_mismatches": 0,
+    "different_art_tiles": [],
+    "visible_map_words_sha256": "a8e89fd1d5c66bdf1634de562fd2b0ae5e4934da5fde9c2fbddd84874675d3b3",
+    "native_bg2_sha256": "4cc1f63e1b13773795315f44ebf1fdbe24af0ae81f46bfb189b6984822b2b2a8"
+  },
+  {
+    "frame": "native_3300_state",
+    "home": 18,
+    "published_camera": [
+      136,
+      -220
+    ],
+    "static_art_pixel_differences": 390,
+    "geometry_pixel_mismatches": 0,
+    "different_art_tiles": [
+      809,
+      813,
+      816,
+      820,
+      849,
+      851,
+      852,
+      853,
+      854,
+      855,
+      856,
+      857,
+      858,
+      859,
+      860,
+      862,
+      863
+    ],
+    "visible_map_words_sha256": "b02f721ff62c4de461dedddda1b75cfd1adc3d75b88c8d78b7f1278cdba8f070",
+    "native_bg2_sha256": "cf9a0b954775841b3d25fc2ff0a088b18f5cda90d3a9b2b2529b82c0e0d2354b"
+  },
+  {
+    "frame": "native_3600_state",
+    "home": 18,
+    "published_camera": [
+      133,
+      -220
+    ],
+    "static_art_pixel_differences": 461,
+    "geometry_pixel_mismatches": 0,
+    "different_art_tiles": [
+      809,
+      811,
+      818,
+      819,
+      820,
+      853,
+      854,
+      855,
+      856,
+      857,
+      858,
+      859,
+      860,
+      862,
+      863
+    ],
+    "visible_map_words_sha256": "6e10afd7d5319fafb33106ff7877fcfbc6ec7e5cc3e374a5158c739fadd606c4",
+    "native_bg2_sha256": "f6d1294b6db766e88209c9afddafe67d378367a4a9302b2c4203271e61ffc04d"
+  },
+  {
+    "frame": "native_600_state",
+    "home": 18,
+    "published_camera": [
+      118,
+      -201
+    ],
+    "static_art_pixel_differences": 335,
+    "geometry_pixel_mismatches": 0,
+    "different_art_tiles": [
+      810,
+      811,
+      813,
+      818,
+      819,
+      820,
+      853,
+      854,
+      855,
+      856,
+      857,
+      858,
+      859,
+      860,
+      862,
+      863
+    ],
+    "visible_map_words_sha256": "17ba858d8357eba916a3a9026a2dfebf381b9458d666e4f6c3d1cd9e56af6832",
+    "native_bg2_sha256": "3b3fc814864083789a8c47bd3818827a65e56ad2df041fa3109db4232dec7f72"
+  },
+  {
+    "frame": "native_900_state",
+    "home": 18,
+    "published_camera": [
+      194,
+      -208
+    ],
+    "static_art_pixel_differences": 319,
+    "geometry_pixel_mismatches": 0,
+    "different_art_tiles": [
+      808,
+      810,
+      811,
+      812,
+      813,
+      816,
+      818,
+      819
+    ],
+    "visible_map_words_sha256": "bc52f904eb5fbc07a845e44615316c8de1ee3fbb1376426fc70d13496c6b7354",
+    "native_bg2_sha256": "69292d859ce1d0bd6652898ad30bba03d9dc16c4a45fc718d447c14301727796"
+  }
+]
