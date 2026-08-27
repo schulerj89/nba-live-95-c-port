@@ -18,6 +18,8 @@ FORMATION = [
 EXPECTED_RGB = {
     600: "2be148a186ee3bb5def865290628f3c01a4af2af4042f31c4b77402a54297bf7",
     1300: "a40da51a1ecc1722adc1e0b4d36c431c3eff5de737017632dfb1ef6e717ab74b",
+    # First jumper after the native shot gate's two facing corrections.
+    3480: "c024eb6a6ac16a306d755d7db2915d51ac17142a11ae1c0e613d7b1a4df659cb",
 }
 
 

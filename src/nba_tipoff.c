@@ -1,5 +1,6 @@
 #include "nba_tipoff.h"
 #include "nba_player_lab.h"
+#include "nba_shot_action.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -120,12 +121,14 @@ static void cpu_cancel_rom_pass_activity(NbaTipoff *tipoff) {
  * Native +$60 is represented by reaction_threshold for modes 10/14. */
 static void cpu_restore_normal_mode(NbaTipoff *tipoff, unsigned slot) {
     NbaTipoffActor *actor = &tipoff->actors[slot];
-    uint8_t side_group = slot >= 5u ? 5u : 0u;
-    actor->control_mode = side_group == tipoff->camera_side_group_raw ? 1u : 2u;
-    actor->behavior_timer = 0x2Fu;
-    actor->reaction_threshold = 0u;
-    actor->behavior_flags_raw = 0u;
-    actor->actor_status_raw_28 = 0u;
+    NbaShotAction action={0};
+    nba_shot_action_restore(&action,actor->team_group_raw_6e,
+                            tipoff->camera_side_group_raw);
+    actor->control_mode=(uint8_t)action.mode;
+    actor->behavior_timer=action.behavior_timer;
+    actor->reaction_threshold=action.timer;
+    actor->behavior_flags_raw=action.flags;
+    actor->actor_status_raw_28=action.status;
 }
 
 /* Player movement has its own court restriction contract. Reusing the ball
@@ -3205,11 +3208,28 @@ static bool cpu_update_rom_shooter(NbaTipoff *tipoff, unsigned slot) {
     tipoff->live_state_raw = 2u;
     ball_attach_to_actor(tipoff, slot);
     tipoff->ball_activity_raw = 0xFFFFu;
-    bool release = shooter->velocity_z < 0;
-    if (!release && shooter->velocity_z < 0x0060)
-        release = tipoff->fouls.free_throw_state_raw_0978 != 0u ||
-                  (tipoff->rng.state & 0x0070u) == 0u;
-    if (release) cpu_release_rom_shot(tipoff, slot);
+    /* `$86:B8CA-$B978` turns only once per call once lower +$44 >= $600.
+     * Keep this decision independent of attachment and the launch routine.
+     * Stationary wind-up/side-step adoption is a separate caller boundary. */
+    NbaShotGateInput gate={
+        fp_integer_word(shooter->x_fp),fp_integer_word(shooter->y_fp),
+        fp_integer_word(shooter->z_fp),shooter->velocity_z,-1,
+        shooter->lower_animation_accumulator_raw_44,
+        tipoff->fouls.free_throw_state_raw_0978,tipoff->rng.state,0,
+        shooter->direction,(int16_t)basket_x_for_side(tipoff->offense_side)
+    };
+    NbaShotGate decision=nba_shot_action_gate(&gate);
+    shooter->direction=(uint8_t)gate.facing;
+    if (decision==NBA_SHOT_RELEASE) {
+        cpu_release_rom_shot(tipoff,slot);
+        NbaShotAction cleanup={0};
+        nba_shot_action_clear(&cleanup);
+        shooter->reaction_threshold=cleanup.timer;
+        shooter->behavior_flags_raw=cleanup.flags;
+    } else if(decision==NBA_SHOT_GROUNDED) {
+        /* `$86:B886` latches the pump fake, not an unconditional release. */
+        shooter->behavior_flags_raw |= 0x80u;
+    }
 
     cpu_integrate_actor_vertical(shooter);
     shooter->x_fp += (int32_t)shooter->velocity_x * 2;

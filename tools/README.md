@@ -228,6 +228,41 @@ python tools/verify_action_pose_vectors.py --vectors .analysis/func-vectors-acti
 Immediate refresh is adopted only for already-integrated live passes. The
 inbound compatibility boundary and unconverted shot/contact callers remain.
 
+### Shot-action replay
+
+`ghidra/DumpShotAction.java` labels and dumps bank-$86 shot setup, wind-up,
+facing/release and recovery, plus bank-$85 `$F02D-$F099` facing quantization.
+The focused recomp inputs/outputs are retained locally under
+`.analysis/shot-action-recomp-20260827/`.
+
+```powershell
+.\tools\build_vector_probe.ps1 -Name shot_action_vector_probe
+python tools/verify_shot_action_vectors.py --vectors .analysis/func-vectors-shot-action-20260827/shot_action.vectors.jsonl --probe build/shot_action_vector_probe.exe --pack build/nba95_assets.pak
+python tools/verify_shot_action_vectors.py --vectors .analysis/func-vectors-shot-delay-20260827/shot_delay.vectors.jsonl --probe build/shot_action_vector_probe.exe --pack build/nba95_assets.pak
+```
+
+The first capture has 42 recovery/start/gate/cleanup calls; the second has
+123 timer decisions and two lower-jump installs. All 167 WRAM witnesses are
+checked in at `tests/fixtures/shot-action-witnesses.json` and replayed by
+`build.ps1 -Test`. Missing state or invalid entry/exit pairs are errors.
+The gate compares facing and decision, and asserts represented actor state
+and RNG remain otherwise unchanged. It stops before the ball-launch call.
+
+Capture entry/exits for the first group:
+`NBA95_VEC_ENTRY=86B6D3,86B8CA,869846,86B8C0,86B84C`,
+`NBA95_VEC_EXITS=86B744,86B951,86B971,86B978,86B886,86986C,86B8C8,86B866`.
+Reads/writes: `0000-00FF,07F6-07F7,0900-0980,34EB-3EEA,466B-47EA`.
+Use `NBA95_VEC_SHARED_EXITS=1` for the shared gate exit.
+The second group uses entries `86B7CD,86B84C`, exits
+`86B8CA,86B7E4,86B7F7,86B866`, and reads/writes
+`0000-00FF,0900-0980,34EB-3EEA`. Both use the CPU-vs-CPU menu driver.
+
+Facing/release, recovery and cleanup are adopted gameplay paths. Startup,
+wind-up and lower-jump helpers await the surrounding special-shot/sidestep
+integration. Moving startup is replayed; stationary startup, free throws and
+human-button branches are not exhaustively exercised. Asset-pack descriptors
+remain the runtime animation source; Mesen captures supply test data only.
+
 ### Other utilities
 
 The remaining `mesen_*.lua`, Python render/decoder helpers, `spc_render_main.c`,

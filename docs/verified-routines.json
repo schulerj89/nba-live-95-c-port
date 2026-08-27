@@ -656,6 +656,70 @@
       "method": "function-vectors",
       "evidence": ".analysis/func-vectors-action-pose-20260826: both live ten-player initializations, 50 per-player words plus the three-byte upload seed match with zero mismatches. Asset-pack records are selected by captured ROM pointers; no fabricated roster inputs. Durable exits in tests/fixtures/action-pose-witnesses.json. Excludes preceding pointer setup and following jersey compositor; native rendering does not emulate the upload queue. Recomp bank_87_AF95_M0X0 owned middle plus tools/ghidra/DumpActionPose.java.",
       "date": "2026-08-26"
+    },
+    {
+      "range": "86B6D3-86B744",
+      "name": "nba_shot_action_start",
+      "source": "src/nba_shot_action.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-shot-action-20260827 and .analysis/func-vectors-shot-delay-20260827; 42-call shot-action capture: 2 ordinary shot starts; all 17 animation/queue words and owned velocity/flags/activity fields match. Moving-start replay only; stationary-start branch is not exhaustively exercised. Helper not yet adopted by runtime startup because the preceding special-shot and intervening sidestep paths remain separate. Durable witnesses: tests/fixtures/shot-action-witnesses.json; verifier: tools/verify_shot_action_vectors.py; Ghidra: tools/ghidra/DumpShotAction.java.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "869846-86986C",
+      "name": "nba_shot_action_restore",
+      "source": "src/nba_shot_action.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-shot-action-20260827 and .analysis/func-vectors-shot-delay-20260827; 42-call shot-action capture: 14 restores, both matching and nonmatching team groups, zero mismatches. Runtime recovery now uses actor +6E. Durable witnesses: tests/fixtures/shot-action-witnesses.json; verifier: tools/verify_shot_action_vectors.py; Ghidra: tools/ghidra/DumpShotAction.java.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "86B8CA-86B950",
+      "name": "nba_shot_action_gate (facing and release routing)",
+      "source": "src/nba_shot_action.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-shot-action-20260827 and .analysis/func-vectors-shot-delay-20260827; 42-call shot-action capture: 24 gate calls, 5 facing corrections, 22 waits and 2 releases. Compared facing plus chosen pre-launch exit; verified no channel/state or RNG changes. CPU branch exercised; human-button/free-throw branches not exhaustively exercised. Runtime gate adopted, external launch excluded. Durable witnesses: tests/fixtures/shot-action-witnesses.json; verifier: tools/verify_shot_action_vectors.py; Ghidra: tools/ghidra/DumpShotAction.java.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "86B958-86B970",
+      "name": "nba_shot_action_gate (CPU release threshold)",
+      "source": "src/nba_shot_action.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-shot-action-20260827 and .analysis/func-vectors-shot-delay-20260827; Same 24 live gate calls, samples RNG without stepping it; stops before 86B971 launch. CPU path runtime adopted. Durable witnesses: tests/fixtures/shot-action-witnesses.json; verifier: tools/verify_shot_action_vectors.py; Ghidra: tools/ghidra/DumpShotAction.java.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "86B978-86B978",
+      "name": "nba_shot_action_gate (hold return)",
+      "source": "src/nba_shot_action.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-shot-action-20260827 and .analysis/func-vectors-shot-delay-20260827; Same live gate capture: 22 hold exits. Durable witnesses: tests/fixtures/shot-action-witnesses.json; verifier: tools/verify_shot_action_vectors.py; Ghidra: tools/ghidra/DumpShotAction.java.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "86B8C0-86B8C8",
+      "name": "nba_shot_action_clear",
+      "source": "src/nba_shot_action.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-shot-action-20260827 and .analysis/func-vectors-shot-delay-20260827; 42-call shot-action capture: 2 post-release cleanups. Timer/flags clear, status +28 preserved. Runtime adopted. Durable witnesses: tests/fixtures/shot-action-witnesses.json; verifier: tools/verify_shot_action_vectors.py; Ghidra: tools/ghidra/DumpShotAction.java.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "86B7CD-86B7F6",
+      "name": "nba_shot_action_delay",
+      "source": "src/nba_shot_action.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-shot-action-20260827 and .analysis/func-vectors-shot-delay-20260827; 125-call shot-delay capture: 123 timer calls (93 airborne, 28 wind-up holds, 2 jump thresholds), zero output/exit mismatches. Helper-only pending complete stationary caller integration. Durable witnesses: tests/fixtures/shot-action-witnesses.json; verifier: tools/verify_shot_action_vectors.py; Ghidra: tools/ghidra/DumpShotAction.java.",
+      "date": "2026-08-27"
+    },
+    {
+      "range": "86B84C-86B866",
+      "name": "nba_shot_action_jump",
+      "source": "src/nba_shot_action.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-shot-action-20260827 and .analysis/func-vectors-shot-delay-20260827; 125-call shot-delay capture: 2 lower-jump installations, all channel words and vertical velocity match. Free-throw branch not exhaustively exercised. Helper-only pending stationary/sidestep integration. Durable witnesses: tests/fixtures/shot-action-witnesses.json; verifier: tools/verify_shot_action_vectors.py; Ghidra: tools/ghidra/DumpShotAction.java.",
+      "date": "2026-08-27"
     }
   ]
 }

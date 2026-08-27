@@ -1,6 +1,6 @@
 # Project status
 
-Last updated 2026-08-26. This is a current-state handoff, not a milestone log.
+Last updated 2026-08-27. This is a current-state handoff, not a milestone log.
 Use Git history for older checkpoints and run
 `python tools/progress.py --write docs/progress.md` for live measurements.
 
@@ -17,8 +17,8 @@ Current measured coverage:
 | metric | bytes | % of observed executed code |
 |---|---:|---:|
 | observed executed code | 27,901 | 100.0% |
-| documented by ROM-address provenance | 9,343 | 33.5% |
-| verified against live ROM calls | 6,298 | 22.57% |
+| documented by ROM-address provenance | 9,469 | 33.9% |
+| verified against live ROM calls | 6,438 | 23.07% |
 
 These values are generated, not estimated. The detailed per-bank report is
 `docs/progress.md`; the authoritative verified list and evidence paths are in
@@ -26,7 +26,7 @@ These values are generated, not estimated. The detailed per-bank report is
 
 ## Verified gameplay checkpoint
 
-Eighty-two routine slices currently pass emulator-ground-truth replay. The most important
+Ninety routine slices currently pass emulator-ground-truth replay. The most important
 recent slices are:
 
 - `$87:AEC3-$AF74` and `$87:AFA2-$B053`: immediate non-advancing pose
@@ -173,7 +173,7 @@ The final `build.ps1 -Test` passes every suite, including 63,800 CPU frames,
 Visual proof: `.analysis/action-animation-proof-20260826/pass-animation.mp4`,
 1,300 source frames and gameplay JSONL. Broader movement fidelity is unfinished.
 
-The current pose/appearance increment adds 139 observed-executed verified bytes:
+The preceding pose/appearance increment added 139 observed-executed verified bytes:
 22.07% -> 22.57% (+0.50 percentage points). Both ten-player initialization
 calls and 26 live action-pose refreshes match every owned output. The resolver
 does not advance phases, accumulators, or locks. All 28 checked-in exit witnesses
@@ -187,6 +187,29 @@ Ghidra labels/dump: `tools/ghidra/DumpActionPose.java`, with local output in
 `.analysis/action-pose-ghidra-20260826/`. Low-resource variant/facing-8 branches
 are not exhaustively exercised by these live action calls; do not confuse
 this measured routine coverage with complete branch or whole-game fidelity.
+
+The current shot-action increment adds 140 observed-executed verified bytes:
+22.57% -> 23.07% (+0.50 percentage points). All 167 fresh live calls match:
+14 recovery, two moving starts, 24 facing/release decisions, two cleanups,
+123 wind-up timer decisions, and two lower-body jump installs. Checked-in
+WRAM witnesses run in `build.ps1 -Test`. The gate replay includes five real
+facing corrections; its `$85:F02D` quantizer uses strict signed comparisons,
+not the nearby target-distance helper's tie rules. RNG is sampled, not stepped.
+
+Gameplay adopts facing/release (`$86:B8CA-$B978`, excluding launch calls),
+recovery (`$86:9846-$986C`), and cleanup (`$86:B8C0-$B8C8`). The exact startup,
+wind-up timer and lower-jump helpers are **verified but not yet adopted**:
+the intervening special-shot/sidestep/pump-fake graph is incomplete. Stationary
+startup and human-control branches are not exhaustively replayed. The full
+suite passes, including 63,800 CPU frames, 2,078 exact-pass frame checks and
+94 automatic unlocks. Existing frame 600/1300 hashes are unchanged; a new
+frame-3480 anchor guards the first jumper's facing correction.
+
+Proof: `.analysis/shot-action-proof-20260827/` contains `shot-facing.mp4`,
+3,600 source frames, screenshots, gameplay JSONL and `regression.log`.
+Ghidra labels/comments are in `tools/ghidra/DumpShotAction.java`; fresh bank
+$85/$86 dumps are in `.analysis/shot-action-ghidra-20260827/`, with focused
+recomp output in `.analysis/shot-action-recomp-20260827/generated/`.
 
 Do not infer that a surrounding routine is verified from one verified slice.
 Only ranges present in `docs/verified-routines.json` count as ground-truth
@@ -210,9 +233,11 @@ See `tools/README.md` for capture, replay, Ghidra, and regression commands.
 
 ## Active gaps and next work
 
-- Migrate the next non-pass action caller together with its release/cancel
-  branches. The command helpers and common queued completion now have live
-  replay proof, but generic shot/contact callers still use compatibility
+- Connect the ordinary shot startup/wind-up to its special-shot, sidestep and
+  pump-fake branches before adopting the verified startup/jump helpers.
+  Facing/release and recovery are integrated; shot animation startup is not.
+  The command helpers and common queued completion now have live replay
+  proof, but generic shot/contact callers still use compatibility
   setters; do not replace all of them blindly. Ordinary mode-15 adoption is
   done, but inbound stays on the compatibility path: adopting its changed
   release/hand geometry exposed a >2,400-frame dead-ball stall in endurance
