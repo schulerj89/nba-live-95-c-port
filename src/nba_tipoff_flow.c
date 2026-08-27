@@ -1,5 +1,6 @@
 #include "nba_tipoff_flow.h"
 #include "nba_gameplay_ai.h"
+#include "nba_shot_action.h"
 
 static int16_t difference(int16_t a,int16_t b) {
     return (int16_t)(uint16_t)((uint16_t)a-(uint16_t)b);
@@ -75,4 +76,44 @@ void nba_tip_receiver_select(NbaTipReceiver *s) {
 void nba_tip_receiver_finish(NbaTipReceiver *s) {
     /* `$86:B0C8-$B0E1`: runs AFTER the launch child. */
     s->event_bits|=s->receiver>=5?2:4;
+}
+
+static int32_t arithmetic_shift(int32_t value,unsigned bits) {
+    int32_t divisor=(int32_t)(1u<<bits);
+    return value>=0?value/divisor:-((-value+divisor-1)/divisor);
+}
+static int16_t launch_axis(int16_t target,int16_t origin,int16_t duration) {
+    return (int16_t)(((int32_t)difference(target,origin)*256)/duration);
+}
+bool nba_tip_launch(const NbaAssetPack *assets,NbaTipLaunch *s) {
+    /* `$86:99C4-$9C44` plus `$9C45-$9C6E`. Native positions are integer
+     * words here; fractional words survive all endpoint/nudge operations. */
+    int16_t duration,vertical,unused;
+    uint8_t family=s->pass_family<0?0:s->pass_family>0?1:2;
+    if(s->band%6 || !nba_assets_gameplay_pass_launch(assets,family,(uint8_t)(s->band/6),
+            &duration,&vertical,&unused) || duration<=0)return false;
+    int16_t x=(int16_t)(s->receiver_x+arithmetic_shift((int32_t)s->receiver_vx*duration,8));
+    int16_t y=(int16_t)(s->receiver_y+arithmetic_shift((int32_t)s->receiver_vy*duration,8));
+    if(x>362 || x< -362) {
+        x=x>362?362:-362;s->receiver_vx=launch_axis(x,s->receiver_x,duration);
+    }
+    if(y>192 || y< -192) {
+        y=y>192?192:-192;s->receiver_vy=launch_axis(y,s->receiver_y,duration);
+    }
+    s->launch_source_lo=s->source_lo;s->launch_source_hi=s->source_hi;
+    s->owner=0xffff;s->latch=1;s->inhibit=20;s->ball_record=0x3eeb;
+    s->ball_vx=launch_axis(x,s->ball_x,duration);s->ball_vy=launch_axis(y,s->ball_y,duration);
+    s->ball_vz=(int16_t)(vertical-((uint16_t)s->passer_z>=16?128:0));
+    unsigned shift=s->upper_state==0x2b || s->upper_state==0x2c?6:7;
+    s->ball_x=(int16_t)(s->ball_x+arithmetic_shift(s->ball_vx,shift));
+    s->ball_y=(int16_t)(s->ball_y+arithmetic_shift(s->ball_vy,shift));
+    s->ball_z=(int16_t)(s->ball_z+arithmetic_shift(s->ball_vz,shift));
+    if(s->receiver_mode!=14)s->receiver_timer=(uint16_t)(duration+15);
+    if(s->passer_mode!=15) {
+        NbaShotAction action={0};nba_shot_action_restore(&action,s->passer_group,s->active_group);
+        s->passer_mode=action.mode;s->passer_timer=action.timer;s->behavior_timer=action.behavior_timer;
+        s->flags=action.flags;s->status=action.status;
+    }
+    if((int16_t)(uint16_t)(s->live_state-0x81)<0)s->live_state=0;
+    return true;
 }

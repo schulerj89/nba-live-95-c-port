@@ -471,6 +471,7 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
     for(unsigned i=0;i<10;++i)fprintf(stream,"%s%u",i ? "," : "",telemetry->shot_made_run[i]);
     fputs("],\"defensive_run\":[",stream);
     for(unsigned i=0;i<10;++i)fprintf(stream,"%s%u",i ? "," : "",telemetry->shot_defensive_run[i]);
-    fprintf(stream,"]},\"tipoff\":{\"contact_actor\":%d,\"contact_frame\":%u,\"reach_mask\":%u}}\n",
+    fprintf(stream,"]},\"shot_launch\":{\"serial\":%u,\"actor\":%u,\"value\":%u},\"tipoff\":{\"contact_actor\":%d,\"contact_frame\":%u,\"reach_mask\":%u}}\n",
+            telemetry->shot_launch_serial,telemetry->shot_launch_actor,telemetry->shot_launch_value,
             telemetry->tip_contact_actor,telemetry->tip_contact_frame,telemetry->tip_reach_mask);
 }

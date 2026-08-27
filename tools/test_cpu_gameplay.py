@@ -22,11 +22,12 @@ EXPECTED_RGB = {
     # Independent ROM vectors and semantic endurance guards remain separate.
     # Native B04C RNG draw changes subsequent CPU choices. Reviewed stage2
     # captures; frame1300 still exposes wider loose-ball/camera composition.
-    600: "114bc1d302ec0098e3d95fb355ab2800604d04ee4c707ab7654f476bf967023e",
-    1300: "f3c6eb152120e6e267e809a59df0c0d493d42a1b715ccd8f4fb5883391381eec",
-    3480: "1eb3b040561fcd18df8c420782d236a5327a986d2d7e97a319eb268f1c376362",
-    6932: "03e8392b1fbdd0ea34e48d4a2d3c4ca41ced54db3b950f928143ac47dde80c52",
-    6954: "6972379c752d156db65d594575985ca21c80a97a9cc52d6ac29e1c4f41188d1b",
+    # Stage3 native tip launch/initial dead-side latch changes the trajectory.
+    600: "27a82c36b6d0acc68fd4b33ee0117e2a9524f2d879d99a7ca73704cd8ea45c04",
+    1300: "3d5e7a972ee3967b626c1a46006300ae10a990215209cc2ecb0cc70a6cad6dfe",
+    3480: "6d75a8a898c6ac3b10032c7cd91d90ee3908f7be9b15cec5aef1c934cade1472",
+    6932: "7e688c505e08c483668b1cb20c3d898e1e20927ef5f61fb138f72a04de0b37ab",
+    6954: "b924ef7bd0619401aa88b95dc673015a60cf7ff7ad0fe8f10a180adca3a90cf3",
 }
 
 
@@ -477,15 +478,13 @@ def main():
         # boundary. Later ROM rim/impact branches may clear `$096A` while the
         # ball still retains its shot-mode renderer state, so validate the
         # transition rather than every subsequent flight row.
+        # A release during actor integration can hit the rim in this SAME
+        # frame. Check the captured launch output, before physics changes it.
         detached_shots = [rows[index] for index in range(1, len(rows))
-                          if rows[index]["ball"]["state"] == 5 and
-                          rows[index]["ball"]["activity_raw"] == 0xFFFF and
-                          rows[index - 1]["ball"]["state"] == 4 and
-                          any(actor["raw"]["control_mode"] == 12
-                              for actor in rows[index - 1]["actors"])]
+                          if rows[index]["shot_launch"]["serial"] > rows[index-1]["shot_launch"]["serial"]]
         if not detached_shots or any(
-                not 0 <= row["match"]["shot_actor_raw_09c8"] < 10 or
-                row["match"]["interference_value_raw_096a"] not in (1, 2, 3)
+                not 0 <= row["shot_launch"]["actor"] < 10 or
+                row["shot_launch"]["value"] not in (1, 2, 3)
                 for row in detached_shots):
             raise AssertionError(
                 "$86:9DBF/$9DFF detached-shot latches changed")

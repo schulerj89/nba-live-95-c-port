@@ -126,3 +126,36 @@ were inspected after the new RNG consumption; they are C regressions, not ROM
 parity. Frame1300 still exposes loose-ball camera framing with players mostly
 offscreen. Evidence: `stage2-{cpu,tip,debug}.log`, `stage2-frames`,
 `stage2-port.mp4`. Coverage7297/27901 (26.15%),148 ledger slices.
+
+## Checkpoint 3: ball deflection
+
+`nba_tip_launch` implements99C4-9C44 and the20-instruction9C45-9C6E
+offset helper. 126 native calls (2 natural/124 controlled), zero mismatches,
+306/306 starts. Fixtures retain all35 input/output words, including preserved
+fractions, opaque pointer copies, receiver velocity corrections at both court
+limits, all table families and the mode/live-state alternatives. Runtime
+tests check the natural (-1109,597) velocity, (-9,4) integer nudge, unchanged
+Z fraction/height, zero VZ, both center inhibits and subsequent physics.
+The old straight-line path and separate rendered deflection are removed.
+
+The existing frame220 bridge now uses the full acquisition cleanup and event
+bit; checkpoint4 still must replace its timing and fixed catcher entirely.
+Native first-contact input also proves097E=FFFF, not the old zero default.
+The default had falsely classified same-side acquisition as a turnover.
+The source-pointer E0/E2 caller provenance is unrepresented at runtime (not
+invented); its copy is verified in the isolated routine. Ordinary passes
+still use their earlier launcher adapter; adopting this complete shared
+implementation there is separate work.
+
+Regression: launch/native and runtime guards pass; the63,800-frame CPU,
+tip-off, and gameplay-debugger suites pass. Shot-launch diagnostics now retain
+the pre-physics actor/value: native-order same-frame rim processing can clear
+the public latch, so checking only its final value was an invalid proxy.
+Inspected captures: `stage3-frames` and `stage3-port.mp4`; changed C visual
+anchors are not ROM-parity claims. Coverage7527/27901 (26.98%),149 slices.
+
+Expanded pending census: EC32-ECF8 is only a77-instruction prefix. Its
+ECF9-EE75 loose-ball/jump continuation adds162 contiguous instructions.
+Neither is certified by the four contact/handoff checkpoints; total239
+decoded instructions require path-specific audit/adoption. E054-E0AB is
+only a31-instruction ball-init prefix, not its full dispatcher/toss census.

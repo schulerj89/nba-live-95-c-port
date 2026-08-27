@@ -2,6 +2,14 @@
   "comment": "Routines verified against emulator ground truth. Byte ranges are 24-bit SNES bus addresses. evidence points at the capture/replay artifacts; tools/progress.py counts these bytes as verified.",
   "routines": [
     {
+      "range": "8699C4-869C6E",
+      "name": "nba_tip_launch",
+      "source": "src/nba_tipoff_flow.c + src/nba_tipoff.c",
+      "method": "function-vectors",
+      "evidence": "tests/fixtures/tip-launch.json: 126 calls (2 natural,124 controlled), zero mismatches,306/306 starts; three table families, endpoint clamps including receiver velocity correction, integer nudges, preserved fractions, mode restore and live-state clear. Tip runtime adapter tested with native launch values and wrapper height restoration. DP E0/E2 provenance and ordinary pass adoption remain separate integration gaps.",
+      "date": "2026-08-27"
+    },
+    {
       "range": "86B04C-86B0E1",
       "name": "nba_tip_receiver_select/finish",
       "source": "src/nba_tipoff_flow.c + src/nba_tipoff.c",

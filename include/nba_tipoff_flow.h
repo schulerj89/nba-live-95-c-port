@@ -1,6 +1,7 @@
 #ifndef NBA_TIPOFF_FLOW_H
 #define NBA_TIPOFF_FLOW_H
 #include "nba_gameplay_ball.h"
+#include "nba_assets.h"
 
 typedef struct {
     uint16_t actor_id, actor_inhibit, actor_group, upper_state, upper_lock;
@@ -36,4 +37,16 @@ typedef struct {
 /* $86:B04C-$B0E1, excluding the $99C4 child. Call suffix after launch. */
 void nba_tip_receiver_select(NbaTipReceiver *state);
 void nba_tip_receiver_finish(NbaTipReceiver *state);
+
+typedef struct {
+    int16_t ball_x,ball_y,ball_z,ball_vx,ball_vy,ball_vz;
+    int16_t receiver_x,receiver_y,receiver_vx,receiver_vy,passer_z,pass_family;
+    uint16_t band,upper_state,passer_mode,receiver_mode,receiver_timer;
+    uint16_t passer_group,active_group,passer_timer,behavior_timer,flags,status;
+    uint16_t live_state,owner,latch,inhibit,ball_record,source_lo,source_hi;
+    uint16_t launch_source_lo,launch_source_hi;
+    uint16_t fraction_x,fraction_y,fraction_z;
+} NbaTipLaunch;
+/* $86:99C4-$9C6E. Tables come from the ROM asset pack, never captures. */
+bool nba_tip_launch(const NbaAssetPack *assets,NbaTipLaunch *state);
 #endif

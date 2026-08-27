@@ -201,6 +201,13 @@ if ($Test) {
         throw "Player Introduction regression tests failed with exit code $LASTEXITCODE"
     }
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name tip_contact_probe
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name tip_launch_probe
+    & python (Join-Path $Root 'tools\verify_tip_launch.py') --normalized --pack $AssetPack `
+        --vectors (Join-Path $Root 'tests\fixtures\tip-launch.json') --probe (Join-Path $BuildDir 'tip_launch_probe.exe')
+    if ($LASTEXITCODE -ne 0) { throw 'Tip launch ROM replay failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name tip_launch_runtime_probe
+    & (Join-Path $BuildDir 'tip_launch_runtime_probe.exe') $AssetPack
+    if ($LASTEXITCODE -ne 0) { throw 'Tip launch runtime binding failed.' }
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name tip_receiver_probe
     & python (Join-Path $Root 'tools\verify_tip_receiver.py') --normalized `
         --vectors (Join-Path $Root 'tests\fixtures\tip-receiver.json') --probe (Join-Path $BuildDir 'tip_receiver_probe.exe')

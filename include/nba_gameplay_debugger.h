@@ -159,6 +159,8 @@ typedef struct {
     uint8_t shot_miss_index_raw;
     uint8_t shot_inner_veto_raw;
     uint32_t shot_selection_serial;
+    uint32_t shot_launch_serial;
+    uint16_t shot_launch_actor,shot_launch_value;
     uint16_t shot_selection_inputs[8];
     NbaShotFatigue shot_fatigue;
     uint16_t shot_made_run[10],shot_defensive_run[10],shot_assistance_team;

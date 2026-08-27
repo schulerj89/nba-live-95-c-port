@@ -22,7 +22,7 @@ EXPECTED_FRAMES = {
     # changes framing, not assets. See camera-handoff-plan.md/native witnesses.
     # Geometric contact delays the placeholder trajectory and hence camera.
     # Reviewed stage1/native frames; this is a C regression, NOT ROM parity.
-    220: ("TIP PH:LIVE", "9f703fef6418e1aabd792096037bb5b6ea28cc4787d2a3ff719f64e3019156ef"),
+    220: ("TIP PH:LIVE", "29a1b49be7817ac919bf1c628ad2d6fe0260bef1fa30d39eb96cac1f32163d66"),
 }
 
 

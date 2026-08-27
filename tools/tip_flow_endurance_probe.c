@@ -6,7 +6,16 @@ int main(int argc,char **argv) {
     nba_session_init(&session);if(!nba_tipoff_init(&game,&pack,&session))return 3;
     unsigned dead=0;
     for(unsigned frame=1;frame<=63800;++frame) {
+        unsigned old_ball=game.ball.state;bool had_mode12=false;
+        for(unsigned i=0;i<10;++i)if(game.actors[i].control_mode==12)had_mode12=true;
         nba_tipoff_update(&game,&input);
+        if(old_ball==NBA_BALL_ATTACHED && game.ball.state==NBA_BALL_SHOT &&
+           game.ball_activity_raw==0xffff && had_mode12 &&
+           (game.shot_actor_raw_09c8<0 || game.shot_actor_raw_09c8>=10 ||
+            game.rim_raw_096a<1 || game.rim_raw_096a>3))
+            printf("SHOT-LATCH diagnostic f%u actor=%d latch=%u FT=%u Z=%d state=%u\n",frame,
+                game.shot_actor_raw_09c8,game.rim_raw_096a,game.fouls.free_throw_state_raw_0978,
+                game.ball.z_fp/256,game.live_state_raw);
         dead=game.live_state_raw>=0x80?dead+1:0;
         if(dead>2400 || frame==35126 || frame==36000) {
             printf("f%u state=%x owner=%d ball=%d,%d,%d mode=%u inbound=%u ready=%u timer=%u transfer=%u FT=%u foul=%u whistle=%u scores=%u/%u clock=%u\n",

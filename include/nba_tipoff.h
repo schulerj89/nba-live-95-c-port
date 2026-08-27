@@ -177,6 +177,8 @@ typedef struct {
     uint16_t tip_reach_mask;
     NbaTipEvent tip_event;
     uint16_t tip_event_bits_raw_13e9;
+    uint16_t tip_winner_group_raw_0932;
+    NbaTipLaunch tip_last_launch; /* diagnostics: $99C4 result before wrapper */
     int8_t possession_team;
     uint8_t camera_side_group_raw; /* persistent `$093A`: 0/5, FF before tip */
     uint16_t camera_alternate_raw_08bc, camera_alternate_mode_raw_08cc;
@@ -264,6 +266,7 @@ typedef struct {
     uint16_t shot_selection_inputs[8]; /* lane,move,range,direction,facing,variant,mode,actor */
     uint16_t shot_previous_actor_x_raw_0922;
     NbaShotLaunchState last_shot_launch; /* diagnostic snapshot, not actor/ball authority */
+    uint32_t shot_launch_serial;
     uint8_t last_scoring_side;
     bool shot_result_resolved;
     uint8_t offense_side;
@@ -286,6 +289,7 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
 void nba_tipoff_update(NbaTipoff *tipoff, const NbaInput *input);
 bool nba_tipoff_try_tip_contact(NbaTipoff *tipoff);
 bool nba_tipoff_select_tip_receiver(NbaTipoff *tipoff);
+bool nba_tipoff_launch_tip_ball(NbaTipoff *tipoff);
 void nba_tipoff_render(const NbaTipoff *tipoff, NbaRenderer *renderer);
 void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
                                   const NbaInput *input,
