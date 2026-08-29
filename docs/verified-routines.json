@@ -1696,6 +1696,46 @@
       "method": "Ghidra/recomp scene audit + native frame traces + deterministic transition hashes",
       "evidence": "The production dispatcher preserves the Bank $80 fixed waits, forced blank, resource handoff and INIDISP publication contract. gameplay55_services_probe protects deterministic trace rewind, distinct construction anchors, the $80:F07E completed-title snap, 121-frame incomplete-build hold, 41-frame complete-build hold and all 15 fade levels. The full title/setup transition suites retain consecutive native-derived frame hashes around forced blank, map/CHR rebuild and visible release, preventing early partially built graphics from leaking to scanout.",
       "date": "2026-08-29"
+    },
+    {
+      "range": "82809A-8291FF",
+      "name": "Team Select construction input redraw confirmation and Options ownership host equivalent",
+      "source": "src/nba_team_select.c + src/nba_setup_screen.c + src/nba_player_setup.c",
+      "method": "fresh headless Ghidra listing + native transition/frame oracles + production end-to-end state probe",
+      "evidence": "Fresh Ghidra output identifies $82:809A construction, $82:838E frame dispatch, $82:83BC side input, $82:8406 direction/category input, $82:85D1 redraw, $82:8933 seven-window plate cadence, $82:8553 commit and $82:863C selected-home graphics. gameplay65_flow_probe runs the real transition and input APIs for three asymmetric pairs, retains both teams and controller ownership, and hashes Team Select and Player Setup. Existing release tests independently protect all 29 logos/VRAM/CGRAM states, long-name alignment, five ranks, East/West dash ranks, wrap behavior, exact 200-frame handoff and Options persistence/shadows.",
+      "date": "2026-08-29"
+    },
+    {
+      "range": "82A900-82ADFF",
+      "name": "post-EA title sequence instrument and BRR resource handoff host equivalent",
+      "source": "src/nba_audio.c + src/nba_game.c + ROM-derived audio assets",
+      "method": "Ghidra/recomp resource-list audit + stamped native APU/DSP replay",
+      "evidence": "$82:AC0E selects the resource family, $82:ABE0 walks it and $82:ABCE->$80:9829 publishes sequence, instrument and BRR inputs. The port replays the exact asset-pack streams through the original SPC700/S-DSP path. Title locks all 43,777 APU writes and PCM; the EA/title frame and audio suites reject prerecorded song/capture shortcuts.",
+      "date": "2026-08-29"
+    },
+    {
+      "range": "82F000-82F15B",
+      "name": "gameplay three-slot graphics-scratch producer host equivalent",
+      "source": "src/nba_jump_reach.c + ROM-derived graphics scratch asset",
+      "method": "native real-entry differential + asset integrity + production jump/reach binding",
+      "evidence": "The retained 29-call native corpus covers all three scratch slots, empty-slot probing, $FFFF+6 bank wrap and shared RNG with zero mutable-word mismatches. graphics_scratch_probe, jump_reach_probe and jump_runtime_probe remain release gates; test_gameplay55_assets additionally locks the complete 788-byte scratch payload hash and bounds.",
+      "date": "2026-08-29"
+    },
+    {
+      "range": "83C000-83EFFF",
+      "name": "gameplay collision event foul violation and whistle presentation host equivalents",
+      "source": "src/nba_tipoff.c + src/nba_gameplay_foul.c + src/nba_audio.c",
+      "method": "bounded native event differentials + ordered CPU endurance/runtime binding",
+      "evidence": "The host preserves state-changing event ownership while adopting transient object/DMA work at final OAM/audio boundaries. Permanent gates cover the ordered ten-player contact sweep, ball-event split, foul classifier/consumer, ten-path violation dispatcher, whistle BRR audio, pending-event ordering and exact CPU gameplay hashes. The 63,800-frame endurance run detects dead-ball stalls, duplicate consumption, lost ownership and score/clock corruption.",
+      "date": "2026-08-29"
+    },
+    {
+      "range": "83F000-83FA90",
+      "name": "matchup ratings and ten-card starting-lineup presentation host equivalent",
+      "source": "src/nba_player_intro.c + src/nba_player_setup.c + ROM-derived presentation assets",
+      "method": "fresh headless Ghidra listing + native asset/frame hashes + end-to-end production phase probe",
+      "evidence": "Fresh Ghidra identifies $83:F790 court-backed phase control, $83:F891 both logo/gold panels and $83:F901 five rank-to-basketball rows. gameplay65_flow_probe executes three asymmetric home/away pairs through matchup, ratings and all 30 card instances, verifies phase cadence/team persistence and distinct rendered hashes. Existing tests independently lock the selected home court, six ROM basketball poses, exact fonts, all 290 portraits, ten-card order, 434-frame cadence, music path and final gameplay handoff.",
+      "date": "2026-08-29"
     }
   ]
 }

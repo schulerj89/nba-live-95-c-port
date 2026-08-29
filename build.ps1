@@ -177,6 +177,11 @@ if ($Test) {
     if ($LASTEXITCODE -ne 0) {
         throw 'Bank $80 gameplay asset publication integrity gate failed.'
     }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name gameplay65_flow_probe
+    & (Join-Path $BuildDir 'gameplay65_flow_probe.exe') $AssetPack
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Bank $82/$83 Team Select through lineup production-flow gate failed.'
+    }
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name court_runtime_probe
     & (Join-Path $BuildDir 'court_runtime_probe.exe') $AssetPack
     if ($LASTEXITCODE -ne 0) { throw 'Court runtime integration failed.' }

@@ -13,6 +13,11 @@
 #define SETUP_PANEL_SOURCE_X 168
 #define SETUP_PANEL_SOURCE_Y 56
 
+/* Host-visible implementation of `$83:F000-$FA90`: scene construction,
+ * phase/cadence control, matchup panels, five rating rows and ten starting
+ * lineup cards. Fresh Ghidra listings identify `$83:F790`, `$83:F891` and
+ * `$83:F901`; the end-to-end gameplay65 probe protects their combined flow. */
+
 typedef struct {
     uint8_t jersey;
     uint8_t position;

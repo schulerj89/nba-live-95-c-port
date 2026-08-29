@@ -435,6 +435,9 @@ void nba_audio_set_setup_music_volume(NbaAudio *audio, uint16_t value,
 
 /**
  * Offset/Address/Size: $82:AC0E -> $82:ABE0 -> $80:9829 | variable
+ * The surrounding `$82:A900-$ADFF` post-EA resource family selects and
+ * publishes the title sequence/instrument/BRR lists. The host consumes those
+ * exact stamped asset-pack streams rather than a prerecorded song.
  * Subroutines: $80:987B (APU payload), $80:9CC8/$80:9D80 (sequence select)
  * Purpose: Runs NBA Live '95's resident SPC700 driver against its original
  *          SPC RAM/BRR bank and the frame-stamped $2140-$2143 command stream.

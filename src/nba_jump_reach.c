@@ -52,7 +52,9 @@ bool nba_graphics_scratch_step(const NbaAssetPack *assets,
                     if(other==0xffffu) {
                         /* ROM-COMPATIBILITY QUIRK (retain): F061-F06C scans
                          * all three records, including the empty slot being
-                         * populated.  $FFFF+6 wraps to $82:0005; native Mesen
+                         * populated.  `$82:F000-$F15B` is the complete
+                         * graphics-scratch producer family used here.
+                         * $FFFF+6 wraps to $82:0005; native Mesen
                          * reads $0001 there.  Do not "fix" or skip this slot:
                          * it changes duplicate probing and shared-RNG flow. */
                         other_key=1u;

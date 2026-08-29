@@ -9,6 +9,11 @@
 #define TEAM_BG3_MAP 0x0000
 #define TEAM_BG3_CHR 0x8000
 
+/* Host-visible implementation of the `$82:809A-$91FF` Team Select/Options
+ * ownership family. Fresh headless listings retain the actual scene, input,
+ * redraw, confirmation and shared option-handoff boundaries; the portable
+ * screens preserve their committed WRAM-equivalent state and scanout cadence. */
+
 /* $80:D9AF: alphabetical team ID, then five displayed one-based ranks. */
 const NbaTeamRecord nba_team_records[NBA_TEAM_COUNT] = {
     { "ATLANTA",       "HAWKS",         {11, 5,  9,  4,  6} },

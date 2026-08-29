@@ -1,6 +1,11 @@
 #include "nba_gameplay_foul.h"
 #include <string.h>
 
+/* `$83:C000-$EFFF` supplies gameplay event/presentation helpers surrounding
+ * foul, violation and whistle publication. The host keeps the state-changing
+ * event contract in this module and nba_tipoff.c; transient native DMA/object
+ * work is validated at its final asset/OAM/audio boundary. */
+
 void nba_gameplay_foul_init(NbaGameplayFoulState *state) {
     if (!state) return;
     memset(state, 0, sizeof(*state));
