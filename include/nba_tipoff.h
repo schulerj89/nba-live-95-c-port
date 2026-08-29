@@ -158,10 +158,11 @@ typedef struct NbaTipoff {
     uint16_t context_raw_4933, context_raw_4935;
     int16_t camera_x, camera_y;
     NbaGameplayCamera camera;
-    /* `$87:A357-$A47A` prepares player origins only on the scheduled OAM
+    /* `$87:A357-$A47A` prepares object origins only on the scheduled OAM
      * submission pass. The SNES keeps those coordinates between passes. */
     int16_t player_screen_x[NBA_GAMEPLAY_ACTOR_COUNT];
     int16_t player_screen_y[NBA_GAMEPLAY_ACTOR_COUNT];
+    int16_t ball_screen_x, ball_screen_y;
     bool player_screen_visible[NBA_GAMEPLAY_ACTOR_COUNT];
     NbaCourtPlayerIndicator player_indicator[NBA_GAMEPLAY_ACTOR_COUNT];
     NbaCourtPresentation court_presentation;

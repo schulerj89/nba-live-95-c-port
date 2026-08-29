@@ -1497,6 +1497,7 @@ def main():
                    "$87:A3BB-$A3DC", "nba_court_project_actor",
                    "$87:A3DF-$A43B", "nba_court_actor_visible",
                    "latch_player_screen_origins", "player_screen_visible",
+                   "ball_screen_x", "latched ball presentation",
                    "$86:D035-$D205", "nba_gameplay_owned_contact_attempt",
                    "cpu_try_owned_ball_contact",
                    "$86:D5DB", "$86:D652-$D728", "$86:BD41-$BF08",

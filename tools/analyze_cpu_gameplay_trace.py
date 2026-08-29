@@ -35,6 +35,17 @@ def is_dead_ball(row):
     return row["match"]["live_state_raw"] >= 0x80
 
 
+def visual_ball_carrier(row):
+    """Actor whose retained OBJ point owns the visible ball this frame."""
+    owner = row["ball"]["owner"]
+    if row["ball"]["state"] == 4 and 0 <= owner < 10:
+        return owner
+    possession = row["possession"]["actor"]
+    if row["match"]["live_state_raw"] == 0x82 and 0 <= possession < 10:
+        return possession
+    return -1
+
+
 def movement_count(rows, actor, first, last):
     count = 0
     base_frame = rows[0]["scene_frame"]
@@ -127,6 +138,28 @@ def main():
         print(f"[CPU TRACE] attached-distance max={max(attached_distances):.2f} "
               f"samples={len(attached_distances)}")
 
+    retained_ball_frames = 0
+    retained_ball_mismatches = []
+    for previous, current in zip(rows, rows[1:]):
+        carrier = visual_ball_carrier(current)
+        if (carrier < 0 or carrier != visual_ball_carrier(previous) or
+                current["simulation_tick"] & 1 == 0 or
+                (current["camera"]["x"] == previous["camera"]["x"] and
+                 current["camera"]["y"] == previous["camera"]["y"])):
+            continue
+        retained_ball_frames += 1
+        old_actor = previous["actors"][carrier]
+        new_actor = current["actors"][carrier]
+        old_relative = (previous["ball"]["screen_x"] - old_actor["screen_x"],
+                        previous["ball"]["screen_y"] - old_actor["screen_y"])
+        new_relative = (current["ball"]["screen_x"] - new_actor["screen_x"],
+                        current["ball"]["screen_y"] - new_actor["screen_y"])
+        if old_relative != new_relative:
+            retained_ball_mismatches.append(
+                (current["scene_frame"], carrier, old_relative, new_relative))
+    print(f"[CPU TRACE] retained-ball camera frames={retained_ball_frames} "
+          f"relative mismatches={len(retained_ball_mismatches)}")
+
     if args.require_sustained:
         errors = []
         if final_frame < 1500:
@@ -176,6 +209,9 @@ def main():
         # test_cpu_gameplay.py. This summary only rejects true detachment.
         if not attached_distances or max(attached_distances) > 40.0:
             errors.append("ball is not physically attached to its owner")
+        if retained_ball_mismatches:
+            errors.append("ball OBJ moved relative to retained carrier OBJ: " +
+                          repr(retained_ball_mismatches[:8]))
         if errors:
             print("[CPU TRACE] FAIL: " + "; ".join(errors))
             raise SystemExit(1)

@@ -7554,9 +7554,10 @@ static void cpu_update_camera(NbaTipoff *tipoff) {
 }
 
 static void latch_player_screen_origins(NbaTipoff *tipoff) {
-    /* Live Mesen `$87:A47A` traces show that player OAM submissions persist
-     * across the intervening rendered frame. Reprojecting against a newer
-     * camera on that frame produces a non-native A->B->A screen shake. */
+    /* Live Mesen `$87:A47A` and `$87:B649` traces show that player and ball
+     * OAM submissions persist across the intervening rendered frame.
+     * Reprojecting only the ball against a newer camera moves it away from
+     * its retained hand point for one frame. */
     for (unsigned actor=0;actor<NBA_GAMEPLAY_ACTOR_COUNT;++actor) {
         const NbaTipoffActor *state=&tipoff->actors[actor];
         int16_t z=fp_integer_word(state->z_fp);
@@ -7576,6 +7577,37 @@ static void latch_player_screen_origins(NbaTipoff *tipoff) {
                 (uint8_t)state->controller_assignment_raw,
                 &tipoff->player_indicator[actor]);
     }
+    nba_court_project_actor(fp_integer_word(tipoff->ball.x_fp),
+        fp_integer_word(tipoff->ball.y_fp),fp_integer_word(tipoff->ball.z_fp),
+        tipoff->camera_x,tipoff->camera_y,
+        &tipoff->ball_screen_x,&tipoff->ball_screen_y);
+}
+
+static bool cpu_ball_presentation_latch_self_test(void) {
+    NbaTipoff state;
+    memset(&state, 0, sizeof(state));
+    state.actors[3].x_fp = 100 * 256;
+    state.actors[3].y_fp = -50 * 256;
+    state.ball.x_fp = 99 * 256;
+    state.ball.y_fp = -57 * 256;
+    state.ball.z_fp = 67 * 256;
+    state.camera_x = -172;
+    state.camera_y = -147;
+    latch_player_screen_origins(&state);
+    int16_t latched_x = state.ball_screen_x;
+    int16_t latched_y = state.ball_screen_y;
+    int16_t repro_x = 0, repro_y = 0;
+    state.camera_x = -166;
+    state.camera_y = -149;
+    nba_court_project_actor(fp_integer_word(state.ball.x_fp),
+        fp_integer_word(state.ball.y_fp),fp_integer_word(state.ball.z_fp),
+        state.camera_x,state.camera_y,&repro_x,&repro_y);
+    /* The interstitial render retains both OAM coordinates even though a
+     * newly projected ball would move by the camera delta. */
+    if (state.ball_screen_x != latched_x || state.ball_screen_y != latched_y ||
+        (repro_x == latched_x && repro_y == latched_y)) return false;
+    latch_player_screen_origins(&state);
+    return state.ball_screen_x == repro_x && state.ball_screen_y == repro_y;
 }
 
 static void draw_ball(const NbaTipoff *tipoff, NbaRenderer *ren, int x, int y) {
@@ -7629,6 +7661,7 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
     NBA_TIPOFF_REQUIRE("attachment assets", ball_attachment_assets_valid(assets));
     NBA_TIPOFF_REQUIRE("ROM animation cadence", nba_player_animation_self_test(assets));
     NBA_TIPOFF_REQUIRE("latched owner pose/cadence binding", cpu_owner_pose_animation_self_test(assets, session));
+    NBA_TIPOFF_REQUIRE("latched ball presentation", cpu_ball_presentation_latch_self_test());
     NBA_TIPOFF_REQUIRE("boosted pass", cpu_boosted_pass_self_test(assets, session));
     NBA_TIPOFF_REQUIRE("shot branches", cpu_shot_branches_self_test(assets, session));
     NBA_TIPOFF_REQUIRE("special shot lifecycle", cpu_special_shot_self_test(assets, session));
@@ -8298,10 +8331,15 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
     telemetry->ball.world_x = fp_round(tipoff->ball.x_fp);
     telemetry->ball.world_y = fp_round(tipoff->ball.y_fp);
     telemetry->ball.world_z = fp_round(tipoff->ball.z_fp);
-    nba_court_project_actor(fp_integer_word(tipoff->ball.x_fp),
-        fp_integer_word(tipoff->ball.y_fp),fp_integer_word(tipoff->ball.z_fp),
-        tipoff->camera_x,tipoff->camera_y,
-        &telemetry->ball.screen_x,&telemetry->ball.screen_y);
+    if (tipoff->tip_contact_actor < 0) {
+        nba_court_project_actor(fp_integer_word(tipoff->ball.x_fp),
+            fp_integer_word(tipoff->ball.y_fp),fp_integer_word(tipoff->ball.z_fp),
+            tipoff->camera_x,tipoff->camera_y,
+            &telemetry->ball.screen_x,&telemetry->ball.screen_y);
+    } else {
+        telemetry->ball.screen_x = tipoff->ball_screen_x;
+        telemetry->ball.screen_y = tipoff->ball_screen_y;
+    }
     telemetry->ball.velocity_x = fp_round(tipoff->ball.velocity_x);
     telemetry->ball.velocity_y = fp_round(tipoff->ball.velocity_y);
     telemetry->ball.velocity_z = fp_round(tipoff->ball.velocity_z);
@@ -8559,11 +8597,11 @@ void nba_tipoff_render(const NbaTipoff *tipoff, NbaRenderer *ren) {
     if (tipoff->tip_contact_actor < 0) {
         ball_position(tipoff, &ball_x, &ball_y);
     } else {
-        int16_t sx,sy;
-        nba_court_project_actor(fp_integer_word(tipoff->ball.x_fp),
-            fp_integer_word(tipoff->ball.y_fp),fp_integer_word(tipoff->ball.z_fp),
-            tipoff->camera_x,tipoff->camera_y,&sx,&sy);
-        ball_x=sx;ball_y=sy;
+        /* Player and ball OBJ coordinates are one retained OAM submission.
+         * Using the current camera here while player origins remain latched
+         * creates a one-frame hand/ball separation on camera-only frames. */
+        ball_x=tipoff->ball_screen_x;
+        ball_y=tipoff->ball_screen_y;
     }
     if (tipoff->ball.state!=NBA_BALL_HIDDEN) {
         nba_renderer_clear(&object_plane, 0u);
