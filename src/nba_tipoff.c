@@ -7719,8 +7719,11 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
             tipoff->team_context[side].actor_order_raw_49[i] =
                 context_actor_order[side][i];
     }
-    tipoff->period_raw_0926 = 0u;
-    tipoff->match_clock_raw_0928 = 43200u;
+    /* `$86:DBDC-$DBE5/$86:DD2D-$DD44`: the setup quarter choice selects
+     * distinct regulation/overtime tables.  Expiry and period advancement
+     * remain outside this initialization slice. */
+    tipoff->period_raw_0926 = session->match.period_raw_0926;
+    tipoff->match_clock_raw_0928 = nba_match_period_clock(session);
     tipoff->possession_actor = -1;
     tipoff->possession_team = -1;
     tipoff->collision_actor_a_raw = -1;
@@ -7764,12 +7767,13 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
     /* 878DDA-8DE4 starts the first/overtime jump-ball hold at120. */
     tipoff->tip_toss_countdown_raw_09f2=120;
     tipoff->ball.state=NBA_BALL_HIDDEN;
-    static const uint8_t active_lineup[5] = {2u, 0u, 1u, 3u, 4u};
     uint8_t appearance_teams[NBA_PLAYER_APPEARANCE_COUNT];
     uint8_t appearance_roster[NBA_PLAYER_APPEARANCE_COUNT];
     for (unsigned i = 0; i < NBA_PLAYER_APPEARANCE_COUNT; ++i) {
         appearance_teams[i] = i < 5u ? session->left_team : session->right_team;
-        appearance_roster[i] = active_lineup[i % 5u];
+        appearance_roster[i] =
+            session->match.active_lineup[i / NBA_MATCH_LINEUP_SIZE]
+                                                [i % NBA_MATCH_LINEUP_SIZE];
     }
     NbaPlayerAppearanceSetup appearance;
     if (!nba_player_appearance_setup(assets, appearance_teams, appearance_roster,
@@ -7779,11 +7783,13 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
         uint8_t selector = (uint8_t)(actor % 5u);
         unsigned paired = actor < 5u ? 5u + selector : selector;
         uint8_t team = paired >= 5u ? session->right_team : session->left_team;
+        uint8_t roster = session->match.active_lineup
+            [paired / NBA_MATCH_LINEUP_SIZE][paired % NBA_MATCH_LINEUP_SIZE];
         active_input.lineup_selector[actor] = selector;
         active_input.upper_variant[actor] =
             (uint8_t)appearance.players[actor].upper_variant;
         if (!nba_player_gameplay_shot_ratings(
-                assets, team, active_lineup[paired % 5u],
+                assets, team, roster,
                 &active_input.appearance_a[actor],
                 &active_input.appearance_b[actor])) return false;
     }
@@ -7795,7 +7801,8 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
         state->x_fp = (int32_t)formation[actor].world_x * 256;
         state->y_fp = (int32_t)formation[actor].world_y * 256;
         state->direction = formation[actor].direction;
-        state->roster_slot = active_lineup[actor % 5u];
+        state->roster_slot = session->match.active_lineup
+            [actor / NBA_MATCH_LINEUP_SIZE][actor % NBA_MATCH_LINEUP_SIZE];
         state->requested_direction = formation[actor].direction;
         state->movement_direction = 8u;
         state->saved_control_mode = 0u;

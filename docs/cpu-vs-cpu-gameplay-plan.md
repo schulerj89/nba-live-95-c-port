@@ -929,8 +929,8 @@ headless Ghidra dump agree that `$86:9DBF/$9DFF` preserve the shooter in
 requires negative shot VZ and a strict eight-unit asset-derived pose point;
 there is no body fallback. The candidate must be on the opposing five-actor
 side and the real match clock `$0928` must be in the unsigned `[5,$FF00)`
-window. C now owns those latches and the captured clock cadence: 43200 at
-gameplay frame 220, 43020 at 400, and 41620 at 1800.
+window. C now owns those latches and the captured clock cadence, seeded from
+the ROM's regulation/overtime table for the configured quarter length.
 
 When committed rule `$17DB` (`rules[5]`) is enabled, `$096A` is live, the ball
 is at least `$50` high, and no foul/inbound/whistle state blocks it,

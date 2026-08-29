@@ -131,7 +131,8 @@ def main():
         trace = root / "cpu_gameplay.jsonl"
         command = [
             args.exe, "--headless", "--rom", args.rom, "--assets", args.pack,
-            "--tipoff-only", "--frames", "63800", "--gameplay-trace", str(trace),
+            "--tipoff-only", "--tipoff-clock", "43200", "--frames", "63800",
+            "--gameplay-trace", str(trace),
             "--debug-state",
         ]
         result = subprocess.run(command, capture_output=True, text=True, check=False)
@@ -284,6 +285,8 @@ def main():
         # shot_state_runtime_probe checks the ROM clock helper binding on
         # every outer frame, including paused/resumed play (two 16k runs).
         for number in (220, 400):
+            # The long gameplay-core trajectory deliberately requests the
+            # 12-minute table entry so lifecycle expiry remains a separate test.
             expected_clock = 43200 - max(0, number - catch_frame)
             if frame(number)["match"]["match_clock_raw_0928"] != expected_clock:
                 raise AssertionError(

@@ -124,6 +124,7 @@ int main(int argc, char *argv[]) {
     bool team_confirm = false;
     bool player_setup_left = false;
     bool player_setup_confirm = false;
+    int tipoff_clock_override = -1;
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--rom") == 0 && i + 1 < argc) {
@@ -219,6 +220,12 @@ int main(int argc, char *argv[]) {
             start_at_player_setup = true;
         } else if (strcmp(argv[i], "--tipoff-only") == 0) {
             start_at_tipoff = true;
+        } else if (strcmp(argv[i], "--tipoff-clock") == 0 && i + 1 < argc) {
+            tipoff_clock_override = atoi(argv[++i]);
+            if (tipoff_clock_override < 0 || tipoff_clock_override > 0xFFFF) {
+                fprintf(stderr, "[HEADLESS] --tipoff-clock must be 0..65535.\n");
+                return 1;
+            }
         } else if (strcmp(argv[i], "--team-confirm") == 0) {
             team_confirm = true;
         } else if (strcmp(argv[i], "--player-setup-left") == 0) {
@@ -336,6 +343,7 @@ int main(int argc, char *argv[]) {
             printf("  --team-only           Start at the $80:DBF6 -> $82:809A Team Select handoff\n");
             printf("  --player-setup-only   Start at the Team Select -> Player Setup handoff\n");
             printf("  --tipoff-only         Start at the ROM-matched center-court jump ball\n");
+            printf("  --tipoff-clock N      Controlled raw clock seed for gameplay tests\n");
             printf("  --team-confirm        Press Start after Team Select settles\n");
             printf("  --player-setup-left   Assign Player 1 to the visitor/left team\n");
             printf("  --player-setup-confirm Press Start after Player Setup settles\n");
@@ -549,6 +557,9 @@ int main(int argc, char *argv[]) {
                 nba_game_shutdown(&game);
                 return 1;
             }
+            if (tipoff_clock_override >= 0)
+                game.scene.tipoff.match_clock_raw_0928 =
+                    (uint16_t)tipoff_clock_override;
         }
 
         if (audio_debug_test) {

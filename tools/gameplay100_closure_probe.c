@@ -213,6 +213,8 @@ static int exercise_flow_and_gameplay(const NbaAssetPack *assets,
 
     NbaTipoff game;
     if (!nba_tipoff_init(&game, assets, session)) return 60;
+    /* Controlled pre-expiry seed for the historical gameplay-core digest. */
+    game.match_clock_raw_0928 = 43200u;
     game.rng.state = 0x5A17u;
     int32_t previous_x[NBA_GAMEPLAY_ACTOR_COUNT];
     int32_t previous_y[NBA_GAMEPLAY_ACTOR_COUNT];

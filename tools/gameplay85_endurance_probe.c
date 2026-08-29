@@ -70,6 +70,9 @@ static int run_scenario(const NbaAssetPack *assets, uint8_t away,
     session.right_team = home;
     NbaTipoff game;
     if (!nba_tipoff_init(&game, assets, &session)) return 10;
+    /* Preserve the retired scaffold only as an explicit controlled test
+     * input so this pre-expiry gameplay trajectory remains comparable. */
+    game.match_clock_raw_0928 = 43200u;
     game.rng.state = seed;
     NbaInput input = {0};
     NbaRenderer renderer;

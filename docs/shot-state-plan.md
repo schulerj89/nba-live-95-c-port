@@ -83,7 +83,7 @@ remain unimplemented. Pending caller work is not yet instruction-counted:
 |---|---|---|
 | Timeout menu -> fixed stamina grant | 86:844E -> 8468 | Actual ROM timeout-menu capture proves helper, not a C timeout UI |
 | Period/timeout recovery grants | 87:96FB / 9716 / 974B -> 985D | Helper replayed; full period/timeout orchestration deferred |
-| Next-period reset and quarter-clock initialization | 86:DD80; current C initial clock 43200 | Existing tip frame-220 handoff/initial clock seed retained; no full-period claim |
+| Next-period reset and quarter-clock initialization | 86:DBDC/86:DD2D/86:DD80 | Regulation/overtime tables and session binding are implemented; expiry/period callers remain deferred |
 | Substitutions/bench promotion | 87:98EA active mapping 3435 | All 24 records persist; changing the active lineup is a later feature |
 | Wider natural selector distribution | 86:B625 and callers | One unforced C special proves reachability, not ROM frequency parity |
 

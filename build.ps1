@@ -205,6 +205,9 @@ if ($Test) {
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name shot_state_runtime_probe
     & (Join-Path $BuildDir 'shot_state_runtime_probe.exe') $AssetPack
     if ($LASTEXITCODE -ne 0) { throw 'Shot-state runtime binding failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name match_lifecycle_probe
+    & (Join-Path $BuildDir 'match_lifecycle_probe.exe') $AssetPack $RomPath
+    if ($LASTEXITCODE -ne 0) { throw 'Match lifecycle initialization binding failed.' }
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name complete_shot_vector_probe
     & python (Join-Path $Root 'tools\verify_complete_shot_vectors.py') `
         --normalized --vectors (Join-Path $Root 'tests\fixtures\complete-shot-witnesses.json') `
