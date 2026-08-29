@@ -10,6 +10,11 @@ static int exercise(const NbaAssetPack *pack,unsigned enabled) {
     nba_session_init(&session);session.config.rules[11]=(uint16_t)enabled;
     session.config.options[6]=1;
     if(!nba_tipoff_init(&game,pack,&session))return 1;
+    /* Keep this helper-binding probe inside one period. Production now uses
+     * the selected three-minute clock (10800); period-end stamina grants are
+     * covered by match_lifecycle_expiry_probe and are intentionally outside
+     * the per-frame fatigue oracle below. */
+    game.match_clock_raw_0928=43200u;
     unsigned updates=0,makes=0,assisted_makes=0;
     for(unsigned frame=1;frame<=16000;++frame) {
         if(enabled && frame==221) {
@@ -18,6 +23,11 @@ static int exercise(const NbaAssetPack *pack,unsigned enabled) {
             game.match_clock_raw_0928=7199;
             session.score[0]=97;session.score[1]=100;
         }
+        /* The assistance witness needs a late clock, but this probe is not a
+         * period-transition test. Return to a long controlled clock before
+         * the native expiry boundary can add its separately verified grants. */
+        if(enabled && game.match_clock_raw_0928<6000u)
+            game.match_clock_raw_0928=43200u;
         NbaTipoff before=game;
         uint16_t scores[2]={session.score[0],session.score[1]};
         NbaShotFatigue expected=before.fatigue;

@@ -126,6 +126,41 @@ static bool horn_gate_cases(void) {
            game.period_raw_0926 == 1u;
 }
 
+/* End-to-end control-flow witness starting two writer ticks before the horn.
+ * The writer itself is independently covered by shot_state_vector_probe; this
+ * intentionally composes its observable countdown with the lifecycle gate. */
+static bool two_tick_handoff_cases(void) {
+    NbaSession session;
+    NbaTipoff game;
+    const Case q1 = {"q1_two_tick", 0u, 10u, 8u, 1u, 43200u, 0x1000u, false};
+    seed(&game, &session, &q1);
+    game.match_clock_raw_0928 = 2u;
+    --game.match_clock_raw_0928;
+    if (nba_tipoff_step_match_lifecycle(&game) || game.period_raw_0926 != 0u)
+        return false;
+    --game.match_clock_raw_0928;
+    if (!nba_tipoff_step_match_lifecycle(&game) || game.period_raw_0926 != 1u)
+        return false;
+    while (session.match.presentation_ticks_remaining > 0u)
+        if (!nba_tipoff_step_match_lifecycle(&game)) return false;
+    if (!nba_tipoff_step_match_lifecycle(&game) ||
+        session.match.flow_state != NBA_MATCH_FLOW_LIVE ||
+        game.match_clock_raw_0928 != 43200u) return false;
+
+    const Case final = {"final_two_tick", 3u, 10u, 8u, 5u, 0u, 0x1000u, true};
+    seed(&game, &session, &final);
+    game.match_clock_raw_0928 = 2u;
+    --game.match_clock_raw_0928;
+    if (nba_tipoff_step_match_lifecycle(&game)) return false;
+    --game.match_clock_raw_0928;
+    if (!nba_tipoff_step_match_lifecycle(&game) ||
+        session.match.flow_state != NBA_MATCH_FLOW_POSTGAME_PRESENTATION_PENDING ||
+        session.match.final_marker != NBA_MATCH_FINAL_CONFIRMED) return false;
+    while (session.match.presentation_ticks_remaining > 0u)
+        if (!nba_tipoff_step_match_lifecycle(&game)) return false;
+    return session.match.flow_state == NBA_MATCH_FLOW_FINAL;
+}
+
 int main(int argc, char **argv) {
     if (argc != 2 || !fixture_contains_cases(argv[1])) {
         fprintf(stderr, "usage: match_lifecycle_expiry_probe <fixture.json>\n");
@@ -147,6 +182,10 @@ int main(int argc, char **argv) {
         fprintf(stderr, "shot-at-horn gate mismatch\n");
         return 4;
     }
-    puts("match lifecycle expiry: 4 native outcomes + horn gate PASS");
+    if (!two_tick_handoff_cases()) {
+        fprintf(stderr, "two-tick lifecycle handoff mismatch\n");
+        return 5;
+    }
+    puts("match lifecycle expiry: 4 native outcomes + horn gate + two-tick handoff PASS");
     return 0;
 }

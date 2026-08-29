@@ -17,7 +17,7 @@ local title_frame,setup_frame=-1,-1
 local function word(a)return emu.read(a,emu.memType.snesWorkRam)|(emu.read(a+1,emu.memType.snesWorkRam)<<8)end
 local function put(a,v)emu.write(a,v&255,emu.memType.snesWorkRam);emu.write(a+1,(v>>8)&255,emu.memType.snesWorkRam)end
 local function hook(pc,fn)emu.addMemoryCallback(fn,emu.callbackType.exec,pc,pc,emu.cpuType.snes,emu.memType.snesMemory)end
-local fields={0x926,0x928,0x92c,0x930,0x936,0x93e,0x946,0x9b4,0x9c0,0xa0c,0x13e7,0x4711,0x4715,0x4791,0x4795}
+local fields={0x926,0x928,0x92c,0x930,0x936,0x93e,0x946,0x9b4,0x9c0,0xa0c,0x13e7,0x15c1,0x17ab,0x17b9,0x4711,0x4715,0x4791,0x4795,0x492b}
 local function snapshot(pc,event)
  local values={};for _,a in ipairs(fields)do values[#values+1]=string.format('"%04x":%d',a,word(a))end
  file:write(string.format('{"case":"%s","frame":%d,"pc":"%06x","event":"%s","state":{%s}}\n',name,frames,pc,event,table.concat(values,',')));file:flush()
@@ -51,16 +51,30 @@ for _,spec in ipairs({
  {0x8796fb,'stamina_grant_1000'},{0x879716,'halftime_extra_grant_6000'},
  {0x87974b,'tie_extra_grant_3000'},{0x87976e,'period_increment'},
  {0x87979d,'final_period_store'},{0x8797a0,'postgame_entry'},
+ {0x858e1c,'object_scheduler_flush'},{0x82fb22,'nmi_enable'},
+ {0x83ef9b,'period_fade_setup'},{0x87c2f3,'halftime_statistics_scene'},
+ {0x87cc36,'end_regulation_statistics_scene'},
+ {0x87d2ae,'period_score_presentation'},
+ {0x80cf1b,'master_brightness_fade'},
+ {0x808627,'nmi_disable'},{0x808668,'display_transfer_barrier'},
+ {0x83fa91,'final_summary_scene'},{0x82df52,'five_team_record_updates'},
+ {0x87985c,'postgame_exhibition_return'},
  {0x86dd2d,'next_period_clock_select'},{0x86dd44,'next_period_clock_store'},
  {0x86dd47,'next_period_clock_stored'},
 })do local pc,event=spec[1],spec[2];hook(pc,function()
  if injected then
   if pc==0x8795e9 and not entered then entered=true;entered_frame=frames end
   snapshot(pc,event)
-  if case.final and pc==0x8797a0 then finish(pc,'final_postgame_handoff')end
   if not case.final and pc==0x86dd47 then finish(pc,'next_period_clock_ready')end
+  if case.final and pc==0x87985c then finish(pc,'postgame_exhibition_return_boundary')end
  end
 end)end
+
+hook(0x809df3,function()
+ if injected then
+  local cpu=emu.getState();snapshot(0x809df3,string.format('audio_command_%02x',(cpu['cpu.a'] or 0)&255))
+ end
+end)
 
 local function pulse(n,at)return n>=at and n<at+3 end
 emu.addEventCallback(function()
@@ -77,7 +91,9 @@ emu.addEventCallback(function()
  emu.setInput(input,0);for pad=1,4 do emu.setInput({},pad)end
 end,emu.eventType.inputPolled)
 hook(0x80e1b1,function()if title_frame<0 then title_frame=0 end end)
-hook(0x80a2bf,function()if title_frame>=850 and setup_frame<0 then setup_frame=0 end end)
+hook(0x80a2bf,function()
+ if title_frame>=850 and setup_frame<0 then setup_frame=0 end
+end)
 emu.addEventCallback(function()
  frames=frames+1
  if title_frame>=0 and setup_frame<0 then title_frame=title_frame+1 end

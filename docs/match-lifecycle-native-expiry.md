@@ -60,8 +60,8 @@ the OT table into `$0A0C`, then `$86:DD44` copies `$0A0C` to `$0928`.
 
 1. Model the expiry latch plus the signed owner/Z/resolution horn gate. Done.
 2. Add a period-scene orchestration phase so the C tick cannot mutate periods
-   directly from clock code.
-   Done; presentation remains a typed placeholder.
+   directly from clock code. Done; controlled native wait lengths replace the
+   old arbitrary placeholder, while exact scene raster composition remains pending.
 3. Port common, halftime, and tied-regulation stamina/event branches. Done.
 4. Port raw-period increment and score-based OT/final selection. Done.
 5. Re-enter gameplay through the existing table helper and reset the latch;
@@ -72,5 +72,12 @@ the OT table into `$0A0C`, then `$86:DD44` copies `$0A0C` to `$0928`.
 Focused tests should cover the three horn-gate branches and the one deferred
 branch, all four period outcomes above, exact regulation/OT clock selection,
 latch clearing on re-entry, and non-clearing at the `$87:97A0` postgame entry.
-Unknown presentation and postgame subcalls must remain labelled scaffolds until
-captured individually.
+Captured presentation entries are `$87:C2F3` (halftime statistics, resource
+`$A4:B2F7`), `$87:CC36` (end-regulation statistics, `$A4:B2F7`), `$87:D2AE`
+(period-score presentation, `$AF:E478`, `$9F:8000`, music pointer `$82:8933`),
+and `$83:FA91` (final summary, `$AF:E478`, `$A9:8000`). Audio commands `$24`
+and `$41` accompany the horn; the children issue `$4B`, and `$D2AE` also `$49`.
+`$82:DF52` performs five record-update calls before the Exhibition boundary at
+`$87:985C`. Exact decompressed tile composition and the callee beyond that
+boundary remain uncaptured; Season/playoff persistence branches must not be
+inferred from the Exhibition route.

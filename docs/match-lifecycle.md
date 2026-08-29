@@ -33,9 +33,13 @@ grants, updates raw period `$0926`, selects regulation/OT clock tables, resets
 the shot clocks, reverses anchors on raw-period 2 entry, and either resumes a
 quarter/OT or marks a non-tied period-four result final.
 
-The long `$87:95E9-$9765` presentation and `$87:97A0-$985C` postgame children
-remain explicit typed placeholders rather than fabricated fades/screens.
-Timeout menus and substitutions remain separate captured increments.
+Controlled Mesen runs now inventory the presentation children and their host
+wait lengths: 1187 ticks for Q1, 1547 for halftime, 1367 for regulation-tie
+overtime, and 1756 through the Exhibition postgame boundary. These replace the
+arbitrary 120-tick wait. `$87:C2F3`, `$87:CC36`, `$87:D2AE`, and `$83:FA91`
+are witnessed scene entries, but their decompressed tile composition is not
+yet fixture-backed; the host final panel is therefore structural, not claimed
+pixel parity. Season/playoff persistence below `$87:985C` remains separate.
 
 `tools/match_lifecycle_probe.c`, run by `build.ps1 -Test`, reads all eight
 values back from the canonical ROM, compares the C helpers, and protects
@@ -43,6 +47,6 @@ default timeout/lineup persistence plus production Tipoff binding for both
 regulation and overtime.
 
 `tools/match_lifecycle_expiry_probe.c` replays the four checked-in Mesen
-witnesses plus the shot-in-flight horn branch. A short-clock headless smoke
+witnesses, shot-in-flight horn branch, and two-tick Q1/final handoffs. A short-clock headless smoke
 also proves that gameplay advances from raw period 0 to 1 and reseeds the
 clock instead of remaining at zero.

@@ -22,7 +22,7 @@ const char *nba_game_state_name(NbaGameState state) {
     static const char *const names[] = {
         "BOOT_RESET", "NINTENDO_LICENSE", "NBA_LEGAL", "EA_INTRO",
         "TITLE", "GAME_SETUP", "TEAM_SELECT", "PLAYER_SETUP", "PLAYER_INTRO",
-        "TIPOFF"
+        "TIPOFF", "POSTGAME"
     };
     return (unsigned)state < sizeof(names) / sizeof(names[0]) ?
            names[state] : "UNKNOWN";
@@ -728,6 +728,26 @@ void nba_game_tick(NbaGame *game, float delta_time) {
                 nba_tipoff_capture_telemetry(&game->scene.tipoff, &game->input,
                                              &game->gameplay_telemetry);
                 game->gameplay_telemetry.global_frame = game->frame_count;
+                if (game->session.match.flow_state ==
+                        NBA_MATCH_FLOW_POSTGAME_PRESENTATION_PENDING &&
+                    !nba_game_enter_state(game, NBA_STATE_POSTGAME))
+                    fprintf(stderr, "[GAME] Could not enter postgame.\n");
+            }
+            break;
+
+        case NBA_STATE_POSTGAME:
+            /* Exhibition `$87:97A0-$985C` returns after the captured final
+             * summary/record-update pass. The host routes that boundary back
+             * to Game Setup; the native callee beyond `$87:985C` is not yet
+             * instruction-captured, so do not infer Season persistence here. */
+            if (game->session.match.presentation_ticks_remaining > 0u)
+                --game->session.match.presentation_ticks_remaining;
+            if ((game->input.pressed & (NBA_BTN_START | NBA_BTN_A)) != 0u)
+                game->session.match.presentation_ticks_remaining = 0u;
+            if (game->session.match.presentation_ticks_remaining == 0u) {
+                game->session.match.flow_state = NBA_MATCH_FLOW_FINAL;
+                if (!nba_game_enter_state(game, NBA_STATE_GAME_SETUP))
+                    fprintf(stderr, "[GAME] Could not return to Game Setup.\n");
             }
             break;
 
@@ -880,6 +900,28 @@ void nba_game_render(NbaGame *game) {
         case NBA_STATE_TIPOFF:
             nba_tipoff_render(&game->scene.tipoff, ren);
             break;
+
+        case NBA_STATE_POSTGAME: {
+            /* `$83:FA91`: final summary renders the right score at x=52 and
+             * left score at x=204, both y=100, before Exhibition returns. */
+            nba_renderer_clear(ren, 0xFF080C18u);
+            nba_renderer_draw_rect(ren, 16, 24, 224, 176, 0xFF14243Cu);
+            nba_renderer_draw_rect(ren, 16, 24, 224, 3, 0xFFFFD760u);
+            nba_font_render_text_centered(ren->pixels, NBA_SNES_WIDTH, 42,
+                "FINAL", 0xFFFFD760u, 0xFF14243Cu, 2);
+            char left[16], right[16];
+            snprintf(left, sizeof(left), "%u", game->session.score[1]);
+            snprintf(right, sizeof(right), "%u", game->session.score[0]);
+            nba_font_render_text_centered(ren->pixels, NBA_SNES_WIDTH, 84,
+                "HOME        VISITOR", 0xFFFFFFFFu, 0xFF14243Cu, 1);
+            nba_font_render_text(ren->pixels, NBA_SNES_WIDTH, 48, 100, left,
+                0xFFFFFFFFu, 0xFF14243Cu, 2);
+            nba_font_render_text(ren->pixels, NBA_SNES_WIDTH, 196, 100, right,
+                0xFFFFFFFFu, 0xFF14243Cu, 2);
+            nba_font_render_text_centered(ren->pixels, NBA_SNES_WIDTH, 170,
+                "START  GAME SETUP", 0xFF9EF7A9u, 0xFF14243Cu, 1);
+            break;
+        }
     }
 
     /* Render live state Debug Overlay [F10] if enabled. */

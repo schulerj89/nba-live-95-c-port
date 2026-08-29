@@ -7969,10 +7969,13 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
     return true;
 }
 
-/* `$87:95E9-$985C` owns a much longer audiovisual scene.  The state boundary
- * is exact; 120 host ticks are deliberately a typed presentation placeholder
- * until those children have independent native captures. */
-#define NBA_MATCH_PRESENTATION_PLACEHOLDER_TICKS 120u
+/* Controlled Mesen witnesses from `$87:95E9` to `$86:DD47`/`$87:985C`.
+ * They include the native input acknowledgements used by the capture, so the
+ * stage raster remains separate; these replace the old arbitrary 120 ticks. */
+#define NBA_MATCH_QTR_PRESENTATION_TICKS       1187u
+#define NBA_MATCH_HALFTIME_PRESENTATION_TICKS  1547u
+#define NBA_MATCH_OT_PRESENTATION_TICKS        1367u
+#define NBA_MATCH_FINAL_PRESENTATION_TICKS     1756u
 /* Both confirmed timeout and resume paths pass X=$003C to `$80:86BF` after
  * `$80:CF1B`. The fade/rebuild children remain an explicit placeholder. */
 #define NBA_MATCH_PAUSE_TRANSITION_TICKS 60u
@@ -8174,8 +8177,11 @@ static void match_finish_period(NbaTipoff *tipoff) {
     session->match.period_raw_0926 = next_period;
     session->match.final_marker = final ?
         NBA_MATCH_FINAL_CONFIRMED : NBA_MATCH_FINAL_ACTIVE;
-    session->match.presentation_ticks_remaining =
-        NBA_MATCH_PRESENTATION_PLACEHOLDER_TICKS;
+    session->match.presentation_ticks_remaining = final ?
+        NBA_MATCH_FINAL_PRESENTATION_TICKS :
+        old_period == 1u ? NBA_MATCH_HALFTIME_PRESENTATION_TICKS :
+        old_period >= 3u && tied ? NBA_MATCH_OT_PRESENTATION_TICKS :
+        NBA_MATCH_QTR_PRESENTATION_TICKS;
     session->match.flow_state = final ?
         NBA_MATCH_FLOW_POSTGAME_PRESENTATION_PENDING :
         NBA_MATCH_FLOW_PERIOD_PRESENTATION_PENDING;

@@ -71,14 +71,14 @@
       "id": "match_lifecycle",
       "feature": "Clock, quarters, timeout, substitutions and end game",
       "weight": 10,
-      "completion": 10,
-      "native_capture": "weak",
-      "ghidra": "partial",
+      "completion": 55,
+      "native_capture": "strong",
+      "ghidra": "strong",
       "recomp": "partial",
-      "differential": "none",
-      "port_tests": "weak",
-      "remaining": "Capture and implement complete regulation-game lifecycle.",
-      "evidence": ["STATUS.md"]
+      "differential": "partial",
+      "port_tests": "strong",
+      "remaining": "Pixel-exact break/final scenes, substitution orchestration, and persistence modes.",
+      "evidence": ["STATUS.md", "docs/match-lifecycle.md", "docs/match-lifecycle-native-expiry.md"]
     },
     {
       "id": "human_controls",
@@ -123,9 +123,9 @@
       "id": "season_modes",
       "feature": "Season, playoffs, schedules and persistence",
       "weight": 5,
-      "completion": 0,
-      "native_capture": "none",
-      "ghidra": "none",
+      "completion": 25,
+      "native_capture": "partial",
+      "ghidra": "partial",
       "recomp": "untriaged",
       "differential": "none",
       "port_tests": "none",
@@ -141,9 +141,9 @@
       "ghidra": "none",
       "recomp": "untriaged",
       "differential": "none",
-      "port_tests": "none",
-      "remaining": "Inventory, capture and implement postgame and persistence flows.",
-      "evidence": ["STATUS.md"]
+      "port_tests": "partial",
+      "remaining": "Replace structural Exhibition final panel with exact assets; capture Season/playoff/save persistence.",
+      "evidence": ["STATUS.md", "docs/match-lifecycle-native-expiry.md"]
     }
   ]
 }

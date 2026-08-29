@@ -509,14 +509,13 @@ See `tools/README.md` for capture, replay, Ghidra, and regression commands.
   The raw map geometry matches 12 native viewports; static art has 0-461
   crowd-tile pixel differences. See `docs/camera-presentation-plan.md`.
 - Selector/launch and upstream made-run/fatigue/assistance writers are
-  implemented; see `docs/shot-state-plan.md`. Remaining in this neighborhood:
-  timeout/period caller integration (including stamina grants, period reset,
-  quarter-clock initialization and end-of-period flow), substitutions and
-  bench promotion, and wider natural-shot distribution comparison. The
-  initial 43,200 clock seed remains a bounded scaffold; the forced frame220
-  tip handoff has been removed. The
-  verified clock-writer semantics do not certify all clock setup/callers.
-  Human controls remain out of scope.
+  implemented; see `docs/shot-state-plan.md`. Period caller integration now
+  includes the exact regulation/OT clock tables, horn-flight gate, stamina
+  grants, period increment, anchor reset, OT/final decision, and explicit
+  Exhibition postgame routing. Controlled presentation lengths replace the
+  old 120-tick scaffold. Exact break/final raster composition, substitutions,
+  persistence modes, and wider natural-shot distribution remain. Human
+  controls remain out of scope.
 - Command helpers, common queued completion, ordinary mode-15 passes, and the
   complete `$86:F43A-$F668` inbound continuation now have native replay and
   runtime endurance proof. Generic shot/contact callers still contain

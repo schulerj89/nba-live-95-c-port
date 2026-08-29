@@ -5,7 +5,7 @@ the native instruction census: feature completion is a weighted engineering
 estimate, while capture/Ghidra/recomp/differential columns describe evidence
 strength. `strong` does not mean a feature is complete.
 
-**Current weighted whole-game estimate: 48.95%**
+**Current weighted whole-game estimate: 54.70%**
 
 | feature | weight | completion | native | Ghidra | recomp | differential | tests |
 |---|---:|---:|---|---|---|---|---|
@@ -14,12 +14,12 @@ strength. `strong` does not mean a feature is complete.
 | Team select, player setup and introductions | 8% | 90% | strong | strong | partial | partial | strong |
 | CPU-vs-CPU gameplay core | 25% | 55% | strong | strong | strong | strong | strong |
 | Gameplay rules, fouls and free throws | 10% | 45% | partial | strong | partial | strong | partial |
-| Clock, quarters, timeout, substitutions and end game | 10% | 10% | weak | partial | partial | none | weak |
+| Clock, quarters, timeout, substitutions and end game | 10% | 55% | strong | strong | partial | partial | strong |
 | Human offense, defense and inbound control | 10% | 0% | none | partial | partial | none | none |
 | Court, sprites, PPU composition and camera fidelity | 7% | 70% | strong | strong | partial | partial | strong |
 | Music and in-game sound fidelity | 5% | 75% | strong | partial | partial | partial | strong |
-| Season, playoffs, schedules and persistence | 5% | 0% | none | none | untriaged | none | none |
-| Postgame, statistics, records and save flow | 5% | 0% | none | none | untriaged | none | none |
+| Season, playoffs, schedules and persistence | 5% | 25% | partial | partial | untriaged | none | none |
+| Postgame, statistics, records and save flow | 5% | 0% | none | none | untriaged | none | partial |
 
 ## Remaining work and evidence
 
@@ -55,9 +55,9 @@ Evidence: [`docs/foul-classifier-differential.md`](../docs/foul-classifier-diffe
 
 ### Clock, quarters, timeout, substitutions and end game
 
-Capture and implement complete regulation-game lifecycle.
+Pixel-exact break/final scenes, substitution orchestration, and persistence modes.
 
-Evidence: [`STATUS.md`](../STATUS.md)
+Evidence: [`STATUS.md`](../STATUS.md), [`docs/match-lifecycle.md`](../docs/match-lifecycle.md), [`docs/match-lifecycle-native-expiry.md`](../docs/match-lifecycle-native-expiry.md)
 
 ### Human offense, defense and inbound control
 
@@ -85,9 +85,9 @@ Evidence: [`STATUS.md`](../STATUS.md)
 
 ### Postgame, statistics, records and save flow
 
-Inventory, capture and implement postgame and persistence flows.
+Replace structural Exhibition final panel with exact assets; capture Season/playoff/save persistence.
 
-Evidence: [`STATUS.md`](../STATUS.md)
+Evidence: [`STATUS.md`](../STATUS.md), [`docs/match-lifecycle-native-expiry.md`](../docs/match-lifecycle-native-expiry.md)
 
 ## Updating this matrix
 

@@ -38,7 +38,8 @@ typedef enum {
     NBA_STATE_TEAM_SELECT,
     NBA_STATE_PLAYER_SETUP,
     NBA_STATE_PLAYER_INTRO,
-    NBA_STATE_TIPOFF
+    NBA_STATE_TIPOFF,
+    NBA_STATE_POSTGAME
 } NbaGameState;
 
 typedef struct {
