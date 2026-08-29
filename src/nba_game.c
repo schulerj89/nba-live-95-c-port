@@ -470,6 +470,10 @@ void nba_game_input_update(NbaInput *input, uint32_t raw_buttons) {
 
 /**
  * Offset/Address/Size: 0x005A91 | $80:DA91 | size: 0xC8
+ * `$80:CF00-$F100` is the surrounding scene/resource service family. The
+ * portable dispatcher adopts its gameplay-visible contract: fixed frame
+ * waits, INIDISP fades, trace-backed PPU publication, resource handoffs and
+ * forced-blank boundaries. It deliberately does not emulate DMA latency.
  * Purpose: Main game loop dispatcher and scene timer state machine.
  */
 void nba_game_tick(NbaGame *game, float delta_time) {

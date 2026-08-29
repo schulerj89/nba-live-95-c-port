@@ -1664,6 +1664,38 @@
       "method": "complete Ghidra branch census + production input edge probe",
       "evidence": "Ghidra identifies two eight-bit serial reads, disconnected-$FFFF detection and four controller bytes. Win32 supplies the completed serial value; nba_game_input_update publishes held/pressed/released with the same frame-edge contract. bank80_services_probe locks first press, held repeat, simultaneous release/press, debug-key isolation and final release in the full build gate.",
       "date": "2026-08-29"
+    },
+    {
+      "range": "808C00-809C74",
+      "name": "tilegroup object projection and indexed draw host equivalent",
+      "source": "src/nba_snes_ppu.c + src/nba_player_lab.c + ROM-derived asset pack",
+      "method": "Ghidra/recomp boundary audit + raw resource/OAM probe + native Mode-1 pixel differential",
+      "evidence": "The Bank $80 listing identifies tilegroup transforms, indexed palette/CHR selection, window clipping and ordered object publication. gameplay55_services_probe exercises real gameplay resources through normal/mirrored composition and both clipping edges. Exact native frame 989 parity protects 54,688 background and 182 goal OBJ pixels, while the complete frame-1000 Mode-1 census protects every layer winner, tile/palette origin and OAM priority. Runtime inputs are decoded ROM/asset-pack bytes, never captured artwork.",
+      "date": "2026-08-29"
+    },
+    {
+      "range": "809C75-80A7C5",
+      "name": "gameplay metasprite traversal resource projection clipping and OAM publication host equivalent",
+      "source": "src/nba_player_lab.c + src/nba_snes_ppu.c",
+      "method": "natural native child-boundary captures + raw resource record replay + complete production pixel provenance",
+      "evidence": "Retained natural captures contain 140 allocator calls, 140 slot-selector calls and 200 calls each for screen-axis, clamp and world projection, with zero orphan exits. The cross-NMI broad parent WRAM delta remains rejected; credit instead rests on the complete hardware-visible contract. Eight native four-part player witnesses, 5,568 team/roster/direction/side compositions, raw descriptor witnesses, explicit mirror/clipping cases, all-team animation self-tests and native Mode-1 frame parity protect resource choice, attachment, low-OAM ordering, priority and final pixels.",
+      "date": "2026-08-29"
+    },
+    {
+      "range": "80C5AB-80CDCC",
+      "name": "compressed ROM resource publication and transfer host equivalent",
+      "source": "tools/extract_assets.py + src/nba_assets.c",
+      "method": "original decompressor execution + immutable payload integrity + raw native PPU comparison",
+      "evidence": "The extractor executes the ROM decompressor and rejects mismatched decompressed graphics. test_gameplay55_assets protects unique IDs, directory bounds/non-overlap, exact hashes for animation/scratch/goal/PPU payloads and 29 court states. Team 18's packed 64 KiB VRAM plus 512-byte CGRAM matches native frame 989 byte-for-byte. nba_assets_load validates every production destination size before publication; no screenshot or flattened capture is accepted as player/goal runtime art.",
+      "date": "2026-08-29"
+    },
+    {
+      "range": "80CF00-80F100",
+      "name": "scene fade frame-wait resource dispatch and PPU handoff host equivalent",
+      "source": "src/nba_game.c + src/nba_title_sequence.c + src/nba_setup_screen.c",
+      "method": "Ghidra/recomp scene audit + native frame traces + deterministic transition hashes",
+      "evidence": "The production dispatcher preserves the Bank $80 fixed waits, forced blank, resource handoff and INIDISP publication contract. gameplay55_services_probe protects deterministic trace rewind, distinct construction anchors, the $80:F07E completed-title snap, 121-frame incomplete-build hold, 41-frame complete-build hold and all 15 fade levels. The full title/setup transition suites retain consecutive native-derived frame hashes around forced blank, map/CHR rebuild and visible release, preventing early partially built graphics from leaking to scanout.",
+      "date": "2026-08-29"
     }
   ]
 }

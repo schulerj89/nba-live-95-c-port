@@ -9,6 +9,12 @@
 #define NBA_ASSET_HEADER_SIZE 16u
 #define NBA_ASSET_ENTRY_SIZE 24u
 
+/* `$80:C5AB-$CDCC` publishes compressed ROM resources through WRAM and VRAM
+ * transfer queues. Asset extraction executes the original decompressor; the
+ * runtime consumes its immutable result. nba_assets_load is the host boundary
+ * which validates every destination size/range before any gameplay renderer
+ * can observe those bytes. */
+
 static uint32_t asset_u32(const uint8_t *p) {
     return (uint32_t)p[0] | ((uint32_t)p[1] << 8) |
            ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);

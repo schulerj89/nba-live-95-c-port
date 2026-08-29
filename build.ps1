@@ -163,6 +163,20 @@ if ($Test) {
     if ($LASTEXITCODE -ne 0) {
         throw 'Bank $80 NMI/PPU/APU/controller host-service gate failed.'
     }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name gameplay55_services_probe
+    & (Join-Path $BuildDir 'gameplay55_services_probe.exe') $AssetPack
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Bank $80 gameplay presentation/resource/timing service gate failed.'
+    }
+    $Gameplay55AssetArgs = @('--pack', $AssetPack)
+    $Gameplay55NativeDir = Join-Path $Root '.analysis\ppu-runtime-final-20260829'
+    if (Test-Path -LiteralPath (Join-Path $Gameplay55NativeDir 'scanout_0989_vram.bin')) {
+        $Gameplay55AssetArgs += @('--native-dir', $Gameplay55NativeDir)
+    }
+    & python (Join-Path $Root 'tools\test_gameplay55_assets.py') $Gameplay55AssetArgs
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Bank $80 gameplay asset publication integrity gate failed.'
+    }
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name court_runtime_probe
     & (Join-Path $BuildDir 'court_runtime_probe.exe') $AssetPack
     if ($LASTEXITCODE -ne 0) { throw 'Court runtime integration failed.' }

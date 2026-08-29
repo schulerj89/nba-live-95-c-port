@@ -477,6 +477,13 @@ bool nba_rom_sprite_resource_compose(const NbaAssetPack *assets,
                                     uint16_t caller_attribute,
                                     int16_t origin_x, int16_t origin_y,
                                     NbaRomSpriteOamComposition *out) {
+    /* Hardware-visible host equivalent of `$80:8C00-$A7C5`: the native
+     * tilegroup/object and gameplay metasprite services allocate resource
+     * records, project origins, mirror descriptor X, clip them and publish
+     * ordered OAM. The host skips the transient WRAM allocator but preserves
+     * that complete observable record. Ghidra/recomp child boundaries at
+     * `$80:A34E`, `$80:A444`, `$80:A732`, `$80:A75E` and `$80:A781` are
+     * retained by the gameplay-55 service and native-pixel gates. */
     uint32_t resource_size = 0;
     const uint8_t *resource = animation_resource(
         assets, resource_id, &resource_size);
