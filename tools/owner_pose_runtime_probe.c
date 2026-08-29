@@ -11,6 +11,12 @@ static int exercise(const NbaAssetPack *pack,bool reverse,unsigned *total_specia
     unsigned states[3]={0},first[3]={0},serial=0,specials=0;
     int special_actor=-1;unsigned selected_frame=0,pose=0;bool airborne=false;
     for(unsigned frame=1;frame<=200000;++frame) {
+        /* Keep this reachability probe on one continuous possession schedule.
+         * Period/end-game transitions now correctly stop gameplay and have
+         * their own native lifecycle probes; crossing them would truncate the
+         * 200k-frame animation sample that this test is designed to observe. */
+        if(game.match_clock_raw_0928<6000u)
+            game.match_clock_raw_0928=43200u;
         uint16_t prior_phase=special_actor<0?0:game.actors[special_actor].rom_upper_animation_phase_raw_3a;
         nba_tipoff_update(&game,&input);
         if(special_actor>=0) {
