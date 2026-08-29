@@ -236,6 +236,7 @@ typedef struct NbaTipoff {
     int16_t inbound_target_x_raw;  /* `$0958` */
     int16_t inbound_target_y_raw;  /* `$095A` */
     uint16_t inbound_direction_raw;/* `$095C` */
+    uint16_t pad_held_raw;         /* controller 0 `$090C+$08`, current frame */
     uint16_t inbound_ready_raw;    /* represented `$09BA` arrival latch */
     uint16_t inbound_transfer_raw; /* `$09B8` */
     uint16_t ball_activity_raw;    /* `$0948`, canonical shot detach */

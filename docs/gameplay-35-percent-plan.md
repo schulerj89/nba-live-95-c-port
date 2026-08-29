@@ -85,7 +85,15 @@ host-side outcome without pretending the C port executes SNES DMA machinery.
 | Presentation prelude and gameplay load | 92 | 9,339 (33.47%) | Exact projection/culling plus fresh E0B0/E208 native loads; fixed dormant pre-tip `$0954`; all-team asset closure |
 | Pending foul consumer and whistle child | 53 | 9,392 (33.66%) | Four controlled real-entry ROM cases, 13 owned outputs, both timer paths, zero mismatches; long CPU regression passes |
 | Human player edge indicator | 82 | 9,474 (33.96%) | 200 natural plus 32 controlled real-entry calls; four controllers/eight edges; exact resource, attribute, clipping and actor-sentinel outputs |
-| Shared raw sprite compositor | 196 | 9,670 (34.66%) | 2,000 paired native calls/3,492 parts; exact signed-X, Y, size, flip, palette and priority; SNES-only VRAM allocation excluded |
+| Shared raw sprite compositor loop | 196 | 9,670 (34.66%) | 2,000 paired native calls/3,492 parts; exact signed-X, Y, size, flip, palette and priority; the preceding resource prefix was not yet credited at this checkpoint |
+| Dead-ball reset | 45 | 9,715 (34.82%) | Two controlled real-entry native calls; 36 exact outputs; production uses possession `$093E` and restores native clocks/timers/owner/ball state |
+| Alternate CPU inbound selectors | 19 | 9,734 (34.89%) | Exact second-selector success and all-invalid timeout fallback through the production selector |
+| Raw resource-prefix host equivalent | 28 | 9,762 (34.99%) | 2,000 B344/B348 calls prove resource/part-count/output selection; transient VRAM tile allocation remains explicitly unrepresented |
+| Human inbound direction branch | 5 | **9,767 (35.01%)** | All 16 ROM table entries plus CPU/inactive-human preservation; live controller-0 input binding |
+
+The 35% objective is complete at **9,767 / 27,901 captured address
+positions**. This is the generated address-position metric, not a claim that
+35% of the whole game or all branch behavior is complete.
 
 ### Route from checkpoint 2 to 35%
 

@@ -1438,7 +1438,39 @@
       "name": "raw ROM sprite descriptor clipping mirroring and OAM composition",
       "source": "src/nba_player_lab.c",
       "method": "natural native real-entry OAM differential + asset-pack runtime binding",
-      "evidence": "tests/fixtures/raw-sprite-compositor-witnesses.json and tools/verify_raw_sprite_compositor.py: 2000 paired native calls, 25 resources, both flips, 43 inputs and 3492 exact signed-X/Y/size/palette/priority outputs. B344-B37B VRAM allocation and tile/name-select outputs excluded because the host reads pack pixels directly. docs/raw-sprite-compositor-differential.md.",
+      "evidence": "tests/fixtures/raw-sprite-compositor-witnesses.json and tools/verify_raw_sprite_compositor.py: 2000 paired native calls, 25 resources, both flips, 43 inputs and 3492 exact signed-X/Y/size/palette/priority outputs. The preceding B344-B37B host resource-selection equivalent is credited separately; transient VRAM tile/name-select outputs remain excluded. docs/raw-sprite-compositor-differential.md.",
+      "date": "2026-08-29"
+    },
+    {
+      "range": "80B344-80B37B",
+      "name": "raw sprite resource selection and host asset allocation equivalent",
+      "source": "src/nba_player_lab.c",
+      "method": "native real-entry descriptor differential + exact asset-pack resource binding",
+      "evidence": "tests/fixtures/raw-sprite-compositor-witnesses.json and tools/verify_raw_sprite_compositor.py: 2000 paired B344/B348 native calls prove exact resource selection, descriptor part count and resulting geometry for 25 resources/3492 parts. Production resolves the identical pack resource directly. SNES VRAM tile allocation, tile-number and name-select carry are hardware-only outputs and remain explicitly unrepresented; they are not claimed as state equivalence. docs/raw-sprite-compositor-differential.md.",
+      "date": "2026-08-29"
+    },
+    {
+      "range": "879B38-879BC8",
+      "name": "common five-second and dead-ball state reset",
+      "source": "src/nba_gameplay_ai.c + src/nba_tipoff.c",
+      "method": "controlled real-entry native state differential + production binding",
+      "evidence": "tests/fixtures/dead-ball-reset-witnesses.json and tools/verify_dead_ball_reset.py: two real-entry native calls, 36 exact output comparisons, zero mismatches. Production now restores live state82, 300-tick inbound/role timers, 05A0 clocks, dead-ball coordinates, valid-owner mode/velocity state and clears owner/rim/selector/phase fields. Previous actor comes from possession $093E. docs/dead-ball-inbound-closure-differential.md.",
+      "date": "2026-08-29"
+    },
+    {
+      "range": "86F5D2-86F60A",
+      "name": "alternate and timeout inbound receiver selectors",
+      "source": "src/nba_gameplay_ai.c + src/nba_tipoff.c",
+      "method": "controlled real-entry native branch differential + existing production selector binding",
+      "evidence": "tests/fixtures/inbound-alternate-witnesses.json and tools/verify_inbound_alternate.py: exact second-selector success and all-invalid timeout fallback at real native entry, no PC/ROM/stack patch, zero mismatches. Complements the natural first-selector and launch evidence. docs/dead-ball-inbound-closure-differential.md.",
+      "date": "2026-08-29"
+    },
+    {
+      "range": "86F520-86F54E",
+      "name": "human inbound controller direction branch",
+      "source": "src/nba_gameplay_ai.c + src/nba_tipoff.c",
+      "method": "ROM table extraction + exhaustive direction replay + production input binding",
+      "evidence": "tests/fixtures/human-inbound-direction-witnesses.json and tools/verify_human_inbound_direction.py: all16 controller direction nibbles match table $86:F669; CPU and inactive-human preservation gates pass. Production reads controller0 held state, applies the native +16/+72 gates and writes actor +56. Only captured positions in this range contribute to coverage. docs/dead-ball-inbound-closure-differential.md.",
       "date": "2026-08-29"
     }
   ]

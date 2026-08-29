@@ -6262,19 +6262,39 @@ static bool cpu_inbound_formation_override_self_test(void) {
  * clocks, demotes the old owner to mode 2, and clears signed `$093E` before
  * `$85:C37D` seeds the replacement target. */
 static void cpu_reset_expired_inbound(NbaTipoff *tipoff) {
-    uint8_t previous = tipoff->inbound_actor_raw < NBA_GAMEPLAY_ACTOR_COUNT ?
-                       (uint8_t)tipoff->inbound_actor_raw : 0xFFu;
+    uint8_t previous = tipoff->possession_actor >= 0 &&
+            tipoff->possession_actor < NBA_GAMEPLAY_ACTOR_COUNT ?
+        (uint8_t)tipoff->possession_actor : 0xFFu;
+    NbaGameplayDeadBallReset reset = {
+        .camera_side_group = tipoff->camera_side_group_raw,
+        .owner_actor = previous < NBA_GAMEPLAY_ACTOR_COUNT ? previous : 0xffffu,
+        .ball_x = fp_round(tipoff->ball.x_fp),
+        .ball_y = fp_round(tipoff->ball.y_fp),
+        .ball_velocity_x = tipoff->ball.velocity_x,
+        .ball_velocity_y = tipoff->ball.velocity_y,
+        .owner_mode = previous < NBA_GAMEPLAY_ACTOR_COUNT ?
+            tipoff->actors[previous].control_mode : 0xffffu
+    };
+    nba_gameplay_dead_ball_reset(&reset);
     if (previous < NBA_GAMEPLAY_ACTOR_COUNT)
-        tipoff->actors[previous].control_mode = 2u;
-    unsigned side_group = (tipoff->camera_side_group_raw ^ 5u) == 5u ? 5u : 0u;
+        tipoff->actors[previous].control_mode = (uint8_t)reset.owner_mode;
+    tipoff->live_state_raw = reset.live_state;
+    tipoff->inbound_timer_raw = reset.inbound_timer;
+    tipoff->role_rebuild_raw_09d6 = reset.role_rebuild_timer;
+    tipoff->rim_raw_092c = reset.game_clock;
+    tipoff->shot_clock_mirror_raw_09c6 = reset.shot_clock_mirror;
+    tipoff->dead_ball_raw_0968 = reset.dead_ball;
+    tipoff->rim_raw_096a = reset.ball_aux;
+    tipoff->dead_ball_x_raw_09b0 = reset.dead_ball_x;
+    tipoff->dead_ball_y_raw_09b2 = reset.dead_ball_y;
+    tipoff->ball.velocity_x = reset.ball_velocity_x;
+    tipoff->ball.velocity_y = reset.ball_velocity_y;
+    tipoff->rim_raw_097c = reset.rim_state;
+    unsigned side_group = reset.award_side_group == 5u ? 5u : 0u;
     unsigned side = side_group / 5u;
     tipoff->inbound_state_raw = (uint16_t)side_group;
     tipoff->inbound_layout_raw = 5;
     tipoff->inbound_actor_raw = (uint16_t)(side_group + 2u);
-    tipoff->inbound_timer_raw = 300u;
-    tipoff->rim_raw_092c = 0x05A0u;
-    tipoff->rim_raw_096a = 0u;
-    tipoff->rim_raw_097c = 0u;
     tipoff->possession_actor = -1;
     tipoff->possession_team = (int8_t)side;
     tipoff->offense_side = (uint8_t)side;
@@ -6707,9 +6727,17 @@ static void cpu_update_rom_inbound(NbaTipoff *tipoff) {
     tipoff->inbound_transfer_raw = arrival.transfer_raw_09b8;
     actor->movement_magnitude_raw = 0u;
     actor->direction = arrival.draw_direction_raw_4e;
-    /* `$86:F58F`: signed actor +$16, not actor Z, gates the CPU selector.
-     * A human-controlled inbounder waits for controller input here. */
-    if (actor->controller_assignment_raw >= 0) return;
+    /* `$86:F520-$F54E`: a human inbounder uses controller `$090C+$08`
+     * through the ROM's direction table before returning. `$86:F58F` then
+     * uses signed actor +$16, not actor Z, to enter the CPU selector. */
+    if (actor->controller_assignment_raw >= 0) {
+        uint16_t held = actor->controller_assignment_raw == 0 ?
+                        tipoff->pad_held_raw : 0u;
+        actor->special_contact_raw_56 = nba_gameplay_human_inbound_direction(
+            actor->controller_assignment_raw, actor->movement_boost_timer,
+            held, actor->special_contact_raw_56);
+        return;
+    }
     if ((int16_t)tipoff->inbound_timer_raw >= 240) return;
     uint16_t random = tipoff->inbound_timer_raw >= 120u ?
                       nba_gameplay_rng_next(&tipoff->rng) : 0u;
@@ -7342,8 +7370,8 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
 }
 
 void nba_tipoff_update(NbaTipoff *tipoff, const NbaInput *input) {
-    (void)input;
     if (!tipoff || !tipoff->is_initialized) return;
+    tipoff->pad_held_raw = input ? (uint16_t)(input->held & 0x0FFFu) : 0u;
     /* `$13E7` is an outer-frame event bitfield. Acquisition's bit $0010 is
      * observable for one completed frame, then the next outer pass clears it. */
     tipoff->rim_raw_13e7 &= 0xFFEFu;

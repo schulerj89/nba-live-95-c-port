@@ -305,6 +305,23 @@ bool nba_gameplay_inbound_arrived(int16_t actor_x, int16_t actor_y,
 bool nba_gameplay_inbound_pass_due(uint16_t timer, uint16_t random_word);
 void nba_gameplay_inbound_motion_step(NbaGameplayInboundMotion *motion);
 void nba_gameplay_inbound_arrival_prepare(NbaGameplayInboundArrival *state);
+/* `$86:F520-$F54E`: translate the controller direction nibble through the
+ * ROM table at `$86:F669`. CPU actors and inactive human inbounders preserve
+ * actor `+$56`; an active human inbounder writes the table result. */
+int16_t nba_gameplay_human_inbound_direction(
+    int8_t controller_assignment, uint16_t movement_boost_timer,
+    uint16_t pad_held, int16_t current_direction);
+typedef struct {
+    uint16_t camera_side_group, owner_actor;
+    int16_t ball_x, ball_y, ball_velocity_x, ball_velocity_y;
+    uint16_t owner_mode;
+    uint16_t award_side_group, live_state, inbound_timer, role_rebuild_timer;
+    uint16_t game_clock, shot_clock_mirror, dead_ball, ball_aux;
+    int16_t dead_ball_x, dead_ball_y;
+    uint16_t rim_state, ball_record, selector, scene_phase;
+} NbaGameplayDeadBallReset;
+/* `$87:9B38-$9BC8`: common five-second/dead-ball state reset. */
+void nba_gameplay_dead_ball_reset(NbaGameplayDeadBallReset *state);
 /* `$87:A52C-$A5FA`: presentation-only facing selector. It deliberately does
  * not mutate the actor's movement direction. */
 uint8_t nba_gameplay_draw_direction(const NbaGameplayDrawDirection *input);

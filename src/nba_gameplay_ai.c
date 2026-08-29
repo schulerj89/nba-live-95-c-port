@@ -342,6 +342,30 @@ void nba_gameplay_inbound_arrival_prepare(NbaGameplayInboundArrival *state) {
         (uint8_t)state->inbound_direction_raw_095c;
 }
 
+void nba_gameplay_dead_ball_reset(NbaGameplayDeadBallReset *state) {
+    if (!state) return;
+    state->award_side_group = state->camera_side_group ^ 5u;
+    state->live_state = 0x82u;
+    state->inbound_timer = 300u;
+    state->role_rebuild_timer = 300u;
+    state->game_clock = 0x05a0u;
+    state->shot_clock_mirror = 0x05a0u;
+    state->dead_ball = 0u;
+    state->ball_aux = 0u;
+    state->dead_ball_x = state->ball_x;
+    state->dead_ball_y = state->ball_y;
+    if (state->owner_actor < 10u) {
+        state->owner_mode = 2u;
+        state->ball_velocity_x = 0;
+        state->ball_velocity_y = 0;
+    }
+    state->owner_actor = 0xffffu;
+    state->rim_state = 0u;
+    state->ball_record = 0x3eebu;
+    state->selector = 0u;
+    state->scene_phase = 0u;
+}
+
 static void defensive_pose_output_begin(
     const NbaGameplayDefensivePoseInput *input,
     NbaGameplayDefensivePoseOutput *output) {
@@ -1505,6 +1529,19 @@ bool nba_gameplay_decision_timer_step(uint16_t *timer, uint8_t profile_byte,
     *timer = (uint16_t)(remaining + (int)reload_base + profile_byte +
                         (add_half_court_delay ? 0x20 : 0));
     return true;
+}
+
+int16_t nba_gameplay_human_inbound_direction(
+        int8_t controller_assignment, uint16_t movement_boost_timer,
+        uint16_t pad_held, int16_t current_direction) {
+    /* Direction zero is the ordinary right-facing value, so the table's
+     * zero entries cover neutral and contradictory direction pairs too. */
+    static const uint8_t direction_by_pad_nibble[16] = {
+        0, 2, 6, 0, 4, 3, 5, 0, 0, 1, 7, 0, 0, 0, 0, 0
+    };
+    if (controller_assignment < 0 || movement_boost_timer == 0u)
+        return current_direction;
+    return direction_by_pad_nibble[(pad_held >> 4) & 0x0Fu];
 }
 
 /* `$86:F6EF-$F703/$86:F7BC-$F7D0/$86:F8EA-$F8FE`: M=0 makes both

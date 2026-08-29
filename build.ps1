@@ -217,6 +217,20 @@ if ($Test) {
         --vectors (Join-Path $Root 'tests\fixtures\inbound-selector-witnesses.json') `
         --probe (Join-Path $BuildDir 'inbound_selector_vector_probe.exe')
     if ($LASTEXITCODE -ne 0) { throw 'Inbound selector ROM witness regression failed.' }
+    & python (Join-Path $Root 'tools\verify_inbound_alternate.py') `
+        --vectors (Join-Path $Root 'tests\fixtures\inbound-alternate-witnesses.json') `
+        --probe (Join-Path $BuildDir 'inbound_selector_vector_probe.exe')
+    if ($LASTEXITCODE -ne 0) { throw 'Alternate inbound-selector ROM witness regression failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name human_inbound_direction_probe
+    & python (Join-Path $Root 'tools\verify_human_inbound_direction.py') `
+        --vectors (Join-Path $Root 'tests\fixtures\human-inbound-direction-witnesses.json') `
+        --probe (Join-Path $BuildDir 'human_inbound_direction_probe.exe')
+    if ($LASTEXITCODE -ne 0) { throw 'Human inbound-direction ROM witness regression failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name dead_ball_reset_probe
+    & python (Join-Path $Root 'tools\verify_dead_ball_reset.py') `
+        --vectors (Join-Path $Root 'tests\fixtures\dead-ball-reset-witnesses.json') `
+        --probe (Join-Path $BuildDir 'dead_ball_reset_probe.exe')
+    if ($LASTEXITCODE -ne 0) { throw 'Common dead-ball reset ROM witness regression failed.' }
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name foul_classifier_vector_probe
     & python (Join-Path $Root 'tools\verify_foul_classifier_vectors.py') `
         --vectors (Join-Path $Root 'tests\fixtures\foul-classifier-witnesses.json') `

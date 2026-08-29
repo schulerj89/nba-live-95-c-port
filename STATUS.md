@@ -17,8 +17,8 @@ Current measured coverage:
 | metric | captured address positions | % of captured addresses |
 |---|---:|---:|
 | observed executed code | 27,901 | 100.0% |
-| documented by ROM-address provenance | 10,477 | 37.6% |
-| verified against ROM calls | 7,826 | 28.05% |
+| documented by ROM-address provenance | 11,236 | 40.3% |
+| verified against ROM calls | 9,767 | 35.01% |
 
 These values are generated, not estimated. The detailed per-bank report is
 `docs/progress.md`; the authoritative verified list and evidence paths are in

@@ -2,11 +2,11 @@
 
 ## Credited boundary
 
-`$80:B37C-$B529` walks the descriptor selected by the preceding allocator,
-clips every part, applies horizontal mirroring, writes low OAM, and packs the
-signed-X/size bits into high OAM. `$80:B344-$B37B` selects/allocates SNES VRAM
-tile space and is deliberately excluded: the portable renderer reads the same
-pixels from the asset pack and does not emulate that transient allocation.
+`$80:B344-$B37B` selects the raw resource and establishes the descriptor part
+count and origin. The portable equivalent resolves that identical resource
+from the asset pack instead of allocating transient SNES VRAM. `$80:B37C-$B529`
+then walks the descriptor, clips every part, applies horizontal mirroring,
+writes low OAM, and packs signed-X/size bits into high OAM.
 
 ## Native evidence
 
@@ -16,10 +16,12 @@ both flip paths, 43 distinct input tuples, and 3,492 emitted parts. The
 capture pairs all calls without orphan returns. High OAM uses a descending
 four-slot cursor, so its two-bit fields are decoded in reverse slot order.
 
-The verifier compares every portable observable owned by the credited loop:
-signed X, Y, small/large size, flip, palette and OBJ priority. The transient
-VRAM tile number and its name-table carry bit are masked because the C port
-uses asset-pack pixels directly. All 3,492 parts match. Existing player
+The verifier compares resource selection, descriptor part count and every
+portable observable owned by the loop: signed X, Y, small/large size, flip,
+palette and OBJ priority. The transient VRAM tile number and its name-table
+carry bit are masked because the C port uses asset-pack pixels directly; those
+hardware-only outputs are explicitly not claimed as equivalent. All 3,492
+parts match. Existing player
 composition tests separately cover 5,568 team/roster/direction cases, while
 the live court endurance test proves the renderer consumes these resources.
 
@@ -27,4 +29,5 @@ the live court endurance test proves the renderer consumes these resources.
 
 `build.ps1 -Test` rebuilds `raw_sprite_compositor_probe` and requires the
 2,000-call witness to remain zero-mismatch, with at least 25 resources, both
-flip paths, and 40 distinct input tuples. Missing resource records fail closed.
+flip paths, 40 distinct input tuples, and the exact native output count for
+every call. Missing resource records fail closed.
