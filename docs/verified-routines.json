@@ -1378,11 +1378,19 @@
       "date": "2026-08-29"
     },
     {
+      "range": "86C493-86C4FD",
+      "name": "personal foul game-stat and foul-out bookkeeping",
+      "source": "src/nba_gameplay_foul.c + src/nba_tipoff.c",
+      "method": "controlled genuine nested native entry/exit differential + runtime binding",
+      "evidence": "tests/fixtures/foul-bookkeeping-witnesses.json and tools/verify_foul_bookkeeping_vectors.py: four native calls, five owned outputs and zero mismatches. Covers ordinary increment, team-count rejection, disabled-rule rejection, mapped game-stat increment and full $09CA/$0A08 foul-out request. Substitution execution excluded. docs/foul-bookkeeping-differential.md.",
+      "date": "2026-08-29"
+    },
+    {
       "range": "86C4FE-86C6AC",
       "name": "player-contact foul classifier and bookkeeping dispatch",
       "source": "src/nba_gameplay_foul.c + src/nba_tipoff.c",
       "method": "direct native vectors + enclosing collision differential + runtime binding",
-      "evidence": "tests/fixtures/foul-classifier-witnesses.json and tools/verify_foul_classifier_vectors.py: six direct natural calls, zero mismatches across RNG/event/shooting/free-throw/whistle/team-foul/event-bit outputs. Existing 1475-call player-contact sweep has 175 state-changing calls and zero represented mismatches at the production call site. Forced helper tests cover accepted defensive/charging/offensive branches, detached shot, bonus thresholds and foul cap. External C493 child excluded. docs/foul-classifier-differential.md.",
+      "evidence": "tests/fixtures/foul-classifier-witnesses.json and tools/verify_foul_classifier_vectors.py: six direct natural calls, zero mismatches across RNG/event/shooting/free-throw/whistle/team-foul/event-bit outputs. Existing 1475-call player-contact sweep has 175 state-changing calls and zero represented mismatches at the production call site. Forced helper tests cover accepted defensive/charging/offensive branches, detached shot, bonus thresholds and foul cap. The C493 child is independently verified by tests/fixtures/foul-bookkeeping-witnesses.json. docs/foul-classifier-differential.md and docs/foul-bookkeeping-differential.md.",
       "date": "2026-08-29"
     },
     {

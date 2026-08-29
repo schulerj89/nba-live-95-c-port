@@ -12,6 +12,8 @@ void nba_gameplay_foul_init(NbaGameplayFoulState *state) {
     state->offender_actor_raw = -1;
     state->victim_actor_raw = -1;
     state->whistle_timer_raw_08de = -1;
+    state->team_active_roster_count[0] = 12u;
+    state->team_active_roster_count[1] = 12u;
 }
 
 /* `$86:C4FE-$C6AC` emits pending `$0964` codes 1/2/13 and preserves actor
@@ -33,17 +35,56 @@ bool nba_gameplay_foul_record_contact(NbaGameplayFoulState *state,
                                       uint8_t offender_team,
                                       bool shot_detached,
                                       uint16_t period_raw_0926) {
+    return nba_gameplay_foul_record_contact_full(
+        state, event_code, offender_actor, victim_actor, offender_team,
+        shot_detached, period_raw_0926, -1, false);
+}
+
+/* Literal persistent writes owned by `$86:C493-$C4FD`. `+$16`
+ * selects an optional mapped game-stat record; a negative assignment skips
+ * its `+$26` increment.  Reaching personal foul six requests substitution
+ * only when team context `+$54 >= 6` and committed rule `$17DF` is enabled.
+ * The port deliberately publishes that request but does not execute a
+ * host-authored substitution. */
+bool nba_gameplay_foul_record_bookkeeping(
+    NbaGameplayFoulState *state, uint8_t offender_actor,
+    uint8_t offender_team, int8_t game_stat_slot,
+    bool foul_out_rule_enabled) {
+    if (!state || offender_actor >= 10u || offender_team >= 2u ||
+        game_stat_slot >= 5) return false;
+    if (state->personal_fouls[offender_actor] < 6u)
+        ++state->personal_fouls[offender_actor];
+    else
+        state->personal_fouls[offender_actor] = 6u;
+    if (state->personal_fouls[offender_actor] >= 6u &&
+        state->team_active_roster_count[offender_team] >= 6u &&
+        foul_out_rule_enabled) {
+        --state->team_active_roster_count[offender_team];
+        state->foul_out_state_raw_09ca = 8u;
+        state->substitution_request_raw_0a08 = 1u;
+    }
+    if (game_stat_slot >= 0)
+        ++state->game_foul_stats[(uint8_t)game_stat_slot];
+    return true;
+}
+
+/* `$86:C4FE-$C6AC` event/team bookkeeping follows its C493 child. */
+bool nba_gameplay_foul_record_contact_full(
+    NbaGameplayFoulState *state, uint8_t event_code,
+    uint8_t offender_actor, uint8_t victim_actor, uint8_t offender_team,
+    bool shot_detached, uint16_t period_raw_0926,
+    int8_t game_stat_slot, bool foul_out_rule_enabled) {
     if (!state || offender_actor >= 10u || victim_actor >= 10u ||
         offender_team >= 2u ||
+        game_stat_slot >= 5 ||
         (event_code != NBA_GAMEPLAY_FOUL_DEFENSIVE &&
          event_code != NBA_GAMEPLAY_FOUL_CHARGING &&
          event_code != NBA_GAMEPLAY_FOUL_OFFENSIVE)) return false;
     state->offender_actor_raw = (int8_t)offender_actor;
     state->victim_actor_raw = (int8_t)victim_actor;
-    if (state->personal_fouls[offender_actor] < 6u)
-        ++state->personal_fouls[offender_actor];
-    else
-        state->personal_fouls[offender_actor] = 6u;
+    if (!nba_gameplay_foul_record_bookkeeping(
+            state, offender_actor, offender_team, game_stat_slot,
+            foul_out_rule_enabled)) return false;
     if (event_code != NBA_GAMEPLAY_FOUL_DEFENSIVE) {
         state->foul_event_raw_0964 = event_code;
         return true;
@@ -128,9 +169,11 @@ bool nba_gameplay_foul_classify_contact(
     }
     uint16_t rule_delta = (uint16_t)((uint16_t)(rule << 2) - roll);
     if (rule == 0u || (int16_t)rule_delta < 0) return false;
-    if (!nba_gameplay_foul_record_contact(
+    if (!nba_gameplay_foul_record_contact_full(
             state, event_code, input->offender_actor, input->victim_actor,
-            input->offender_team, detached, input->period_raw_0926))
+            input->offender_team, detached, input->period_raw_0926,
+            input->game_stat_slot_raw_16,
+            input->foul_out_rule_raw_17df))
         return false;
     if (detached && event_code == NBA_GAMEPLAY_FOUL_DEFENSIVE &&
         event_bits_raw_13e7)
@@ -228,6 +271,7 @@ bool nba_gameplay_foul_self_test(void) {
         7u, 2u, 1u, 5u, 1u, 0x02F3u, 0u, 2, 2, 0u,
         0u, 0u, 3u, 0u, 45u, 25u
     };
+    contact.game_stat_slot_raw_16 = -1;
     nba_gameplay_foul_init(&classifier);
     classifier_rng.state = 0xAB20u;
     if (nba_gameplay_foul_classify_contact(

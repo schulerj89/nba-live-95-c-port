@@ -336,6 +336,11 @@ if ($Test) {
         --vectors (Join-Path $Root 'tests\fixtures\foul-classifier-witnesses.json') `
         --probe (Join-Path $BuildDir 'foul_classifier_vector_probe.exe')
     if ($LASTEXITCODE -ne 0) { throw 'Contact-foul classifier ROM witness regression failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name foul_bookkeeping_vector_probe
+    & python (Join-Path $Root 'tools\verify_foul_bookkeeping_vectors.py') `
+        --vectors (Join-Path $Root 'tests\fixtures\foul-bookkeeping-witnesses.json') `
+        --probe (Join-Path $BuildDir 'foul_bookkeeping_vector_probe.exe')
+    if ($LASTEXITCODE -ne 0) { throw 'Foul/stat bookkeeping ROM witness regression failed.' }
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name foul_consume_vector_probe
     & python (Join-Path $Root 'tools\verify_foul_consume_vectors.py') `
         --vectors (Join-Path $Root 'tests\fixtures\foul-consume-witnesses.json') `

@@ -17,6 +17,10 @@ typedef struct {
     int8_t victim_actor_raw;
     uint16_t team_fouls[2];
     uint8_t personal_fouls[10];
+    uint16_t team_active_roster_count[2]; /* team context `+$54` */
+    uint16_t game_foul_stats[5];          /* `$879C71` record `+$26` */
+    uint16_t foul_out_state_raw_09ca;
+    uint16_t substitution_request_raw_0a08;
     uint16_t free_throw_state_raw_0978;
     uint16_t free_throw_sequence_raw_097a;
     uint16_t latched_event_raw_08f0;
@@ -52,9 +56,15 @@ typedef struct {
     uint16_t context_tag; /* 0 or $87 */
     uint16_t defensive_rule_raw_17d1;
     uint16_t offensive_rule_raw_17d3;
+    int8_t game_stat_slot_raw_16;
+    bool foul_out_rule_raw_17df;
 } NbaGameplayContactFoulInput;
 
 void nba_gameplay_foul_init(NbaGameplayFoulState *state);
+bool nba_gameplay_foul_record_bookkeeping(
+    NbaGameplayFoulState *state, uint8_t offender_actor,
+    uint8_t offender_team, int8_t game_stat_slot,
+    bool foul_out_rule_enabled);
 bool nba_gameplay_foul_record_contact(NbaGameplayFoulState *state,
                                       uint8_t event_code,
                                       uint8_t offender_actor,
@@ -62,6 +72,11 @@ bool nba_gameplay_foul_record_contact(NbaGameplayFoulState *state,
                                       uint8_t offender_team,
                                       bool shot_detached,
                                       uint16_t period_raw_0926);
+bool nba_gameplay_foul_record_contact_full(
+    NbaGameplayFoulState *state, uint8_t event_code,
+    uint8_t offender_actor, uint8_t victim_actor, uint8_t offender_team,
+    bool shot_detached, uint16_t period_raw_0926,
+    int8_t game_stat_slot, bool foul_out_rule_enabled);
 bool nba_gameplay_foul_classify_contact(
     NbaGameplayFoulState *state, NbaGameplayRng *rng,
     const NbaGameplayContactFoulInput *input,

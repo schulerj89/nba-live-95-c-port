@@ -2340,7 +2340,9 @@ static void cpu_classify_player_contact(NbaTipoff *tipoff,
         tipoff->period_raw_0926,
         context_tag,
         tipoff->session->config.rules[0],
-        tipoff->session->config.rules[1]
+        tipoff->session->config.rules[1],
+        offender->controller_assignment_raw,
+        tipoff->session->config.rules[7] != 0u
     };
     (void)nba_gameplay_foul_classify_contact(
         &tipoff->fouls, &tipoff->rng, &input, &tipoff->rim_raw_13e7);
@@ -3006,11 +3008,13 @@ static bool cpu_try_owned_ball_contact(NbaTipoff *tipoff) {
         tipoff->collision_actor_b_raw = (int8_t)owner;
         if (result == NBA_GAMEPLAY_OWNED_CONTACT_FOUL) {
             tipoff->collision_routine_raw = 0x86D12Du;
-            (void)nba_gameplay_foul_record_contact(
+            (void)nba_gameplay_foul_record_contact_full(
                 &tipoff->fouls, NBA_GAMEPLAY_FOUL_DEFENSIVE,
                 candidate, owner, candidate / 5u,
                 tipoff->ball_activity_raw != 0u,
-                tipoff->period_raw_0926);
+                tipoff->period_raw_0926,
+                candidate_state->controller_assignment_raw,
+                tipoff->session->config.rules[7] != 0u);
             if (tipoff->ball_activity_raw != 0u)
                 tipoff->rim_raw_13e7 |= 0x2000u;
             return true;

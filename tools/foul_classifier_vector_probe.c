@@ -13,6 +13,7 @@ int main(void) {
    (uint8_t)v[4],(uint16_t)v[5],(uint16_t)v[6],(int8_t)(uint8_t)v[7],(int8_t)(uint8_t)v[8],
    (uint8_t)v[9],(uint16_t)v[10],(uint16_t)v[11],(uint16_t)v[12],(uint16_t)v[13],
    (uint16_t)v[14],(uint16_t)v[15]};
+  in.game_stat_slot_raw_16=-1;
   nba_gameplay_foul_classify_contact(&s,&rng,&in,&bits);
   printf("%x %x %x %x %x %x %x %x %x\n",rng.state,s.foul_event_raw_0964,
    s.shooting_foul_raw_09bc,s.free_throw_state_raw_0978,s.free_throw_sequence_raw_097a,
