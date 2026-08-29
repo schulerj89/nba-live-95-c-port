@@ -456,7 +456,14 @@ void nba_game_shutdown(NbaGame *game) {
     printf("[GAME] Shutdown complete.\n");
 }
 
-/* `$80:CE33-$CE8D`: the native routine serially reads both controller ports,
+/* Captured-bank closure: `$00:8000-$00:FFFF` and `$80:8000-$80:FFFF`.
+ * Only retained executed positions within those address windows are claimed.
+ * `$00:8156` jumps into the Bank $80 bootstrap and `$00:8600-$861C` is the
+ * native IRQ save/indirect-dispatch/restore trampoline. The host process and
+ * fixed-step loop replace that CPU ABI boundary; gameplay100_closure_probe
+ * exercises its first gameplay-visible publication here on every run.
+ *
+ * `$80:CE33-$CEFD`: the native routine serially reads both controller ports,
  * rejects the disconnected $FFFF signature and publishes current/edge state.
  * Win32 has already performed the serial read, so this is its exact portable
  * state-publication tail. Debug keys occupy host-only bits above the twelve

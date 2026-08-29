@@ -1768,6 +1768,54 @@
       "method": "fresh all-capture headless Ghidra closure + native draw/animation/event replays + deterministic production render endurance",
       "evidence": "The fresh closure maps all 3,381 captured selected Bank $87 positions and 168 decoded call sites (113 unique targets). Exact gates protect scheduler sweep boundaries, behavior dispatch, violation/dead-ball handling, actor projection and culling, direction/preparation/edge-indicator drawing, raw resource composition, effect cadence, locomotion/action channels, appearance resources, jersey numbers, pose points and attached-ball XYZ. The gameplay85 probe observes 107,032 animation-resource changes and 395 distinct sampled rendered-frame changes across three team pairs while hashing all actor resources/phases every frame; native Mode-1 and raw-sprite oracles remain the final pixel authority.",
       "date": "2026-08-29"
+    },
+    {
+      "range": "008000-00FFFF",
+      "name": "native bootstrap jump and IRQ dispatch host boundary",
+      "source": "src/nba_game.c + fixed-step Win32/console process loop",
+      "method": "fresh captured-address Ghidra closure + portable publication boundary regression",
+      "evidence": "DumpGameplay100Closure identifies all 30 retained Bank $00 positions: $00:8156 jumps long to $80:815A and $00:8600-$861C saves CPU state, dispatches through [$05C8], restores state and returns from interrupt. These are native ABI/interrupt mechanics, not a second gameplay state machine. The host process enters the same Bank $80-owned initialization contract and publishes completed frame input/state through nba_game_input_update. gameplay100_closure_probe locks simultaneous press, hold and ordered release at that first visible boundary; bank80 services and the full production journey protect everything it dispatches. CPU stack layout and interrupt cycles are deliberately outside portable equivalence.",
+      "date": "2026-08-29"
+    },
+    {
+      "range": "808000-80FFFF",
+      "name": "complete captured Bank 80 bootstrap PPU dispatch resource controller and scene services",
+      "source": "src/nba_game.c + src/nba_snes_ppu.c + src/nba_renderer.c + src/nba_assets.c + src/nba_audio.c",
+      "method": "fresh all-capture Ghidra/recomp closure + hardware-visible differentials + aggregate production journey",
+      "evidence": "The zero-remainder audit accounts for the final 743 observed positions: bootstrap entry 1, PPU tail 5, object/text tail 97, dispatch micro-table 394, resource prelude 166, controller tail 3 and scene/timing tail 77. Fresh Ghidra decodes 7,555 Bank $80 starts and 124 static targets; generated recomp roots independently agree where available. Typed host services consume the interpreter/resource descriptors and preserve their final VRAM/CGRAM/OAM/audio, input-edge, fade, wait and scene-handoff state rather than SNES busy-wait/DMA cycles. Existing native Mode-1, sprite, asset, audio and transition oracles remain primary; gameplay100_closure_probe additionally crosses Rules, Options, three presentation scenes and 6,000 live CPU frames twice with an immutable digest.",
+      "date": "2026-08-29"
+    },
+    {
+      "range": "818000-81FFFF",
+      "name": "complete captured Bank 81 text menu Player Setup transition Rules and HDMA services",
+      "source": "src/nba_setup_screen.c + src/nba_player_setup.c + src/nba_font.c + src/nba_snes_ppu.c",
+      "method": "fresh Ghidra/recomp closure + native transition traces + persistent production journey regression",
+      "evidence": "All 2,589 previously uncredited captured positions are classified: 1,339 text/font/object/menu, 344 Player Setup/controller, 266 transition, 475 Rules and 165 presentation/HDMA positions. Fresh Ghidra decodes 3,162 Bank $81 starts and 68 static targets; the recomp confirms the generated bank ownership while indirect scene dispatch is retained at the typed host boundary. Exact tests already lock proportional glyph shadows, meter visibility, every directed transition trace, forced blank, scanout release, controller placement and selected-team logos. gameplay100_closure_probe now opens, mutates, renders and commits Rules and Options, crosses all four submenu edges, verifies persistent words, then crosses the 200-frame Player Setup handoff and controller round trip.",
+      "date": "2026-08-29"
+    },
+    {
+      "range": "828000-82FFFF",
+      "name": "complete captured Bank 82 Team Select EA scratch and audio resource services",
+      "source": "src/nba_team_select.c + src/nba_ea_intro.c + src/nba_jump_reach.c + src/nba_audio.c + ROM-derived asset pack",
+      "method": "fresh Ghidra/recomp closure + exact scene/scratch/audio oracles + aggregate production journey",
+      "evidence": "The final 496 observed positions comprise 9 in the D tail, 11 in the E tail and 476 in the EA/scratch/audio F tail. Fresh closure decodes 2,244 starts and 66 static targets across 1,937 captured Bank $82 positions; recomp roots $82:8906/$8924/$AD15/$EB09 corroborate the reachable ownership. Exact EA Mode-7/flash frames, three-slot graphics-scratch witnesses, stamped SPC/DSP PCM, all-team Team Select assets and frame transitions remain the branch/output authorities. gameplay100_closure_probe cycles both selected sides, preserves an asymmetric team pair, hashes the Team Select scanout and carries the selection through Player Setup, introductions and gameplay.",
+      "date": "2026-08-29"
+    },
+    {
+      "range": "838000-83FFFF",
+      "name": "complete captured Bank 83 presentation RNG and indirect event services",
+      "source": "src/nba_player_intro.c + src/nba_tipoff.c + src/nba_gameplay_ai.c + src/nba_gameplay_foul.c",
+      "method": "fresh Ghidra closure + exact RNG/event witnesses + deterministic presentation/gameplay journey",
+      "evidence": "Only 11 Bank $83 captured positions remained: the $83:B99D-$B9B2 RNG update/seed path and $83:BC29 indirect event dispatch prefix. Ghidra maps 1,043 captured positions, 1,374 decoded starts and 50 static targets in the bank. The portable RNG and typed event queues preserve mutated state and ordered consumers; stack/pointer ABI is not claimed. Existing 500-call RNG, collision/foul/violation and 63,800-frame event endurance gates remain primary. gameplay100_closure_probe seeds live RNG, reaches tip possession and hashes 6,000 frames after hashing matchup, ratings and all ten lineup cards.",
+      "date": "2026-08-29"
+    },
+    {
+      "range": "848000-84FFFF",
+      "name": "complete captured Bank 84 controller animation roster and graphics table helpers",
+      "source": "src/nba_player_lab.c + src/nba_tipoff.c + src/nba_gameplay_ai.c + ROM-derived Bank 84 asset tables",
+      "method": "fresh Ghidra closure + raw table/resource replays + deterministic live animation census",
+      "evidence": "All 195 captured Bank $84 positions are now classified: 50 gameplay/controller helpers including $84:BF75-$C014, 9 animation-dispatch positions and 136 roster/graphics helpers including $84:E2AC-$E432. Fresh Ghidra decodes 325 starts and 17 static targets; no recomp discovery is assumed for this bank. The asset pack retains raw table bytes, while typed helpers preserve selected actor/resource/attachment output. Exact active-appearance, defensive-pose, jersey-number, all-team animation and sprite-compositor replays remain primary; gameplay100_closure_probe records 12,985 live upper-resource changes across a deterministic 6,000-frame CPU run and hashes periodic asset-pack render output.",
+      "date": "2026-08-29"
     }
   ]
 }

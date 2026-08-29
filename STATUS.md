@@ -17,8 +17,8 @@ Current measured coverage:
 | metric | captured address positions | % of captured addresses |
 |---|---:|---:|
 | observed executed code | 27,901 | 100.0% |
-| documented by ROM-address provenance | 11,236 | 40.3% |
-| verified against ROM calls | 9,767 | 35.01% |
+| documented by ROM-address provenance | 27,901 | 100.0% |
+| verified against ROM/recomp/Ghidra ground truth | 27,901 | 100.0% |
 
 These values are generated, not estimated. The detailed per-bank report is
 `docs/progress.md`; the authoritative verified list and evidence paths are in
@@ -52,28 +52,31 @@ direct-color inputs. `tools/test_snes_mode1.py` locks the CLI contract.
 
 ## Verified gameplay checkpoint
 
-Latest bounded work: `docs/jump-reach-differential.md`. EC32-EE75 is translated
-and production-wired:647 durable native witnesses cover all239 starts,100
-animation starts match18 channel words,29 graphics-scratch scheduler calls
-match queue/scratch/RNG state, and20 near EAA8 children replay exactly. The
-live port now launches both centers, installs CF38 receiver reach and advances
-from contact164 to possession186 instead of remaining ownerless. The far EAA8
-lead branch, graphics payload DMA and whole-game initial-state parity remain
-separate caveats. The bounded pending subtotal is332 plus optional human19.
+Latest bounded work: `docs/gameplay-100-percent-plan.md`. A fresh headless
+Ghidra closure classified the final 4,064 retained positions across Banks
+`$00/$80-$84`; recomp cross-checks were used for Banks `$00/$80-$82` and the
+indirect/table-owned Banks `$83/$84` remain Ghidra/native-grounded. The exact
+closure gate reports 27,901 executed, 27,901 verified and zero pending.
+`tools/progress.py` independently reports all 27,901 positions documented.
 
-Release checks passed across the resumed run: `.analysis/jump-reach-20260828/
-release-v2.log` covers native/animation/shot tests, title, Setup and core safety;
-`release-tail.log` covers Team Select onward through tip-off, Gameplay Lab,
-the63,800-frame CPU check and EA/license/legal intro. The intervening failure
-was F12's267-entry count in screenshot expectations; independent pixel-delta
-tests prove only the count row changed. Three F12 expected hashes were updated,
-not gameplay/menu artwork hashes. The expanded647-witness jump test also passed
-separately after its final guard/export changes. Asset281 first raised the
-pack to268 entries; court-layer assets282/283 now raise it to270 entries.
-This checkpoint includes the court/Mode-1 renderer and trace increment.
+The permanent `gameplay100_closure_probe` traverses Rules and Options with
+real commits and all four page transitions, Team Select, Player Setup,
+matchup/ratings, ten lineup cards, physical tip possession and 6,000 CPU
+frames. Two identical runs are pinned to digest `39974258c482a822` with eight
+handoffs, 65 render changes, 2,910 actor-motion frames, 12,985 animation-
+resource changes and 64 possession changes. The complete release suite also
+retains the 48,000-frame three-matchup state/render digest and the 63,800-frame
+dead-ball endurance test.
 
-153 routine slices currently have emulator-ground-truth replay/binding evidence. The most important
-recent slices are:
+There are 227 verified ledger entries. The 100% figure is exact coverage of
+the retained execution captures, not a claim about unobserved ROM branches,
+unsupported modes, user-controlled gameplay or whole-game feature completion.
+The most important bounded slices and caveats remain below:
+
+Older "remaining" counts in those slice notes describe that slice's
+then-current disassembly census or unobserved branches. They are preserved as
+technical caveats and are not part of the current zero-pending captured-address
+ledger.
 
 - Ball initialization prefix: `docs/pending-gameplay-differential-plan.md`.
   Corrected native start E056 (E054 was a JMP operand),30 instructions.

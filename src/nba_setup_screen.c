@@ -3,6 +3,18 @@
 #include <stdio.h>
 #include <string.h>
 
+/* Captured-bank closure: `$81:8000-$81:FFFF`; only retained executed
+ * positions inside this window are claimed. Bank `$81` is the captured
+ * text/font/object/menu/transition/HDMA
+ * service bank. Its lasting state is represented here by the mutable BG3
+ * canvas, committed configuration words, trace-backed transition registers,
+ * VRAM/CGRAM and highlight-window geometry; Player Setup owns `$81:Bxxx`.
+ * The gameplay100 journey now opens, changes, renders and commits both Rules
+ * and Options through all four directed page transitions before continuing.
+ * Existing frame-hash suites remain the authority for every intermediate
+ * forced-blank and visible-release frame rather than claiming DMA-cycle ABI
+ * parity from the portable implementation. */
+
 #define SETUP_PPU_MAGIC "NBSPPU1\0"
 #define SETUP_TRANSITION_PPU_MAGIC "NBSPPU2\0"
 #define SETUP_PPU_HEADER_SIZE 16

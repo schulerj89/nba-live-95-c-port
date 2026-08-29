@@ -10,6 +10,14 @@
  * Raw sprite census, exact native PPU scanout, screen/font frame oracles and
  * the gameplay85 multi-team state/render digest protect the combined path. */
 
+/* The all-capture closure also reaches `$80:BF01-$C5AA`: short interpreter
+ * entries dispatch object/text commands and the resource prelude prepares the
+ * same transfer descriptors. They have no independent host state after the
+ * command is decoded. Their portable output is therefore owned by the typed
+ * draw/publication APIs below and by nba_assets.c, not by a bytecode emulator.
+ * gameplay100_closure_probe crosses every production scene consumer; the raw
+ * sprite and Mode-1 differential gates remain the pixel-level authority. */
+
 /* `$80:815A-$8626` is the native NMI/OAM/VRAM service and
  * `$80:8627-$8BF2` contains its palette/VRAM transfer helpers. The host port
  * has no asynchronous PPU bus: asset-pack VRAM/CGRAM and the frame's OAM

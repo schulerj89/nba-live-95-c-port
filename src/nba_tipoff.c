@@ -17,6 +17,15 @@
  * 48,000-frame gameplay85 gate protects production composition across three
  * asymmetric team pairs, including rendered asset-pack output. */
 
+/* Captured-bank closure: `$83:8000-$83:FFFF`; only retained executed
+ * positions inside this window are claimed. The small captured
+ * `$83:B99D-$B9B2/$83:BC29` prefix is shared RNG and
+ * indirect event dispatch. nba_gameplay_rng_next and the typed event queues
+ * replace the native pointer jump while preserving its mutated state. The
+ * gameplay100 journey seeds that RNG, reaches physical tip possession, then
+ * hashes 6,000 ordered CPU frames; focused RNG/event witnesses remain the
+ * branch-level oracle. */
+
 typedef struct {
     int16_t world_x, world_y;
     int16_t screen_x, screen_y;

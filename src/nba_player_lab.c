@@ -5,6 +5,16 @@
 #include <stdio.h>
 #include <string.h>
 
+/* Captured-bank closure: `$84:8000-$84:FFFF`; only retained executed
+ * positions inside this window are claimed. Bank `$84` is ROM table/helper
+ * ownership, not screenshot art:
+ * `$84:BF75-$C014` supplies compact controller/dispatch state and
+ * `$84:E2AC-$E432` selects roster/animation resource records. The asset pack
+ * retains the raw bank tables; the helpers below decode those bytes into the
+ * same upper/lower/head/number attachments consumed by production gameplay.
+ * All-team animation, active-appearance, jersey-number and raw-compositor
+ * replays plus gameplay100's live resource-change census protect this edge. */
+
 #define PLAYER_HEADER_SIZE 24u
 #define PLAYER_RECORD_SIZE 64u
 #define PLAYER_ANIMATION_HEADER_SIZE 80u

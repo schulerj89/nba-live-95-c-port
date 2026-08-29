@@ -3,6 +3,16 @@
 #include <string.h>
 #include <math.h>
 
+/* Captured-bank closure: `$82:8000-$82:FFFF`; only retained executed
+ * positions inside this window are claimed. Its `$82:F000-$FFFF` tail
+ * combines the EA Mode-7 scene, transient
+ * gameplay graphics scratch and APU/resource handoff helpers. This module
+ * owns the visible `$82:F4C4/$82:F56D/$82:F64A` branch results; nba_jump_reach
+ * owns the independently replayed three-slot scratch producer and nba_audio
+ * owns stamped SPC/DSP publication. Exact EA frame hashes, scratch witnesses,
+ * audio PCM fingerprints and the gameplay100 journey protect those portable
+ * boundaries without treating hardware waits as additional game behavior. */
+
 /*
  * $82:F56D does not interpolate a conventional sprite scale.  It writes the
  * Mode 7 A/D matrix to $0001, waits a frame, and then adds $000C per frame
