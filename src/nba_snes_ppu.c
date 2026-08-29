@@ -233,6 +233,125 @@ bool nba_snes_mode1_submit_indexed(NbaRenderer *renderer, const uint8_t *cgram,
     return true;
 }
 
+typedef struct {
+    bool opaque;
+    int x;
+    int y;
+    uint8_t priority;
+    uint8_t palette;
+    uint8_t color;
+    uint8_t oam_index;
+} SnapshotObjPixel;
+
+static bool snapshot_bg_visible(const NbaSnesMode1BgConfig *bg, int x) {
+    if (!bg->window_mask_main) return true;
+    return !nba_snes_window_masked(x, &bg->windows[0], &bg->windows[1],
+                                   bg->window_logic);
+}
+
+bool nba_snes_mode1_render_snapshot(NbaRenderer *renderer,
+                                    const uint8_t *vram,
+                                    const uint8_t *cgram,
+                                    const uint8_t *oam,
+                                    const NbaSnesMode1Snapshot *snapshot) {
+    if (!renderer || !vram || !cgram || !oam || !snapshot ||
+        snapshot->oam_mode != 0u) return false;
+    uint32_t backdrop = nba_snes_cgram_color(cgram, 0, snapshot->brightness,
+                                             0, 0, 0);
+    if (!nba_snes_mode1_begin(renderer, backdrop,
+                              snapshot->bg3_priority_high)) return false;
+
+    for (int y = 0; y < NBA_SNES_HEIGHT; ++y) {
+        uint8_t main_layers = snapshot->raster_main_screen_layers ?
+            snapshot->main_screen_layers_by_scanline[y] :
+            snapshot->main_screen_layers;
+        for (int x = 0; x < NBA_SNES_WIDTH; ++x) {
+            for (int layer = 0; layer < 3; ++layer) {
+                const NbaSnesMode1BgConfig *bg = &snapshot->backgrounds[layer];
+                if (!bg->enabled || !(main_layers & (1u << layer)) ||
+                    !snapshot_bg_visible(bg, x)) continue;
+                NbaSnesBgPixel pixel;
+                if (!nba_snes_sample_bg(vram, bg->map_base, bg->chr_base,
+                                        bg->bits_per_pixel, bg->wide, bg->tall,
+                                        bg->horizontal_scroll, bg->vertical_scroll,
+                                        x, y, &pixel)) continue;
+                uint8_t palette = (uint8_t)(pixel.palette *
+                    (bg->bits_per_pixel == 4u ? 16 : 4) + pixel.color_index);
+                nba_snes_mode1_submit_indexed(
+                    renderer, cgram, snapshot->brightness, x, y,
+                    (NbaSnesLayer)(NBA_SNES_LAYER_BG1 + layer),
+                    (uint8_t)pixel.priority, palette,
+                    (uint8_t)pixel.color_index, 127u);
+            }
+        }
+    }
+
+    bool any_objects = false;
+    for (int y = 0; y < NBA_SNES_HEIGHT; ++y) {
+        uint8_t layers = snapshot->raster_main_screen_layers ?
+            snapshot->main_screen_layers_by_scanline[y] :
+            snapshot->main_screen_layers;
+        if (layers & 0x10u) { any_objects = true; break; }
+    }
+    if (!any_objects) return true;
+    SnapshotObjPixel *objects = (SnapshotObjPixel *)calloc(
+        NBA_SNES_WIDTH * NBA_SNES_HEIGHT, sizeof(*objects));
+    if (!objects) return false;
+    int first = snapshot->enable_oam_priority ?
+        (snapshot->oam_ram_address / 4u) % 128u : 0;
+    for (int order = 0; order < 128; ++order) {
+        int index = (first + order) & 127;
+        int high = (oam[512 + index / 4] >> (2 * (index % 4))) & 3;
+        int destination_x0 = oam[index * 4] | ((high & 1) << 8);
+        if (destination_x0 >= 256) destination_x0 -= 512;
+        int destination_y0 = oam[index * 4 + 1];
+        int tile = oam[index * 4 + 2];
+        int attributes = oam[index * 4 + 3];
+        int size = (high & 2) ? 16 : 8;
+        for (int py = 0; py < size; ++py) {
+            int destination_y = (destination_y0 + py) & 255;
+            if (destination_y >= NBA_SNES_HEIGHT) continue;
+            int source_y = (attributes & 0x80) ? size - 1 - py : py;
+            for (int px = 0; px < size; ++px) {
+                int destination_x = destination_x0 + px;
+                if (destination_x < 0 || destination_x >= NBA_SNES_WIDTH) continue;
+                size_t position = (size_t)destination_y * NBA_SNES_WIDTH +
+                                  (size_t)destination_x;
+                if (objects[position].opaque) continue;
+                int source_x = (attributes & 0x40) ? size - 1 - px : px;
+                int tile_id = (tile + (source_x >> 3) +
+                               (source_y >> 3) * 16) & 255;
+                int chr_base = snapshot->oam_base + tile_id * 32 +
+                    ((attributes & 1) ? snapshot->oam_name_offset : 0);
+                int color = snes_tile_pixel(vram, chr_base, 0, 4,
+                                            source_x & 7, source_y & 7);
+                if (!color) continue;
+                SnapshotObjPixel *pixel = &objects[position];
+                pixel->opaque = true;
+                pixel->x = destination_x;
+                pixel->y = destination_y;
+                pixel->priority = (uint8_t)((attributes >> 4) & 3);
+                pixel->palette = (uint8_t)(128 + ((attributes >> 1) & 7) * 16 + color);
+                pixel->color = (uint8_t)color;
+                pixel->oam_index = (uint8_t)index;
+            }
+        }
+    }
+    for (size_t i = 0; i < NBA_SNES_WIDTH * NBA_SNES_HEIGHT; ++i) {
+        const SnapshotObjPixel *pixel = &objects[i];
+        uint8_t layers = snapshot->raster_main_screen_layers ?
+            snapshot->main_screen_layers_by_scanline[pixel->y] :
+            snapshot->main_screen_layers;
+        if (!pixel->opaque || !(layers & 0x10u)) continue;
+        nba_snes_mode1_submit_indexed(renderer, cgram, snapshot->brightness,
+                                      pixel->x, pixel->y, NBA_SNES_LAYER_OBJ,
+                                      pixel->priority, pixel->palette,
+                                      pixel->color, pixel->oam_index);
+    }
+    free(objects);
+    return true;
+}
+
 bool nba_snes_mode1_pixel(const NbaRenderer *renderer, int x, int y,
                           NbaSnesMode1Pixel *pixel) {
     if (!renderer || !renderer->ppu_state || !pixel || x < 0 || y < 0 ||

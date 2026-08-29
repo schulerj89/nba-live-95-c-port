@@ -47,6 +47,38 @@ typedef enum {
     NBA_SNES_WINDOW_XNOR
 } NbaSnesWindowLogic;
 
+typedef struct {
+    bool enabled;
+    uint8_t bits_per_pixel;
+    bool wide;
+    bool tall;
+    uint16_t map_base;
+    uint16_t chr_base;
+    int horizontal_scroll;
+    int vertical_scroll;
+    bool window_mask_main;
+    NbaSnesWindow windows[2];
+    NbaSnesWindowLogic window_logic;
+} NbaSnesMode1BgConfig;
+
+/* Raw Mode-1 register snapshot. Addresses are byte addresses in the supplied
+ * 64 KiB VRAM image, not CPU addresses. This deliberately mirrors PPU state
+ * rather than game-specific court assets so emulator snapshots can be replayed
+ * through the C compositor during differential tests. */
+typedef struct {
+    uint8_t brightness;
+    uint8_t main_screen_layers; /* TM bits: BG1..BG4, OBJ. */
+    bool raster_main_screen_layers;
+    uint8_t main_screen_layers_by_scanline[NBA_SNES_HEIGHT];
+    bool bg3_priority_high;
+    NbaSnesMode1BgConfig backgrounds[3];
+    uint16_t oam_base;
+    uint16_t oam_name_offset;
+    uint16_t oam_ram_address;
+    uint8_t oam_mode;
+    bool enable_oam_priority;
+} NbaSnesMode1Snapshot;
+
 uint32_t nba_snes_cgram_color(const uint8_t *cgram, int index, int brightness,
                               int subtract_r, int subtract_g, int subtract_b);
 
@@ -74,6 +106,11 @@ void nba_snes_mode1_stats(const NbaRenderer *renderer,
                           NbaSnesMode1Stats *stats);
 bool nba_snes_mode1_write_jsonl(FILE *file, const NbaRenderer *renderer,
                                 uint32_t game_frame, uint32_t state_frame);
+bool nba_snes_mode1_render_snapshot(NbaRenderer *renderer,
+                                    const uint8_t *vram,
+                                    const uint8_t *cgram,
+                                    const uint8_t *oam,
+                                    const NbaSnesMode1Snapshot *snapshot);
 const char *nba_snes_layer_name(NbaSnesLayer layer);
 
 /* Returns true when the layer is visible after a single enabled SNES window

@@ -16,6 +16,9 @@
 | `mesen_team_select_capture.lua` | Start-only Exhibition Setup-to-Team-Select transition, settled PPU memories, WRAM writes, and execution ranges; asserts `$82:809A` scene entry, supports `NBA95_TEAM_NAV=1` for isolated navigation, and `NBA95_TEAM_ALIGNMENT=1` for GOLDEN STATE/PHILADELPHIA alignment and home-wallpaper evidence |
 | `mesen_gameplay_player_capture.lua` | Drives through Player Setup into gameplay, records Player Setup raw PPU state/routine hits, then records executed player-loader paths and roster/appearance/palette reads used to prove the F9 Player Lab ROM extraction |
 | `mesen_tipoff_capture.lua` | Drives into live tip-off, records raw actor/ball/controller/camera/AI state and emits `gameplay_rom.jsonl` for `compare_gameplay_traces.py` |
+| `verify_ppu_parity.ps1` | Captures a bounded native gameplay scanout and proves the production C PPU matches both an independent oracle and Mesen pixel-for-pixel |
+| `snes_ppu_oracle.py` | Independent raw VRAM/CGRAM/OAM Mode-1 renderer used only as a differential oracle |
+| `ppu_snapshot_probe.c` | Replays one captured raw PPU snapshot through the production C compositor |
 | `mesen_player_intro_portraits.lua` | Drives the verified Exhibition path, state-walks Team Select to a requested team, verifies it again at `$87:BE92`, and saves five raw visitor or home portrait PPU states (`NBA95_INTRO_TEAM=0..28`, `NBA95_INTRO_SIDE=away|home`) |
 
 `extract_assets.py` validates those captures and the ROM, then writes the asset

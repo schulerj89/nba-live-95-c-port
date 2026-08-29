@@ -35,7 +35,12 @@ local SCREENSHOT_FROM = tonumber(os.getenv("NBA95_SCREENSHOT_FROM")) or 0
 local SCREENSHOT_TO = tonumber(os.getenv("NBA95_SCREENSHOT_TO")) or LAST_GAMEPLAY_FRAME
 local TRACE_DRAW_FROM = tonumber(os.getenv("NBA95_TRACE_DRAW_FROM"))
 local TRACE_DRAW_TO = tonumber(os.getenv("NBA95_TRACE_DRAW_TO"))
+local PPU_AUDIT_FROM = tonumber(os.getenv("NBA95_PPU_AUDIT_FROM"))
+local PPU_AUDIT_TO = tonumber(os.getenv("NBA95_PPU_AUDIT_TO"))
 assert(SCREENSHOT_EVERY >= 1, "NBA95_SCREENSHOT_EVERY must be positive")
+assert((not PPU_AUDIT_FROM and not PPU_AUDIT_TO) or
+       (PPU_AUDIT_FROM and PPU_AUDIT_TO and PPU_AUDIT_FROM <= PPU_AUDIT_TO),
+       "NBA95_PPU_AUDIT_FROM/TO must be a valid pair")
 local segments = {
     { name="formation", first=0, last=139 },
     { name="jump_ball", first=140, last=219 },
@@ -48,6 +53,8 @@ local actor_log = assert(io.open(out .. "/actor_states.txt", "wb"))
 local placement_log = assert(io.open(out .. "/placement_writes.txt", "wb"))
 local draw_log = assert(io.open(out .. "/draw_origins.txt", "wb"))
 local gameplay_jsonl = assert(io.open(out .. "/gameplay_rom.jsonl", "wb"))
+local ppu_raster_log = PPU_AUDIT_FROM and
+    assert(io.open(out .. "/ppu_raster_writes.txt", "wb")) or nil
 local court_asset_log = court_asset_trace_enabled and
     assert(io.open(out .. "/court_asset_accesses.txt", "wb")) or nil
 local current_draw_actor = 0xffff
@@ -76,6 +83,22 @@ local function dump_mem(name, mem_type, size)
     file:write(table.concat(chunks)); file:close()
 end
 
+local function dump_ppu_state(name)
+    local state = emu.getState()
+    local keys = {}
+    for key in pairs(state) do
+        if key:match("^ppu%.") or key:match("^dmaController%.") then
+            keys[#keys + 1] = key
+        end
+    end
+    table.sort(keys)
+    local file = assert(io.open(out .. "/" .. name, "wb"))
+    for _, key in ipairs(keys) do
+        file:write(string.format("%s=%s\n", key, tostring(state[key])))
+    end
+    file:close()
+end
+
 local function current_segment()
     if gameplay_frame < 0 then return nil end
     for _, segment in ipairs(segments) do
@@ -86,9 +109,49 @@ local function current_segment()
     return nil
 end
 
+-- End-of-frame register state cannot describe mid-scanline Mode/window/scroll
+-- changes. Record every CPU-visible PPU write during the bounded audit so the
+-- parity harness can distinguish a compositor bug from missing raster state.
+if ppu_raster_log then
+    ppu_raster_log:write("# gameplay_frame scanline register value pc\n")
+    local function on_ppu_write(address, value)
+        if gameplay_frame < PPU_AUDIT_FROM or gameplay_frame > PPU_AUDIT_TO then return end
+        local state = emu.getState()
+        ppu_raster_log:write(string.format("%04d %03d %04X %02X %02X:%04X\n",
+            gameplay_frame, state["ppu.scanline"] or -1, address & 0xffff,
+            value or 0, state["cpu.k"] or 0, state["cpu.pc"] or 0))
+    end
+    for bank = 0, 0xbf do
+        if bank <= 0x3f or bank >= 0x80 then
+            local base = bank * 0x10000
+            emu.addMemoryCallback(on_ppu_write, emu.callbackType.write,
+                base + 0x2100, base + 0x2133,
+                emu.cpuType.snes, emu.memType.snesMemory)
+        end
+    end
+end
+
 emu.addMemoryCallback(function()
     if title_frame < 0 then title_frame = 0 end
 end, emu.callbackType.exec, 0x80E1B1, 0x80E1B1,
+    emu.cpuType.snes, emu.memType.snesMemory)
+
+-- $80:8188 runs at the start of the post-scanout PPU upload pass. Capturing
+-- here preserves the VRAM/OAM bytes that produced the just-completed image;
+-- the endFrame snapshot may already contain next-frame DMA updates.
+local last_scanout_dump = -1
+emu.addMemoryCallback(function()
+    if PPU_AUDIT_FROM and gameplay_frame >= PPU_AUDIT_FROM and
+       gameplay_frame <= PPU_AUDIT_TO and gameplay_frame ~= last_scanout_dump then
+        last_scanout_dump = gameplay_frame
+        local prefix = string.format("scanout_%04d", gameplay_frame)
+        shot(prefix .. ".png")
+        dump_ppu_state(prefix .. "_state.txt")
+        dump_mem(prefix .. "_vram.bin", emu.memType.snesVideoRam, 0x10000)
+        dump_mem(prefix .. "_cgram.bin", emu.memType.snesCgRam, 0x200)
+        dump_mem(prefix .. "_oam.bin", emu.memType.snesSpriteRam, 0x220)
+    end
+end, emu.callbackType.exec, 0x808188, 0x808188,
     emu.cpuType.snes, emu.memType.snesMemory)
 
 emu.addMemoryCallback(function()
@@ -690,6 +753,20 @@ emu.addEventCallback(function()
        (frame - SCREENSHOT_FROM) % SCREENSHOT_EVERY == 0 then
         shot(string.format("tipoff_%04d.png", frame))
     end
+    if PPU_AUDIT_FROM and frame >= PPU_AUDIT_FROM and
+       frame <= PPU_AUDIT_TO then
+        -- Mesen's screenshot is the completed scanout while getState() is the
+        -- register file at this callback boundary. Consecutive captures let
+        -- the offline oracle prove whether scanout N uses state N or N-1.
+        shot(string.format("ppu_%04d.png", frame))
+        dump_ppu_state(string.format("ppu_%04d_state.txt", frame))
+        dump_mem(string.format("ppu_%04d_vram.bin", frame),
+            emu.memType.snesVideoRam, 0x10000)
+        dump_mem(string.format("ppu_%04d_cgram.bin", frame),
+            emu.memType.snesCgRam, 0x200)
+        dump_mem(string.format("ppu_%04d_oam.bin", frame),
+            emu.memType.snesSpriteRam, 0x220)
+    end
     if frame == 0 or frame == 140 or frame == 220 or frame == 400 or
        frame == LAST_GAMEPLAY_FRAME then
         dump_mem(string.format("tipoff_%04d_vram.bin", frame),
@@ -754,6 +831,7 @@ emu.addEventCallback(function()
         write_sites("gameplay_state_write_sites.txt", state_write_sites)
         actor_log:close(); routine_log:close(); placement_log:close(); draw_log:close()
         gameplay_jsonl:close()
+        if ppu_raster_log then ppu_raster_log:close() end
         if court_asset_log then court_asset_log:close() end
         local done = assert(io.open(out .. "/capture_complete.txt", "wb"))
         done:write(string.format("frames=%d\n", gameplay_frame)); done:close()
