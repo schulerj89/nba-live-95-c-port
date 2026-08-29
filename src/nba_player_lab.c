@@ -462,6 +462,16 @@ static uint32_t draw_animation_resource(NbaRenderer *ren, const NbaAssetPack *as
     return opaque_pixels;
 }
 
+uint32_t nba_rom_sprite_resource_render(NbaRenderer *renderer,
+                                    const NbaAssetPack *assets,
+                                    uint16_t resource_id,
+                                    const uint8_t palette[32], int origin_x,
+                                    int origin_y, bool flip, int scale) {
+    if (scale < 1) return 0u;
+    return draw_animation_resource(renderer, assets, resource_id, palette,
+                                   origin_x, origin_y, flip, NULL, scale);
+}
+
 static uint16_t jersey_mask_word(const uint8_t *source, unsigned offset,
                                  bool first_side) {
     uint16_t word = read_u16(source + offset);

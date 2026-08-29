@@ -6,6 +6,7 @@
 local out = os.getenv("NBA95_CAPTURE_DIR")
 assert(out and out ~= "", "NBA95_CAPTURE_DIR is not set")
 local force_cpu_vs_cpu = os.getenv("NBA95_CPU_VS_CPU") == "1"
+local court_asset_trace_enabled = os.getenv("NBA95_COURT_ASSET_TRACE") == "1"
 
 local function write_word(address, value)
     emu.write(address, value & 0xff, emu.memType.snesWorkRam)
@@ -47,6 +48,8 @@ local actor_log = assert(io.open(out .. "/actor_states.txt", "wb"))
 local placement_log = assert(io.open(out .. "/placement_writes.txt", "wb"))
 local draw_log = assert(io.open(out .. "/draw_origins.txt", "wb"))
 local gameplay_jsonl = assert(io.open(out .. "/gameplay_rom.jsonl", "wb"))
+local court_asset_log = court_asset_trace_enabled and
+    assert(io.open(out .. "/court_asset_accesses.txt", "wb")) or nil
 local current_draw_actor = 0xffff
 local draw_screen, previous_pad, routine_hits_frame = {}, {}, {}
 local actor_pass_mask, actor_pass_order = 0, {}
@@ -166,6 +169,98 @@ end
 local function signed_byte(address)
     local value = emu.read(address, emu.memType.snesWorkRam, false) or 0
     return value >= 0x80 and value - 0x100 or value
+end
+
+-- Optional discovery trace for the court layers which are not part of the
+-- already-verified BG2 circular-map streamer.  Reads of the wrapper-owned
+-- basket/window words identify the downstream goal/backboard compositor;
+-- live VRAM writes identify the CPU routine which updates animated court art.
+-- This is evidence only: captured VRAM is never used as a port asset.
+if court_asset_trace_enabled then
+    local function log_cpu_access(kind, address, value)
+        if gameplay_frame < 0 then return end
+        local state = emu.getState()
+        court_asset_log:write(string.format(
+            "f=%04d %s=%04X value=%02X pc=%02X:%04X dbr=%02X\n",
+            gameplay_frame, kind, address, value or 0,
+            state["cpu.k"] or 0, state["cpu.pc"] or 0,
+            state["cpu.dbr"] or 0))
+    end
+    for _, range in ipairs({{0x087c, 0x0883}, {0x3fef, 0x3ff0}}) do
+        emu.addMemoryCallback(function(address, value)
+            log_cpu_access("READ", address, value)
+        end, emu.callbackType.read, range[1], range[2],
+            emu.cpuType.snes, emu.memType.snesWorkRam)
+    end
+    emu.addMemoryCallback(function(address, value)
+        if gameplay_frame < 0 then return end
+        local state = emu.getState()
+        court_asset_log:write(string.format(
+            "f=%04d VRAM=%04X value=%02X pc=%02X:%04X\n",
+            gameplay_frame, address, value or 0,
+            state["cpu.k"] or 0, state["cpu.pc"] or 0))
+    end, emu.callbackType.write, 0x0000, 0xffff,
+        emu.cpuType.snes, emu.memType.snesVideoRam)
+    for _, entry in ipairs({0x80b344, 0x80b346, 0x80ac89}) do
+        emu.addMemoryCallback(function(address)
+            if gameplay_frame < 0 then return end
+            local state = emu.getState()
+            local direct = state["cpu.d"] or 0
+            local function dpword(offset)
+                return word((direct + offset) & 0xffff)
+            end
+            local stack = state["cpu.sp"] or 0
+            local return_lo = emu.read((stack + 1) & 0xffff,
+                emu.memType.snesWorkRam, false) or 0
+            local return_hi = emu.read((stack + 2) & 0xffff,
+                emu.memType.snesWorkRam, false) or 0
+            local return_bank = emu.read((stack + 3) & 0xffff,
+                emu.memType.snesWorkRam, false) or 0
+            court_asset_log:write(string.format(
+                "f=%04d CALL=%06X caller=%02X:%04X a=%04X x=%04X y=%04X " ..
+                "dp00=%04X dp14=%04X dp18=%04X dp1a=%04X dp9e=%04X\n",
+                gameplay_frame, address, return_bank,
+                return_lo | (return_hi << 8), state["cpu.a"] or 0,
+                state["cpu.x"] or 0, state["cpu.y"] or 0,
+                dpword(0x00), dpword(0x14), dpword(0x18),
+                dpword(0x1a), dpword(0x9e)))
+        end, emu.callbackType.exec, entry, entry,
+            emu.cpuType.snes, emu.memType.snesMemory)
+    end
+    emu.addMemoryCallback(function(_, value)
+        if gameplay_frame < 0 then return end
+        local state = emu.getState()
+        for channel = 0, 7 do
+            if (value & (1 << channel)) ~= 0 then
+                local prefix = "dmaController.channel[" .. channel .. "]."
+                court_asset_log:write(string.format(
+                    "f=%04d DMA=%d pc=%02X:%04X src=%02X:%04X size=%04X " ..
+                    "dest=%02X vram=%04X\n", gameplay_frame, channel,
+                    state["cpu.k"] or 0, state["cpu.pc"] or 0,
+                    state[prefix .. "srcBank"] or 0,
+                    state[prefix .. "srcAddress"] or 0,
+                    state[prefix .. "transferSize"] or 0,
+                    state[prefix .. "destAddress"] or 0,
+                    state["ppu.vramAddress"] or 0))
+            end
+        end
+    end, emu.callbackType.write, 0x420b, 0x420b,
+        emu.cpuType.snes, emu.memType.snesMemory)
+    local previous_vram_word = -1
+    emu.addMemoryCallback(function(_, value)
+        if gameplay_frame < 0 then return end
+        local state = emu.getState()
+        local vram_word = state["ppu.vramAddress"] or 0
+        if vram_word ~= previous_vram_word then
+            previous_vram_word = vram_word
+            court_asset_log:write(string.format(
+                "f=%04d VPORT=%04X value=%02X pc=%02X:%04X dbr=%02X\n",
+                gameplay_frame, vram_word, value or 0,
+                state["cpu.k"] or 0, state["cpu.pc"] or 0,
+                state["cpu.dbr"] or 0))
+        end
+    end, emu.callbackType.write, 0x2118, 0x2119,
+        emu.cpuType.snes, emu.memType.snesMemory)
 end
 
 -- Active modes 1-6 subtract DP `$C8` from actor +$60, while physics and
@@ -659,6 +754,7 @@ emu.addEventCallback(function()
         write_sites("gameplay_state_write_sites.txt", state_write_sites)
         actor_log:close(); routine_log:close(); placement_log:close(); draw_log:close()
         gameplay_jsonl:close()
+        if court_asset_log then court_asset_log:close() end
         local done = assert(io.open(out .. "/capture_complete.txt", "wb"))
         done:write(string.format("frames=%d\n", gameplay_frame)); done:close()
         log:write("capture done\n"); log:close(); emu.stop(0)

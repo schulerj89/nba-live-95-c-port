@@ -463,6 +463,18 @@ arbitrary stale scratch-bank reads are not the portable asset-pack contract.
 Recorded child outputs in the owner oracle verify caller ordering, not the
 child implementation itself. No emulator process is needed by the port.
 
+### Mode-1 compositor trace
+
+Gameplay can dump the final PPU decision for every pixel:
+
+```powershell
+.\build\nba95_port.exe --headless --rom 'F:/Games/SNES/NBA Live 95 (USA).sfc' --assets build/nba95_assets.pak --tipoff-only --frames 1000 --ppu-trace .analysis/ppu.jsonl
+```
+
+The first JSONL record summarizes winning layer counts. Each following record
+identifies the final layer, BG/OBJ priority, Mode-1 rank, palette/color indexes
+(`255` means a predecoded direct-color asset), OAM index, and ARGB result.
+
 ### Other utilities
 
 Jump/reach differential checkpoint: `mesen_jump_reach.lua` observes native

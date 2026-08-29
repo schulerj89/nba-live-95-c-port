@@ -33,6 +33,7 @@ typedef struct {
  */
 void nba_renderer_init(NbaRenderer *renderer) {
     if (!renderer) return;
+    renderer->ppu_state = NULL;
     renderer->width = NBA_SNES_WIDTH;
     renderer->height = NBA_SNES_HEIGHT;
     renderer->bg_color = 0xFF000000;

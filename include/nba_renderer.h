@@ -23,6 +23,9 @@
 
 typedef struct {
     uint32_t pixels[NBA_SNES_WIDTH * NBA_SNES_HEIGHT];
+    /* Opaque, lazily allocated Mode-1 candidate/provenance state. Ordinary
+     * software-rendered screens do not pay its framebuffer-sized cost. */
+    struct NbaSnesMode1State *ppu_state;
     int width;
     int height;
     uint32_t bg_color;

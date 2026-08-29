@@ -53,6 +53,13 @@ bool nba_player_sprite_render_resources(NbaRenderer *renderer,
                                     uint16_t upper_resource,
                                     uint16_t lower_resource, int origin_x,
                                     int origin_y, int scale);
+/* Shared `$80:B344-$B498` raw resource compositor. Palette points to sixteen
+ * little-endian BGR555 words from the asset pack. */
+uint32_t nba_rom_sprite_resource_render(NbaRenderer *renderer,
+                                    const NbaAssetPack *assets,
+                                    uint16_t resource_id,
+                                    const uint8_t palette[32], int origin_x,
+                                    int origin_y, bool flip, int scale);
 typedef struct {
     uint16_t upper_resource, lower_resource, head_resource, number_resource;
     uint32_t upper_opaque_pixels, lower_opaque_pixels;

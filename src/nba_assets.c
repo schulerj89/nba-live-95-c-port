@@ -5,7 +5,7 @@
 
 #define NBA_ASSET_MAGIC "NBA95PAK"
 
-#define NBA_ASSET_PACK_VERSION 29u
+#define NBA_ASSET_PACK_VERSION 30u
 #define NBA_ASSET_HEADER_SIZE 16u
 #define NBA_ASSET_ENTRY_SIZE 24u
 
@@ -155,6 +155,12 @@ static bool asset_metadata_valid(uint32_t id, uint32_t size, uint32_t width,
         return size == 184u && width == 72u && height == 16u && flags == 0x86EE76u;
     if (id == NBA_ASSET_GAMEPLAY_GRAPHICS_SCRATCH)
         return size == 788u && width == 22u && height == 33u && flags == 0x82F02Fu;
+    if (id == NBA_ASSET_GAMEPLAY_GOAL_LAYER)
+        return size == 35352u && width == 32u && height == 32u &&
+               flags == 0x87A73Bu;
+    if (id == NBA_ASSET_GAMEPLAY_CROWD_TILES)
+        return size == 3548u && width == 28u && height == 3u &&
+               flags == 0x805280u;
     if (id == NBA_ASSET_EA_A_FIXED_SEQUENCE) {
         uint32_t x = flags >> 16;
         uint32_t y = flags & 0xFFFFu;

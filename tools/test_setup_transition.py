@@ -44,8 +44,8 @@ EXPECTED_AUDIO_CHANNEL_RMS = [3363, 3363]
 # only the index/count row changes, retaining the historical art hashes.
 # Asset281 changes only F12's directory count row; test_shot_assets proves
 # the pixel delta remains confined to that row before these hashes are used.
-EXPECTED_ASSET_DEBUGGER_SHA256 = "a5362824ae7c20b709699ab74e42c734bac4bcca7328f13d1a88663de50fee56"
-EXPECTED_OAM_DEBUGGER_SHA256 = "7386b587192aaf5090cb2d01d6b6979259f0294670b9922b8bd7354f3aff8969"
+EXPECTED_ASSET_DEBUGGER_SHA256 = "36ecce16418aec6f168b650ac5a7dd76b030ba7ab9d6ae14f14e63350739ec09"
+EXPECTED_OAM_DEBUGGER_SHA256 = "1be0041113dbcd3757c731962da10b3302afa843e6e348dc7dfed890e51de237"
 EXPECTED_RENDERED_MENU_SFX_SHA256 = {
     0x1A: "447a1ea48a94e2036ff0bdf1f4c5248d6284daec0b723b9a966f841976e703c4",
     0x1B: "96de89e954e4e8f75e555625abba5bf4380b8868b3263776a4cc27a6285de664",
@@ -239,7 +239,7 @@ def load_pack(path):
     if len(data) < 16 or data[:8] != b"NBA95PAK":
         raise AssertionError("invalid asset pack")
     version, count = struct.unpack_from("<II", data, 8)
-    if version != 29 or 16 + count * 24 > len(data):
+    if version != 30 or 16 + count * 24 > len(data):
         raise AssertionError("invalid asset directory")
     assets = {}
     for index in range(count):

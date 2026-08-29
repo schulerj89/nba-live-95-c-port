@@ -369,6 +369,50 @@ def build_gameplay_home_court_catalog(rom_data, base_vram, base_cgram,
     return bytes(payload), bytes(panorama_payload)
 
 
+def build_gameplay_court_object_assets(tipoff_capture_dir):
+    """Pack the native basket palette and animated BG2 fan tile states.
+
+    Inputs are raw PPU memories, never screenshots. `$80:82A3` proves the
+    fan tile destinations at VRAM words $5280-$55FF; retaining 4bpp tiles
+    lets the runtime apply the ROM map's palette and flip attributes.
+    """
+    with open(os.path.join(tipoff_capture_dir,
+                           "tipoff_0140_vram.bin"), "rb") as f:
+        goal_vram = f.read()
+    with open(os.path.join(tipoff_capture_dir,
+                           "tipoff_0140_cgram.bin"), "rb") as f:
+        goal_cgram = f.read()
+    if len(goal_vram) != 0x10000 or len(goal_cgram) != 0x200:
+        raise RuntimeError("Invalid gameplay goal PPU state")
+    # BG1: map byte $0000, 4bpp CHR byte $2000. `$85:8E28-$8EDC`
+    # supplies h/v scroll and the selected-basket window every frame.
+    goal_palette = bytearray(struct.pack(
+        "<8sIIII", b"NBGOAL2\0", 2, 0x800, 0x8000, 0x200))
+    goal_palette.extend(goal_vram[0:0x800])
+    goal_palette.extend(goal_vram[0x2000:0xA000])
+    goal_palette.extend(goal_cgram)
+    tile_ids = tuple(range(808, 821)) + tuple(range(849, 864))
+    frames = (140, 220, 400)
+    payload = bytearray(struct.pack(
+        "<8sIIII", b"NBCROWD1", 1, len(frames), len(tile_ids), 32))
+    payload.extend(struct.pack(f"<{len(tile_ids)}H", *tile_ids))
+    for frame in frames:
+        with open(os.path.join(tipoff_capture_dir,
+                               f"tipoff_{frame:04d}_vram.bin"), "rb") as f:
+            vram = f.read()
+        with open(os.path.join(tipoff_capture_dir,
+                               f"tipoff_{frame:04d}_cgram.bin"), "rb") as f:
+            cgram = f.read()
+        if len(vram) != 0x10000 or len(cgram) != 0x200:
+            raise RuntimeError(f"Invalid court fan PPU state at frame {frame}")
+        payload.extend(struct.pack("<I", frame))
+        payload.extend(cgram[:0x100])
+        for tile_id in tile_ids:
+            offset = 0x4000 + tile_id * 32
+            payload.extend(vram[offset:offset + 32])
+    return bytes(goal_palette), bytes(payload)
+
+
 def build_player_intro_rating_balls(capture_dir):
     """Decode $83:F901's six 16x16 basketball OBJ poses from raw PPU state."""
     def read_capture(suffix, expected):
@@ -763,6 +807,12 @@ def build_player_animation_asset(rom_data):
     resources.update(range(0x049C, 0x049C + 39 * 5))
     # $87:A98E selects one of these overlays for the generated jersey tile.
     resources.update((0x0591, 0x0592, 0x0593))
+    # `$87:A73B-$A81B` submits the basket/net record through the same
+    # descriptor renderer.  Keep the court-object closure beside the player
+    # descriptors so the portable compositor consumes one ROM resource
+    # format rather than flattened pixels.
+    resources.update((0x080E, 0x081D, 0x081E, 0x081F, 0x0822,
+                      0x082C, 0x082D, 0x082E, 0x082F))
     resource_table = lorom_offset(0x898000)
     records = []
     for resource_id in sorted(resources):
@@ -1818,6 +1868,8 @@ def create_asset_pack(rom_path, output_path):
         gameplay_cgram = f.read()
     if len(gameplay_vram) != 0x10000 or len(gameplay_cgram) != 0x200:
         raise RuntimeError("Invalid settled tip-off PPU state")
+    gameplay_goal_palette, gameplay_crowd_tiles = \
+        build_gameplay_court_object_assets(tipoff_capture_dir)
     gameplay_court = decode_bg_layer(gameplay_vram, gameplay_cgram,
                                      0x1000, 0x4000, 4, True, False, 6, 6)
     gameplay_home_courts, gameplay_court_panoramas = \
@@ -1903,6 +1955,8 @@ def create_asset_pack(rom_path, output_path):
         (280, 72, 16, 0x86EE76, build_jump_gameplay_asset(rom_data)),
         (281, 22, 33, 0x82F02F, build_graphics_scratch_asset(rom_data)),
         (279, 148, 52, 0xA08000, rom_data[0x100000:0x100006 + 148 * 52 * 2]),
+        (282, 32, 32, 0x87A73B, gameplay_goal_palette),
+        (283, 28, 3, 0x805280, gameplay_crowd_tiles),
     ])
     assets.extend([
         (124, 0, 0, 0, rules_vram_bytes),
@@ -1962,7 +2016,7 @@ def create_asset_pack(rom_path, output_path):
                     extra_audio_id += 1
 
     header_magic = b"NBA95PAK"
-    version = 29
+    version = 30
     asset_count = len(assets)
     entry_size = 24 # 6 * 4 bytes
 

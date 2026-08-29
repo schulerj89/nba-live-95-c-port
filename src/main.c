@@ -5,6 +5,7 @@
 #include "nba_game.h"
 #include "nba_audio.h"
 #include "nba_spc.h"
+#include "nba_snes_ppu.h"
 
 extern int win32_run_game(const char *rom_path, const char *assets_path,
                           bool title_only, bool setup_only, bool team_only,
@@ -66,6 +67,7 @@ int main(int argc, char *argv[]) {
     const char *dump_gameplay_whistle_path = NULL;
     const char *setup_transition_trace_path = NULL;
     const char *gameplay_trace_path = NULL;
+    const char *ppu_trace_path = NULL;
     const char *dump_sequence_dir = NULL;
     int dump_sequence_from = 1;
     int menu_sfx_srcn = 0x1B;
@@ -278,6 +280,8 @@ int main(int argc, char *argv[]) {
             setup_transition_trace_path = argv[++i];
         } else if (strcmp(argv[i], "--gameplay-trace") == 0 && i + 1 < argc) {
             gameplay_trace_path = argv[++i];
+        } else if (strcmp(argv[i], "--ppu-trace") == 0 && i + 1 < argc) {
+            ppu_trace_path = argv[++i];
         } else if (strcmp(argv[i], "--timing-debug") == 0) {
             timing_debug = true;
         } else if (strcmp(argv[i], "--debug-hud-page") == 0 && i + 1 < argc) {
@@ -363,6 +367,7 @@ int main(int argc, char *argv[]) {
             printf("  --debug-hud-page N    Draw compact F10 page 1 or 2 in a frame dump\n");
             printf("  --debug-state         Print one expanded state snapshot after stepping\n");
             printf("  --gameplay-trace FILE Write per-frame gameplay telemetry as JSONL\n");
+            printf("  --ppu-trace FILE      Write final Mode-1 pixel priority/palette provenance as JSONL\n");
             printf("  --debug-every N       Print an expanded state snapshot every N frames\n");
             printf("  --spc-self-test       Run deterministic SPC700/S-DSP core vectors\n");
             printf("  --dump-frame <file>   Save rendered frame to 24-bit BMP image\n");
@@ -929,6 +934,39 @@ int main(int argc, char *argv[]) {
         if (debug_state) nba_game_debug_print(&game);
 
         nba_game_render(&game);
+
+        if (ppu_trace_path) {
+            if (game.state != NBA_STATE_TIPOFF) {
+                fprintf(stderr, "[PPU TRACE] --ppu-trace requires --tipoff-only or a run ending in gameplay.\n");
+                nba_game_shutdown(&game);
+                return 1;
+            }
+            FILE *ppu_trace_file = NULL;
+#ifdef _MSC_VER
+            if (fopen_s(&ppu_trace_file, ppu_trace_path, "wb") != 0)
+                ppu_trace_file = NULL;
+#else
+            ppu_trace_file = fopen(ppu_trace_path, "wb");
+#endif
+            bool ppu_trace_ok = ppu_trace_file && nba_snes_mode1_write_jsonl(
+                ppu_trace_file, &game.renderer, game.frame_count,
+                game.state_frame);
+            if (ppu_trace_file && fclose(ppu_trace_file) != 0)
+                ppu_trace_ok = false;
+            if (!ppu_trace_ok) {
+                fprintf(stderr, "[PPU TRACE] Failed to write: %s\n", ppu_trace_path);
+                nba_game_shutdown(&game);
+                return 1;
+            }
+            NbaSnesMode1Stats ppu_stats;
+            nba_snes_mode1_stats(&game.renderer, &ppu_stats);
+            printf("[PPU TRACE] BG1=%u BG2=%u BG3=%u OBJ=%u BACKDROP=%u -> %s\n",
+                   ppu_stats.visible[NBA_SNES_LAYER_BG1],
+                   ppu_stats.visible[NBA_SNES_LAYER_BG2],
+                   ppu_stats.visible[NBA_SNES_LAYER_BG3],
+                   ppu_stats.visible[NBA_SNES_LAYER_OBJ],
+                   ppu_stats.visible[NBA_SNES_LAYER_BACKDROP], ppu_trace_path);
+        }
 
         if (dump_frame_path) {
             printf("[HEADLESS] Saving frame capture to: %s\n", dump_frame_path);

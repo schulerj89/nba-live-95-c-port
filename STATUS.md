@@ -28,6 +28,26 @@ captures. This is an address-coverage metric, **not an instruction census or
 percentage of the whole game completed**. Disassembled instruction counts
 for a requested slice are reported separately.
 
+Court presentation assets now use pack v30. Asset 282 stores the native BG1
+basket map/4bpp CHR/CGRAM and asset 283 stores the 28 animated BG2 fan tiles
+seen at `$5280-$55FF`. The renderer applies `$087C/$087E` scroll,
+`$0882..$0880` clipping, the projected `$3FEB` basket selection and raw OBJ
+resources `$0822/$082C-$082F`. Center court, team paint, sidelines and stands
+remain the verified asset-273 panorama. See `docs/court-assets-audit.md` and
+`tools/test_court_assets.py`; no screenshot pixels are runtime art.
+
+Gameplay court composition now runs through the reusable Mode-1 library in
+`nba_snes_ppu`: the complete BGMODE priority ladder (including high-priority
+BG3), BG tile priority, four OBJ priorities, lower-OAM opaque-pixel selection,
+single-window inversion and indexed CGRAM conversion are covered by a startup
+self-test. The lowest-index opaque OBJ pixel is selected before its priority
+is compared with BG, preserving the hardware OBJ-priority quirk.
+`--ppu-trace FILE` writes one summary plus 256x224 JSONL pixel
+records containing the winning source, priority rank, palette/color indexes,
+OAM index and ARGB result. Predecoded panorama/player pixels are explicitly
+marked palette/color 255, so the trace exposes rather than hides remaining
+direct-color inputs. `tools/test_snes_mode1.py` locks the CLI contract.
+
 ## Verified gameplay checkpoint
 
 Latest bounded work: `docs/jump-reach-differential.md`. EC32-EE75 is translated
@@ -46,9 +66,9 @@ the63,800-frame CPU check and EA/license/legal intro. The intervening failure
 was F12's267-entry count in screenshot expectations; independent pixel-delta
 tests prove only the count row changed. Three F12 expected hashes were updated,
 not gameplay/menu artwork hashes. The expanded647-witness jump test also passed
-separately after its final guard/export changes. Asset281 subsequently raises
-the current pack to268 entries with ROM scheduler data, not captured artwork.
-Changes remain local/uncommitted.
+separately after its final guard/export changes. Asset281 first raised the
+pack to268 entries; court-layer assets282/283 now raise it to270 entries.
+This checkpoint includes the court/Mode-1 renderer and trace increment.
 
 153 routine slices currently have emulator-ground-truth replay/binding evidence. The most important
 recent slices are:

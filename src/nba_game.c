@@ -1,6 +1,7 @@
 #include "nba_game.h"
 #include "nba_font.h"
 #include "nba_audio.h"
+#include "nba_snes_ppu.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -443,6 +444,7 @@ void nba_game_shutdown(NbaGame *game) {
         nba_player_setup_shutdown(&game->scene.player_setup);
     if (game->state == NBA_STATE_PLAYER_INTRO)
         nba_player_intro_shutdown(&game->scene.player_intro);
+    nba_snes_mode1_release(&game->renderer);
     nba_audio_shutdown(&game->audio);
     if (game->assets.is_loaded) {
         nba_assets_free(&game->assets);

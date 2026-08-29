@@ -28,17 +28,20 @@ EXPECTED_RGB = {
     # Re-reviewed after replacing host rounding/truncation with the exact
     # `$87:A3BB-$A3DC` integer-word projection. Player feet now use the same
     # signed quarter-coordinate and origin as the native sprite compositor.
-    600: "d72b3beabf5ed8564c372501eec3afc40af0b60ffefc466f8125f1dcafd1e18d",
+    # Re-reviewed after gameplay adopted the shared Mode-1 priority/window
+    # compositor. These changes are isolated to BG/OBJ overlap and the newly
+    # visible low-priority basket cells; CPU state/trajectory is unchanged.
+    600: "32ac22e1554ec6412b5815963a89ba53f3775c593c9deaa4dbe2841687d586c0",
     # Re-reviewed after the live renderer adopted `$87:AFA2-$B053`'s tall
     # lower-body selector and the asset pack gained every dynamically chosen
     # `$87:AC76-$AC95` base+$28 torso resource. All five anchors show ten
     # complete, correctly colored player uniforms; the altered body resources
     # also correct native ball attachment points, so later CPU paths diverge
     # from the retired incomplete-resource trajectory by design.
-    1300: "073204e28d45d39ff79eba2f1ad9b52bce38bdae9264ee7e4075306a9e3f74a0",
-    3480: "97ecd41e0fcf5024ddbf821fadaba8769bc789b622ae3dbff1447fac588089aa",
-    6932: "580d321e320788c112e2512601ccb3102fad3ab3c798efde88cbffd571682178",
-    6954: "6fc0bb92442e9315c4f966b827b525e823ca5d0a222bfc1bbaa8d6e0f76187bb",
+    1300: "2645813bb32cc083ebe41011b741218e75ff7c5c91fcb2b05a00d2832464d4d9",
+    3480: "60db8e9d583b940d25e00698977813a790cfbc4b2ccfcc8f5855894bfa272327",
+    6932: "4633a0413b80843496ab9e6e68e5e6ee43f5cb4c02f774151c07fa330a6da9dc",
+    6954: "2139990b320f00fb71ef86eddc58ef96f66b1563553eaec94da49073777fc96b",
 }
 
 
