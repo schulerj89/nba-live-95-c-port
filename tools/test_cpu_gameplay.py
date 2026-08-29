@@ -51,7 +51,12 @@ EXPECTED_RGB = {
     # coordinate words for arrival/side gates. The duplicate host integration
     # and nearest-pixel gates were removed; all anchors retain ten complete
     # players, the ball, court/goal bounds and an unobstructed HUD.
-    600: "34ef6adfe654c5ec8202db8c250fd17a86a6f5ff5270af5b8b38db63d7799c2d",
+    # Re-reviewed after the exact `$85:AD6B-$AF5B` parent branch sends all
+    # opposite-X roles through B3AA (unless the activity edge route owns back
+    # roles) and restores the DP-$5C short-timer target. The differential gate
+    # independently proves targets, flags and velocity; these anchors retain
+    # complete uniforms, ball, court/goal bounds and a clear HUD.
+    600: "80bffaec71f523becd4c43beec0b25aa17b75bfcf91baec9d2bcbe433f68ef1e",
     # Re-reviewed after the live renderer adopted `$87:AFA2-$B053`'s tall
     # lower-body selector and the asset pack gained every dynamically chosen
     # `$87:AC76-$AC95` base+$28 torso resource. All five anchors show ten
@@ -62,13 +67,13 @@ EXPECTED_RGB = {
     # `$85:B3C9`'s distance<=8 damping branch and native negative /16 bias.
     # The final five frames in `.analysis/inbound-final-review-20260829`
     # retain ten complete players, ball, court/goal bounds and clear HUD.
-    1300: "afe9d7920e09197dc301b72af2f379e7060272668d68cc1bb708a1d2438c7ec5",
-    3480: "d48c051152b19f75a1e59b61f2a26138b19129624535338dcc4bbd688fe7537d",
+    1300: "0a2b43207538157200cb30cde5c10d89fea26afedf69239b52c53a17730d98a9",
+    3480: "c5285d019c74fd9bdc12419dde368b11f9f2d7b4e2aff181cae43f64537ec175",
     # Reviewed after the native `$85:BB5A->$85:BBAE` one-way help assignment
     # replaced the former symmetric port behavior. The exact ROM-call corpus
     # and matchup runtime probe independently protect the semantic change.
-    6932: "5a73fd19b816292d2b3810f413ff69abec7f361c4118e05ee7aa989be8ee626d",
-    6954: "c2be1221269e8ecdba7c44ffe3d23da25eec88ad140b17a6b63091de395598ba",
+    6932: "020c45f7eb24bbc2262df87f166c780bb466e3baf1fba5de1319e18d24fadf91",
+    6954: "e4ae2ac6c06271984c08960b148d7a5f2a4791618bb8b035ae6428203948502c",
 }
 
 

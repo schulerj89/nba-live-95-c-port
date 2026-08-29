@@ -109,6 +109,7 @@ typedef struct {
     int16_t mode13_baseline_velocity_x; /* modes 13/14 actor `+$BA` */
     int16_t mode13_baseline_velocity_y; /* modes 13/14 actor `+$BC` */
     uint16_t contact_inhibit_raw_5a;  /* actor `+$5A`, `$86:CD03/D460` */
+    uint16_t formation_timer_raw_5c;  /* actor `+$5C`, `$85:AE97-$AEBB` */
     uint16_t contact_action_timer_raw_60; /* actor `+$60`, `$86:C0DF/C12F` */
     uint16_t contact_height_raw_aa;   /* actor `+$AA`, `$87:A6A9-A6B2` */
     uint16_t catcher_latch_raw_ae;    /* actor `+$AE`, `$86:BAE0` */
@@ -185,6 +186,7 @@ typedef struct NbaTipoff {
     uint16_t tip_reach_mask;
     uint16_t tip_toss_countdown_raw_09f2;
     uint16_t scratch_0046, scratch_0047;
+    uint16_t formation_override_raw_005c; /* DP `$5C`, formation timer gate */
     NbaGraphicsScratchState graphics_scratch;
     uint32_t jump_decision_calls, jump_launches, jump_rejected_contexts;
     NbaJumpReachInput last_jump_input;
@@ -344,5 +346,8 @@ bool nba_tipoff_replay_close_finish_start(NbaTipoff *tipoff, uint8_t actor);
 bool nba_tipoff_replay_matchup_helper(NbaTipoff *tipoff, uint16_t entry,
     uint8_t current_actor, uint8_t related_actor, uint8_t context_side,
     uint8_t *selected_actor);
+/* Exact `$85:AD6B-$AF5B` formation target/steering boundary. */
+bool nba_tipoff_replay_formation_route(NbaTipoff *tipoff, uint8_t actor,
+                                       uint8_t *direction);
 
 #endif

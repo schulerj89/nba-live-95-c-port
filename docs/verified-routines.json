@@ -1576,6 +1576,14 @@
       "method": "controlled native caller-boundary differential + complete headless Ghidra disassembly",
       "evidence": "36 controlled live-state B120->B352 calls now match all 26 represented outputs exactly. Ghidra's complete B18A-B244 listing proves context +$2E selection, signed score branches, exact RNG rejection order, team/coin table $85:C661, range table $85:C729 and +$56 override. This removed the generic team/coin shortcut and fixed B2B1's unsigned $FFFF comparison. Combined with 100 made-score calls, tests/fixtures/play-request-witnesses.json retains 61 permanent cases. Control changes request/live input only at B116; PC, stack, ROM and RNG remain native.",
       "date": "2026-08-29"
+    },
+    {
+      "range": "85AD6B-85AF5B",
+      "name": "dead-ball formation target, override and steering route",
+      "source": "src/nba_tipoff.c + asset-pack formation graph",
+      "method": "natural and controlled native real-entry differential + nested child trace + runtime binding",
+      "evidence": "400 natural calls and five 40-call boundary-controlled families compare target X/Y, flags, velocity and boost for all ten actors with zero mismatches. The nested trace proves each AD6B invocation's B3AA/B402 child and exposed a wrong C role<3 restriction: every opposite-X actor uses B3AA unless the activity edge route owns roles 3/4. Controlled calls cover AD77 owner/dead-ball return, live inbound-carrier skip, AE1F special actor, activity edge steering and AE97-AEBB DP-$5C short-timer override. The 64-case permanent fixture retains both exits and all controlled sources; controls mutate documented WRAM inputs only, never PC, stack, ROM or RNG. Runtime modes 1/3/5 and owner flow use the same route and velocity child.",
+      "date": "2026-08-29"
     }
   ]
 }

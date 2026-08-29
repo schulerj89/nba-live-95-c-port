@@ -37,17 +37,16 @@ def main():
             summary = json.loads(next(stream))
             assert summary["type"] == "summary"
             assert summary["state_frame"] == 1000
-            # Re-reviewed after replacing the approximate play selector with
-            # the exact $85:B18A-$B244 branch/RNG order. Its deterministic
-            # frame-1000 formation exposes BG1 goal/net pixels and changes
-            # actor overlap without changing the compositor. Pin every layer
-            # winner so later gameplay or PPU changes cannot silently trade
-            # pixels while still satisfying only-positive smoke checks.
-            assert summary["visible"]["bg1"] == 942
-            assert summary["visible"]["bg2"] == 43534
+            # Re-reviewed after the exact $85:AD6B-$AF5B parent route moved
+            # crossing back roles through B3AA instead of the incorrect B402
+            # child. The corrected deterministic formation fully occludes BG1
+            # here. Pin every layer winner so later gameplay or PPU changes
+            # cannot silently trade pixels while satisfying positive checks.
+            assert summary["visible"]["bg1"] == 0
+            assert summary["visible"]["bg2"] == 46854
             assert summary["visible"]["bg3"] == 5641
-            assert summary["visible"]["obj"] == 3235
-            assert summary["visible"]["backdrop"] == 3992
+            assert summary["visible"]["obj"] == 1598
+            assert summary["visible"]["backdrop"] == 3251
             counts = {name: 0 for name in
                       ("BACKDROP", "BG1", "BG2", "BG3", "OBJ")}
             indexed = direct = rows = 0

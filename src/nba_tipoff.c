@@ -1184,20 +1184,25 @@ static int cpu_apply_inbound_formation_override(NbaTipoff *tipoff,
 }
 
 /* `$85:AD6B-$AF5B`: install one formation coordinate per play-step and run
- * the normal `$85:B402` completion route. The DP-$5C override
- * (`$AE97-$AEBB`) remains separate; its raw per-actor owner is not represented
- * by the current CPU-only runtime. */
-static uint8_t cpu_formation_target_direction(NbaTipoff *tipoff,
-                                              unsigned slot) {
+ * the normal `$85:B402` completion route, including the short-timer
+ * DP-$5C/actor-+$5C override at `$AE97-$AEBB`. */
+static bool cpu_formation_route(NbaTipoff *tipoff, unsigned slot,
+                                uint8_t *direction) {
     NbaTipoffActor *actor = &tipoff->actors[slot];
     uint8_t role = (uint8_t)(slot % 5u);
+    /* `$85:AD6B-$AD77`: a nonzero dead-ball height makes the current owner
+     * return without touching target or steering scratch. */
+    if (tipoff->possession_actor == (int8_t)slot &&
+        tipoff->dead_ball_raw_0968 != 0u) return false;
     if (tipoff->special_actor_raw == slot) {
         /* `$85:AE1F-$AE32`: the selected cutter never owns the formation
          * install latch while it targets the team basket anchor. */
         actor->behavior_flags_raw &= 0xFFF7u;
         actor->target_x = slot < 5u ? -336 : 336;
         actor->target_y = 0;
-    } else if ((actor->behavior_flags_raw & 0x0008u) == 0u) {
+    } else if (!(tipoff->live_state_raw == 0x82u &&
+                 tipoff->inbound_actor_raw == slot) &&
+               (actor->behavior_flags_raw & 0x0008u) == 0u) {
         int16_t target_x = actor->target_x, target_y = actor->target_y;
         int16_t side_anchor_x = slot < 5u ? -336 : 336;
         if (nba_assets_gameplay_formation_offset(
@@ -1213,30 +1218,39 @@ static uint8_t cpu_formation_target_direction(NbaTipoff *tipoff,
 
     (void)cpu_apply_inbound_formation_override(tipoff, slot);
 
-    int16_t actor_x = fp_round(actor->x_fp);
-    int16_t actor_y = fp_round(actor->y_fp);
+    /* `$85:B408/$B44B` consume actor +$04/+$08 integer words directly.
+     * Screen-space nearest-pixel rounding changes octants at subpixel edges. */
+    int16_t actor_x = fp_integer_word(actor->x_fp);
+    int16_t actor_y = fp_integer_word(actor->y_fp);
+    if (tipoff->formation_override_raw_005c != 0u &&
+        actor->formation_timer_raw_5c < 0x78u) {
+        actor->target_x = actor_x;
+        actor->target_y = actor_y < 0 ? -80 : 80;
+    }
     bool opposite_x_sign = (int16_t)(actor->target_x ^ actor_x) < 0;
     bool special_edge = (tipoff->ball_activity_raw | tipoff->rim_raw_097c) != 0u &&
                         role >= 3u;
-    if (opposite_x_sign && role < 3u) {
-        /* `$85:AEDF-$AEF3`: cross midcourt through X=+/-16 with B3AA;
-         * this path never sets the completion bit. */
-        int16_t gate_x = actor->target_x < 0 ? -16 : 16;
-        return nba_gameplay_target_direction(
-            (int16_t)(gate_x - actor_x),
-            (int16_t)(actor->target_y - actor_y), NULL);
-    }
     if (special_edge) {
-        /* `$85:AF2A-$AF3D` reaches the back-role edge route only while
-         * `$0948|$097C` is active. Opposite X sign alone does not clamp
-         * roles 3/4; the CPU oracle shows both crossing normally. */
+        /* `$85:AED4-$AEDC/$85:AF2A-$AF3D`: activity routes back roles to
+         * the court edge on either side of midcourt. */
         int16_t edge_x = actor_x < 0 ? -0x152 : 0x152;
         int16_t edge_y = actor_y < 0 ? -16 : 16;
         uint8_t steering = 8u;
         (void)nba_gameplay_predictive_arrival(
             actor_x, actor_y, actor->velocity_x, actor->velocity_y,
             edge_x, edge_y, 16u, &steering, NULL);
-        return steering;
+        if (direction) *direction = steering;
+        return true;
+    }
+    if (opposite_x_sign) {
+        /* `$85:AEC7-$AEF3`: without the special activity edge case, every
+         * role crosses midcourt through local X=+/-16 using `$85:B3AA`.
+         * The former role<3 shortcut made roles 3/4 slide on the wrong axis. */
+        int16_t gate_x = actor->target_x < 0 ? -16 : 16;
+        if (direction) *direction = nba_gameplay_target_direction(
+            (int16_t)(gate_x - actor_x),
+            (int16_t)(actor->target_y - actor_y), NULL);
+        return true;
     }
 
     uint8_t steering = 8u;
@@ -1244,7 +1258,18 @@ static uint8_t cpu_formation_target_direction(NbaTipoff *tipoff,
             actor_x, actor_y, actor->velocity_x, actor->velocity_y,
             actor->target_x, actor->target_y, 16u, &steering, NULL))
         actor->behavior_flags_raw |= 0x0040u;
-    return steering;
+    if (direction) *direction = steering;
+    return true;
+}
+
+static void cpu_owner_accelerate(NbaTipoff *t,unsigned slot,uint8_t direction);
+
+bool nba_tipoff_replay_formation_route(NbaTipoff *tipoff, uint8_t actor,
+                                       uint8_t *direction) {
+    if (!tipoff || actor >= NBA_GAMEPLAY_ACTOR_COUNT) return false;
+    bool ran = cpu_formation_route(tipoff, actor, direction);
+    if (ran) cpu_owner_accelerate(tipoff, actor, direction ? *direction : 8u);
+    return ran;
 }
 
 /* Common `$85:96B5-$973A` actor Z integration. `$C6=2` makes gravity
@@ -1473,8 +1498,9 @@ static bool cpu_owner_flow_call(void *context,NbaOwnerFlow *s,NbaOwnerCall call,
         else if(outcome==CPU_MODE11_CONSUMED_ACTION && direction<8)
             cpu_owner_accelerate(t,c->slot,direction);
     } else if(call==NBA_OWNER_CALL_FORMATION) {
-        uint8_t direction=cpu_formation_target_direction(t,c->slot);
-        cpu_owner_accelerate(t,c->slot,direction);
+        uint8_t direction=a->movement_direction;
+        if(cpu_formation_route(t,c->slot,&direction))
+            cpu_owner_accelerate(t,c->slot,direction);
     } else {
         int selected=cpu_select_rom_receiver(t,(uint8_t)c->slot);
         bool special=selected>=0 && (uint16_t)selected==t->special_actor_raw;
@@ -1572,8 +1598,7 @@ static void cpu_dispatch_normal_actor_behavior(NbaTipoff *tipoff,
         if ((mode == 1u || mode == 3u || mode == 5u) &&
                 actor->controller_assignment_raw < 0 &&
                 actor->recovery_inhibit_raw == 0u) {
-            direction = cpu_formation_target_direction(tipoff, slot);
-            apply_velocity_step = true;
+            apply_velocity_step = cpu_formation_route(tipoff, slot, &direction);
         }
         else if (tipoff->cpu_play_state != NBA_CPU_PLAY_REBOUND &&
                  (mode == 2u || mode == 4u || mode == 6u) &&
@@ -3444,7 +3469,7 @@ static CpuMode11Outcome cpu_dispatch_rom_mode11(
             return cpu_start_rom_shot(tipoff, slot) ?
                 CPU_MODE11_SHOT_STARTED : CPU_MODE11_NORMAL_RETURN;
         }
-        if (direction) *direction = cpu_formation_target_direction(tipoff, slot);
+        (void)cpu_formation_route(tipoff, slot, direction);
         return CPU_MODE11_CONSUMED_ACTION;
     }
 
@@ -3452,8 +3477,7 @@ static CpuMode11Outcome cpu_dispatch_rom_mode11(
     bool same_attack_half = (int16_t)(rom_x ^ side_anchor) >= 0;
     if (cpu_lane_to_basket_is_clear(tipoff, slot)) {
         if (actor->anchor_distance_raw >= 0x70u) {
-            if (direction) *direction =
-                cpu_formation_target_direction(tipoff, slot);
+            (void)cpu_formation_route(tipoff, slot, direction);
             return CPU_MODE11_CONSUMED_ACTION;
         }
         if (cpu_start_rom_layup(tipoff, slot))
@@ -3464,7 +3488,7 @@ static CpuMode11Outcome cpu_dispatch_rom_mode11(
             return cpu_start_rom_shot(tipoff, slot) ?
                 CPU_MODE11_SHOT_STARTED : CPU_MODE11_NORMAL_RETURN;
         }
-        if (direction) *direction = cpu_formation_target_direction(tipoff, slot);
+        (void)cpu_formation_route(tipoff, slot, direction);
         return CPU_MODE11_CONSUMED_ACTION;
     }
 
