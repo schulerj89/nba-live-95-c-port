@@ -46,8 +46,12 @@ int main(int argc, char **argv) {
         state.rng.state = word(raw, 0x07F6u);
         for (unsigned side = 0; side < 2u; ++side) {
             unsigned base = side ? 0x476Bu : 0x46EBu;
+            state.team_context[side].strategy_team_raw_00 = word(raw, base);
+            state.team_context[side].score_raw_26 = word(raw, base + 0x26u);
+            state.team_context[side].strategy_raw_2e = word(raw, base + 0x2Eu);
             state.team_context[side].mode_raw_30 = word(raw, base + 0x30u);
             state.team_context[side].activity_raw_39 = raw[base + 0x39u];
+            state.team_context[side].play_selection_raw_56 = word(raw, base + 0x56u);
         }
         for (unsigned i = 0; i < NBA_GAMEPLAY_ACTOR_COUNT; ++i)
             state.actors[i].behavior_flags_raw = word(raw, 0x3569u + i * 0x100u);

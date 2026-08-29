@@ -173,6 +173,15 @@ public class DumpCpuGameplay extends GhidraScript {
                 for (long address = 0xb804; address < 0xb80a; ++address)
                     out.printf(" %02X", getByte(toAddr(address)) & 0xff);
                 out.println();
+                out.println("\n--- Complete play-request and stream-control dispatcher ---");
+                addEntryPoint(toAddr(0xb120)); disassemble(toAddr(0xb120));
+                addEntryPoint(toAddr(0xb128)); disassemble(toAddr(0xb128));
+                addEntryPoint(toAddr(0xb377)); disassemble(toAddr(0xb377));
+                for (long address = 0xb120; address <= 0xb3a9; ++address) {
+                    Instruction instruction = listing.getInstructionAt(toAddr(address));
+                    if (instruction != null)
+                        out.printf("$85:%04X  %s%n", address, instruction.toString());
+                }
                 out.println("\n--- Complete post-score inbound placement/steering ---");
                 addEntryPoint(toAddr(0xc37d)); disassemble(toAddr(0xc37d));
                 addEntryPoint(toAddr(0xc450)); disassemble(toAddr(0xc450));

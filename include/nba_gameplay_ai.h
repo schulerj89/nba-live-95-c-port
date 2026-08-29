@@ -9,7 +9,10 @@ typedef struct {
 } NbaGameplayRng;
 
 typedef struct {
+    uint16_t strategy_team_raw_00;
     int16_t anchor_x_raw_0a;
+    uint16_t score_raw_26;
+    uint16_t strategy_raw_2e;
     uint16_t mode_raw_30;
     uint16_t flags_raw_32;
     uint16_t activity_raw_39;
@@ -19,6 +22,7 @@ typedef struct {
     int16_t previous_controller_actor_raw_45;
     uint16_t match_clock_raw_47;
     uint16_t help_distance_raw_4e;
+    uint16_t play_selection_raw_56;
     uint8_t actor_order_raw_49[5];
 } NbaGameplayTeamContext;
 

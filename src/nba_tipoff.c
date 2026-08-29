@@ -5344,7 +5344,8 @@ static void cpu_advance_play_control(NbaTipoff *tipoff) {
      * for this side only, then may raise the randomized transition flag. */
     for (unsigned i = 0; i < 5u; ++i)
         tipoff->actors[base + i].behavior_flags_raw &= 0xFFB7u;
-    if (tipoff->play_step_raw >= 2 && (tipoff->rng.state & 1u) != 0u &&
+    if ((uint16_t)tipoff->play_step_raw >= 2u &&
+        (tipoff->rng.state & 1u) != 0u &&
         tipoff->play_hold_raw == 0u)
         tipoff->play_cycle_raw = 1u;
     (void)cpu_load_next_play_control(tipoff);
@@ -5388,24 +5389,49 @@ static void cpu_reselect_play_control(NbaTipoff *tipoff) {
         return;
     }
 
-    /* The currently represented context has +$2E!=7 and +$56==0. Preserve
-     * the exact normal-path RNG rejection order before the team/coin table. */
-    uint8_t preliminary;
-    do preliminary = (uint8_t)(nba_gameplay_rng_next(&tipoff->rng) & 7u);
-    while (preliminary >= 6u);
-    (void)preliminary;
-    uint8_t coin = (uint8_t)(nba_gameplay_rng_next(&tipoff->rng) & 1u);
-    uint8_t team = tipoff->offense_side ? tipoff->session->right_team :
-                                          tipoff->session->left_team;
-    uint8_t strategy, base, count;
-    bool hold;
-    if (!nba_assets_gameplay_cpu_strategy(
-            tipoff->assets, team, coin, &strategy, &base, &count, &hold))
-        return;
-    (void)strategy;
+    /* Complete `$85:B18A-$B244`. +$2E values below seven directly select a
+     * range. Seven invokes the score/RNG/team table; preserving every rejected
+     * LFSR result is essential because this stream is shared with gameplay. */
+    NbaGameplayTeamContext *context = &tipoff->team_context[offense];
+    uint8_t strategy = (uint8_t)context->strategy_raw_2e;
+    uint8_t base = 0u, count = 0u;
+    bool hold = false;
+    bool range_from_asset = false;
+    if (strategy == 7u) {
+        int16_t difference = (int16_t)(uint16_t)(
+            tipoff->session->score[offense] - tipoff->session->score[defense]);
+        if (difference < 0 &&
+            (difference == -3 || (nba_gameplay_rng_next(&tipoff->rng) & 3u) == 0u)) {
+            strategy = 5u;
+        } else if ((nba_gameplay_rng_next(&tipoff->rng) & 7u) == 0u) {
+            do strategy = (uint8_t)(nba_gameplay_rng_next(&tipoff->rng) & 7u);
+            while (strategy >= 6u);
+        } else {
+            uint8_t coin = (uint8_t)(nba_gameplay_rng_next(&tipoff->rng) & 1u);
+            if (!nba_assets_gameplay_cpu_strategy(
+                    tipoff->assets, (uint8_t)context->strategy_team_raw_00,
+                    coin, &strategy, &base, &count, &hold))
+                return;
+            range_from_asset = true;
+        }
+    }
+    if (!range_from_asset) {
+        static const uint8_t range_base[7] = {29, 24, 18, 44, 39, 35, 51};
+        static const uint8_t range_count[7] = {6, 5, 6, 7, 5, 4, 5};
+        if (strategy >= 7u) return;
+        base = range_base[strategy];
+        count = range_count[strategy];
+        hold = strategy == 5u;
+    }
     uint8_t offset;
-    do offset = (uint8_t)(nba_gameplay_rng_next(&tipoff->rng) & 7u);
-    while (offset >= count);
+    if (context->strategy_raw_2e != 7u && context->play_selection_raw_56 != 0u) {
+        offset = (uint8_t)context->play_selection_raw_56;
+    } else {
+        do offset = (uint8_t)(nba_gameplay_rng_next(&tipoff->rng) & 7u);
+        while (offset >= count);
+    }
+    if (strategy == 0x33u && (nba_gameplay_rng_next(&tipoff->rng) & 1u) == 0u)
+        offset = (uint8_t)(offset + 5u);
     tipoff->play_code = (uint16_t)(base + offset);
     tipoff->play_hold_raw = hold ? 1u : 0u;
     cpu_reset_play_control(tipoff);
@@ -7420,8 +7446,12 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
         {0x04u, 0x06u, 0x08u, 0x00u, 0x02u}
     };
     for (unsigned side = 0; side < 2u; ++side) {
+        tipoff->team_context[side].strategy_team_raw_00 =
+            side ? session->right_team : session->left_team;
         tipoff->team_context[side].anchor_x_raw_0a =
             side ? 336 : -336;
+        tipoff->team_context[side].score_raw_26 = 0u;
+        tipoff->team_context[side].strategy_raw_2e = 7u;
         tipoff->team_context[side].mode_raw_30 = 4u;
         tipoff->team_context[side].flags_raw_32 = 1u;
         tipoff->team_context[side].activity_raw_39 = 1u;
@@ -7432,6 +7462,7 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
             NBA_GAMEPLAY_UNKNOWN_WORD;
         tipoff->team_context[side].previous_controller_actor_raw_45 = -1;
         tipoff->team_context[side].help_distance_raw_4e = 0x00A0u;
+        tipoff->team_context[side].play_selection_raw_56 = 0u;
         for (unsigned i = 0; i < 5u; ++i)
             tipoff->team_context[side].actor_order_raw_49[i] =
                 context_actor_order[side][i];

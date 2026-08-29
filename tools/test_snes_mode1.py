@@ -37,23 +37,17 @@ def main():
             summary = json.loads(next(stream))
             assert summary["type"] == "summary"
             assert summary["state_frame"] == 1000
-            # With the native indexed gameplay inputs, BG1 owns the goal/net
-            # tiles but can be fully hidden at this deterministic camera by
-            # higher-priority court pixels and OBJ. The exact native frame
-            # gate in test_runtime_ppu_inputs.py proves BG1 separately. Keep
-            # this CLI smoke test focused on the actual winning scanout and
-            # pin its stable background composition instead of requiring a
-            # layer to win when the SNES priority result says it should not.
-            assert summary["visible"]["bg1"] == 0
-            # Re-reviewed after native inbound motion and complete tall-body
-            # resources changed deterministic actor placement. Frame 1000
-            # visibly retains all ten players, ball, court and clear HUD;
-            # pin every winner count so BG/OBJ coverage cannot trade off
-            # unnoticed while still satisfying only-positive smoke checks.
-            assert summary["visible"]["bg2"] == 46999
+            # Re-reviewed after replacing the approximate play selector with
+            # the exact $85:B18A-$B244 branch/RNG order. Its deterministic
+            # frame-1000 formation exposes BG1 goal/net pixels and changes
+            # actor overlap without changing the compositor. Pin every layer
+            # winner so later gameplay or PPU changes cannot silently trade
+            # pixels while still satisfying only-positive smoke checks.
+            assert summary["visible"]["bg1"] == 942
+            assert summary["visible"]["bg2"] == 43534
             assert summary["visible"]["bg3"] == 5641
-            assert summary["visible"]["obj"] == 1716
-            assert summary["visible"]["backdrop"] == 2988
+            assert summary["visible"]["obj"] == 3235
+            assert summary["visible"]["backdrop"] == 3992
             counts = {name: 0 for name in
                       ("BACKDROP", "BG1", "BG2", "BG3", "OBJ")}
             indexed = direct = rows = 0

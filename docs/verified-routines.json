@@ -1568,6 +1568,14 @@
       "method": "nested execution in controlled request differential + long-run play-control binding",
       "evidence": "B377 clears countdown/step/mirror and readiness bits while deliberately preserving $09A2. The complete represented state matches 100 native made-score request calls; the permanent fixture and 63,800-frame play-control assertions protect production use.",
       "date": "2026-08-29"
+    },
+    {
+      "range": "85B18A-85B244",
+      "name": "live-play request strategy and range selector",
+      "source": "src/nba_tipoff.c + asset-pack CPU strategy/play-control tables",
+      "method": "controlled native caller-boundary differential + complete headless Ghidra disassembly",
+      "evidence": "36 controlled live-state B120->B352 calls now match all 26 represented outputs exactly. Ghidra's complete B18A-B244 listing proves context +$2E selection, signed score branches, exact RNG rejection order, team/coin table $85:C661, range table $85:C729 and +$56 override. This removed the generic team/coin shortcut and fixed B2B1's unsigned $FFFF comparison. Combined with 100 made-score calls, tests/fixtures/play-request-witnesses.json retains 61 permanent cases. Control changes request/live input only at B116; PC, stack, ROM and RNG remain native.",
+      "date": "2026-08-29"
     }
   ]
 }
