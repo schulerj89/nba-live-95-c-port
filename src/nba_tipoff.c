@@ -1362,9 +1362,10 @@ static bool cpu_move_inbound_actor(NbaTipoff *tipoff, unsigned slot) {
      * target on every dispatch. `$09BA` is written after arrival and is not
      * a substitute for this geometry test; a recovery carrier may inherit
      * the prior carrier's nonzero latch while still outside the box. */
-    if (nba_gameplay_inbound_arrived(
+    if (nba_gameplay_inbound_arrived_motion(
             fp_integer_word(actor->x_fp), fp_integer_word(actor->y_fp),
-            tipoff->inbound_target_x_raw, tipoff->inbound_target_y_raw)) {
+            tipoff->inbound_target_x_raw, tipoff->inbound_target_y_raw,
+            actor->velocity_x, actor->velocity_y)) {
         actor->velocity_x = actor->velocity_y = 0;
         actor->movement_magnitude_raw = 0u;
         actor->direction = (uint8_t)tipoff->inbound_direction_raw;
@@ -7246,9 +7247,10 @@ static void cpu_update_rom_inbound(NbaTipoff *tipoff) {
     if ((tipoff->simulation_tick & 1u) != 0u) return;
     if (tipoff->inbound_transfer_raw != 0u &&
         actor->control_mode != 11u) return;
-    if (!nba_gameplay_inbound_arrived(
+    if (!nba_gameplay_inbound_arrived_motion(
             fp_integer_word(actor->x_fp), fp_integer_word(actor->y_fp),
-            tipoff->inbound_target_x_raw, tipoff->inbound_target_y_raw)) {
+            tipoff->inbound_target_x_raw, tipoff->inbound_target_y_raw,
+            actor->velocity_x, actor->velocity_y)) {
         tipoff->inbound_timer_raw = 300u;
         return;
     }
@@ -7340,6 +7342,8 @@ static bool cpu_inbound_recovery_carrier_self_test(
     state.actors[3].x_fp = 237 * 256 + 255;
     state.actors[3].y_fp = -22 * 256;
     state.actors[3].z_fp = 0;
+    state.actors[3].velocity_x = 0;
+    state.actors[3].velocity_y = 0;
     state.inbound_timer_raw = 100u;
     cpu_update_rom_inbound(&state);
     if (state.inbound_ready_raw != 0u || state.inbound_timer_raw != 300u)

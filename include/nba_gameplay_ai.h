@@ -306,6 +306,9 @@ bool nba_gameplay_inbound_target(
     NbaGameplayInboundTarget *target);
 bool nba_gameplay_inbound_arrived(int16_t actor_x, int16_t actor_y,
                                   int16_t target_x, int16_t target_y);
+bool nba_gameplay_inbound_arrived_motion(
+    int16_t actor_x, int16_t actor_y, int16_t target_x, int16_t target_y,
+    int16_t velocity_x, int16_t velocity_y);
 bool nba_gameplay_inbound_pass_due(uint16_t timer, uint16_t random_word);
 void nba_gameplay_inbound_motion_step(NbaGameplayInboundMotion *motion);
 void nba_gameplay_inbound_arrival_prepare(NbaGameplayInboundArrival *state);

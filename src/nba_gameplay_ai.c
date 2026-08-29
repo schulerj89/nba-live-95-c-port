@@ -287,6 +287,30 @@ bool nba_gameplay_inbound_arrived(int16_t actor_x, int16_t actor_y,
     return dx >= -9 && dx < 9 && dy >= -9 && dy < 9;
 }
 
+static void inbound_compensated_target(
+        int16_t target_x, int16_t target_y,
+        int16_t velocity_x, int16_t velocity_y,
+        int16_t *steering_x, int16_t *steering_y) {
+    *steering_x = wrap16((int32_t)target_x -
+                         velocity_damping_div16(velocity_x));
+    *steering_y = wrap16((int32_t)target_y -
+                         velocity_damping_div16(velocity_y));
+}
+
+/* `$86:F45F-$F4F2`: F43A replaces the raw target scratch with target minus
+ * the sign-biased velocity/16 compensation before both steering and the
+ * `[-9,+8]` arrival comparisons. This is observable at boundary targets
+ * beyond the ordinary actor clamp (for example raw X=403 with actor X=394). */
+bool nba_gameplay_inbound_arrived_motion(
+        int16_t actor_x, int16_t actor_y, int16_t target_x, int16_t target_y,
+        int16_t velocity_x, int16_t velocity_y) {
+    int16_t steering_x, steering_y;
+    inbound_compensated_target(target_x, target_y, velocity_x, velocity_y,
+                               &steering_x, &steering_y);
+    return nba_gameplay_inbound_arrived(
+        actor_x, actor_y, steering_x, steering_y);
+}
+
 /* `$86:F59F-$F5BB`: 240+ waits, 120..239 is RNG-gated, below 120 is due. */
 bool nba_gameplay_inbound_pass_due(uint16_t timer, uint16_t random_word) {
     if ((int16_t)timer >= 240) return false;
@@ -618,10 +642,11 @@ finish:
  * not commit coordinates; `$85:963D` already did that before dispatch. */
 void nba_gameplay_inbound_motion_step(NbaGameplayInboundMotion *motion) {
     if (!motion) return;
-    int16_t steering_x = wrap16((int32_t)motion->target_x -
-                                velocity_damping_div16(motion->velocity_x));
-    int16_t steering_y = wrap16((int32_t)motion->target_y -
-                                velocity_damping_div16(motion->velocity_y));
+    int16_t steering_x, steering_y;
+    inbound_compensated_target(
+        motion->target_x, motion->target_y,
+        motion->velocity_x, motion->velocity_y,
+        &steering_x, &steering_y);
     uint16_t distance = 0u;
     motion->direction = nba_gameplay_target_direction(
         wrap16((int32_t)steering_x - motion->actor_x),
@@ -1376,6 +1401,10 @@ bool nba_gameplay_ai_self_test(void) {
         !nba_gameplay_inbound_arrived(0, 0, -9, -9) ||
         nba_gameplay_inbound_arrived(0, 0, 9, 0) ||
         nba_gameplay_inbound_arrived(0, 0, -10, 0)) return false;
+    if (!nba_gameplay_inbound_arrived_motion(
+            394, -219, 403, -224, 95, 0) ||
+        nba_gameplay_inbound_arrived_motion(
+            394, -219, 403, -224, 0, 0)) return false;
     if (nba_gameplay_inbound_pass_due(240u, 0u) ||
         !nba_gameplay_inbound_pass_due(239u, 0u) ||
         nba_gameplay_inbound_pass_due(239u, 4u) ||

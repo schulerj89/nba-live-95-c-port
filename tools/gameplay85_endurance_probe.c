@@ -96,6 +96,11 @@ static int run_scenario(const NbaAssetPack *assets, uint8_t away,
     unsigned long_dead = 0;
 
     for (unsigned frame = 1; frame <= frames; ++frame) {
+        /* This is a sustained gameplay/render trajectory probe, not a match
+         * lifecycle probe. Keep it within one continuous period; expiry,
+         * quarter restarts and final state have dedicated native witnesses. */
+        if (game.match_clock_raw_0928 < 6000u)
+            game.match_clock_raw_0928 = 43200u;
         nba_tipoff_update(&game, &input);
         hash_gameplay_state(&result->digest, &game);
         if (game.possession_actor < -1 ||
@@ -118,7 +123,15 @@ static int run_scenario(const NbaAssetPack *assets, uint8_t away,
         if (was_dead && !dead) ++result->dead_recoveries;
         was_dead = dead;
         long_dead = dead ? long_dead + 1u : 0u;
-        if (long_dead > 2400u) return 13;
+        if (long_dead > 2400u) {
+            fprintf(stderr,"GAMEPLAY85 dead stall frame=%u live=%x period=%u clock=%u owner=%d ball_owner=%d inbound=%u ready=%u transfer=%u ft=%u\n",
+                frame,game.live_state_raw,game.period_raw_0926,
+                game.match_clock_raw_0928,game.possession_actor,
+                game.ball.owner_actor,game.inbound_actor_raw,
+                game.inbound_ready_raw,game.inbound_transfer_raw,
+                game.fouls.free_throw_state_raw_0978);
+            return 13;
+        }
         bool moved = false;
         for (unsigned i = 0; i < NBA_GAMEPLAY_ACTOR_COUNT; ++i) {
             const NbaTipoffActor *actor = &game.actors[i];
@@ -158,9 +171,12 @@ int main(int argc, char **argv) {
      * shot, score and resource-change counts are unchanged; only sampled
      * framebuffer hashes within this combined state/render digest changed. */
     const uint64_t expected[] = {
-        0x7b53a130c7eb1a3dull,
-        0x18d3f0f1d213ad9dull,
-        0x55d98da897814491ull
+        /* Re-reviewed after `$86:F45F-$F4F2` arrival adopted the native
+         * sign-biased velocity/16 compensation. Boundary inbounds no longer
+         * stall at a raw delta of +9; all scenarios sustain live recovery. */
+        0x897cd1e370da86c4ull,
+        0xdce9df170a3899beull,
+        0x6d7509b56032703aull
     };
     ScenarioResult total = {0};
     int code = 0;
