@@ -162,6 +162,7 @@ typedef struct NbaTipoff {
     int16_t player_screen_x[NBA_GAMEPLAY_ACTOR_COUNT];
     int16_t player_screen_y[NBA_GAMEPLAY_ACTOR_COUNT];
     bool player_screen_visible[NBA_GAMEPLAY_ACTOR_COUNT];
+    NbaCourtPlayerIndicator player_indicator[NBA_GAMEPLAY_ACTOR_COUNT];
     NbaCourtPresentation court_presentation;
     NbaCourtStream court_stream;
     NbaGameplayRng rng;

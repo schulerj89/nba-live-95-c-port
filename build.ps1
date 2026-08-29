@@ -242,6 +242,11 @@ if ($Test) {
         --preparation (Join-Path $Root 'tests\fixtures\draw-preparation-witnesses.json') `
         --direction (Join-Path $Root 'tests\fixtures\draw-direction-witnesses.json')
     if ($LASTEXITCODE -ne 0) { throw 'Whole player-draw pipeline census regression failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name draw_indicator_vector_probe
+    & python (Join-Path $Root 'tools\verify_draw_indicator_vectors.py') `
+        --vectors (Join-Path $Root 'tests\fixtures\draw-indicator-witnesses.json') `
+        --probe (Join-Path $BuildDir 'draw_indicator_vector_probe.exe')
+    if ($LASTEXITCODE -ne 0) { throw 'Human edge-indicator ROM witness regression failed.' }
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name appearance_upload_runtime_probe
     & python (Join-Path $Root 'tools\verify_appearance_upload.py') `
         --vectors (Join-Path $Root 'tests\fixtures\appearance-upload-witness.json') `

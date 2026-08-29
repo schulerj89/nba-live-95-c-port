@@ -153,3 +153,36 @@ bool nba_court_actor_visible(int16_t screen_x,int16_t projected_y,
      * but the retained ROM quirk is explicit rather than optimized away. */
     return (int16_t)((uint16_t)projected_y-(uint16_t)actor_z)<288;
 }
+
+/* `$87:A846-$A97D`: human off-screen controller indicator. The eight edge
+ * classes use three consecutive native resources; controller bit1 selects
+ * the alternate graphic and bit0 selects palette/flip variant. Corner
+ * resource widths produce the small inward offsets below. */
+bool nba_court_player_indicator(int16_t sx,int16_t sy,uint8_t controller,
+    NbaCourtPlayerIndicator *out) {
+    if (!out) return false;
+    memset(out,0,sizeof(*out));
+    /* This routine is entered after the visibility gate, which can reject an
+     * actor solely because of Z.  Consequently a point may still be inside
+     * the broad viewport here.  The native code always emits an indicator
+     * and clips it against its tighter 17..207 safe frame. */
+    bool left=sx < 17, right=sx >= 208;
+    bool top=sy < 17, bottom=sy >= 208;
+    bool horizontal=left||right, vertical=top||bottom;
+    unsigned kind=horizontal&&vertical ? 2u : vertical ? 1u : 0u;
+    out->active=true;
+    out->resource=(uint16_t)(0x0814u+kind*3u+(controller>>1));
+    out->attribute=(uint16_t)(0x3c00u|(right?0x4000u:0u)|
+        (top?0x8000u:0u)|((controller&1u)?0x0200u:0u));
+    out->x=left?16:right?240:sx;
+    out->y=top?16:bottom?208:sy;
+    if(horizontal&&vertical) {
+        if(controller==1u) out->x+=(int16_t)(left?4:-4);
+        else if(controller==2u) out->x+=(int16_t)(left?8:-8);
+        else if(controller==3u) out->y+=(int16_t)(top?4:-4);
+    }
+    /* The top-only path retains the actor's screen X; left, right, and bottom
+     * paths replace it with the native off-screen sentinel. */
+    out->actor_screen_x=(sx < -20||sx >= 276||sy >= 288)?-50:sx;
+    return true;
+}

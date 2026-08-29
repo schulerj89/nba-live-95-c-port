@@ -7070,6 +7070,14 @@ static void latch_player_screen_origins(NbaTipoff *tipoff) {
             tipoff->player_screen_x[actor],
             (int16_t)((uint16_t)tipoff->player_screen_y[actor]+(uint16_t)z),
             z,state->controller_assignment_raw>=0);
+        memset(&tipoff->player_indicator[actor],0,
+               sizeof(tipoff->player_indicator[actor]));
+        if (state->controller_assignment_raw>=0 &&
+            !tipoff->player_screen_visible[actor])
+            nba_court_player_indicator(tipoff->player_screen_x[actor],
+                (int16_t)((uint16_t)tipoff->player_screen_y[actor]+(uint16_t)z),
+                (uint8_t)state->controller_assignment_raw,
+                &tipoff->player_indicator[actor]);
     }
 }
 

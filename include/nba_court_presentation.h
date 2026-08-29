@@ -15,6 +15,11 @@ typedef struct {
     uint16_t scroll_x, scroll_y, source_bank;
     uint16_t rows[99];
 } NbaCourtStream;
+typedef struct {
+    bool active;
+    uint16_t resource, attribute;
+    int16_t x, y, actor_screen_x;
+} NbaCourtPlayerIndicator;
 typedef void (*NbaCourtTransfer)(void *context, uint16_t source,
     uint16_t bank, uint16_t bytes, uint16_t destination);
 
@@ -35,4 +40,6 @@ void nba_court_project_actor(int16_t actor_x, int16_t actor_y,
 /* `$87:A3DF-$A43B` player visibility gate; projected_y is before Z. */
 bool nba_court_actor_visible(int16_t screen_x, int16_t projected_y,
     int16_t actor_z, bool human_controlled);
+bool nba_court_player_indicator(int16_t screen_x, int16_t projected_y,
+    uint8_t controller, NbaCourtPlayerIndicator *indicator);
 #endif

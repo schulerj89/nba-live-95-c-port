@@ -1424,6 +1424,14 @@
       "method": "nested native execution in controlled consumer differential",
       "evidence": "Both accepted 8593F5 cases execute BACB naturally. Negative08DE queues presentation while nonnegative08DE clears08E2; resulting consumer state matches production exactly. docs/foul-consumer-differential.md.",
       "date": "2026-08-29"
+    },
+    {
+      "range": "87A846-87A97D",
+      "name": "human-controlled player edge indicator placement",
+      "source": "src/nba_court_presentation.c + src/nba_tipoff.c",
+      "method": "natural and controlled native entry/exit differential + runtime binding",
+      "evidence": "tests/fixtures/draw-indicator-witnesses.json and tools/verify_draw_indicator_vectors.py: 200 natural plus 32 controlled real-entry calls cover four controllers and all eight edge classes; resource, attribute, clipped X/Y and actor sentinel outputs match exactly. Separate broad visibility and 17..207 indicator bounds preserve the native top-only asymmetry. docs/player-edge-indicator-differential.md.",
+      "date": "2026-08-29"
     }
   ]
 }
