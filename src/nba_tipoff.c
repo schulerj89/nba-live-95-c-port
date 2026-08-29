@@ -2345,8 +2345,14 @@ static void cpu_classify_player_contact(NbaTipoff *tipoff,
         offender->controller_assignment_raw,
         tipoff->session->config.rules[7] != 0u
     };
-    (void)nba_gameplay_foul_classify_contact(
-        &tipoff->fouls, &tipoff->rng, &input, &tipoff->rim_raw_13e7);
+    if (nba_gameplay_foul_classify_contact(
+            &tipoff->fouls, &tipoff->rng, &input,
+            &tipoff->rim_raw_13e7)) {
+        unsigned persistent = (offender_slot / NBA_MATCH_LINEUP_SIZE) *
+            NBA_MATCH_ROSTER_SIZE + offender->roster_slot;
+        tipoff->roster_personal_fouls[persistent] =
+            tipoff->fouls.personal_fouls[offender_slot];
+    }
 }
 
 /* `$86:BFBA-$C238` is a separate high-speed knockdown outcome, not part of
@@ -3009,13 +3015,19 @@ static bool cpu_try_owned_ball_contact(NbaTipoff *tipoff) {
         tipoff->collision_actor_b_raw = (int8_t)owner;
         if (result == NBA_GAMEPLAY_OWNED_CONTACT_FOUL) {
             tipoff->collision_routine_raw = 0x86D12Du;
-            (void)nba_gameplay_foul_record_contact_full(
+            bool recorded = nba_gameplay_foul_record_contact_full(
                 &tipoff->fouls, NBA_GAMEPLAY_FOUL_DEFENSIVE,
                 candidate, owner, candidate / 5u,
                 tipoff->ball_activity_raw != 0u,
                 tipoff->period_raw_0926,
                 candidate_state->controller_assignment_raw,
                 tipoff->session->config.rules[7] != 0u);
+            if (recorded) {
+                unsigned persistent = (candidate / NBA_MATCH_LINEUP_SIZE) *
+                    NBA_MATCH_ROSTER_SIZE + candidate_state->roster_slot;
+                tipoff->roster_personal_fouls[persistent] =
+                    tipoff->fouls.personal_fouls[candidate];
+            }
             if (tipoff->ball_activity_raw != 0u)
                 tipoff->rim_raw_13e7 |= 0x2000u;
             return true;
@@ -3735,6 +3747,10 @@ static void cpu_release_rom_shot(NbaTipoff *tipoff, unsigned slot) {
     actor_store_shot_action(tipoff,shooter,&s.actor);
     shooter->contact_inhibit_raw_5a=s.contact_inhibit;
     memcpy(shooter->shot_statistics,s.player_stats,sizeof(s.player_stats));
+    unsigned persistent_stat = (slot / NBA_MATCH_LINEUP_SIZE) *
+        NBA_MATCH_ROSTER_SIZE + shooter->roster_slot;
+    memcpy(tipoff->roster_shot_statistics[persistent_stat],
+           shooter->shot_statistics, sizeof(shooter->shot_statistics));
     context->previous_dead_ball_actor_raw_43=s.assist_43;
     context->previous_controller_actor_raw_45=(int16_t)s.assist_45;
     tipoff->rng=s.rng;
@@ -8202,6 +8218,190 @@ bool nba_tipoff_step_match_lifecycle(NbaTipoff *tipoff) {
     return true;
 }
 
+static bool prepare_substitution_actor_bindings(
+    const NbaTipoff *tipoff,
+    const uint8_t lineup[NBA_MATCH_TEAM_COUNT][NBA_MATCH_LINEUP_SIZE],
+    NbaTipoffActor actors[NBA_GAMEPLAY_ACTOR_COUNT]) {
+    uint8_t teams[NBA_PLAYER_APPEARANCE_COUNT];
+    uint8_t rosters[NBA_PLAYER_APPEARANCE_COUNT];
+    for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
+        unsigned side = actor / NBA_MATCH_LINEUP_SIZE;
+        teams[actor] = side ? tipoff->session->right_team :
+                              tipoff->session->left_team;
+        rosters[actor] = lineup[side][actor % NBA_MATCH_LINEUP_SIZE];
+    }
+    NbaPlayerAppearanceSetup appearance;
+    if (!nba_player_appearance_setup(tipoff->assets, teams, rosters,
+                                     &appearance)) return false;
+    NbaPlayerActiveAppearanceInput active_input = {0};
+    for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
+        uint8_t selector = (uint8_t)(actor % NBA_MATCH_LINEUP_SIZE);
+        unsigned paired = actor < NBA_MATCH_LINEUP_SIZE ?
+            NBA_MATCH_LINEUP_SIZE + selector : selector;
+        uint8_t team = paired >= NBA_MATCH_LINEUP_SIZE ?
+            tipoff->session->right_team : tipoff->session->left_team;
+        uint8_t roster = lineup[paired / NBA_MATCH_LINEUP_SIZE]
+                               [paired % NBA_MATCH_LINEUP_SIZE];
+        active_input.lineup_selector[actor] = selector;
+        active_input.upper_variant[actor] =
+            (uint8_t)appearance.players[actor].upper_variant;
+        if (!nba_player_gameplay_shot_ratings(
+                tipoff->assets, team, roster,
+                &active_input.appearance_a[actor],
+                &active_input.appearance_b[actor])) return false;
+    }
+    NbaPlayerActiveAppearance active;
+    if (!nba_player_build_active_appearance(&active_input, &active))
+        return false;
+
+    memcpy(actors, tipoff->actors, sizeof(tipoff->actors));
+    for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
+        NbaTipoffActor *state = &actors[actor];
+        unsigned side = actor / NBA_MATCH_LINEUP_SIZE;
+        state->roster_slot = lineup[side][actor % NBA_MATCH_LINEUP_SIZE];
+        state->assignment_actor =
+            (uint8_t)(active.assignment_base[actor] >> 1);
+        state->assignment_base_raw = active.assignment_base[actor];
+        state->assignment_current_raw = state->assignment_base_raw;
+        state->assignment_alternate_raw =
+            active.assignment_alternate[actor];
+        state->assignment_role_raw_92 =
+            (uint8_t)(actor % NBA_MATCH_LINEUP_SIZE);
+        if (!nba_player_gameplay_position(
+                tipoff->assets, teams[actor], state->roster_slot,
+                &state->assignment_role_raw_92)) return false;
+        state->free_throw_launch_half_raw_a8 =
+            appearance.players[actor].alternate_lower;
+        state->animation_variant_raw_6c = active.upper_variant[actor];
+        state->help_request_raw_80 = active.help_request[actor];
+        if (!nba_player_animation_resources_for_appearance(
+                tipoff->assets, state->animation_state,
+                state->lower_animation_state, state->direction,
+                state->upper_animation_tick, state->lower_animation_tick,
+                state->free_throw_launch_half_raw_a8 != 0u,
+                state->animation_variant_raw_6c,
+                &state->upper_animation_resource_raw_2a,
+                &state->lower_animation_resource_raw_2c)) return false;
+        state->animation_resources_valid = true;
+    }
+    /* Native actor rebuild restores reciprocal matchup geometry after the
+     * lineup/resource transaction, before `$0A08` is cleared. */
+    for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
+        NbaTipoffActor *state = &actors[actor];
+        unsigned paired_slot = state->assignment_current_raw >> 1;
+        if (paired_slot >= NBA_GAMEPLAY_ACTOR_COUNT) return false;
+        const NbaTipoffActor *paired = &actors[paired_slot];
+        state->assignment_direction = nba_gameplay_target_direction(
+            (int16_t)(fp_round(paired->x_fp) - fp_round(state->x_fp)),
+            (int16_t)(fp_round(paired->y_fp) - fp_round(state->y_fp)),
+            &state->assignment_distance);
+        state->pair_distance = state->assignment_distance;
+        int16_t anchor = actor < NBA_MATCH_LINEUP_SIZE ? -336 : 336;
+        state->anchor_direction_raw = nba_gameplay_pass_direction(
+            (int16_t)(anchor - fp_round(state->x_fp)),
+            (int16_t)-fp_round(state->y_fp),
+            &state->anchor_distance_raw);
+    }
+    return true;
+}
+
+bool nba_tipoff_apply_foul_out_substitution(NbaTipoff *tipoff) {
+    if (!tipoff || !tipoff->is_initialized || !tipoff->session ||
+        !tipoff->assets ||
+        tipoff->fouls.substitution_request_raw_0a08 != 1u ||
+        tipoff->fouls.foul_out_state_raw_09ca != 8u ||
+        tipoff->fouls.substitution_actor_raw_492d < 0 ||
+        tipoff->fouls.substitution_actor_raw_492d >=
+            NBA_GAMEPLAY_ACTOR_COUNT) return false;
+    unsigned outgoing_actor =
+        (unsigned)(uint8_t)tipoff->fouls.substitution_actor_raw_492d;
+    unsigned side = outgoing_actor / NBA_MATCH_LINEUP_SIZE;
+    unsigned lineup_index = outgoing_actor % NBA_MATCH_LINEUP_SIZE;
+    NbaMatchLifecycle *match = &tipoff->session->match;
+    if (match->active_lineup[side][lineup_index] !=
+            tipoff->actors[outgoing_actor].roster_slot)
+        return false;
+    for (unsigned i = 0; i < NBA_MATCH_LINEUP_SIZE; ++i)
+        if (match->roster_order[side][i] != match->active_lineup[side][i])
+            return false;
+
+    NbaGameplaySubstitutionInput selection = {0};
+    selection.outgoing_lineup_index = (uint8_t)lineup_index;
+    memcpy(selection.roster_order, match->roster_order[side],
+           sizeof(selection.roster_order));
+    memcpy(selection.eligible, match->roster_available[side],
+           sizeof(selection.eligible));
+    uint8_t outgoing_roster = selection.roster_order[lineup_index];
+    selection.eligible[outgoing_roster] = false;
+    uint8_t team = side ? tipoff->session->right_team :
+                          tipoff->session->left_team;
+    for (uint8_t roster = 0; roster < NBA_MATCH_ROSTER_SIZE; ++roster)
+        if (!nba_player_gameplay_position(
+                tipoff->assets, team, roster,
+                &selection.position[roster])) return false;
+    NbaGameplaySubstitutionResult selected;
+    if (!nba_gameplay_select_foul_out_replacement(&selection, &selected))
+        return false;
+
+    uint8_t next_lineup[NBA_MATCH_TEAM_COUNT][NBA_MATCH_LINEUP_SIZE];
+    memcpy(next_lineup, match->active_lineup, sizeof(next_lineup));
+    memcpy(next_lineup[side], selected.roster_order,
+           NBA_MATCH_LINEUP_SIZE);
+    NbaTipoffActor next_actors[NBA_GAMEPLAY_ACTOR_COUNT];
+    if (!prepare_substitution_actor_bindings(
+            tipoff, next_lineup, next_actors)) return false;
+
+    uint16_t next_stats[24][5];
+    memcpy(next_stats, tipoff->roster_shot_statistics,
+           sizeof(next_stats));
+    uint8_t next_personal_fouls[24];
+    memcpy(next_personal_fouls, tipoff->roster_personal_fouls,
+           sizeof(next_personal_fouls));
+    for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
+        unsigned actor_side = actor / NBA_MATCH_LINEUP_SIZE;
+        unsigned persistent = actor_side * NBA_MATCH_ROSTER_SIZE +
+            tipoff->actors[actor].roster_slot;
+        memcpy(next_stats[persistent], tipoff->actors[actor].shot_statistics,
+               sizeof(next_stats[persistent]));
+        next_personal_fouls[persistent] =
+            tipoff->fouls.personal_fouls[actor];
+    }
+    NbaShotFatigue next_fatigue = tipoff->fatigue;
+    uint8_t next_actor_fouls[NBA_GAMEPLAY_ACTOR_COUNT];
+    for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
+        unsigned actor_side = actor / NBA_MATCH_LINEUP_SIZE;
+        unsigned persistent = actor_side * NBA_MATCH_ROSTER_SIZE +
+            next_actors[actor].roster_slot;
+        memcpy(next_actors[actor].shot_statistics, next_stats[persistent],
+               sizeof(next_actors[actor].shot_statistics));
+        next_actor_fouls[actor] = next_personal_fouls[persistent];
+        next_fatigue.active_roster[actor] = (uint16_t)persistent;
+        next_actors[actor].shot_stamina_raw_18 =
+            next_fatigue.stamina[persistent];
+    }
+
+    /* Atomic commit in native order: lineup/status, actor identities,
+     * appearance/resource bindings, roles/matchups, persistent ownership,
+     * then request clear. No operation below can fail. */
+    memcpy(match->roster_order[side], selected.roster_order,
+           sizeof(match->roster_order[side]));
+    memcpy(match->active_lineup, next_lineup, sizeof(match->active_lineup));
+    match->roster_available[side][selected.outgoing_roster] = false;
+    memcpy(tipoff->actors, next_actors, sizeof(tipoff->actors));
+    memcpy(tipoff->roster_shot_statistics, next_stats,
+           sizeof(tipoff->roster_shot_statistics));
+    memcpy(tipoff->roster_personal_fouls, next_personal_fouls,
+           sizeof(tipoff->roster_personal_fouls));
+    memcpy(tipoff->fouls.personal_fouls, next_actor_fouls,
+           sizeof(tipoff->fouls.personal_fouls));
+    tipoff->fatigue = next_fatigue;
+    tipoff->role_rebuild_raw_09d6 = 0u;
+    tipoff->fouls.foul_out_state_raw_09ca = 0u;
+    tipoff->fouls.substitution_actor_raw_492d = -1;
+    tipoff->fouls.substitution_request_raw_0a08 = 0u;
+    return true;
+}
+
 void nba_tipoff_update(NbaTipoff *tipoff, const NbaInput *input) {
     if (!tipoff || !tipoff->is_initialized) return;
     /* `$86:8338-$8341` changes live state before the pause loop. The entire
@@ -8322,6 +8522,13 @@ void nba_tipoff_update(NbaTipoff *tipoff, const NbaInput *input) {
         /* `$87:92A5-$95E6` performs dead-ball setup before `$85:93F5`
          * consumes the pending event later in the same outer pass. */
         cpu_process_pending_event(tipoff);
+        /* `$83:ECB0-$ED46`: automatic foul-out continuation is attempted
+         * only after the foul has entered the genuine dead-ball consumer.
+         * Failure (including no eligible bench player) intentionally leaves
+         * `$0A08` pending and preserves every owned state word. */
+        if (tipoff->fouls.whistle_active_raw_09b6 != 0u &&
+            tipoff->fouls.substitution_request_raw_0a08 != 0u)
+            (void)nba_tipoff_apply_foul_out_substitution(tipoff);
     }
     cpu_update_camera(tipoff);
     /* `$87:8EFB`'s due actor pass feeds `$87:A357-$A47A`. OAM retains the

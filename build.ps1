@@ -348,6 +348,9 @@ if ($Test) {
         --vectors (Join-Path $Root 'tests\fixtures\foul-bookkeeping-witnesses.json') `
         --probe (Join-Path $BuildDir 'foul_bookkeeping_vector_probe.exe')
     if ($LASTEXITCODE -ne 0) { throw 'Foul/stat bookkeeping ROM witness regression failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name foul_out_substitution_runtime_probe
+    & (Join-Path $BuildDir 'foul_out_substitution_runtime_probe.exe') $AssetPack
+    if ($LASTEXITCODE -ne 0) { throw 'Automatic foul-out substitution runtime regression failed.' }
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name foul_consume_vector_probe
     & python (Join-Path $Root 'tools\verify_foul_consume_vectors.py') `
         --vectors (Join-Path $Root 'tests\fixtures\foul-consume-witnesses.json') `

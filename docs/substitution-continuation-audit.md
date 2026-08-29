@@ -1,8 +1,9 @@
 # Foul-out substitution continuation audit
 
-This is a read-only implementation audit. It identifies the native ownership
-boundaries following the typed foul-out request (`$09CA=8`, `$0A08=1`) but does
-not claim that the C port executes the lineup transaction yet.
+This audit identifies the native ownership boundaries following the typed
+foul-out request (`$09CA=8`, `$0A08=1`). The C runtime now executes the bounded
+automatic transaction through `nba_tipoff_apply_foul_out_substitution`; the
+unknown human substitution presentation remains excluded.
 
 ## Native parent and return boundary
 
@@ -76,10 +77,37 @@ lineup UI beyond this presentation builder remain unknown.
   scheduler boundary is already owned by the gameplay renderer and should be
   called, not duplicated inside substitution code.
 
-This call order is observable native behavior. A C implementation should make
-the lineup replacement atomic, then invoke existing actor/appearance/resource
-rebuild APIs in this order, and clear the typed request only after those calls
-succeed. It must not invent a separate substitution executor.
+This call order is observable native behavior. The C implementation makes the
+lineup replacement atomic, invokes the existing actor/appearance/resource
+helpers in this order, restores matchup geometry and persistent fatigue/stat
+ownership, and clears the typed request only after all fallible preparation
+succeeds. It does not invent a separate substitution executor.
+
+## Implemented automatic selection boundary
+
+The retained evidence proves the incremental bench scan completely but does
+not provide a safe semantic name for `$4726/$47A6`, which choose incremental
+repair versus the larger `$966D` reorder. The runtime therefore exposes that
+decision as typed input to `nba_gameplay_select_foul_out_replacement` and uses
+only the proven incremental criteria:
+
+- preserve the complete twelve-entry `$46F9/$4779` order in session state;
+- scan ordered bench entries five through eleven;
+- skip unavailable entries;
+- prefer the outgoing player's roster-position byte;
+- fall back to the first eligible ordered bench entry;
+- swap the selected bench entry with the outgoing active entry.
+
+This is deterministic and evidence-complete for `$939D/$947D`. It is not a
+claim that the unknown selector always chooses that branch in every native
+human-control configuration. Full `$966D` automatic reorder and
+`$EE50-$EF47` human/presentation behavior remain separately unimplemented.
+
+The runtime stages the repaired lineup, all ten appearance/assignment records,
+resolved animation resources, matchup geometry, persistent player shot stats,
+personal fouls, and fatigue ownership before committing any state. No eligible bench entry or
+any asset/position/resource failure returns false without clearing `$0A08` or
+changing lineup, actor, resource, role, fatigue, or stat state.
 
 ## Capture status and required vectors
 
@@ -109,15 +137,12 @@ native whistle/presentation cadence. Publishing `$09CA/$0A08` in isolation is
 insufficient because `$492D`, presentation latches, lineup state, and roster
 pointers must all belong to the same live event.
 
-## Implementation slices and dependencies
+## Remaining implementation slices and dependencies
 
-1. Typed lineup/status model for `$46F9`, `$4779`, `$4943`, `$495B`, `$492D`,
-   and `$09CE`; no presentation work.
-2. Evidence-complete automatic full rebuild (`$9549/$95DB` plus `$966D`).
-3. Evidence-complete incremental replacement (`$939D/$947D`).
-4. Atomic lifecycle parent that calls existing actor, appearance, resource,
-   binding, and draw-preparation APIs, then clears `$0A08`.
-5. Presentation-only `$EE50-$EF47` after its selector semantics and visible
+1. Evidence-complete automatic full rebuild (`$9549/$95DB` plus `$966D`) once
+   the selector and child ordering have retained vectors.
+2. Parallel `$09CC/$09CE` request-class ownership after its meaning is proven.
+3. Presentation-only `$EE50-$EF47` after its selector semantics and visible
    cadence have their own capture.
 
 Unknown UI branches are intentionally separate from automatic foul-out

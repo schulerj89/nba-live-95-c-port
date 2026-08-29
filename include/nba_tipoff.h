@@ -241,6 +241,11 @@ typedef struct NbaTipoff {
     uint16_t dead_clock_enabled_raw_0a04;
     uint16_t elapsed_clock_raw_13f9, elapsed_shot_clock_raw_13f7;
     NbaShotFatigue fatigue;
+    /* Player-record-owned shot counters. Actors mirror the active record;
+     * substitution saves/loads through this table instead of transferring
+     * the outgoing player's counters to the promoted bench player. */
+    uint16_t roster_shot_statistics[24][5];
+    uint8_t roster_personal_fouls[24];
     uint16_t shot_value_raw;       /* `$094C` */
     uint16_t live_state_raw;       /* `$0936` */
     uint16_t inbound_state_raw;    /* `$0952` */
@@ -333,6 +338,10 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
                                   NbaGameplayTelemetry *telemetry);
 /* Controlled CLI fixture, not normal gameplay/user-player control. */
 bool nba_tipoff_debug_special_shot(NbaTipoff *tipoff, unsigned slot);
+/* `$83:ECB0-$ED46` automatic foul-out continuation without the still-unknown
+ * human substitution presentation. False leaves the request and all lineup,
+ * actor, resource, role, fatigue and stat ownership state unchanged. */
+bool nba_tipoff_apply_foul_out_substitution(NbaTipoff *tipoff);
 
 /* ROM-vector replay boundaries. Runtime gameplay uses these same functions;
  * they are public so captured native calls can be replayed without copying

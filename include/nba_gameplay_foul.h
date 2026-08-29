@@ -21,6 +21,7 @@ typedef struct {
     uint16_t game_foul_stats[5];          /* `$879C71` record `+$26` */
     uint16_t foul_out_state_raw_09ca;
     uint16_t substitution_request_raw_0a08;
+    int8_t substitution_actor_raw_492d;
     uint16_t free_throw_state_raw_0978;
     uint16_t free_throw_sequence_raw_097a;
     uint16_t latched_event_raw_08f0;
@@ -34,6 +35,23 @@ typedef struct {
     uint16_t whistle_presentation_queued_raw;
     uint16_t side_event_bits_raw_13e9;
 } NbaGameplayFoulState;
+
+/* Proven incremental repair criteria from `$83:939D-$9468` and
+ * `$83:947D-$9548`. The caller owns selector semantics and supplies the
+ * complete native-order permutation explicitly. */
+typedef struct {
+    uint8_t outgoing_lineup_index; /* active index 0..4 */
+    uint8_t roster_order[12];      /* active five, then ordered bench */
+    bool eligible[12];             /* indexed by roster slot */
+    uint8_t position[12];          /* roster position byte */
+} NbaGameplaySubstitutionInput;
+
+typedef struct {
+    uint8_t roster_order[12];
+    uint8_t outgoing_roster;
+    uint8_t replacement_roster;
+    uint8_t replacement_order_index;
+} NbaGameplaySubstitutionResult;
 
 /* Portable inputs consumed by the primary player/player contact classifier
  * at `$86:C4FE-$C6AC`. Register Y is the offender/hitter and register X is
@@ -65,6 +83,9 @@ bool nba_gameplay_foul_record_bookkeeping(
     NbaGameplayFoulState *state, uint8_t offender_actor,
     uint8_t offender_team, int8_t game_stat_slot,
     bool foul_out_rule_enabled);
+bool nba_gameplay_select_foul_out_replacement(
+    const NbaGameplaySubstitutionInput *input,
+    NbaGameplaySubstitutionResult *result);
 bool nba_gameplay_foul_record_contact(NbaGameplayFoulState *state,
                                       uint8_t event_code,
                                       uint8_t offender_actor,

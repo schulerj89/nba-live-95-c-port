@@ -61,6 +61,11 @@ typedef struct {
     uint16_t period_raw_0926;
     uint16_t timeouts_remaining[NBA_MATCH_TEAM_COUNT];
     uint8_t active_lineup[NBA_MATCH_TEAM_COUNT][NBA_MATCH_LINEUP_SIZE];
+    /* Native `$46F9/$4779` are twelve-word permutations: active five first,
+     * then bench order. Keep the complete order so a proven bench scan does
+     * not invent ordering from roster numbers. */
+    uint8_t roster_order[NBA_MATCH_TEAM_COUNT][NBA_MATCH_ROSTER_SIZE];
+    bool roster_available[NBA_MATCH_TEAM_COUNT][NBA_MATCH_ROSTER_SIZE];
     NbaMatchFlowState flow_state;
     NbaMatchFinalMarker final_marker;
     uint16_t presentation_ticks_remaining;

@@ -14,6 +14,7 @@ foul-out state `$09CA`, and typed substitution request `$0A08`. The production
 classifier and the separate owned-ball foul caller pass actor `+$16` and
 committed rule `$17DF` into this same helper.
 
-`$0A08=1` is intentionally only a request. Bench selection, active-player
-replacement, appearance rebinding and substitution presentation remain in the
-separate match-lifecycle implementation boundary.
+`$0A08=1` remains a request at this bookkeeping boundary. The live court now
+consumes it through the separate `$83:ECB0-$ED46` automatic continuation only
+after a valid atomic bench promotion. Unknown human substitution presentation
+branches remain outside that implementation.

@@ -54,5 +54,12 @@ void nba_session_init(NbaSession *session) {
         };
         memcpy(session->match.active_lineup[side], initial_lineup,
                sizeof(initial_lineup));
+        memcpy(session->match.roster_order[side], initial_lineup,
+               sizeof(initial_lineup));
+        for (uint8_t roster = NBA_MATCH_LINEUP_SIZE;
+             roster < NBA_MATCH_ROSTER_SIZE; ++roster)
+            session->match.roster_order[side][roster] = roster;
+        for (uint8_t roster = 0; roster < NBA_MATCH_ROSTER_SIZE; ++roster)
+            session->match.roster_available[side][roster] = true;
     }
 }

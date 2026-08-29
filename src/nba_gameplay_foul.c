@@ -11,6 +11,7 @@ void nba_gameplay_foul_init(NbaGameplayFoulState *state) {
     memset(state, 0, sizeof(*state));
     state->offender_actor_raw = -1;
     state->victim_actor_raw = -1;
+    state->substitution_actor_raw_492d = -1;
     state->whistle_timer_raw_08de = -1;
     state->team_active_roster_count[0] = 12u;
     state->team_active_roster_count[1] = 12u;
@@ -44,8 +45,9 @@ bool nba_gameplay_foul_record_contact(NbaGameplayFoulState *state,
  * selects an optional mapped game-stat record; a negative assignment skips
  * its `+$26` increment.  Reaching personal foul six requests substitution
  * only when team context `+$54 >= 6` and committed rule `$17DF` is enabled.
- * The port deliberately publishes that request but does not execute a
- * host-authored substitution. */
+ * This child only publishes the typed request. The independent
+ * `$83:ECB0-$ED46` court continuation consumes it after an atomic verified
+ * bench transaction. */
 bool nba_gameplay_foul_record_bookkeeping(
     NbaGameplayFoulState *state, uint8_t offender_actor,
     uint8_t offender_team, int8_t game_stat_slot,
@@ -62,9 +64,51 @@ bool nba_gameplay_foul_record_bookkeeping(
         --state->team_active_roster_count[offender_team];
         state->foul_out_state_raw_09ca = 8u;
         state->substitution_request_raw_0a08 = 1u;
+        state->substitution_actor_raw_492d = (int8_t)offender_actor;
     }
     if (game_stat_slot >= 0)
         ++state->game_foul_stats[(uint8_t)game_stat_slot];
+    return true;
+}
+
+bool nba_gameplay_select_foul_out_replacement(
+    const NbaGameplaySubstitutionInput *input,
+    NbaGameplaySubstitutionResult *result) {
+    if (!input || !result || input->outgoing_lineup_index >= 5u)
+        return false;
+    bool seen[12] = {false};
+    for (unsigned i = 0; i < 12u; ++i) {
+        if (input->roster_order[i] >= 12u ||
+            seen[input->roster_order[i]]) return false;
+        seen[input->roster_order[i]] = true;
+    }
+    uint8_t outgoing = input->roster_order[input->outgoing_lineup_index];
+    uint8_t outgoing_position = input->position[outgoing];
+    int fallback = -1, preferred = -1;
+    /* `$83:93C4-$944A/$83:94A4-$952A`: bench order begins at word five,
+     * unavailable entries are skipped, position match wins, otherwise the
+     * first eligible bench entry is the deterministic fallback. */
+    for (unsigned i = 5u; i < 12u; ++i) {
+        uint8_t roster = input->roster_order[i];
+        if (!input->eligible[roster]) continue;
+        if (fallback < 0) fallback = (int)i;
+        if (input->position[roster] == outgoing_position) {
+            preferred = (int)i;
+            break;
+        }
+    }
+    int selected = preferred >= 0 ? preferred : fallback;
+    if (selected < 0) return false;
+    NbaGameplaySubstitutionResult next = {0};
+    memcpy(next.roster_order, input->roster_order,
+           sizeof(next.roster_order));
+    next.outgoing_roster = outgoing;
+    next.replacement_order_index = (uint8_t)selected;
+    next.replacement_roster = next.roster_order[selected];
+    next.roster_order[input->outgoing_lineup_index] =
+        next.replacement_roster;
+    next.roster_order[selected] = outgoing;
+    *result = next;
     return true;
 }
 
