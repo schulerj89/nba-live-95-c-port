@@ -1136,10 +1136,34 @@ static bool cpu_active_decision_due(NbaTipoff *tipoff, unsigned slot) {
         mode == 2u ? 0x30u : 0x20u, same_half);
 }
 
+/* `$85:AE35-$AE95`: during the left-baseline state-$82 inbound plays 6..9,
+ * scan the current actor's side from roster role 4 down to role 0. The first
+ * CPU actor that is not provisional `$0954` receives the ROM's exact
+ * `(-40,160)` formation target. This is a side effect on a teammate, not a
+ * receiver substitution in `$86:F5C7`; preserving that distinction keeps the
+ * later native selector and side gates authoritative. */
+static int cpu_apply_inbound_formation_override(NbaTipoff *tipoff,
+                                                unsigned current_slot) {
+    if (tipoff->live_state_raw != 0x82u || tipoff->play_code < 6u ||
+        tipoff->play_code >= 10u || tipoff->inbound_target_y_raw < 0 ||
+        tipoff->inbound_target_x_raw >= 0) return -1;
+    unsigned base = current_slot < 5u ? 0u : 5u;
+    for (int role = 4; role >= 0; --role) {
+        unsigned slot = base + (unsigned)role;
+        if (slot == tipoff->inbound_actor_raw) continue;
+        if (tipoff->actors[slot].controller_assignment_raw < 0) {
+            tipoff->actors[slot].target_x = -40;
+            tipoff->actors[slot].target_y = 160;
+            return (int)slot;
+        }
+    }
+    return -1;
+}
+
 /* `$85:AD6B-$AF5B`: install one formation coordinate per play-step and run
- * the normal `$85:B402` completion route. The unresolved state-$82 inbound
- * override (`$AE3B-$AE95`) and DP-$5C override (`$AE97-$AEBB`) are excluded;
- * neither raw owner is represented by the current CPU-only runtime. */
+ * the normal `$85:B402` completion route. The DP-$5C override
+ * (`$AE97-$AEBB`) remains separate; its raw per-actor owner is not represented
+ * by the current CPU-only runtime. */
 static uint8_t cpu_formation_target_direction(NbaTipoff *tipoff,
                                               unsigned slot) {
     NbaTipoffActor *actor = &tipoff->actors[slot];
@@ -1163,6 +1187,8 @@ static uint8_t cpu_formation_target_direction(NbaTipoff *tipoff,
             actor->behavior_flags_raw |= 0x0008u;
         }
     }
+
+    (void)cpu_apply_inbound_formation_override(tipoff, slot);
 
     int16_t actor_x = fp_round(actor->x_fp);
     int16_t actor_y = fp_round(actor->y_fp);
@@ -6156,6 +6182,43 @@ static int cpu_select_inbound_receiver(const NbaTipoff *tipoff,
     return fallback;
 }
 
+static bool cpu_inbound_formation_override_self_test(void) {
+    NbaTipoff state;
+    memset(&state, 0, sizeof(state));
+    state.live_state_raw = 0x82u;
+    state.play_code = 6u;
+    state.inbound_target_x_raw = -100;
+    state.inbound_target_y_raw = 20;
+    state.inbound_actor_raw = 9u;
+    for (unsigned i = 0; i < NBA_GAMEPLAY_ACTOR_COUNT; ++i) {
+        state.actors[i].controller_assignment_raw = -1;
+        state.actors[i].target_x = (int16_t)(100 + (int)i);
+        state.actors[i].target_y = (int16_t)(200 + (int)i);
+    }
+    /* Role 4 is excluded by `$0954`; role 3 must be the exact descending
+     * scan winner on the current (right) side. */
+    if (cpu_apply_inbound_formation_override(&state, 5u) != 8 ||
+        state.actors[8].target_x != -40 ||
+        state.actors[8].target_y != 160 ||
+        state.actors[9].target_x != 109 || state.actors[4].target_x != 104)
+        return false;
+    /* A human role is skipped, and all five native entry predicates fail
+     * closed without mutating the prior winner. */
+    state.actors[8].controller_assignment_raw = 0;
+    state.actors[8].target_x = 108;
+    state.actors[8].target_y = 208;
+    if (cpu_apply_inbound_formation_override(&state, 5u) != 7 ||
+        state.actors[7].target_x != -40 || state.actors[7].target_y != 160)
+        return false;
+    state.live_state_raw = 2u;
+    state.actors[6].target_x = 106;
+    if (cpu_apply_inbound_formation_override(&state, 5u) != -1 ||
+        state.actors[6].target_x != 106) return false;
+    state.live_state_raw = 0x82u;
+    state.inbound_target_x_raw = 0;
+    return cpu_apply_inbound_formation_override(&state, 5u) == -1;
+}
+
 static bool cpu_inbound_side_gate(const NbaTipoff *tipoff,
                                   uint8_t inbounder, uint8_t receiver) {
     int16_t owner_x = fp_round(tipoff->actors[inbounder].x_fp);
@@ -6616,22 +6679,6 @@ static void cpu_update_rom_inbound(NbaTipoff *tipoff) {
         !cpu_inbound_side_gate(
             tipoff, inbounder, (uint8_t)candidate))
         candidate = -1;
-    /* The port does not yet reproduce every `$85:AD6B` formation writer.
-     * When its two cached selectors are both stranded on the forbidden side,
-     * preserve the ROM F58F side gate and use the first eligible teammate
-     * after the final 60-tick retry threshold. This prevents repeated
-     * five-second violations without bypassing candidate validity. */
-    if (candidate < 0 && tipoff->inbound_timer_raw < 60u) {
-        unsigned first = (unsigned)(inbounder / 5u) * 5u;
-        for (unsigned slot = first; slot < first + 5u; ++slot) {
-            if (cpu_inbound_candidate_valid(
-                    tipoff, inbounder, (int16_t)slot) &&
-                cpu_inbound_side_gate(tipoff, inbounder, (uint8_t)slot)) {
-                candidate = (int)slot;
-                break;
-            }
-        }
-    }
     if (candidate < 0 || candidate >= NBA_GAMEPLAY_ACTOR_COUNT) return;
     actor->reaction_threshold = 1u; /* `$86:F60B-$F610` */
     if (nba_tipoff_begin_rom_pass(
@@ -6988,6 +7035,8 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
     NBA_TIPOFF_REQUIRE("special receiver", cpu_special_receiver_self_test(assets));
     NBA_TIPOFF_REQUIRE("boundary pass recovery", cpu_boundary_pass_recovery_self_test());
     NBA_TIPOFF_REQUIRE("inbound completion", cpu_inbound_completion_witness_self_test());
+    NBA_TIPOFF_REQUIRE("inbound formation override",
+        cpu_inbound_formation_override_self_test());
     NBA_TIPOFF_REQUIRE("ball acquisition", cpu_ball_acquisition_self_test());
     NBA_TIPOFF_REQUIRE("dead ball dispatch", cpu_dead_ball_dispatch_self_test());
     NBA_TIPOFF_REQUIRE("contact orchestration", cpu_contact_orchestration_self_test());
