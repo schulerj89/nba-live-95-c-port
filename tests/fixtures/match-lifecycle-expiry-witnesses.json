@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "source": {
+    "system": "retail ROM under Mesen",
+    "capture_script": "tools/mesen_match_lifecycle_capture.lua",
+    "runner": "tools/capture_match_lifecycle.ps1",
+    "capture_date": "2026-08-29",
+    "launch": "natural Exhibition CPU-vs-CPU; controlled seed at the native $85:EDC6 clock writer",
+    "controlled_writes": ["$0926 period", "$0928 clock=1", "$4711/$4791 scores", "$09B4=0", "$13E7 bit $0800 clear"],
+    "clock_setting": "12-minute regulation / 5-minute overtime (setting index 3)"
+  },
+  "dispatcher": {
+    "expiry_test": "$86:97CD",
+    "expiry_latch_store": "$86:97E9",
+    "period_gate": "$87:8EB2",
+    "owned_ball_jump": "$87:8EBC",
+    "low_ball_jump": "$87:8EC7",
+    "resolved_flight_jump": "$87:8ECF",
+    "period_scene": "$87:95E9",
+    "period_increment": "$87:976E",
+    "final_period_store": "$87:979D",
+    "postgame_entry": "$87:97A0",
+    "next_clock_select": "$86:DD2D",
+    "next_clock_store": "$86:DD44"
+  },
+  "cases": [
+    {
+      "name": "q1",
+      "seed": {"period": 0, "left_score": 10, "right_score": 8},
+      "ordered_witnesses": ["$85:EDC6", "$87:8EB2", "$87:8EBC", "$87:95E9", "$87:96FB", "$87:976E", "$86:DD2D", "$86:DD44", "$86:DD47"],
+      "result": {"period": 1, "clock": 43200, "latch": 0}
+    },
+    {
+      "name": "halftime",
+      "seed": {"period": 1, "left_score": 10, "right_score": 8},
+      "ordered_witnesses": ["$85:EDC6", "$87:8EB2", "$87:8EBC", "$87:95E9", "$87:96FB", "$87:9716", "$87:976E", "$86:DD2D", "$86:DD44", "$86:DD47"],
+      "result": {"period": 2, "clock": 43200, "latch": 0}
+    },
+    {
+      "name": "regulation_tie",
+      "seed": {"period": 3, "left_score": 10, "right_score": 10},
+      "ordered_witnesses": ["$85:EDC6", "$87:8EB2", "$87:8EBC", "$87:95E9", "$87:96FB", "$87:974B", "$87:976E", "$86:DD2D", "$86:DD44", "$86:DD47"],
+      "result": {"period": 4, "clock": 18000, "latch": 0}
+    },
+    {
+      "name": "regulation_final",
+      "seed": {"period": 3, "left_score": 10, "right_score": 8},
+      "ordered_witnesses": ["$85:EDC6", "$87:8EB2", "$87:8EBC", "$87:95E9", "$87:96FB", "$87:976E", "$87:979D", "$87:97A0"],
+      "result": {"period": 5, "clock": 0, "latch": 1}
+    }
+  ],
+  "horn_semantics": {
+    "immediate_period_scene_when": ["$093E owner is non-negative", "$3EF7 ball Z is below 8", "$0946 resolution state is non-negative"],
+    "defer_period_scene_when": "$093E is negative AND $3EF7 is at least 8 AND $0946 is negative",
+    "interpretation": "An ownerless unresolved high ball remains live after the horn until its flight resolves or drops below the gate."
+  }
+}

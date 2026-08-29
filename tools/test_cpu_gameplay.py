@@ -6,10 +6,96 @@ import json
 import subprocess
 import sys
 import tempfile
+from collections import OrderedDict
 from pathlib import Path
 
 from PIL import Image
 from test_shot_state_trace import verify as verify_shot_state_trace
+
+
+class JsonlRows:
+    """Disk-indexed JSONL sequence with bounded decoded-row memory.
+
+    The gameplay trace is currently about 1.4 GiB.  Materializing its text,
+    split-line list and 63,800 decoded dictionaries simultaneously can exceed
+    the Windows commit limit.  This sequence retains only byte offsets plus a
+    small random-access cache; contiguous slices stream from disk.
+    """
+
+    CACHE_ROWS = 8
+
+    def __init__(self, path=None, *, root=None, indices=None):
+        if root is None:
+            self._root = self
+            self.path = Path(path)
+            self.offsets = []
+            offset = 0
+            with self.path.open("rb") as source:
+                for line in source:
+                    if line.strip():
+                        self.offsets.append(offset)
+                    offset += len(line)
+            self._random_source = self.path.open("rb")
+            self._cache = OrderedDict()
+            self._indices = range(len(self.offsets))
+        else:
+            self._root = root
+            self.path = root.path
+            self._indices = indices
+
+    def __len__(self):
+        return len(self._indices)
+
+    def _load_absolute(self, absolute):
+        cache = self._root._cache
+        if absolute in cache:
+            row = cache.pop(absolute)
+            cache[absolute] = row
+            return row
+        source = self._root._random_source
+        source.seek(self._root.offsets[absolute])
+        row = json.loads(source.readline())
+        cache[absolute] = row
+        if len(cache) > self.CACHE_ROWS:
+            cache.popitem(last=False)
+        return row
+
+    def __getitem__(self, key):
+        if isinstance(key, slice):
+            return JsonlRows(root=self._root, indices=self._indices[key])
+        if key < 0:
+            key += len(self)
+        if key < 0 or key >= len(self):
+            raise IndexError(key)
+        return self._load_absolute(self._indices[key])
+
+    def __iter__(self):
+        indices = self._indices
+        if isinstance(indices, range) and indices.step == 1 and len(indices):
+            with self.path.open("rb") as source:
+                source.seek(self._root.offsets[indices.start])
+                for _ in indices:
+                    yield json.loads(source.readline())
+            return
+        with self.path.open("rb") as source:
+            for absolute in indices:
+                source.seek(self._root.offsets[absolute])
+                yield json.loads(source.readline())
+
+    def where(self, predicate):
+        selected = []
+        for absolute, row in zip(self._indices, self):
+            if predicate(row):
+                selected.append(absolute)
+        return JsonlRows(root=self._root, indices=selected)
+
+    def close(self):
+        if self._root is self and not self._random_source.closed:
+            self._random_source.close()
+
+    def __del__(self):
+        if getattr(self, "_root", None) is self:
+            self.close()
 
 
 FORMATION = [
@@ -139,7 +225,7 @@ def main():
         if result.returncode or "INT:$85:963D" not in result.stdout or \
                 "BALL M:" not in result.stdout:
             raise AssertionError(result.stdout + result.stderr)
-        rows = [json.loads(line) for line in trace.read_text().splitlines()]
+        rows = JsonlRows(trace)
         if len(rows) != 63800:
             raise AssertionError(f"expected 63800 CPU frames, got {len(rows)}")
         # Consecutive native frames 180..620 contain no small A->B->A player
@@ -438,8 +524,8 @@ def main():
             raise AssertionError(
                 f"formation install/arrival lifecycle was not sustained: "
                 f"installs={installs} completions={completions}")
-        special_rows = [row for row in rows[219:]
-                        if row["possession"]["special_actor_raw"] != 0xFFFF]
+        special_rows = rows[219:].where(
+            lambda row: row["possession"]["special_actor_raw"] != 0xFFFF)
         if any(not 0 <= row["possession"]["special_actor_raw"] < 10
                for row in special_rows):
             raise AssertionError("$85:B4B9 produced an unbounded $09A2 cutter")
@@ -457,9 +543,9 @@ def main():
         # Mode 14 owns a distinct receiver target ($86:B154), not the
         # ordinary $85:AE1F cutter anchor. A changed pass cadence can leave
         # every finite-trace $09A2 witness in that special mode.
-        ordinary_special_rows = [row for row in special_rows
-            if row["actors"][row["possession"]["special_actor_raw"]]
-                ["raw"]["control_mode"] in (1, 2, 3, 4, 5, 6, 11)]
+        ordinary_special_rows = special_rows.where(
+            lambda row: row["actors"][row["possession"]["special_actor_raw"]]
+                ["raw"]["control_mode"] in (1, 2, 3, 4, 5, 6, 11))
         if ordinary_special_rows and not anchor_rows:
             raise AssertionError("$85:AE1F cutter anchor was not represented")
 
@@ -573,9 +659,9 @@ def main():
             # and same-side clock preservation.  An ownerless integration
             # frame retains a stale possession-team word, so it cannot infer
             # which branch BAA2 took from adjacent JSON rows alone.
-        mode12_attached = [row for row in rows
-                           if row["ball"]["state"] == 4 and
-                           row["ball"]["activity_raw"] == 0xFFFF]
+        mode12_attached = rows.where(
+            lambda row: row["ball"]["state"] == 4 and
+                        row["ball"]["activity_raw"] == 0xFFFF)
         if not any(row["ball"]["state"] == 5 and
                    row["ball"]["activity_raw"] == 0xFFFF for row in rows) or \
                 not mode12_attached or \
@@ -759,7 +845,7 @@ def main():
         if possession_changes < 4:
             raise AssertionError("scheduler was not tested across possessions")
 
-        due_rows = [row for row in rows if row["scheduler"]["due_raw"]]
+        due_rows = rows.where(lambda row: row["scheduler"]["due_raw"])
         shot_starts = 0
         shot_releases = 0
         mode11_fallbacks = 0
@@ -979,14 +1065,15 @@ def main():
         if len(score_changes) < 4 or previous_score[0] == 0 or previous_score[1] == 0:
             raise AssertionError(f"CPU scoring did not sustain both teams: {score_changes}")
         dead_runs = []
-        run = []
-        for row in rows:
+        run_start = None
+        for index, row in enumerate(rows):
             if row["match"]["live_state_raw"] == 0x82 and \
                     row["fouls"]["free_throw_state_raw"] == 0:
-                run.append(row)
-            elif run:
-                dead_runs.append(run)
-                run = []
+                if run_start is None:
+                    run_start = index
+            elif run_start is not None:
+                dead_runs.append(rows[run_start:index])
+                run_start = None
         if not dead_runs:
             raise AssertionError("$092E inbound executor was not exercised")
         replaced_provisional = 0
@@ -1459,6 +1546,7 @@ def main():
             digest = hashlib.sha256(Image.open(output).convert("RGB").tobytes()).hexdigest()
             if digest != expected:
                 raise AssertionError(f"CPU gameplay frame {number} changed: {digest}")
+        rows.close()
 
     source = Path(__file__).parents[1]
     implementation = "\n".join((source / relative).read_text() for relative in (
