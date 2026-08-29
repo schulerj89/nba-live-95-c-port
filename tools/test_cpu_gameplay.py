@@ -64,8 +64,11 @@ EXPECTED_RGB = {
     # retain ten complete players, ball, court/goal bounds and clear HUD.
     1300: "afe9d7920e09197dc301b72af2f379e7060272668d68cc1bb708a1d2438c7ec5",
     3480: "d48c051152b19f75a1e59b61f2a26138b19129624535338dcc4bbd688fe7537d",
-    6932: "da6f72ccc568bc5c7375ff6b08421b43c3ea9c049ef308e143aee244c27956ce",
-    6954: "177c5007a11f05ed825723deea47aef6d7eea5b8cdd100befd940a93e92f9e40",
+    # Reviewed after the native `$85:BB5A->$85:BBAE` one-way help assignment
+    # replaced the former symmetric port behavior. The exact ROM-call corpus
+    # and matchup runtime probe independently protect the semantic change.
+    6932: "5a73fd19b816292d2b3810f413ff69abec7f361c4118e05ee7aa989be8ee626d",
+    6954: "c2be1221269e8ecdba7c44ffe3d23da25eec88ad140b17a6b63091de395598ba",
 }
 
 

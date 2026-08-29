@@ -191,6 +191,14 @@ if ($Test) {
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name close_finish_runtime_probe
     & (Join-Path $BuildDir 'close_finish_runtime_probe.exe') $AssetPack
     if ($LASTEXITCODE -ne 0) { throw 'Close-finish runtime binding failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name matchup_helper_vector_probe
+    & python (Join-Path $Root 'tools\verify_matchup_helper_vectors.py') `
+        --vectors (Join-Path $Root 'tests\fixtures\matchup-helper-witnesses.json') `
+        --probe (Join-Path $BuildDir 'matchup_helper_vector_probe.exe')
+    if ($LASTEXITCODE -ne 0) { throw 'Defensive matchup-helper ROM replay failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name matchup_helper_runtime_probe
+    & (Join-Path $BuildDir 'matchup_helper_runtime_probe.exe') $AssetPack
+    if ($LASTEXITCODE -ne 0) { throw 'Defensive matchup-helper runtime binding failed.' }
     & python (Join-Path $Root 'tools\test_shot_assets.py') --pack $AssetPack --rom $RomPath --exe $ConsoleExePath
     if ($LASTEXITCODE -ne 0) { throw 'Shot asset ROM comparison failed.' }
     & python (Join-Path $Root 'tools\test_special_shot_integration.py') --pack $AssetPack --rom $RomPath --exe $ConsoleExePath

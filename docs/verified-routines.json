@@ -1488,6 +1488,14 @@
       "method": "nested natural native differential + headless Ghidra control-flow proof",
       "evidence": "The two natural B154->B17D terminal calls execute $86:986D-$994B and exactly reproduce its distance gate, landing-pose attachment, mode16 timer24 branch and pass-family mode7 timer180 branch. Included in tests/fixtures/close-finish-witnesses.json; permanent vector and runtime gates are in build.ps1 -Test.",
       "date": "2026-08-29"
+    },
+    {
+      "range": "85B9D2-85BC06",
+      "name": "defensive primary and help-matchup helper family",
+      "source": "src/nba_tipoff.c",
+      "method": "natural native helper-boundary differential + production runtime binding",
+      "evidence": "342 natural real-entry calls across nine observed entry/exit pairs have zero represented-state mismatches. tests/fixtures/matchup-helper-witnesses.json permanently retains all rare one-way-help calls plus spread witnesses for every pair; tools/verify_matchup_helper_vectors.py protects actor modes, distances, assignments and tie ordering. tools/matchup_helper_runtime_probe.c independently protects one-way opposite-half help, symmetric same-half primary assignment and first-tie selection. This differential found and fixed a symmetric-assignment error in the production port.",
+      "date": "2026-08-29"
     }
   ]
 }

@@ -341,5 +341,8 @@ bool nba_tipoff_replay_passive_mode(NbaTipoff *tipoff, uint8_t actor);
 bool nba_tipoff_replay_mode13_close_finish(NbaTipoff *tipoff, uint8_t actor);
 bool nba_tipoff_replay_mode14_close_finish(NbaTipoff *tipoff, uint8_t actor);
 bool nba_tipoff_replay_close_finish_start(NbaTipoff *tipoff, uint8_t actor);
+bool nba_tipoff_replay_matchup_helper(NbaTipoff *tipoff, uint16_t entry,
+    uint8_t current_actor, uint8_t related_actor, uint8_t context_side,
+    uint8_t *selected_actor);
 
 #endif

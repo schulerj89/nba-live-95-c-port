@@ -78,3 +78,4 @@ dead-ball reset ranges a second time.
 |---|---:|---:|---|
 | Baseline | - | 9,767 (35.01%) | Generated ledger at goal start |
 | Close-finish modes and post-shot continuation | 402 | 10,169 (36.45%) | 91 natural real-entry calls, six entry/exit pairs, zero mismatches; basket-target hold and terminal mode branches protected by runtime probe |
+| Defensive primary/help matchup helpers | 210 | 10,379 (37.20%) | 342 natural real-entry calls, nine entry/exit pairs, zero mismatches; permanent witnesses retain every rare one-way-help call and runtime probe covers one-way/symmetric/tie behavior |

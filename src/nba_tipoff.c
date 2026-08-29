@@ -5801,6 +5801,16 @@ static void cpu_install_help_assignment(NbaTipoff *tipoff, unsigned helper,
     state->control_mode = 6u;
 }
 
+static void cpu_one_way_bind(NbaTipoff *tipoff, unsigned candidate,
+                             unsigned target) {
+    NbaTipoffActor *state = &tipoff->actors[candidate];
+    unsigned old = state->assignment_current_raw >> 1;
+    if (old < NBA_GAMEPLAY_ACTOR_COUNT)
+        tipoff->actors[old].assignment_current_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
+    state->assignment_current_raw = (uint16_t)(target * 2u);
+    state->assignment_actor = (uint8_t)target;
+}
+
 static void cpu_symmetric_bind(NbaTipoff *tipoff, unsigned candidate,
                                unsigned target) {
     unsigned old = tipoff->actors[candidate].assignment_current_raw >> 1;
@@ -5823,16 +5833,29 @@ static bool cpu_try_base_defender(NbaTipoff *tipoff, unsigned target,
     NbaTipoffActor *t = &tipoff->actors[target];
     if ((int16_t)c->assignment_current_raw >= 0 || c->control_mode >= 7u)
         return false;
-    bool bind = (int16_t)(anchor ^ fp_round(t->x_fp)) >= 0;
-    if (!bind && c->anchor_distance_raw < 0x38u) bind = true;
-    if (!bind && c->anchor_distance_raw < t->anchor_distance_raw) {
+    if ((int16_t)(anchor ^ fp_round(t->x_fp)) >= 0) {
+        cpu_symmetric_bind(tipoff, candidate, target);
+        return true;
+    }
+    if (c->anchor_distance_raw >= t->anchor_distance_raw) {
+        if (c->anchor_distance_raw >= 0x38u) return false;
+        cpu_symmetric_bind(tipoff, candidate, target);
+        return true;
+    }
+    if (c->anchor_distance_raw < 0x38u) {
+        cpu_symmetric_bind(tipoff, candidate, target);
+        return true;
+    }
+    {
         uint16_t separation = cpu_rom_distance(
             (int16_t)(fp_round(t->x_fp) - fp_round(c->x_fp)),
             (int16_t)(fp_round(t->y_fp) - fp_round(c->y_fp)));
-        bind = (uint16_t)(separation << 1) < t->anchor_distance_raw;
+        if ((uint16_t)(separation << 1) >= t->anchor_distance_raw)
+            return false;
     }
-    if (!bind) return false;
-    cpu_symmetric_bind(tipoff, candidate, target);
+    /* `$85:BB5A -> $85:BBAE`: the far opposite-half candidate is a help
+     * assignment, not the target's symmetric primary matchup. */
+    cpu_one_way_bind(tipoff, candidate, target);
     return true;
 }
 
@@ -5869,6 +5892,93 @@ static bool cpu_fallback_primary_defender(NbaTipoff *tipoff, unsigned target,
     if (selected < 0) return false;
     cpu_symmetric_bind(tipoff, (unsigned)selected, target);
     return true;
+}
+
+static bool cpu_bind_nearest_unassigned(NbaTipoff *tipoff, unsigned target,
+                                        unsigned defense);
+
+/* Direct replay adapters for the callable `$85:B9D2-$BC06` matchup helper
+ * family. They preserve each ROM helper boundary; the live BC07 planner uses
+ * the same private cores below and adds its caller-owned mode changes later. */
+bool nba_tipoff_replay_matchup_helper(NbaTipoff *tipoff, uint16_t entry,
+    uint8_t current_actor, uint8_t related_actor, uint8_t context_side,
+    uint8_t *selected_actor) {
+    if (!tipoff || current_actor >= NBA_GAMEPLAY_ACTOR_COUNT ||
+        related_actor >= NBA_GAMEPLAY_ACTOR_COUNT || context_side > 1u)
+        return false;
+    unsigned defense = context_side;
+    int selected = -1;
+    bool result = false;
+    switch (entry) {
+    case 0xB9D2u:
+        result = cpu_bind_nearest_unassigned(
+            tipoff, related_actor, defense);
+        if (result) selected = tipoff->actors[related_actor].assignment_current_raw >> 1;
+        break;
+    case 0xBA1Du:
+        result = cpu_fallback_primary_defender(
+            tipoff, related_actor, defense);
+        if (result) selected = tipoff->actors[related_actor].assignment_current_raw >> 1;
+        break;
+    case 0xBAB7u:
+        cpu_symmetric_bind(tipoff, current_actor, related_actor);
+        selected = current_actor;
+        result = true;
+        break;
+    case 0xBAE4u:
+        selected = tipoff->actors[related_actor].assignment_alternate_raw >> 1;
+        result = cpu_try_base_defender(
+            tipoff, related_actor, defense,
+            tipoff->team_context[context_side].anchor_x_raw_0a);
+        if (!result || selected >= NBA_GAMEPLAY_ACTOR_COUNT) selected = -1;
+        break;
+    case 0xBB6Cu: {
+        unsigned alternate =
+            tipoff->actors[related_actor].assignment_alternate_raw >> 1;
+        if (alternate < NBA_GAMEPLAY_ACTOR_COUNT &&
+            alternate / 5u == defense) {
+            NbaTipoffActor *candidate = &tipoff->actors[alternate];
+            int16_t anchor = tipoff->team_context[context_side].anchor_x_raw_0a;
+            bool same_half = (int16_t)(anchor ^
+                fp_round(tipoff->actors[related_actor].x_fp)) >= 0;
+            if ((int16_t)candidate->assignment_current_raw < 0 &&
+                candidate->control_mode < 4u &&
+                (same_half || candidate->focal_distance_raw_8e < 0x30u)) {
+                cpu_one_way_bind(tipoff, alternate, related_actor);
+                selected = (int)alternate;
+                result = true;
+            }
+        }
+        break;
+    }
+    case 0xBB99u: {
+        cpu_one_way_bind(tipoff, current_actor, related_actor);
+        selected = current_actor;
+        result = true;
+        break;
+    }
+    case 0xBBBFu: {
+        uint16_t best = 0x7FFFu;
+        for (unsigned i = 0; i < 5u; ++i) {
+            unsigned candidate = defense * 5u + i;
+            if (tipoff->actors[candidate].control_mode >= 4u) continue;
+            if (tipoff->actors[candidate].focal_distance_raw_8e <= best) {
+                best = tipoff->actors[candidate].focal_distance_raw_8e;
+                selected = (int)candidate;
+            }
+        }
+        if (selected >= 0) {
+            cpu_one_way_bind(tipoff, (unsigned)selected, related_actor);
+            result = true;
+        }
+        break;
+    }
+    default:
+        return false;
+    }
+    if (selected_actor)
+        *selected_actor = selected < 0 ? 0xFFu : (uint8_t)selected;
+    return result;
 }
 
 static bool cpu_bind_nearest_unassigned(NbaTipoff *tipoff, unsigned target,

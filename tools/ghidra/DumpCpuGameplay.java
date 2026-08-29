@@ -118,6 +118,17 @@ public class DumpCpuGameplay extends GhidraScript {
                         instruction.toString());
             }
             if (bank.equals("85")) {
+                out.println("\n--- Complete defensive matchup helper family ---");
+                long[] matchupEntries = {0xb9d2, 0xba1d, 0xbab7, 0xbae4,
+                    0xbb6c, 0xbb99, 0xbbbf};
+                for (long entry : matchupEntries) {
+                    addEntryPoint(toAddr(entry)); disassemble(toAddr(entry));
+                }
+                for (long address = 0xb9d2; address <= 0xbc06; ++address) {
+                    Instruction instruction = listing.getInstructionAt(toAddr(address));
+                    if (instruction != null)
+                        out.printf("$85:%04X  %s%n", address, instruction.toString());
+                }
                 out.println("\n--- Complete camera/court-streaming disassembly ---");
                 for (long address = 0x8ee6; address <= 0x93f4; ++address) {
                     Instruction instruction = listing.getInstructionAt(toAddr(address));

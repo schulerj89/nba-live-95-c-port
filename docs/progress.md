@@ -9,8 +9,8 @@ Counts address positions in the captured exec intervals. Some captures record in
 | metric | address positions | % of captured |
 |---|---|---|
 | executed (denominator) | 27901 | 100.0% |
-| documented by port provenance | 11312 | 40.5% |
-| verified against ground truth | 10169 | 36.4% |
+| documented by port provenance | 11332 | 40.6% |
+| verified against ground truth | 10379 | 37.2% |
 
 ## Per bank
 
@@ -22,7 +22,7 @@ Counts address positions in the captured exec intervals. Some captures record in
 | $82 | 1937 | 418 | 21.6% |
 | $83 | 1043 | 0 | 0.0% |
 | $84 | 195 | 0 | 0.0% |
-| $85 | 5095 | 4104 | 80.5% |
+| $85 | 5095 | 4124 | 80.9% |
 | $86 | 6114 | 4583 | 75.0% |
 | $87 | 3381 | 2042 | 60.4% |
 
@@ -31,7 +31,7 @@ Counts address positions in the captured exec intervals. Some captures record in
 - recomp-discovered functions: 136 (banks 00/80/81/82 only; static analysis stops at indirect dispatch)
 - of those observed executing in captures: 126
 - of those referenced by port provenance: 6
-- verified routines (ledger): 186
+- verified routines (ledger): 187
 
 ## Largest undocumented executed regions
 
@@ -47,8 +47,3 @@ Counts address positions in the captured exec intervals. Some captures record in
 | $80:AACD-$80:AB05 | 57 |
 | $80:E5C7-$80:E5FE | 56 |
 | $80:A65C-$80:A692 | 55 |
-| $80:CB8F-$80:CBC5 | 55 |
-| $80:A4AB-$80:A4E0 | 54 |
-| $80:868B-$80:86BE | 52 |
-| $80:A278-$80:A2AA | 51 |
-| $84:BF75-$84:BFA6 | 50 |
