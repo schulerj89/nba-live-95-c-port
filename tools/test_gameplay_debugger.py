@@ -11,7 +11,10 @@ from pathlib import Path
 from PIL import Image
 
 
-EXPECTED_LAB_RGB = "bb2f4cdd1a6912f620b5476eca717d2c2f23dc4fe9ba8322f08e4e34f249cf56"
+# Re-reviewed after `$87:A3BB-$A43B` replaced host projection/culling with
+# native integer-word player origins. HUD content is unchanged; court actors
+# beneath it now occupy their ROM-correct pixels.
+EXPECTED_LAB_RGB = "831d24a602bf3552079321fe93b0003f93ddab97ed6436be389a582b2215a8d1"
 
 
 def run(command, label):

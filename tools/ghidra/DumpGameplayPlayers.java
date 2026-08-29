@@ -90,6 +90,10 @@ public class DumpGameplayPlayers extends GhidraScript {
                 "Initializes the ten-player appearance/resource tables during the live pre-game load.")
         };
         if (bank == 0x87) return new Range[] {
+            new Range(0xA357, 0xA479, "gameplay_project_player_sprite_origins",
+                "Exact caller-side placement scope immediately before the existing $87:A47A " +
+                "player draw preparation. This census identifies the native actor/camera words, " +
+                "projection arithmetic, culling, and final X/Y origins passed to $80:B344."),
             new Range(0xA47A, 0xA98D, "gameplay_prepare_player_sprite_draw",
                 "Live Mesen reaches $87:A6A4 immediately before $80:AD92. It supplies " +
                 "the OBJ attribute word whose palette bits select one of the three " +
@@ -192,7 +196,7 @@ public class DumpGameplayPlayers extends GhidraScript {
                         if ((bank == 0x85 && address >= 0xBC00 && address <= 0xC500) ||
                             (bank == 0x86 && ((address >= 0xBC9B && address <= 0xBD30) ||
                                              (address >= 0xD5DB && address <= 0xE400))) ||
-                            (bank == 0x87 && ((address >= 0xA47A && address <= 0xA98D) ||
+                            (bank == 0x87 && ((address >= 0xA357 && address <= 0xA98D) ||
                                              (address >= 0xAB38 && address <= 0xADA0) ||
                                              (address >= 0xAF75 && address <= 0xB450) ||
                                              (address >= 0xB649 && address <= 0xB952))) ||

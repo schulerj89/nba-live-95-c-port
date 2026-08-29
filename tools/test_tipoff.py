@@ -18,10 +18,13 @@ EXPECTED_ASSETS = {
 EXPECTED_FRAMES = {
     # Updated only after the EC32 actor launch and ROM countdown/scratch
     # scheduler were bound to production movement/render state.
-    90: ("TIP PH:FORMATION", "e8ca63f23cd6b1276cd4b129d6aef1ce467a1b68e6fe518e5a995981652300d3"),
-    170: ("TIP PH:POSSESSION", "0606f7896e25487080d053978f107b1ed9b78c6de18a16a123d0c9c59f914ddb"),
+    # Re-reviewed after `$87:A3BB-$A43B` replaced host rounding with native
+    # integer-word projection/culling. All ten players, the ball and court
+    # composition remain present at their ROM-correct sprite origins.
+    90: ("TIP PH:FORMATION", "5d95dba97cdca0297823979dddf5e57953a4659d10279b8b5895eec549988b13"),
+    170: ("TIP PH:POSSESSION", "2ea502aef623e3ab0b04104fbf41b6a0ebb7574446b70bca9125adb2e984888f"),
     # `$86:CF38` receiver reach now permits `$86:D365` possession at frame186.
-    220: ("TIP PH:LIVE", "81ef74020b5e64cb8bd4b5d67da729a6a422968c0e4ed171845b73953287c1a5"),
+    220: ("TIP PH:LIVE", "c292a8dbfab9d7b779b467771a1db4f1e446351c54afac55f3e899a02aa69d48"),
 }
 
 

@@ -28,4 +28,11 @@ bool nba_court_stream_update(NbaCourtStream *state, const NbaAssetPack *assets,
     int16_t x, int16_t y, int16_t previous_x, int16_t previous_y,
     NbaCourtTransfer transfer, void *context);
 void nba_court_viewport(int16_t camera_x, int16_t camera_y, int *x, int *y);
+/* `$87:A3B6-$A3DC` projects integer actor words to the lower-body origin. */
+void nba_court_project_actor(int16_t actor_x, int16_t actor_y,
+    int16_t actor_z, int16_t camera_x, int16_t camera_y,
+    int16_t *screen_x, int16_t *screen_y);
+/* `$87:A3DF-$A43B` player visibility gate; projected_y is before Z. */
+bool nba_court_actor_visible(int16_t screen_x, int16_t projected_y,
+    int16_t actor_z, bool human_controlled);
 #endif

@@ -117,3 +117,39 @@ void nba_court_viewport(int16_t camera_x,int16_t camera_y,int *x,int *y) {
     *x=clamp(camera_x+582,0,NBA_COURT_WIDTH-256);
     *y=clamp(camera_y+243,0,NBA_COURT_HEIGHT-224);
 }
+
+void nba_court_project_actor(int16_t actor_x,int16_t actor_y,
+    int16_t actor_z,int16_t camera_x,int16_t camera_y,
+    int16_t *screen_x,int16_t *screen_y) {
+    /* `$87:A3BB-$A3DC`: complete native player-origin projection body. */
+    /* `$87:A3BB-$A3C9` uses two sign-preserving RORs. C signed division
+     * truncates negative values toward zero, which is observably different:
+     * world (8,3), camera Y -124 is native screen Y 122, not 123.
+     * `$87:A3D1-$A3DC` stores X+Y-camera X; `$87:A620-$A629` subtracts
+     * integer Z. The fractional position words are not rounded here. */
+    int16_t delta=(int16_t)((uint16_t)actor_y-(uint16_t)actor_x);
+    int16_t quarter=delta>=0 ? (int16_t)(delta/4) :
+        (int16_t)(-((-(int32_t)delta+3)/4));
+    if(screen_x)*screen_x=(int16_t)((uint16_t)actor_x+
+        (uint16_t)actor_y-(uint16_t)camera_x);
+    if(screen_y)*screen_y=(int16_t)((uint16_t)quarter-
+        (uint16_t)camera_y-(uint16_t)actor_z);
+}
+
+bool nba_court_actor_visible(int16_t screen_x,int16_t projected_y,
+    int16_t actor_z,bool human_controlled) {
+    /* `$87:A3DF-$A43B`: player culling and controlled-player routing. */
+    /* Controlled actors outside the inner rectangle route through `$87:A846`
+     * for an off-screen indicator. CPU actors instead use the wider rectangle
+     * and `$87:A42F` writes -50 to +$6A when culled. This helper owns the
+     * player visibility result, not the still-separate indicator draw. */
+    if(human_controlled)
+        return screen_x>=11 && screen_x<245 &&
+               projected_y>=11 && projected_y<218;
+    if(screen_x < -20 || screen_x>=276 || projected_y < -20)return false;
+    if(projected_y<288)return true;
+    /* `$87:A423-$A42D` gives a high jumping actor one last test after Z is
+     * removed. This path was not reached in the current native trace union,
+     * but the retained ROM quirk is explicit rather than optimized away. */
+    return (int16_t)((uint16_t)projected_y-(uint16_t)actor_z)<288;
+}

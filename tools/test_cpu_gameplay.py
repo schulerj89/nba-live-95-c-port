@@ -25,17 +25,20 @@ EXPECTED_RGB = {
     # Re-reviewed after the live `$86:EC32` jump/reach binding changed the
     # deterministic CPU trajectory. These frames visibly retain ten actors,
     # the ball, court bounds and unobstructed HUD composition.
-    600: "03daaac7b5f963c4dcc0169bd00f26b7647629b5eebfab71d0a81e83524df08d",
+    # Re-reviewed after replacing host rounding/truncation with the exact
+    # `$87:A3BB-$A3DC` integer-word projection. Player feet now use the same
+    # signed quarter-coordinate and origin as the native sprite compositor.
+    600: "d72b3beabf5ed8564c372501eec3afc40af0b60ffefc466f8125f1dcafd1e18d",
     # Re-reviewed after the live renderer adopted `$87:AFA2-$B053`'s tall
     # lower-body selector and the asset pack gained every dynamically chosen
     # `$87:AC76-$AC95` base+$28 torso resource. All five anchors show ten
     # complete, correctly colored player uniforms; the altered body resources
     # also correct native ball attachment points, so later CPU paths diverge
     # from the retired incomplete-resource trajectory by design.
-    1300: "341b5cc3e2d71690fd718123b4b8af3dbcdfb694ed013a56b37c2e9e4d83dbc4",
-    3480: "3490085515835a51cd377e07ffa330b997e743b60507c06f32fbe401fd70cfae",
-    6932: "4a169b87856bbf29bd60379be9266d2a5d6939cf269c37b4bc99e822c30be8f0",
-    6954: "64dc35a1a4b8b1621bb89e119d85962756896295c12b6e594b3a33ea83557cb9",
+    1300: "073204e28d45d39ff79eba2f1ad9b52bce38bdae9264ee7e4075306a9e3f74a0",
+    3480: "97ecd41e0fcf5024ddbf821fadaba8769bc789b622ae3dbff1447fac588089aa",
+    6932: "580d321e320788c112e2512601ccb3102fad3ab3c798efde88cbffd571682178",
+    6954: "6fc0bb92442e9315c4f966b827b525e823ca5d0a222bfc1bbaa8d6e0f76187bb",
 }
 
 
@@ -1270,7 +1273,8 @@ def main():
     implementation = "\n".join((source / relative).read_text() for relative in (
         "src/nba_tipoff.c", "src/nba_gameplay_ai.c",
         "src/nba_gameplay_ball.c", "src/nba_gameplay_effect.c",
-        "src/nba_gameplay_foul.c", "src/nba_player_lab.c", "src/nba_shot_launch.c"))
+        "src/nba_gameplay_foul.c", "src/nba_player_lab.c", "src/nba_shot_launch.c",
+        "src/nba_court_presentation.c"))
     for marker in ("$85:963D-$985F", "$85:BC52-$BC81", "$85:B95C",
                    "$87:B832", "$87:B649", "$87:B66A", "$85:9192",
                    "$87:8F01-$8F8D", "nba_gameplay_camera_step",
@@ -1303,6 +1307,8 @@ def main():
                    "nba_gameplay_select_pass_receiver",
                    "$85:B50E-$B60A", "$85:B60B-$B677",
                    "nba_tipoff_update_rom_passer",
+                   "$87:A3BB-$A3DC", "nba_court_project_actor",
+                   "$87:A3DF-$A43B", "nba_court_actor_visible",
                    "$86:D035-$D205", "nba_gameplay_owned_contact_attempt",
                    "cpu_try_owned_ball_contact",
                    "$86:D5DB", "$86:D652-$D728", "$86:BD41-$BF08",

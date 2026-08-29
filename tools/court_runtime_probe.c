@@ -4,6 +4,26 @@
 
 int main(int argc,char **argv) {
     NbaAssetPack pack={0};NbaSession session;NbaTipoff game;NbaInput input={0};
+    int16_t sx=0,sy=0;
+    /* Native `$87:A3BB-$A3DC` witnesses, including negative remainders. */
+    nba_court_project_actor(8,3,0,-128,-124,&sx,&sy);
+    if(sx!=139 || sy!=122)return 13;
+    nba_court_project_actor(-16,-83,0,-128,-124,&sx,&sy);
+    if(sx!=29 || sy!=107)return 14;
+    nba_court_project_actor(71,-33,0,-174,-144,&sx,&sy);
+    if(sx!=212 || sy!=118)return 15;
+    nba_court_project_actor(-62,12,7,-174,-144,&sx,&sy);
+    if(sx!=124 || sy!=155)return 16;
+    if(!nba_court_actor_visible(-20,-20,0,false) ||
+       !nba_court_actor_visible(275,287,0,false) ||
+       !nba_court_actor_visible(100,300,20,false) ||
+       nba_court_actor_visible(100,300,12,false) ||
+       nba_court_actor_visible(-21,0,0,false) ||
+       nba_court_actor_visible(276,0,0,false))return 17;
+    if(!nba_court_actor_visible(11,11,0,true) ||
+       !nba_court_actor_visible(244,217,0,true) ||
+       nba_court_actor_visible(10,100,0,true) ||
+       nba_court_actor_visible(245,100,0,true))return 18;
     if(argc<2 || !nba_assets_load(&pack,argv[1]))return 2;
     nba_session_init(&session);
     if(!nba_tipoff_init(&game,&pack,&session))return 3;

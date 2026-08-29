@@ -231,6 +231,14 @@ recent slices are:
   fractional edges, orientation, no-team centering and alternate-height gate.
   Proof is the union of the older 212-instruction slices and the newer 60;
   setup/caller instructions have separate entries. No whole-game parity claim.
+- `$87:A3BB-$A43B`: final player origin projection now uses the ROM's integer
+  actor words, signed floor-by-four transform, camera subtraction and exact
+  CPU/controlled visibility rectangles. This removes the opening-frame
+  `123` versus native `122` Y divergence without non-native interpolation.
+  The bounded `$87:A357-$A479` census is 120 starts, 92 observed. Of the 28
+  unobserved starts, five are the statically translated high-jump culling
+  branch; the other 23 are separate queue/effect/ball presentation setup.
+  See `docs/gameplay-sprite-jitter.md`.
 - `$85:A692-$A755`, `$85:B971-$B9D1`, `$85:F3C3-$F472`: court Y/clamp tail,
   reaction threshold/RNG, and fine pass direction.
 - `$85:96B5-$9961` (three owned slices): live actor vertical and planar

@@ -7071,8 +7071,11 @@ void nba_tipoff_update(NbaTipoff *tipoff, const NbaInput *input) {
 
 static void ball_position(const NbaTipoff *tipoff, int *x, int *y) {
     int bx=fp_integer_word(tipoff->ball.x_fp),by=fp_integer_word(tipoff->ball.y_fp);
-    *x=bx+by-tipoff->camera_x;
-    *y=(by-bx)/4-tipoff->camera_y-fp_integer_word(tipoff->ball.z_fp);
+    int16_t sx,sy;
+    nba_court_project_actor((int16_t)bx,(int16_t)by,
+        fp_integer_word(tipoff->ball.z_fp),tipoff->camera_x,tipoff->camera_y,
+        &sx,&sy);
+    *x=sx;*y=sy;
 }
 
 static bool actor_visible(unsigned actor) {
@@ -7404,11 +7407,10 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
     telemetry->ball.world_x = fp_round(tipoff->ball.x_fp);
     telemetry->ball.world_y = fp_round(tipoff->ball.y_fp);
     telemetry->ball.world_z = fp_round(tipoff->ball.z_fp);
-    telemetry->ball.screen_x = (int16_t)(telemetry->ball.world_x +
-        telemetry->ball.world_y - tipoff->camera_x);
-    telemetry->ball.screen_y = (int16_t)((telemetry->ball.world_y -
-        telemetry->ball.world_x) / 4 - tipoff->camera_y -
-        telemetry->ball.world_z);
+    nba_court_project_actor(fp_integer_word(tipoff->ball.x_fp),
+        fp_integer_word(tipoff->ball.y_fp),fp_integer_word(tipoff->ball.z_fp),
+        tipoff->camera_x,tipoff->camera_y,
+        &telemetry->ball.screen_x,&telemetry->ball.screen_y);
     telemetry->ball.velocity_x = fp_round(tipoff->ball.velocity_x);
     telemetry->ball.velocity_y = fp_round(tipoff->ball.velocity_y);
     telemetry->ball.velocity_z = fp_round(tipoff->ball.velocity_z);
@@ -7431,13 +7433,15 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
         out->world_y = live ? fp_round(state->y_fp) : formation[actor].world_y;
         out->world_z = fp_integer_word(state->z_fp);
         out->world_z_fp = live ? state->z_fp : (int32_t)out->world_z * 256;
-        out->screen_x = live ? (int16_t)(out->world_x + out->world_y -
-            tipoff->camera_x) : formation[actor].screen_x;
-        out->screen_y = live ? (int16_t)((out->world_y - out->world_x) / 4 -
-            tipoff->camera_y - out->world_z) :
-            (int16_t)(formation[actor].screen_y - out->world_z);
-        out->visible = live ? out->screen_x > -32 && out->screen_x < 288 &&
-            out->screen_y > -48 && out->screen_y < 240 : actor_visible(actor);
+        if(live)nba_court_project_actor(fp_integer_word(state->x_fp),
+            fp_integer_word(state->y_fp),fp_integer_word(state->z_fp),
+            tipoff->camera_x,tipoff->camera_y,&out->screen_x,&out->screen_y);
+        else { out->screen_x=formation[actor].screen_x;
+               out->screen_y=(int16_t)(formation[actor].screen_y-out->world_z); }
+        out->visible = live ? nba_court_actor_visible(out->screen_x,
+            (int16_t)((uint16_t)out->screen_y+(uint16_t)fp_integer_word(state->z_fp)),
+            fp_integer_word(state->z_fp),state->controller_assignment_raw>=0) :
+            actor_visible(actor);
         /* Actor +$0E/+$10 are already signed 8.8 ROM velocity words. Keep
          * them raw so CLI/JSON can compare directly with the Mesen oracle. */
         out->velocity_x = live ? state->velocity_x : 0;
@@ -7589,13 +7593,14 @@ void nba_tipoff_render(const NbaTipoff *tipoff, NbaRenderer *ren) {
     {
         for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
             if(tipoff->tip_contact_actor<0 && !actor_visible(actor))continue;
-            int x = fp_round(tipoff->actors[actor].x_fp);
-            int y = fp_round(tipoff->actors[actor].y_fp);
-            int z = fp_round(tipoff->actors[actor].z_fp);
-            screen_x[actor] = (int16_t)(x + y - tipoff->camera_x);
-            screen_y[actor] = (int16_t)((y - x) / 4 - tipoff->camera_y - z);
-            if (screen_x[actor] >= -32 && screen_x[actor] < 288 &&
-                screen_y[actor] >= -48 && screen_y[actor] < 240)
+            int16_t x=fp_integer_word(tipoff->actors[actor].x_fp);
+            int16_t y=fp_integer_word(tipoff->actors[actor].y_fp);
+            int16_t z=fp_integer_word(tipoff->actors[actor].z_fp);
+            nba_court_project_actor(x,y,z,tipoff->camera_x,tipoff->camera_y,
+                &screen_x[actor],&screen_y[actor]);
+            if (nba_court_actor_visible(screen_x[actor],
+                (int16_t)((uint16_t)screen_y[actor]+(uint16_t)z),
+                z,tipoff->actors[actor].controller_assignment_raw>=0))
                 render_order[render_count++] = (uint8_t)actor;
         }
         for (unsigned i = 1; i < render_count; ++i) {
@@ -7640,10 +7645,11 @@ void nba_tipoff_render(const NbaTipoff *tipoff, NbaRenderer *ren) {
     if (tipoff->tip_contact_actor < 0) {
         ball_position(tipoff, &ball_x, &ball_y);
     } else {
-        int x = fp_round(tipoff->ball.x_fp), y = fp_round(tipoff->ball.y_fp);
-        int z = fp_round(tipoff->ball.z_fp);
-        ball_x = x + y - tipoff->camera_x;
-        ball_y = (y - x) / 4 - tipoff->camera_y - z;
+        int16_t sx,sy;
+        nba_court_project_actor(fp_integer_word(tipoff->ball.x_fp),
+            fp_integer_word(tipoff->ball.y_fp),fp_integer_word(tipoff->ball.z_fp),
+            tipoff->camera_x,tipoff->camera_y,&sx,&sy);
+        ball_x=sx;ball_y=sy;
     }
     if (tipoff->ball.state!=NBA_BALL_HIDDEN)
         draw_ball(tipoff, ren, ball_x, ball_y);
