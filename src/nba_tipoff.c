@@ -7265,8 +7265,11 @@ static void cpu_update_rom_inbound(NbaTipoff *tipoff) {
         .whistle_raw_09b6 = tipoff->fouls.whistle_active_raw_09b6,
         .foul_event_raw_0964 = tipoff->fouls.foul_event_raw_0964,
         .transfer_raw_09b8 = tipoff->inbound_transfer_raw,
-        .receiver_actor_raw_0946 = tipoff->receiver_actor == 0xFFu ?
-                                  -1 : (int16_t)tipoff->receiver_actor,
+        /* `$86:F57A` rereads raw `$0946`, not the host receiver cache.
+         * `$86:C48F` can cancel a knocked-down receiver while the cache
+         * still names it; F57F must then clear the active `$09B8` transfer
+         * so this mode-11 inbound carrier can select another receiver. */
+        .receiver_actor_raw_0946 = tipoff->pass_receiver_raw,
         .inbound_direction_raw_095c = tipoff->inbound_direction_raw,
         .draw_direction_raw_4e = actor->direction,
     };
@@ -7472,7 +7475,14 @@ static void cpu_update_possession(NbaTipoff *tipoff) {
             tipoff->possession_actor >= 0 &&
             tipoff->inbound_transfer_raw == 0u)
             tipoff->ball.owner_actor = -1;
-        if (tipoff->ball.owner_actor >= 0) {
+        /* A completed catch changes `$0936` away from `$82` at D365 and may
+         * leave an attached host ball, so that path is done. A pre-release
+         * receiver cancellation instead reaches A777 with `$0936=$82`,
+         * attached ownership, stale `$09B8=1`, and raw `$0946=-1`; it must
+         * continue through F43A/F57F, which clears the transfer. Returning
+         * merely because the host ball record is attached deadlocks it. */
+        if (tipoff->live_state_raw != 0x82u &&
+            tipoff->ball.owner_actor >= 0) {
             ++tipoff->possession_frame;
             ++tipoff->play_state_frame;
             return;
@@ -8143,7 +8153,10 @@ static void match_restart_period(NbaTipoff *tipoff) {
         uint16_t side_group = match_period_inbound_group(tipoff);
         uint8_t inbounder = (uint8_t)(side_group + 2u);
         cpu_begin_dead_ball(tipoff, inbounder, side_group, 0, false);
-        cpu_finalize_dead_ball_inbound(tipoff);
+        /* `$86:F43A-$F668` owns arrival, selector and launch. Do not publish
+         * the ready/final state in the same frame as period setup: the actor
+         * must first reach the sideline target through the ordinary inbound
+         * continuation. Premature finalization leaves mode 3 planted forever. */
         tipoff->play_code = 1u;
         tipoff->play_request_raw = 1u;
         tipoff->phase = NBA_TIPOFF_LIVE;
