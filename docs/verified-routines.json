@@ -2,6 +2,14 @@
   "comment": "Routines verified against emulator ground truth. Byte ranges are 24-bit SNES bus addresses. evidence points at the capture/replay artifacts; tools/progress.py counts these bytes as verified.",
   "routines": [
     {
+      "range": "87A3BB-87A43B",
+      "name": "nba_court_project_actor / nba_court_actor_visible",
+      "source": "src/nba_court_presentation.c + src/nba_tipoff.c",
+      "method": "native coordinate witnesses + exact boundary/runtime cadence tests",
+      "evidence": "court_runtime_probe replays native signed projection outputs including negative non-multiples of four, checks every half-open CPU/human visibility edge and the high-jump fallback, then exercises the production binding for 16,000 updates and 812 viewports across all 29 courts. test_cpu_gameplay.py compares every retained player origin from frames 180-620 and rejects the former A-B-A shake; the native trace and corrected C both report zero reversals. Five high-jump instruction starts inside this range remain unobserved and therefore add no progress credit.",
+      "date": "2026-08-29"
+    },
+    {
       "range": "87B357-87B37B",
       "name": "jersey-number BCD/player-record selector",
       "source": "src/nba_player_lab.c",

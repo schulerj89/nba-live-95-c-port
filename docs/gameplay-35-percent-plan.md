@@ -76,6 +76,26 @@ host-side outcome without pretending the C port executes SNES DMA machinery.
 | Defensive idle/pose | 99 | 7,925 (28.40%) | 12,265 native calls, all eight observed exits, zero mismatches; 250 retained witnesses; production adapter probe; reviewed five changed CPU visual anchors |
 | Active appearance/matchup records | 186 | 8,111 (29.07%) | Exact ten-actor native output; all 348 ROM roster records byte-compared with pack; 29-team runtime sweep; corrected roster-slot/matchup-selector bug |
 | Jersey-number compositor/BCD selector | 391 | 8,502 (30.47%) | Exact 1,920-byte native ten-player output; all numbers 0-99, both sides and six visible views; corrected visiting-side mask bug |
+| Player projection/culling core | 50 | 8,552 (30.65%) | Native signed-coordinate witnesses, exact CPU/human visibility boundaries, retained OAM cadence and 16,000-update runtime binding |
+
+### Route from checkpoint 2 to 35%
+
+The remaining target is 1,264 captured address positions.  The next bounded
+components are deliberately selected to total 1,275 so one small overlap or
+unobserved address cannot leave the result rounding to 35.00% without actually
+crossing the 9,766-position threshold.
+
+| Component / callable boundary | Newly available verified positions | Required evidence before ledger credit |
+|---|---:|---|
+| Player projection, culling and presentation setup `$87:A357-$A479` | 96 | Native signed-coordinate/edge witnesses, frame-cadence retention, ball/queue branch outputs, live runtime binding |
+| Player draw preparation `$87:A47A-$A98D` | 472 | Native per-layer resource/origin/attribute calls across directions and live animations, plus production telemetry agreement |
+| Sprite-part compositor `$80:AD92-$AEC1` | 116 | Native lower/upper/number/head queue-call order, attachment origins and attributes replayed through a pure C compositor |
+| Appearance upload-list equivalent `$86:E0B0-$E389` | 46 | Native active-player outputs and exhaustive asset-pack resource closure; SNES DMA timing remains explicitly out of scope |
+| CPU inbound continuation `$86:F43A-$F668` | 213 | Native arrival/timer/selector vectors and sustained live inbound completion with host fallback removed |
+| Foul/dead-ball/free-throw dispatch | 272 | Native `$85:93F5`, `$87:92A5`, `$87:9B30`, `$87:BACB` state-output vectors plus live event/whistle/CPU free-throw paths |
+| Remaining appearance/resource resolution | 48 | Close the four observed `$87:AF75-$B450` positions and 44 observed `$87:B649-$B952` positions with exact resource/attachment outputs |
+| Whistle timer cadence `$85:EDB3` | 12 | Signed timer/gate vectors and runtime cadence assertion |
+| **Planned subtotal** | **1,275** | **Target requires 1,264** |
 
 The defensive checkpoint also repaired two stale smoke assumptions exposed by
 the stronger release gate: a same-pass shot launch is identified by its actual
