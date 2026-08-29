@@ -77,4 +77,4 @@ dead-ball reset ranges a second time.
 | Checkpoint | Newly verified | Running verified | Evidence |
 |---|---:|---:|---|
 | Baseline | - | 9,767 (35.01%) | Generated ledger at goal start |
-
+| Close-finish modes and post-shot continuation | 402 | 10,169 (36.45%) | 91 natural real-entry calls, six entry/exit pairs, zero mismatches; basket-target hold and terminal mode branches protected by runtime probe |

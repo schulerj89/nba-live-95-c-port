@@ -382,6 +382,21 @@ These 79 + 102 witnesses and both runtime basket sides run in `build.ps1 -Test`.
 `test_shot_assets.py` also checks asset 277 against ROM and isolates F12 count-
 header changes from asset pixels. Capture inputs are not production graphics.
 
+### Close-finish modes
+
+The retained corpus contains 91 natural CPU-vs-CPU calls across `$86:B0F7`,
+`$86:B154`, and `$86:B34F`. It compares RNG, ball/ownership globals and the
+entry actor through hold, expiry, receiver, terminal and initializer exits.
+The runtime probe separately protects the basket-target attachment distinction
+between `$3FEF/$3FF3` and the live ball at `$3EEF/$3EF3`.
+
+```powershell
+.\tools\build_vector_probe.ps1 -Name close_finish_vector_probe
+python tools/verify_close_finish_vectors.py --vectors tests/fixtures/close-finish-witnesses.json --probe build/close_finish_vector_probe.exe --pack build/nba95_assets.pak
+.\tools\build_vector_probe.ps1 -Name close_finish_runtime_probe
+.\build\close_finish_runtime_probe.exe build/nba95_assets.pak
+```
+
 Headless recapture uses the unused driver entry/exit configuration described
 above, `NBA95_VEC_FRAMES=100000`, a new `NBA95_CAPTURE_DIR` and the same
 absolute `NBA95_VECTOR_DRIVER`. `mesen_special_shot_cases.lua` owns the 58

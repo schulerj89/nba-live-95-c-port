@@ -1472,6 +1472,22 @@
       "method": "ROM table extraction + exhaustive direction replay + production input binding",
       "evidence": "tests/fixtures/human-inbound-direction-witnesses.json and tools/verify_human_inbound_direction.py: all16 controller direction nibbles match table $86:F669; CPU and inactive-human preservation gates pass. Production reads controller0 held state, applies the native +16/+72 gates and writes actor +56. Only captured positions in this range contribute to coverage. docs/dead-ball-inbound-closure-differential.md.",
       "date": "2026-08-29"
+    },
+    {
+      "range": "86B0F7-86B624",
+      "name": "post-shot hold, special receiver, and close-finish initializer",
+      "source": "src/nba_tipoff.c",
+      "method": "natural native real-entry differential + controlled runtime binding",
+      "evidence": "tests/fixtures/close-finish-witnesses.json and tools/verify_close_finish_vectors.py: 91 natural CPU-vs-CPU calls across six real entry/exit pairs, including 24 holds, two expiries, 59 special-receiver continuations/terminal launches, five rejected initializers and one accepted initializer; complete represented actor/ball/ownership/RNG outputs have zero mismatches. tools/close_finish_runtime_probe.c protects basket-relative attachment, expiry and terminal continuation. No PC, ROM, or stack patching.",
+      "date": "2026-08-29"
+    },
+    {
+      "range": "86986D-86994B",
+      "name": "post-close-finish actor continuation",
+      "source": "src/nba_tipoff.c",
+      "method": "nested natural native differential + headless Ghidra control-flow proof",
+      "evidence": "The two natural B154->B17D terminal calls execute $86:986D-$994B and exactly reproduce its distance gate, landing-pose attachment, mode16 timer24 branch and pass-family mode7 timer180 branch. Included in tests/fixtures/close-finish-witnesses.json; permanent vector and runtime gates are in build.ps1 -Test.",
+      "date": "2026-08-29"
     }
   ]
 }

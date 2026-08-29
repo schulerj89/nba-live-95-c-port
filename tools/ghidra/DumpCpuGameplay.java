@@ -202,6 +202,13 @@ public class DumpCpuGameplay extends GhidraScript {
                 }
             }
             if (bank.equals("86")) {
+                out.println("\n--- Complete post-close-finish actor continuation ---");
+                addEntryPoint(toAddr(0x986d)); disassemble(toAddr(0x986d));
+                for (long address = 0x986d; address <= 0x99c3; ++address) {
+                    Instruction instruction = listing.getInstructionAt(toAddr(address));
+                    if (instruction != null)
+                        out.printf("$86:%04X  %s%n", address, instruction.toString());
+                }
                 out.println("\n--- Complete mode-14 special-receiver executor ---");
                 addEntryPoint(toAddr(0xb0f7)); disassemble(toAddr(0xb0f7));
                 addEntryPoint(toAddr(0xb154)); disassemble(toAddr(0xb154));

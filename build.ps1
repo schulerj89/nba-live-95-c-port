@@ -183,6 +183,14 @@ if ($Test) {
         --normalized --vectors (Join-Path $Root 'tests\fixtures\complete-shot-witnesses.json') `
         --probe (Join-Path $BuildDir 'complete_shot_vector_probe.exe') --pack $AssetPack
     if ($LASTEXITCODE -ne 0) { throw 'Complete launch ROM witness regression failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name close_finish_vector_probe
+    & python (Join-Path $Root 'tools\verify_close_finish_vectors.py') `
+        --vectors (Join-Path $Root 'tests\fixtures\close-finish-witnesses.json') `
+        --probe (Join-Path $BuildDir 'close_finish_vector_probe.exe') --pack $AssetPack
+    if ($LASTEXITCODE -ne 0) { throw 'Close-finish ROM witness regression failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name close_finish_runtime_probe
+    & (Join-Path $BuildDir 'close_finish_runtime_probe.exe') $AssetPack
+    if ($LASTEXITCODE -ne 0) { throw 'Close-finish runtime binding failed.' }
     & python (Join-Path $Root 'tools\test_shot_assets.py') --pack $AssetPack --rom $RomPath --exe $ConsoleExePath
     if ($LASTEXITCODE -ne 0) { throw 'Shot asset ROM comparison failed.' }
     & python (Join-Path $Root 'tools\test_special_shot_integration.py') --pack $AssetPack --rom $RomPath --exe $ConsoleExePath

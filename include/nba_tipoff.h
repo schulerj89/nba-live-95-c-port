@@ -77,7 +77,7 @@ typedef struct {
     uint16_t pass_band_raw;             /* actor `+$62`: 0,6,...,30 */
     uint16_t pass_direction_raw;        /* actor `+$66` */
     int16_t special_contact_raw_56;     /* actor `+$56`, `$86:C943-$C951` */
-    uint8_t mode13_variant_raw_58;      /* shared close-finish `+$58` */
+    uint16_t mode13_variant_raw_58;     /* shared close-finish `+$58` word */
     int16_t pass_family_raw;            /* actor `+$C0` */
     uint8_t pass_release_threshold_raw;
     bool pass_released_raw;
@@ -337,5 +337,9 @@ void nba_tipoff_replay_ball_acquisition(NbaTipoff *tipoff, uint8_t catcher);
 void nba_tipoff_replay_ball_acquisition_core(NbaTipoff *tipoff,
                                               uint8_t catcher);
 bool nba_tipoff_replay_defensive_pose(NbaTipoff *tipoff, uint8_t actor);
+bool nba_tipoff_replay_passive_mode(NbaTipoff *tipoff, uint8_t actor);
+bool nba_tipoff_replay_mode13_close_finish(NbaTipoff *tipoff, uint8_t actor);
+bool nba_tipoff_replay_mode14_close_finish(NbaTipoff *tipoff, uint8_t actor);
+bool nba_tipoff_replay_close_finish_start(NbaTipoff *tipoff, uint8_t actor);
 
 #endif
