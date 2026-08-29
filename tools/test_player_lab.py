@@ -47,6 +47,43 @@ def main():
     if len(roster) != 24 + 29 * 12 * 64:
         raise AssertionError("Player Lab roster asset is truncated")
 
+    # Exhaustively compare every packed gameplay record with its source ROM
+    # record. Sample goldens alone cannot detect an extractor that corrupts a
+    # different team/player while remaining internally self-consistent.
+    rom = Path(args.rom).read_bytes()
+    def lorom(address):
+        return ((address >> 16) & 0x7f) * 0x8000 + (address & 0x7fff)
+    team_table = lorom(0x84e640)
+    for team in range(29):
+        entry = team_table + team * 4
+        pointer = rom[entry + 1] | rom[entry + 2] << 8 | rom[entry + 3] << 16
+        base = lorom(pointer)
+        for player in range(12):
+            relative = struct.unpack_from("<H", rom, base + player * 2)[0]
+            source = rom[base + relative:base + relative + 0x80]
+            name_end = source.index(0, 0x4a, 0x70)
+            name = source[0x4a:name_end][:31]
+            expected = bytearray(64)
+            a, b = source[0x36], source[0x37]
+            struct.pack_into("<IBBBBBBBB", expected, 0, pointer + relative,
+                             source[0], source[1], source[2], source[3],
+                             a, b, (a + b) & 0xff, player)
+            raw = source[7]
+            style = raw & 0x1f if raw >= 0x27 else raw
+            head = 0x049c + style * 5
+            struct.pack_into("<BBBBHH", expected, 12, min(source[6], 2),
+                             raw, style, source[8], head, head + 2)
+            for packed_at, rom_at in ((20, 0x3f), (21, 0x40), (22, 0x42),
+                                      (23, 0x39), (24, 0x3e), (25, 0x3a),
+                                      (26, 0x38), (27, 0x49), (28, 0x35),
+                                      (29, 0x3c), (30, 0x3d)):
+                expected[packed_at] = source[rom_at]
+            expected[32:64] = name + bytes(32 - len(name))
+            packed_at = 24 + (team * 12 + player) * 64
+            if roster[packed_at:packed_at + 64] != expected:
+                raise AssertionError(
+                    f"asset-pack roster differs from ROM team={team} player={player}")
+
     def record(team, player):
         off = 24 + (team * 12 + player) * 64
         p = roster[off:off + 64]

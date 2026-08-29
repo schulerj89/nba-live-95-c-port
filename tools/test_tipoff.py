@@ -23,10 +23,13 @@ EXPECTED_FRAMES = {
     # panorama with indexed BG1/BG2/BG3/backdrop inputs. All ten players, the
     # ball and native court composition remain present at their ROM-correct
     # sprite origins.
-    90: ("TIP PH:FORMATION", "5ccbdab56024c5c1fa0cf471de0b4102fa8d36dcc1731877f4fabf15677d65b6"),
-    170: ("TIP PH:POSSESSION", "2c58d5bc6d502779ddc13ffddd37eb387d367f7571b0170c630f4f81055ec9dc"),
+    # Re-reviewed after native five-position matchup pairing and side-specific
+    # jersey-number composition. Formation, launch and live frames retain ten
+    # complete players, the ball, court/goal bounds and unobstructed HUD.
+    90: ("TIP PH:FORMATION", "39d3e6bf4d77fc58280d3e604e03063e82a621124a5d42d3c7f2a1e818b05ae8"),
+    170: ("TIP PH:POSSESSION", "da83d08b002c789af5b214b02e38d8ee6d1673d87e2d3753c3bb26a0634ff43d"),
     # `$86:CF38` receiver reach now permits `$86:D365` possession at frame186.
-    220: ("TIP PH:LIVE", "859c643434c776800d70971706e1de2711f9345792d9582290534ae8ec06e611"),
+    220: ("TIP PH:LIVE", "9c3f1dcfeb19e1fafba5f081efbe3f6cc8437897740106a97f17fa11f8623e25"),
 }
 
 

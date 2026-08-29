@@ -14,7 +14,10 @@ from PIL import Image
 # Re-reviewed after `$87:A3BB-$A43B` replaced host projection/culling with
 # native integer-word player origins and pack v31 supplied indexed gameplay
 # BG1/BG2/BG3/backdrop inputs. HUD content and actor state are unchanged.
-EXPECTED_LAB_RGB = "d8cea01600032957393a0cecab682be2c827ac3676ffa82c39f6369fba8c6384"
+# Re-reviewed after native lineup-position matchup assignment and the
+# side-correct jersey-number compositor. The selected actor, ten-player court
+# view, ball, goal, debug HUD and marker overlays remain complete/readable.
+EXPECTED_LAB_RGB = "811e51a95945ef206baa1eaab6cd67ca2a6c2e3d360ce8fbab84ec070960d2f6"
 
 
 def run(command, label):

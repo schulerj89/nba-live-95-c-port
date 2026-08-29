@@ -38,17 +38,22 @@ EXPECTED_RGB = {
     # The corrected state-7/8/10 poses change animation contact geometry and
     # therefore the deterministic CPU trajectory; each anchor still shows
     # ten complete players, ball, court, goal and unobstructed HUD.
-    600: "17750713887a2a4056f2e7b704d7777735fd75a7dec71a5fb09238a18dca01e5",
+    # Re-reviewed after `$86:D86C-$D89B` stopped pairing by roster number and
+    # restored the native five-lineup-position matchups.  The corrected
+    # assignments intentionally alter the CPU trajectory.  All five anchors
+    # retain ten complete players, a visible ball, court/goal bounds and an
+    # unobstructed HUD; the visitor number-overlay mask is also side-correct.
+    600: "62e828f57e22392beca5714693394682a7ff391363e872712f6ed616652fdc6d",
     # Re-reviewed after the live renderer adopted `$87:AFA2-$B053`'s tall
     # lower-body selector and the asset pack gained every dynamically chosen
     # `$87:AC76-$AC95` base+$28 torso resource. All five anchors show ten
     # complete, correctly colored player uniforms; the altered body resources
     # also correct native ball attachment points, so later CPU paths diverge
     # from the retired incomplete-resource trajectory by design.
-    1300: "772a63dc2a93dbd15b24c2ddb3b37561042c727528da3d383482b174c858e74d",
-    3480: "314398508dbf69140b1814136098b128f34c8e739ad0c780ed2f0c3a2893f62a",
-    6932: "2a9019919044b220882b016cbd4547162e3a4b2885f3e2ab0c54a55c7cc59104",
-    6954: "5c5035c736efe4224ec242d59de705729d65e66f28f823a3b566e53fc7e6b7f9",
+    1300: "8c61fd04bef47aa2e05e0ac9d520d22f453e4fc3736bdb80a90f7da61320cf6a",
+    3480: "9de9d952c61d2e8346c4a9d7c7b5eefe395f9e7f0fbb728b4a0cd000c70ee54c",
+    6932: "61133432c212e183aa2e419db8265b0c2927faf828e37b4b26101934d22fa887",
+    6954: "3097dae2dd0364d477f65da545ec5a6fe392350c4d4a2b83efa01ab100bc3d03",
 }
 
 
@@ -277,7 +282,11 @@ def main():
                     for index, actor in enumerate(live["actors"]))
         if moved < 8:
             raise AssertionError(f"only {moved}/10 CPU actors broke formation")
-        expected_assignments = [14, 10, 12, 16, 18, 4, 0, 2, 6, 8]
+        # `$86:D86C-$D89B` pairs the five lineup positions directly.  The
+        # selected roster numbers are deliberately irrelevant here: actor 0
+        # is lineup position 0 and therefore pairs with actor 5, not with the
+        # opponent whose roster slot happens to equal 2.
+        expected_assignments = [10, 12, 14, 16, 18, 0, 2, 4, 6, 8]
         if [actor["raw"]["assignment_base"] for actor in live["actors"]] != \
                 expected_assignments:
             raise AssertionError("lineup-permuted `$86:D86C` assignments changed")

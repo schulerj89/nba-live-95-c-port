@@ -7104,6 +7104,22 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
     NbaPlayerAppearanceSetup appearance;
     if (!nba_player_appearance_setup(assets, appearance_teams, appearance_roster,
                                      &appearance)) return false;
+    NbaPlayerActiveAppearanceInput active_input = {0};
+    for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
+        uint8_t selector = (uint8_t)(actor % 5u);
+        unsigned paired = actor < 5u ? 5u + selector : selector;
+        uint8_t team = paired >= 5u ? session->right_team : session->left_team;
+        active_input.lineup_selector[actor] = selector;
+        active_input.upper_variant[actor] =
+            (uint8_t)appearance.players[actor].upper_variant;
+        if (!nba_player_gameplay_shot_ratings(
+                assets, team, active_lineup[paired % 5u],
+                &active_input.appearance_a[actor],
+                &active_input.appearance_b[actor])) return false;
+    }
+    NbaPlayerActiveAppearance active_appearance;
+    if (!nba_player_build_active_appearance(
+            &active_input, &active_appearance)) return false;
     for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
         NbaTipoffActor *state = &tipoff->actors[actor];
         state->x_fp = (int32_t)formation[actor].world_x * 256;
@@ -7120,21 +7136,26 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
         state->exact_jump_animation=true;
         state->animation_upper_queue_cursor_raw_18 = 0xFFFFu;
         state->animation_lower_queue_cursor_raw_1a = 0xFFFFu;
-        /* `$86:D86C-$D89B`: +$76 is derived from the active-lineup
-         * permutation, then copied to mutable +$74. It is an even byte
-         * offset into `$87:9C7B`, not a same-index matchup. */
-        state->assignment_actor = actor < 5u ?
-            (uint8_t)(5u + state->roster_slot) : state->roster_slot;
+        /* `$86:D86C-$D89B`: +$76 uses the five-byte lineup selector, not
+         * the selected roster record number. The old host shortcut used
+         * roster slot 2 for actor zero and incorrectly paired it with actor
+         * seven instead of the native same-lineup-position actor five. */
+        state->assignment_actor =
+            (uint8_t)(active_appearance.assignment_base[actor] >> 1);
         state->team_group_raw_6e = actor < 5u ? 0u : 5u;
-        state->assignment_base_raw = (uint16_t)(state->assignment_actor * 2u);
+        state->assignment_base_raw =
+            active_appearance.assignment_base[actor];
         state->assignment_current_raw = state->assignment_base_raw;
-        state->assignment_alternate_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
+        state->assignment_alternate_raw =
+            active_appearance.assignment_alternate[actor];
         uint8_t team = actor >= 5u ? session->right_team : session->left_team;
         state->assignment_role_raw_92 = (uint8_t)(actor % 5u);
         (void)nba_player_gameplay_position(
             assets, team, state->roster_slot, &state->assignment_role_raw_92);
         state->free_throw_launch_half_raw_a8 = appearance.players[actor].alternate_lower;
-        state->animation_variant_raw_6c = appearance.players[actor].upper_variant;
+        state->animation_variant_raw_6c =
+            active_appearance.upper_variant[actor];
+        state->help_request_raw_80 = active_appearance.help_request[actor];
         /* DF4B-DF84 uses the same already-zero accumulator for +60. The
          * earlier host randomized ten timers here, advancing 07F6 before
          * the first F787/EC32 pass and changing both jumpers' launch branch. */
@@ -7143,18 +7164,8 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
         state->control_mode = actor == 0u || actor == 5u ? 4u : 2u;
         state->visible = actor != 4u && actor != 9u;
     }
-    /* `$86:D8D3-$D8E2`: +$78 names the reciprocal actor whose base points
-     * back at this actor. Keep it separate from mutable current +$74. */
-    for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
-        for (unsigned candidate = 0;
-             candidate < NBA_GAMEPLAY_ACTOR_COUNT; ++candidate) {
-            if (tipoff->actors[candidate].assignment_actor == actor) {
-                tipoff->actors[actor].assignment_alternate_raw =
-                    (uint16_t)(candidate * 2u);
-                break;
-            }
-        }
-    }
+    /* `$86:D8D3-$D8E2`: the reciprocal +$78 values were produced atomically
+     * with +$76 above, before mutable +$74 can diverge during live play. */
     /* `$85:BC52-$BC81` and `$85:AFC2-$AFE5`: initialize pair and basket
      * geometry independently of rendered facing and neutral movement intent. */
     for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {

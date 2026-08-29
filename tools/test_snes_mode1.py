@@ -45,7 +45,9 @@ def main():
             # pin its stable background composition instead of requiring a
             # layer to win when the SNES priority result says it should not.
             assert summary["visible"]["bg1"] == 0
-            assert summary["visible"]["bg2"] == 45679
+            # Native lineup-position matchups alter the deterministic player
+            # placement at frame 1000 and therefore OBJ occlusion of BG2.
+            assert summary["visible"]["bg2"] == 45330
             assert summary["visible"]["bg3"] == 5641
             assert summary["visible"]["obj"] > 0
             assert summary["visible"]["backdrop"] > 0

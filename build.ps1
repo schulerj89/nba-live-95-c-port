@@ -124,6 +124,19 @@ if ($Test) {
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name defensive_pose_runtime_probe
     & (Join-Path $BuildDir 'defensive_pose_runtime_probe.exe') $AssetPack
     if ($LASTEXITCODE -ne 0) { throw 'Defensive idle/pose runtime binding failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name active_appearance_vector_probe
+    & python (Join-Path $Root 'tools\verify_active_appearance_vectors.py') --normalized `
+        --vectors (Join-Path $Root 'tests\fixtures\active-appearance-witnesses.json') `
+        --probe (Join-Path $BuildDir 'active_appearance_vector_probe.exe')
+    if ($LASTEXITCODE -ne 0) { throw 'Active appearance-record native replay failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name active_appearance_runtime_probe
+    & (Join-Path $BuildDir 'active_appearance_runtime_probe.exe') $AssetPack
+    if ($LASTEXITCODE -ne 0) { throw 'Active appearance-record runtime binding failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name jersey_number_vector_probe
+    & python (Join-Path $Root 'tools\verify_jersey_number_vectors.py') --normalized `
+        --vectors (Join-Path $Root 'tests\fixtures\jersey-number-witnesses.json') `
+        --probe (Join-Path $BuildDir 'jersey_number_vector_probe.exe') --pack $AssetPack
+    if ($LASTEXITCODE -ne 0) { throw 'Ten-player jersey-number ROM replay failed.' }
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name camera_handoff_probe
     & python (Join-Path $Root 'tools\verify_camera_handoff.py') --require-census `
         --vectors (Join-Path $Root 'tests\fixtures\camera-handoff-witnesses.json') `

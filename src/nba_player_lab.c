@@ -487,15 +487,17 @@ static void write_u16(uint8_t *p, uint16_t value) {
     p[1] = (uint8_t)(value >> 8);
 }
 
-static bool compose_jersey_tile(const NbaAssetPack *assets, uint8_t jersey,
-                                uint8_t direction, uint8_t tile[32]) {
+bool nba_player_compose_jersey_number(const NbaAssetPack *assets,
+                                      uint8_t jersey, uint8_t direction,
+                                      uint8_t side, uint8_t tile[32]) {
     /* $87:A99E maps directions 0..7 to the raw/derived WRAM buffers generated
        by $87:B05B-$B354. Keep the perspective glyph and handedness exact. */
     static const uint8_t orientation[8] = { 1, 0xff, 2, 0, 1, 0xff, 2, 0 };
     static const bool derived[8] = { false, false, true, true,
                                     true, false, false, false };
     direction &= 7u;
-    if (jersey == 0xffu || jersey >= 100u || orientation[direction] == 0xffu)
+    if (side > 1u || !tile || jersey == 0xffu || jersey >= 100u ||
+        orientation[direction] == 0xffu)
         return false;
     const uint8_t *digits = jersey_asset_table(assets, false);
     const uint8_t *bcd = jersey_asset_table(assets, true);
@@ -512,12 +514,13 @@ static bool compose_jersey_tile(const NbaAssetPack *assets, uint8_t jersey,
     for (unsigned offset = 0; offset < 32u; offset += 2u) {
         uint16_t word;
         if (derived[direction]) {
-            word = jersey_mask_word(source_a, offset, true);
-            if (source_b) word |= jersey_mask_word(source_b, offset, true);
+            word = jersey_mask_word(source_a, offset, side == 0u);
+            if (source_b)
+                word |= jersey_mask_word(source_b, offset, side == 0u);
         } else {
             word = read_u16(source_a + offset);
             if (source_b) word |= read_u16(source_b + offset);
-            if (offset >= 16u) word &= 0xff00u;
+            if (offset >= 16u && side == 0u) word &= 0xff00u;
         }
         write_u16(tile + offset, word);
     }
@@ -553,7 +556,8 @@ static bool draw_player_resources_at(NbaRenderer *ren,
                             flip, NULL, scale);
     uint8_t number_tile[32];
     if (number_allowed_for_upper(assets, upper_resource) &&
-        compose_jersey_tile(assets, player->jersey, direction, number_tile)) {
+        nba_player_compose_jersey_number(
+            assets, player->jersey, direction, side, number_tile)) {
         static const uint16_t number_resources[8] = {
             0x0593, 0xffff, 0x0591, 0x0592, 0x0593, 0xffff, 0x0591, 0x0592
         };
@@ -633,6 +637,67 @@ static bool player_record(const NbaAssetPack *assets, int team, int player,
     out->stamina_rating_35 = p[28];
     out->jump_rating_3c = p[29];out->jump_rating_3d = p[30];
     memcpy(out->name, p + 32, 32); out->name[32] = '\0';
+    return true;
+}
+
+/* `$86:D85E-$DA17`: construct the ten active matchup/appearance records.
+ * The SNES writes and sorts two temporary upload-key lists as part of this
+ * routine. The host keeps the sorted keys as evidence/diagnostics while the
+ * asset pack supplies the already-deduplicated resources; it does not emulate
+ * the subsequent WRAM DMA queue. Appearance sums intentionally wrap at eight
+ * bits before the optional +100 high-bit lineup class is applied. */
+bool nba_player_build_active_appearance(
+    const NbaPlayerActiveAppearanceInput *input,
+    NbaPlayerActiveAppearance *output) {
+    if (!input || !output) return false;
+    NbaPlayerActiveAppearance next = {0};
+    for (unsigned actor = 0; actor < NBA_PLAYER_APPEARANCE_COUNT; ++actor) {
+        uint8_t selector = input->lineup_selector[actor] & 0x7Fu;
+        if (selector >= 5u) return false;
+        unsigned paired = actor < 5u ? 5u + selector : selector;
+        next.assignment_base[actor] = (uint16_t)(paired * 2u);
+        next.upper_variant[actor] = input->upper_variant[actor];
+        next.help_request[actor] =
+            (input->lineup_selector[actor] & 0x80u) != 0u ? 1u : 0u;
+    }
+    for (unsigned actor = 0; actor < NBA_PLAYER_APPEARANCE_COUNT; ++actor) {
+        next.assignment_alternate[actor] = 0xFFFFu;
+        for (unsigned candidate = 0; candidate < NBA_PLAYER_APPEARANCE_COUNT;
+             ++candidate) {
+            if ((unsigned)(next.assignment_base[candidate] >> 1) == actor) {
+                next.assignment_alternate[actor] = (uint16_t)(candidate * 2u);
+                break;
+            }
+        }
+        if (next.assignment_alternate[actor] == 0xFFFFu) return false;
+    }
+    for (unsigned side = 0; side < 2u; ++side) {
+        for (unsigned i = 0; i < 5u; ++i) {
+            unsigned actor = side * 5u + i;
+            uint16_t key = (uint8_t)(input->appearance_a[actor] +
+                                     input->appearance_b[actor]);
+            if (next.help_request[actor] != 0u) key += 100u;
+            next.sorted_key[side][i] = key;
+            next.sorted_actor_offset[side][i] =
+                next.assignment_base[actor];
+        }
+        /* `$86:D73E` retains the pair and orders the five appearance keys
+         * from largest to smallest. Preserve equal-key input order. */
+        for (unsigned i = 1; i < 5u; ++i) {
+            uint16_t key = next.sorted_key[side][i];
+            uint16_t actor = next.sorted_actor_offset[side][i];
+            unsigned at = i;
+            while (at > 0u && next.sorted_key[side][at - 1u] < key) {
+                next.sorted_key[side][at] = next.sorted_key[side][at - 1u];
+                next.sorted_actor_offset[side][at] =
+                    next.sorted_actor_offset[side][at - 1u];
+                --at;
+            }
+            next.sorted_key[side][at] = key;
+            next.sorted_actor_offset[side][at] = actor;
+        }
+    }
+    *output = next;
     return true;
 }
 
@@ -873,7 +938,8 @@ bool nba_player_sprite_diagnose_resources(const NbaAssetPack *assets,
     next.number_allowed = number_allowed_for_upper(assets, upper_resource);
     uint8_t number_tile[32];
     next.number_composed = next.number_allowed &&
-        compose_jersey_tile(assets, player.jersey, direction, number_tile);
+        nba_player_compose_jersey_number(
+            assets, player.jersey, direction, side, number_tile);
     if (next.number_composed) {
         static const uint16_t number_resources[8] = {
             0x0593,0xffff,0x0591,0x0592,0x0593,0xffff,0x0591,0x0592
@@ -1524,6 +1590,52 @@ bool nba_player_animation_self_test(const NbaAssetPack *assets) {
     roster[9] = NBA_PLAYER_ROSTER_SIZE;
     if (nba_player_appearance_setup(assets, teams, roster, &appearance) ||
         memcmp(&appearance, &appearance_before, sizeof(appearance))) return false;
+    NbaPlayerActiveAppearanceInput active = {0};
+    for (unsigned i = 0; i < 10u; ++i) {
+        active.lineup_selector[i] = (uint8_t)(4u - i % 5u);
+        active.appearance_a[i] = (uint8_t)(250u - i);
+        active.appearance_b[i] = (uint8_t)(10u + i);
+        active.upper_variant[i] = (uint8_t)i;
+    }
+    active.lineup_selector[0] |= 0x80u;
+    NbaPlayerActiveAppearance built;
+    if (!nba_player_build_active_appearance(&active, &built) ||
+        built.assignment_base[0] != 18u ||
+        built.assignment_base[5] != 8u ||
+        built.assignment_alternate[0] != 18u ||
+        built.assignment_alternate[9] != 0u ||
+        built.help_request[0] != 1u || built.help_request[1] != 0u ||
+        built.upper_variant[9] != 9u ||
+        built.sorted_key[0][0] != 104u) return false;
+    active.lineup_selector[9] = 5u;
+    memset(&built, 0xA5, sizeof(built));
+    NbaPlayerActiveAppearance built_before = built;
+    if (nba_player_build_active_appearance(&active, &built) ||
+        memcmp(&built, &built_before, sizeof(built))) return false;
+    static const uint8_t number_directions[6] = {0u, 2u, 3u, 4u, 6u, 7u};
+    for (unsigned jersey = 0; jersey < 100u; ++jersey) {
+        for (unsigned side = 0; side < 2u; ++side) {
+            for (unsigned view = 0; view < 6u; ++view) {
+                uint8_t tile[32];
+                if (!nba_player_compose_jersey_number(
+                        assets, (uint8_t)jersey, number_directions[view],
+                        (uint8_t)side, tile)) return false;
+                bool nonzero = false;
+                for (unsigned byte = 0; byte < sizeof(tile); ++byte)
+                    nonzero = nonzero || tile[byte] != 0u;
+                if (!nonzero) return false;
+            }
+        }
+    }
+    uint8_t invalid_tile[32];
+    memset(invalid_tile, 0xA5, sizeof(invalid_tile));
+    uint8_t invalid_before[32];
+    memcpy(invalid_before, invalid_tile, sizeof(invalid_tile));
+    if (nba_player_compose_jersey_number(
+            assets, 100u, 0u, 0u, invalid_tile) ||
+        nba_player_compose_jersey_number(
+            assets, 23u, 1u, 0u, invalid_tile) ||
+        memcmp(invalid_tile, invalid_before, sizeof(invalid_tile))) return false;
     return true;
 }
 

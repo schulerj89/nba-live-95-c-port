@@ -32,13 +32,13 @@ outcome exists.
 | Wider defensive pose caller | `$86:E3E1-$E4A6` | 79 | 79 |
 | CPU inbound owner continuation | `$86:F43A-$F4F1` | 89 | 89 |
 | CPU inbound arrival/readiness/timing/candidates/launch/return | `$86:F4F2-$F51F`, `$86:F54F-$F668` | 135 | 119 |
-| Appearance-record build | `$86:D85E-$DA20` | 198 | 186 |
+| Appearance-record build | `$86:D85E-$DA17` | 12 unobserved (186 verified) | 0 remaining captured gain |
 | Appearance upload-list build | `$86:E0B0-$E389` | 152 | 46 |
-| Body/head/jersey assignment | `$87:AF75-$B450` | 415 after existing AFA2 proof | 395 |
+| Remaining body/head/jersey assignment | `$87:AF75-$B450` excluding the now-verified number compositor | 4 observed | 4 |
 | Live frame/layer selection | `$87:A47A-$A98D` | 561 after existing small proofs | 472 |
 | Projection/culling | `$87:A357-$A479` | 120 | 96 |
 | Sprite-part composition | `$80:AD92-$AEC1` | 116 after existing helper proof | 116 |
-| Player-number/jersey compositor | `$87:B05B-$B354` | uncensused for this goal | 375 |
+| Player-number/jersey compositor | `$87:B05B-$B354` | 0 (native output complete) | 0 remaining captured gain |
 | Foul/event/dead-ball/free-throw dispatch | `$85:93F5-$945E`, `$87:92A5-$95E6`, `$87:9B30-$A017`, `$87:BACB-$BAF4` | must be recounted per callable boundary | 272 |
 
 The optional human inbound steering `$86:F520-$F54E` has 19 starts and remains
@@ -74,6 +74,8 @@ host-side outcome without pretending the C port executes SNES DMA machinery.
 |---|---:|---:|---|
 | Baseline | - | 7,826 (28.05%) | Recounted ledger before implementation |
 | Defensive idle/pose | 99 | 7,925 (28.40%) | 12,265 native calls, all eight observed exits, zero mismatches; 250 retained witnesses; production adapter probe; reviewed five changed CPU visual anchors |
+| Active appearance/matchup records | 186 | 8,111 (29.07%) | Exact ten-actor native output; all 348 ROM roster records byte-compared with pack; 29-team runtime sweep; corrected roster-slot/matchup-selector bug |
+| Jersey-number compositor/BCD selector | 391 | 8,502 (30.47%) | Exact 1,920-byte native ten-player output; all numbers 0-99, both sides and six visible views; corrected visiting-side mask bug |
 
 The defensive checkpoint also repaired two stale smoke assumptions exposed by
 the stronger release gate: a same-pass shot launch is identified by its actual

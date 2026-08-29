@@ -60,6 +60,9 @@ uint32_t nba_rom_sprite_resource_render(NbaRenderer *renderer,
                                     uint16_t resource_id,
                                     const uint8_t palette[32], int origin_x,
                                     int origin_y, bool flip, int scale);
+bool nba_player_compose_jersey_number(const NbaAssetPack *assets,
+                                      uint8_t jersey, uint8_t direction,
+                                      uint8_t side, uint8_t tile[32]);
 typedef struct {
     uint16_t upper_resource, lower_resource, head_resource, number_resource;
     uint32_t upper_opaque_pixels, lower_opaque_pixels;
@@ -115,6 +118,26 @@ typedef struct {
     uint32_t upload_address;
     NbaPlayerAppearance players[NBA_PLAYER_APPEARANCE_COUNT];
 } NbaPlayerAppearanceSetup;
+
+typedef struct {
+    uint8_t lineup_selector[NBA_PLAYER_APPEARANCE_COUNT];
+    uint8_t appearance_a[NBA_PLAYER_APPEARANCE_COUNT];
+    uint8_t appearance_b[NBA_PLAYER_APPEARANCE_COUNT];
+    uint8_t upper_variant[NBA_PLAYER_APPEARANCE_COUNT];
+} NbaPlayerActiveAppearanceInput;
+
+typedef struct {
+    uint16_t assignment_base[NBA_PLAYER_APPEARANCE_COUNT];
+    uint16_t assignment_alternate[NBA_PLAYER_APPEARANCE_COUNT];
+    uint16_t upper_variant[NBA_PLAYER_APPEARANCE_COUNT];
+    uint16_t help_request[NBA_PLAYER_APPEARANCE_COUNT];
+    uint16_t sorted_key[2][5];
+    uint16_t sorted_actor_offset[2][5];
+} NbaPlayerActiveAppearance;
+
+bool nba_player_build_active_appearance(
+    const NbaPlayerActiveAppearanceInput *input,
+    NbaPlayerActiveAppearance *output);
 bool nba_player_appearance_setup(const NbaAssetPack *assets,
     const uint8_t teams[NBA_PLAYER_APPEARANCE_COUNT],
     const uint8_t roster[NBA_PLAYER_APPEARANCE_COUNT],
