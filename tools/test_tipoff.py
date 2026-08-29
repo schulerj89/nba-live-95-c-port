@@ -16,11 +16,12 @@ EXPECTED_ASSETS = {
           "f728c33e94f9266c36798975e5c8580868e237bb223494067893f31dd3c29d10"),
 }
 EXPECTED_FRAMES = {
-    90: ("TIP PH:FORMATION", "87e8872a01b4e52a63a5243e042f33c3534d7dc82b4d42611ced4e7099c23b5c"),
-    170: ("TIP PH:JUMP BALL", "1c9fa44a36d3fd8923fc40364db0ceac8254a3bfe47d96b83b5cf384c47c61a6"),
-    # Event-driven handoff: frame220 is still in flight, not forced ownership.
-    # Inspected stage4 image; C regression only, NOT ROM visual parity.
-    220: ("TIP PH:POSSESSION", "b4567ba158fbea8b925905fc6dce739cdda84bac233fa7e2a8337afdb0973003"),
+    # Updated only after the EC32 actor launch and ROM countdown/scratch
+    # scheduler were bound to production movement/render state.
+    90: ("TIP PH:FORMATION", "e8ca63f23cd6b1276cd4b129d6aef1ce467a1b68e6fe518e5a995981652300d3"),
+    170: ("TIP PH:POSSESSION", "0606f7896e25487080d053978f107b1ed9b78c6de18a16a123d0c9c59f914ddb"),
+    # `$86:CF38` receiver reach now permits `$86:D365` possession at frame186.
+    220: ("TIP PH:LIVE", "81ef74020b5e64cb8bd4b5d67da729a6a422968c0e4ed171845b73953287c1a5"),
 }
 
 
@@ -125,8 +126,8 @@ def main():
 
     source = Path(__file__).parents[1] / "src" / "nba_tipoff.c"
     text = source.read_text()
-    for value in ("NBA_TIPOFF_BALL_APPEAR_FRAME", "NBA_TIPOFF_TOSS_FRAME",
-                  "NBA_TIPOFF_CONTACT_FRAME",
+    for value in ("tip_toss_countdown_raw_09f2",
+                  "nba_tipoff_jump_reach", "nba_graphics_scratch_step",
                   "nba_player_sprite_render", "nba_assets_gameplay_court_panorama",
                   "visible_submission[8]"):
         if value not in text:

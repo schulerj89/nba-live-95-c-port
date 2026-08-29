@@ -1,6 +1,6 @@
 # Project status
 
-Last updated 2026-08-27. This is a current-state handoff, not a milestone log.
+Last updated 2026-08-28. This is a current-state handoff, not a milestone log.
 Use Git history for older checkpoints and run
 `python tools/progress.py --write docs/progress.md` for live measurements.
 
@@ -17,8 +17,8 @@ Current measured coverage:
 | metric | captured address positions | % of captured addresses |
 |---|---:|---:|
 | observed executed code | 27,901 | 100.0% |
-| documented by ROM-address provenance | 10,236 | 36.7% |
-| verified against ROM calls | 7,585 | 27.19% |
+| documented by ROM-address provenance | 10,477 | 37.6% |
+| verified against ROM calls | 7,826 | 28.05% |
 
 These values are generated, not estimated. The detailed per-bank report is
 `docs/progress.md`; the authoritative verified list and evidence paths are in
@@ -30,8 +30,37 @@ for a requested slice are reported separately.
 
 ## Verified gameplay checkpoint
 
-151 routine slices currently have emulator-ground-truth replay/binding evidence. The most important
+Latest bounded work: `docs/jump-reach-differential.md`. EC32-EE75 is translated
+and production-wired:647 durable native witnesses cover all239 starts,100
+animation starts match18 channel words,29 graphics-scratch scheduler calls
+match queue/scratch/RNG state, and20 near EAA8 children replay exactly. The
+live port now launches both centers, installs CF38 receiver reach and advances
+from contact164 to possession186 instead of remaining ownerless. The far EAA8
+lead branch, graphics payload DMA and whole-game initial-state parity remain
+separate caveats. The bounded pending subtotal is332 plus optional human19.
+
+Release checks passed across the resumed run: `.analysis/jump-reach-20260828/
+release-v2.log` covers native/animation/shot tests, title, Setup and core safety;
+`release-tail.log` covers Team Select onward through tip-off, Gameplay Lab,
+the63,800-frame CPU check and EA/license/legal intro. The intervening failure
+was F12's267-entry count in screenshot expectations; independent pixel-delta
+tests prove only the count row changed. Three F12 expected hashes were updated,
+not gameplay/menu artwork hashes. The expanded647-witness jump test also passed
+separately after its final guard/export changes. Asset281 subsequently raises
+the current pack to268 entries with ROM scheduler data, not captured artwork.
+Changes remain local/uncommitted.
+
+153 routine slices currently have emulator-ground-truth replay/binding evidence. The most important
 recent slices are:
+
+- Ball initialization prefix: `docs/pending-gameplay-differential-plan.md`.
+  Corrected native start E056 (E054 was a JMP operand),30 instructions.
+  Natural and poisoned-input same-entry tests match all20 mapped words and
+  all128KiB exit RAM. Runtime initialization now uses native VZ600, object
+  bookkeeping and sentinel writes. Default whole-game baseline differences
+  fell82->81; this is not a passing trajectory comparison. The later toss and
+  jump/reach path is now native-state driven. Bounded core remaining:332 plus
+  optional19.
 
 - Tip-flow checkpoints: `docs/tipoff-flow-plan.md`. Contact geometry now drives
   the first hit instead of frame200. 340 native/controlled calls replay with
@@ -41,9 +70,11 @@ recent slices are:
   temporary/final possession caller now follows actual contact, not frame220.
   Completion164 calls, catch core22 and wrapper17 all replay without represented-
   output mismatches. The wrapper proof fixes0942's ball-source identity10 and
-  restores its previously excluded ledger range. Initial toss/jump presentation
-  remains approximate; see `docs/gameplay-pending.md` for the fresh602-instruction
-  bounded CPU/gameplay census,19 optional human instructions, and uncounted areas.
+  restores its previously excluded ledger range. Initial toss/jump now uses
+  the ROM countdown, EC32 launch and CF38 receiver reach; see
+  `docs/gameplay-pending.md` for the current bounded CPU/gameplay census
+  (332 remaining after the correction above),
+  19 optional human instructions, and uncounted areas.
 
 - Camera correction/callers: the remaining **99 instruction starts** now
   pass native replay: 62,243 calls across core/init/resolver/copy/cadence,
@@ -51,8 +82,9 @@ recent slices are:
   basket orientation, no-team centering, alternate ball-height flags and
   before-wait latch/after-wait copy are integrated. Native tip state is
   `$0936=0081`, then `0000` on acquisition, not the old persistent `0001`.
-  Correcting that connection reduces early post-tip vertical error, but
-  does NOT certify the remaining frame-based initial toss/jump presentation.
+  Correcting that connection reduces early post-tip vertical error. The
+  initial toss/jump producer is now separately verified and wired; full
+  configured-start trajectory equivalence is still not claimed.
   See `docs/camera-handoff-plan.md` for numeric/visual limits and reproduction.
 
 - Camera/presentation: all **510 requested instruction starts** were audited
@@ -132,6 +164,17 @@ recent slices are:
   now resolve their resources immediately, without a temporary tick-based
   fallback. Appearance uses asset-pack roster records. This does not adopt
   all shot/contact callers or emulate the SNES sprite-upload queue.
+- Live ordinary-pose fallback now preserves `$87:AFA2-$B053` actor `+$A8`
+  tall-lower selection and `$87:AC76-$AC95/$AD38-$AD57` actor `+$6C`
+  direction-sensitive `base+$28` upper resources. The asset extractor now
+  includes that complete derived upper family. Before the fix, 265 of 14,000
+  actor-frames in the focused 1,400-frame audit selected an upper resource
+  absent from the pack; afterward zero layers were absent, and the 63,800
+  CPU trace crossed the new lower/upper/head/number guards. JSONL exposes
+  per-layer resources/pixel counts/validity. Wider six-range census is
+  1,779 starts, 1,485 observed and 294 not observed; only the B649/B832
+  subranges retain strict instruction-level replay attribution. See
+  `docs/gameplay-player-appearance-differential.md`.
 - `$87:B37C-$B571`: independent action install/cancel/reverse helpers (471
   live calls). Locked completion/queued continuation slices of `$87:ABC2-$AD18`
   and mode-2 idle state 7 also pass a 6,000-call post-locomotion replay.
@@ -382,9 +425,20 @@ See `tools/README.md` for capture, replay, Ghidra, and regression commands.
 
 ## Active gaps and next work
 
+- Strict differential validation has started: `docs/differential-testing.md`.
+  Fresh native/C captures compare 442 raw words at baseline and actual actor-
+  sweep boundaries. Default native CPU-versus-human preserves the requested
+  setup and currently reports81 baseline differences (previously82), including
+  the known controller mismatch with the CPU-only port. First sweep cadence
+  also differs. Full WRAM does not yet repeat across runs, despite matching
+  selected-state traces. No full snapshot/configuration import or passing
+  trajectory-equivalence claim exists. Align starting context and update order
+  before interpreting later movement divergence. Per-routine replay coverage
+  is 28.05%; the independently verified30-instruction initializer and239-start
+  jump/reach parent add credit. The whole-game baseline still does not pass.
 - Camera: the additional 99 correction/caller instructions are complete.
-  The frame-based initial toss/jump trajectory and upstream camera/control
-  selector ownership remain separate; raw camera
+  Upstream camera/control selector ownership and wider configured-start
+  trajectories remain separate; raw camera
   correctness does not make those input trajectories ROM-identical.
   Crowd CHR animation and the downstream basket/window compositor remain.
   The raw map geometry matches 12 native viewports; static art has 0-461

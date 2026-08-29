@@ -83,6 +83,39 @@ if ($Test) {
     if ([string]::IsNullOrEmpty($AssetPack) -or !(Test-Path -LiteralPath $AssetPack)) {
         throw "-Test requires a generated asset pack."
     }
+    & python (Join-Path $Root 'tools\test_differential.py')
+    if ($LASTEXITCODE -ne 0) { throw 'Strict differential harness unit tests failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name differential_observer_probe
+    & (Join-Path $BuildDir 'differential_observer_probe.exe') $AssetPack
+    if ($LASTEXITCODE -ne 0) { throw 'Differential observer changed gameplay or missed real sweep boundaries.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name ball_init_differential_probe
+    foreach ($InitFixture in @('ball-initialization', 'ball-initialization-poisoned')) {
+        & python (Join-Path $Root 'tools\verify_ball_init_differential.py') `
+            --fixture (Join-Path $Root "tests\fixtures\$InitFixture.json") `
+            --probe (Join-Path $BuildDir 'ball_init_differential_probe.exe') `
+            --report (Join-Path $BuildDir "$InitFixture-report.json")
+        if ($LASTEXITCODE -ne 0) { throw "Native ball initialization differential test failed: $InitFixture" }
+    }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name ball_init_runtime_probe
+    & (Join-Path $BuildDir 'ball_init_runtime_probe.exe') $AssetPack
+    if ($LASTEXITCODE -ne 0) { throw 'Native ball initialization runtime binding failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name jump_reach_probe
+    & python (Join-Path $Root 'tools\test_jump_reach.py') --pack $AssetPack --rom $RomPath `
+        --probe (Join-Path $BuildDir 'jump_reach_probe.exe')
+    if ($LASTEXITCODE -ne 0) { throw 'Jump/reach native decision/channel regression failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name reach_launch_probe
+    & python (Join-Path $Root 'tools\verify_reach_launch.py') `
+        --native (Join-Path $Root 'tests\fixtures\reach-launch-witnesses.jsonl') `
+        --probe (Join-Path $BuildDir 'reach_launch_probe.exe')
+    if ($LASTEXITCODE -ne 0) { throw 'Jump/reach EAA8 near-child replay failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name graphics_scratch_probe
+    & python (Join-Path $Root 'tools\verify_graphics_scratch.py') `
+        --native (Join-Path $Root 'tests\fixtures\graphics-scratch-witnesses.jsonl') `
+        --probe (Join-Path $BuildDir 'graphics_scratch_probe.exe') --pack $AssetPack
+    if ($LASTEXITCODE -ne 0) { throw 'Jump/reach graphics-scratch scheduler replay failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name jump_runtime_probe
+    & (Join-Path $BuildDir 'jump_runtime_probe.exe') $AssetPack
+    if ($LASTEXITCODE -ne 0) { throw 'Jump/reach production runtime binding failed.' }
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name camera_handoff_probe
     & python (Join-Path $Root 'tools\verify_camera_handoff.py') --require-census `
         --vectors (Join-Path $Root 'tests\fixtures\camera-handoff-witnesses.json') `

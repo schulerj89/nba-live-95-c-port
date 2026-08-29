@@ -176,6 +176,31 @@ def main():
        not all(resource in resource_ids for resource in range(0x049C, 0x049C + 195)) or \
        not all(resource in resource_ids for resource in (0x0591, 0x0592, 0x0593)):
         raise AssertionError("animation resource directory is incomplete")
+    # `$87:AC76-$AC95/$87:AD38-$AD57` adds $28 at runtime for the selected
+    # upper-body appearance family. The derived IDs are not guaranteed to be
+    # literal words in a frame list, but every one must still be in the pack.
+    raw_animation_resources = set()
+    for table_offset in (0x4218, 0x428A, 0x42FC):
+        for state in range(state_count):
+            descriptor = struct.unpack_from(
+                "<H", animations, bank84_offset + table_offset + state * 2)[0]
+            if descriptor < 0x8000:
+                continue
+            descriptor_offset = bank84_offset + descriptor - 0x8000
+            frame_count = struct.unpack_from("<H", animations,
+                                             descriptor_offset + 6)[0]
+            for direction in range(8):
+                frame_list = struct.unpack_from(
+                    "<H", animations, descriptor_offset + 8 + direction * 2)[0]
+                list_offset = bank84_offset + frame_list - 0x8000
+                raw_animation_resources.update(struct.unpack_from(
+                    f"<{frame_count}H", animations, list_offset))
+    missing_variants = sorted(resource + 0x28
+                              for resource in raw_animation_resources
+                              if resource < 0xF0 and resource + 0x28 not in resource_ids)
+    if missing_variants:
+        raise AssertionError(
+            f"runtime-selected upper-body resources missing: {missing_variants[:12]}")
     for team in range(29):
         for player in range(12):
             off = 24 + (team * 12 + player) * 64

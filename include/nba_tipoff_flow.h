@@ -3,6 +3,55 @@
 #include "nba_gameplay_ball.h"
 #include "nba_assets.h"
 
+/* State written by the bounded $86:E056-$E0AB initializer. Native object-list
+ * links are represented as data, not host pointers or a CPU emulation layer. */
+typedef struct {
+    uint16_t cursor, descriptor_record, descriptor_terminator, ball_descriptor;
+    uint16_t object_list_raw_08fe, published_record;
+    uint16_t x_fraction, x, y_fraction, y, z_fraction, z;
+    uint16_t velocity_x, velocity_y, velocity_z, group, record_id;
+    uint16_t context_4933, context_4935, event_08f0;
+} NbaTipBallInitialization;
+void nba_tip_ball_initialize(NbaTipBallInitialization *state);
+
+/* EC32-EE75 decision boundary; child effects are a separate contract.
+ * ED32/EDEF read literal WRAM0046 using Y, NOT team-context X. */
+typedef struct {
+    uint16_t actor_x,actor_y,actor_z,lower_state,distance,direction,movement;
+    uint16_t subject_x,subject_y,subject_z,subject_vz,subject_direction;
+    uint16_t paired_direction,ball_x,ball_z,ball_vz;
+    uint16_t activity,owner,receiver,live_state,block_mode,raw_0046;
+    uint16_t velocity_x,velocity_y,velocity_z,rng,rating_3c,rating_3d;
+} NbaJumpReachInput;
+typedef struct { uint32_t routine; uint16_t value; } NbaJumpReachRequest;
+typedef struct {
+    uint16_t velocity_x,velocity_y,velocity_z,rng;
+    unsigned request_count;
+    NbaJumpReachRequest requests[2];
+} NbaJumpReachResult;
+/* False rejects missing assets or an out-of-contract table index without
+ * publishing partial output. Neither input nor asset data is changed. */
+bool nba_jump_reach_decide(const NbaAssetPack *assets,
+    const NbaJumpReachInput *input,NbaJumpReachResult *result);
+
+/* EAA8-EC31: lead the focal actor, face the intercept, and launch. */
+typedef struct {
+    uint16_t actor_x,actor_y,subject_x,subject_y,subject_vx,subject_vy;
+    uint16_t subject_distance,context_x,direction_4e,direction_50;
+    uint16_t velocity_x,velocity_y,velocity_z,timer_091c;
+} NbaReachLaunch;
+void nba_reach_launch(NbaReachLaunch *state);
+
+typedef struct { uint16_t record,current,timer; } NbaGraphicsScratchSlot;
+typedef struct {
+    uint16_t rng,scratch_0046;
+    NbaGraphicsScratchSlot slots[3];
+} NbaGraphicsScratchState;
+/* 82:F02F-F15B: the non-rendering state/DP47 effect of the three-slot
+ * presentation transfer scheduler. Payload DMA itself is intentionally absent. */
+bool nba_graphics_scratch_step(const NbaAssetPack *assets,
+    NbaGraphicsScratchState *state,uint16_t delta);
+
 typedef struct {
     uint16_t actor_id, actor_inhibit, actor_group, upper_state, upper_lock;
     uint16_t head_height, free_throw, free_throw_actor, live_state, inbound_group;

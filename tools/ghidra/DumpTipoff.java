@@ -21,7 +21,7 @@ public class DumpTipoff extends GhidraScript {
             0xb377, 0xb3aa, 0xb402, 0xb95c, 0xf1c1, 0xf34f, 0xf3c3,
             0xf78b, 0xf867, 0xf8d9 };
         if (bank.equals("86")) return new long[] { 0x9846, 0x99c4, 0x9c45,
-            0xb04c, 0xbaa2, 0xd549, 0xdda7, 0xe054, 0xe3cb, 0xe5ab,
+            0xb04c, 0xbaa2, 0xd549, 0xdda7, 0xe056, 0xe3cb, 0xe5ab,
             0xe635, 0xf1b0 };
         if (bank.equals("87")) return new long[] { 0xb3bd, 0xb47a, 0xb538,
             0xb555, 0xb832 };
@@ -72,7 +72,7 @@ public class DumpTipoff extends GhidraScript {
         for (long address : all) disassemble(toAddr(address));
         if (bank.equals("86")) {
             disassemble(toAddr(0xdda7));
-            disassemble(toAddr(0xe054));
+            disassemble(toAddr(0xe056));
         }
 
         Listing listing = currentProgram.getListing();

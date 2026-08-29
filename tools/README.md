@@ -44,6 +44,24 @@ reports success.
 
 ## Verification tools
 
+- `verify_ball_init_differential.py`: same-entry E056/E0AC native/C test through
+  the production helper;20-word projection plus full128KiB unexpected-write
+  checking. `run_differential.py --capture-ball-init` captures it; optional
+  `--poison-ball-init` tests nonzero native entry values. Both durable fixtures
+  and `ball_init_runtime_probe.c` run under `build.ps1 -Test`.
+- `regenerate_pending_reference.py`: bounded recomp C for the requested
+  gameplay slices. Reference-only output, not runtime code or native evidence.
+- `run_differential.py`: fresh Mesen/C partial-state comparison (preserves the
+  native CPU-versus-human setup; optional `--controllers cpu-vs-cpu`),
+  using `mesen_differential_capture.lua`, `differential_runtime_probe.c`, the
+  shared `differential_fields.def` schema and `differential_compare.py`.
+  Rejects incomplete traces and reports the FIRST mismatching checkpoint;
+  no sentinel skipping or fitted frame offset. Phase1 baseline currently
+  fails; full initial-state/configuration import remains pending. See
+  `docs/differential-testing.md` for commands, outputs and exact proof limits.
+- `test_differential.py` and `differential_observer_probe.c`: comparator failure
+  semantics and non-mutating actual-sweep observer tests, run by
+  `build.ps1 -Test`. Synthetic unit PASS is not a native gameplay-equivalence PASS.
 - Motion/pose replay tools: `verify_facing_ease_vectors.py`,
   `verify_locomotion_state_vectors.py`, `verify_animation_cadence_vectors.py`,
   `verify_pose_point_vectors.py`, `verify_ball_attachment_xy_vectors.py`,
@@ -446,6 +464,16 @@ Recorded child outputs in the owner oracle verify caller ordering, not the
 child implementation itself. No emulator process is needed by the port.
 
 ### Other utilities
+
+Jump/reach differential checkpoint: `mesen_jump_reach.lua` observes native
+EC32 entry, parent child-call sites and returns. `run_differential.py
+--capture-jump-reach` launches it; optional `--jump-cases` uses explicitly
+controlled WRAM inputs. `verify_jump_reach.py` replays the production helper
+and existing animation-channel API, while `test_jump_reach.py` checks durable
+native fixtures, Ghidra PC census, corrupted-oracle rejection and ROM assets.
+The normal game does not yet call this decision helper:0046 scratch producers
+and pre-tip scheduling need adoption. See `docs/jump-reach-differential.md`;
+a bounded decision match must not be reported as whole-game equivalence.
 
 The remaining `mesen_*.lua`, Python render/decoder helpers, `spc_render_main.c`,
 and `spc_replay_main.c` are diagnostic tools. They are not runtime dependencies

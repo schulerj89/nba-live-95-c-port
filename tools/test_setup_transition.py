@@ -40,10 +40,12 @@ EXPECTED_AUDIO_RMS_EIGHTHS = [
 ]
 EXPECTED_AUDIO_BAND_PPM = [889127, 48767, 32034, 14587, 14255, 1068, 162]
 EXPECTED_AUDIO_CHANNEL_RMS = [3363, 3363]
-# Assets 277/278/279 add directory entries. test_shot_assets.py reproduces the
-# previous baseline without them and proves only F12's count changes.
-EXPECTED_ASSET_DEBUGGER_SHA256 = "92c8fe62770b73b205c9beb0d014b68f6614a011bfb142ac47e1c8322ab14458"
-EXPECTED_OAM_DEBUGGER_SHA256 = "70db5852e6c46f451ab3a059b22aff0cfca2403fb4c585370819883b7d71bee2"
+# Asset280 adds one F12 count entry. test_shot_assets independently proves
+# only the index/count row changes, retaining the historical art hashes.
+# Asset281 changes only F12's directory count row; test_shot_assets proves
+# the pixel delta remains confined to that row before these hashes are used.
+EXPECTED_ASSET_DEBUGGER_SHA256 = "a5362824ae7c20b709699ab74e42c734bac4bcca7328f13d1a88663de50fee56"
+EXPECTED_OAM_DEBUGGER_SHA256 = "7386b587192aaf5090cb2d01d6b6979259f0294670b9922b8bd7354f3aff8969"
 EXPECTED_RENDERED_MENU_SFX_SHA256 = {
     0x1A: "447a1ea48a94e2036ff0bdf1f4c5248d6284daec0b723b9a966f841976e703c4",
     0x1B: "96de89e954e4e8f75e555625abba5bf4380b8868b3263776a4cc27a6285de664",

@@ -168,9 +168,9 @@ static void nba_game_debug_lines(const NbaGame *game, NbaDebugLines *out) {
             "BREAK", "DRIVE", "PASS", "ATTACK", "SHOT", "REBOUND"
         };
         snprintf(out->line[out->count++], NBA_DEBUG_LINE_SIZE,
-                 "TIP PH:%s F:%03d TOSS:%d CONTACT:%d HOME:%02u",
+                 "TIP PH:%s F:%03d HOLD:%d HIT:%u HOME:%02u",
                  (unsigned)s->phase < 4u ? phases[s->phase] : "?", s->frame,
-                 NBA_TIPOFF_TOSS_FRAME, NBA_TIPOFF_CONTACT_FRAME,
+                 (int16_t)s->tip_toss_countdown_raw_09f2, s->tip_contact_frame,
                  s->session->right_team);
         snprintf(out->line[out->count++], NBA_DEBUG_LINE_SIZE,
                  "CPU %s P:%u PF:%u H:%u R:%u RNG:$%04X INT:$85:963D",

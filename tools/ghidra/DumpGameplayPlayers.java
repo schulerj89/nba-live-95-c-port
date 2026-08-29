@@ -41,6 +41,9 @@ public class DumpGameplayPlayers extends GhidraScript {
                 "Live pre-tip execution reaches this immediately before the queue writer. It " +
                 "walks the selected player's animation/resource descriptors and supplies the " +
                 "ROM part pointer consumed by $80:B348/$B679."),
+            new Range(0xAD92, 0xAEC1, "gameplay_compose_player_sprite_parts",
+                "Exact live compositor audit scope: attaches lower body, upper body, jersey " +
+                "number overlay and head, then submits each ROM descriptor to the sprite queue."),
             new Range(0xB300, 0xB7D0, "gameplay_queue_player_sprite_parts",
                 "Live Mesen proves this routine reads the ROM sprite-part descriptors and " +
                 "writes queued source pointer, byte count, and VRAM destination records. " +
@@ -103,7 +106,10 @@ public class DumpGameplayPlayers extends GhidraScript {
                 "$87:B032/$B03D write the 16-bit sprite/head resource-set base to player " +
                 "record +$2E. Live ROM reads also prove $87:B36B reads roster byte +$00 " +
                 "(jersey number), $87:B378 maps it through the BCD table, and " +
-                "$87:B05B-$B354 composites the three number views from $A6:AFD6.")
+                "$87:B05B-$B354 composites the three number views from $A6:AFD6."),
+            new Range(0xB649, 0xB952, "gameplay_resolve_exact_pose_and_attachments",
+                "Exact live action/attachment audit scope. Resolves the current independent " +
+                "upper/lower resources and their actor-relative body, ball and contact points.")
         };
         return new Range[0];
     }
@@ -188,7 +194,8 @@ public class DumpGameplayPlayers extends GhidraScript {
                                              (address >= 0xD5DB && address <= 0xE400))) ||
                             (bank == 0x87 && ((address >= 0xA47A && address <= 0xA98D) ||
                                              (address >= 0xAB38 && address <= 0xADA0) ||
-                                             (address >= 0xAF75 && address <= 0xB450))) ||
+                                             (address >= 0xAF75 && address <= 0xB450) ||
+                                             (address >= 0xB649 && address <= 0xB952))) ||
                             (bank == 0x80 && ((address >= 0x8A00 && address <= 0x8C20) ||
                                              (address >= 0x9800 && address <= 0x99A0) ||
                                              (address >= 0xACC2 && address <= 0xAF1D) ||

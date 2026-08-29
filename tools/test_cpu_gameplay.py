@@ -22,11 +22,20 @@ EXPECTED_RGB = {
     # Independent ROM vectors and semantic endurance guards remain separate.
     # Stage4 physical acquisition replaces the forced actor8/frame220 reset.
     # All five captures inspected; wider loose-ball framing remains a gap.
-    600: "cde7568f71bde5e7eb00f622f083c09ce5a4e4ba8f5daa6fa4679e85a617bf6b",
-    1300: "89024c06ee51e82381cbb3ecdb80c063cd5b78f92420bc36a20e99528655da24",
-    3480: "77832fb9b371ae8c02c1a102e4109168177beb34a9db561a9b036d584ce103e2",
-    6932: "a4823b9a22ef7b2b64ac7597252d26ef7619a4f9beaf0d63e10344961ebee1fa",
-    6954: "2a9602d448b24095d019e176e62ada60a23c8efc39882b0ec351090b9980e390",
+    # Re-reviewed after the live `$86:EC32` jump/reach binding changed the
+    # deterministic CPU trajectory. These frames visibly retain ten actors,
+    # the ball, court bounds and unobstructed HUD composition.
+    600: "03daaac7b5f963c4dcc0169bd00f26b7647629b5eebfab71d0a81e83524df08d",
+    # Re-reviewed after the live renderer adopted `$87:AFA2-$B053`'s tall
+    # lower-body selector and the asset pack gained every dynamically chosen
+    # `$87:AC76-$AC95` base+$28 torso resource. All five anchors show ten
+    # complete, correctly colored player uniforms; the altered body resources
+    # also correct native ball attachment points, so later CPU paths diverge
+    # from the retired incomplete-resource trajectory by design.
+    1300: "341b5cc3e2d71690fd718123b4b8af3dbcdfb694ed013a56b37c2e9e4d83dbc4",
+    3480: "3490085515835a51cd377e07ffa330b997e743b60507c06f32fbe401fd70cfae",
+    6932: "4a169b87856bbf29bd60379be9266d2a5d6939cf269c37b4bc99e822c30be8f0",
+    6954: "64dc35a1a4b8b1621bb89e119d85962756896295c12b6e594b3a33ea83557cb9",
 }
 
 
@@ -82,6 +91,27 @@ def main():
         rows = [json.loads(line) for line in trace.read_text().splitlines()]
         if len(rows) != 63800:
             raise AssertionError(f"expected 63800 CPU frames, got {len(rows)}")
+        for row in rows:
+            for actor in row["actors"]:
+                appearance = actor.get("appearance")
+                if not appearance or not appearance["flags"] & 0x80:
+                    raise AssertionError(
+                        "$87:A47A->$80:AD92 selected a player layer absent "
+                        f"from the asset pack: frame={row['frame']} actor={actor['id']} "
+                        f"appearance={appearance}")
+                if appearance["resources"][0:2] != [
+                        actor["raw"]["lower_resource"],
+                        actor["raw"]["upper_resource"]]:
+                    raise AssertionError(
+                        "appearance diagnostic did not inspect the rendered resources")
+                if not all(appearance["opaque_pixels"][:3]):
+                    raise AssertionError(
+                        "gameplay selected an empty lower/upper/head player layer: "
+                        f"frame={row['frame']} actor={actor['id']} "
+                        f"appearance={appearance}")
+                if appearance["flags"] & 0x04 and not appearance["opaque_pixels"][3]:
+                    raise AssertionError(
+                        "visible jersey-number overlay has no packed ROM pixels")
         verify_shot_state_trace(rows)
         initial_fouls = {
             "event_raw": 0, "shooting_raw": 0,
@@ -362,9 +392,14 @@ def main():
         if jump_owner['raw']['control_mode'] != 11:
             raise AssertionError('actual acquisition did not install owner mode11')
         first_owner_pass = frame(catch_frame+2)["actors"][catcher]
+        # `$86:CF38-$CF50` leaves the high-tip receiver's upper reach $37
+        # locked while the independent lower channel begins locomotion $05.
+        # The old single-channel assertion mistook that native overlay for a
+        # failure to move even when velocity and lower motion were correct.
         if first_owner_pass["raw"]["control_mode"] != 11 or \
                 first_owner_pass["raw"]["motion_38"] != 5 or \
-                first_owner_pass["animation"] != 5 or \
+                first_owner_pass["animation"] != 0x37 or \
+                first_owner_pass["lower_animation"] != 5 or \
                 (first_owner_pass["vx"] == 0 and first_owner_pass["vy"] == 0):
             raise AssertionError(
                 "mode-11 owner did not begin locomotion on the next logical "
@@ -528,10 +563,18 @@ def main():
                 post_resolver_contact = row["collision"]["player_count"] != 0 or \
                     (previous is not None and
                      previous["collision"]["player_count"] != 0)
+                # `$86:F780/$F886 -> $86:EC32` runs after the ordinary
+                # velocity resolver has published +$4C. A successful jump
+                # may then replace planar velocity while deliberately
+                # leaving that magnitude latched until the next actor pass.
+                jump_launched = previous is not None and \
+                    row["tipoff"]["jump_launches"] > \
+                    previous["tipoff"]["jump_launches"]
                 if (actor["vx"] or actor["vy"]) and \
                         raw["movement_magnitude_4c"] not in expected_magnitudes and \
                         not on_rectangular_edge and not on_isometric_edge and \
                         stable_movement_mode and not post_resolver_contact and \
+                        not jump_launched and \
                         row["fouls"]["free_throw_state_raw"] == 0:
                     raise AssertionError(
                         f"actor +$4C magnitude changed at frame {row['frame']} "
@@ -629,8 +672,21 @@ def main():
                             f"$86:B34F/A7DA carried finish changed: {after} {ball}")
                     mode13_carried_frames += 1
                 if old_mode == 13 and new_mode == 1:
+                    # A close finish positioned directly over the rim may
+                    # score in the same physics substep as `$86:A9D0`.
+                    # `$85:A079` then consumes/clears $094C, so accept either
+                    # the observable two-point flight or its immediate
+                    # two-point score transition; both retain detached state.
+                    match = current["match"]
+                    old_match = previous["match"]
+                    scoring_key = "score_left_raw" if actor_id < 5 else \
+                                  "score_right_raw"
+                    immediate_make = match["live_state_raw"] == 0x82 and \
+                        match["shot_value_raw"] == 0 and \
+                        match[scoring_key] == old_match[scoring_key] + 2
                     if ball["state"] != 5 or ball["owner"] != -1 or \
-                            current["match"]["shot_value_raw"] != 2:
+                            (match["shot_value_raw"] != 2 and
+                             not immediate_make):
                         raise AssertionError(
                             f"$86:A9D0 close-finish release changed: {after} {ball}")
                     mode13_finishes += 1
@@ -639,8 +695,14 @@ def main():
                     moving_start = (after["lower_animation"] == 0x32 and
                                     after["vz"] in (0x210, 0x1E0) and
                                     ball["activity_raw"] == 0xFFFF)
+                    # The common actor commit can land a prior jump before
+                    # the mode-11 decision starts the stationary shot later
+                    # in that same pass. Its just-consumed negative VZ stays
+                    # observable until mode 12's following continuation.
+                    landing_start = before["z"] > 0 and after["z"] == 0 and \
+                                    after["vz"] < 0
                     stationary_start = (after["lower_animation"] == 0x16 and
-                                        after["vz"] == 0 and
+                                        (after["vz"] == 0 or landing_start) and
                                         ball["activity_raw"] in (1, 3))
                     if after["animation"] != 0x16 or \
                             not (moving_start or stationary_start) or \

@@ -17,17 +17,10 @@
 
 /* ROM routines correlated with live Mesen execution. */
 #define SNES_ADDR_TIPOFF_PLAYER_FORMATION 0x86DDA7
-#define SNES_ADDR_TIPOFF_BALL_INIT        0x86E054
+#define SNES_ADDR_TIPOFF_BALL_INIT        0x86E056
 #define SNES_ADDR_TIPOFF_JUMP_ANIMATION   0x86ECF4
 #define SNES_ADDR_TIPOFF_CONTACT          0x86CCFC
 #define SNES_ADDR_TIPOFF_POSSESSION       0x86D25A
-
-#define NBA_TIPOFF_BALL_APPEAR_FRAME 140
-#define NBA_TIPOFF_TOSS_FRAME       145
-#define NBA_TIPOFF_JUMP_FRAME       156
-#define NBA_TIPOFF_CONTACT_FRAME    198
-#define NBA_TIPOFF_POSSESSION_FRAME 200
-#define NBA_TIPOFF_BREAK_FRAME      220
 
 typedef enum {
     NBA_TIPOFF_FORMATION = 0,
@@ -128,6 +121,7 @@ typedef struct {
     uint16_t animation_lower_queue_raw_22[3];
     bool exact_pass_animation; /* ordinary live-play adoption, not inbound */
     bool exact_shot_animation; /* ordinary mode-12 startup/wind-up */
+    bool exact_jump_animation; /* EC32/EAA8 channels share contact/render pose */
     uint16_t recovery_inhibit_raw;    /* actor `+$7A` */
     uint16_t behavior_flags_raw;      /* actor `+$7E` */
     uint16_t help_request_raw_80;     /* actor `+$80`, `$85:C006` */
@@ -148,13 +142,19 @@ void nba_tipoff_ease_display_direction(uint8_t desired,
                                        uint16_t upper_animation_lock,
                                        uint8_t *shown, uint8_t *timer);
 
-typedef struct {
+typedef struct NbaTipoff {
     const NbaAssetPack *assets;
     NbaSession *session;
+    /* Optional read-only test observer. NULL in the normal game. These are
+     * actual sweep boundaries, not cadence-derived telemetry predictions. */
+    void (*differential_observer)(const struct NbaTipoff *, const char *, void *);
+    void *differential_context;
     int frame;
     NbaTipoffPhase phase;
     NbaTipoffActor actors[NBA_GAMEPLAY_ACTOR_COUNT];
     NbaTipoffBall ball;
+    NbaTipBallInitialization ball_initialization; /* immutable startup bookkeeping */
+    uint16_t context_raw_4933, context_raw_4935;
     int16_t camera_x, camera_y;
     NbaGameplayCamera camera;
     NbaCourtPresentation court_presentation;
@@ -176,6 +176,12 @@ typedef struct {
     uint32_t tip_contact_frame;
     uint32_t tip_possession_frame;
     uint16_t tip_reach_mask;
+    uint16_t tip_toss_countdown_raw_09f2;
+    uint16_t scratch_0046, scratch_0047;
+    NbaGraphicsScratchState graphics_scratch;
+    uint32_t jump_decision_calls, jump_launches, jump_rejected_contexts;
+    NbaJumpReachInput last_jump_input;
+    NbaJumpReachResult last_jump_result;
     NbaTipEvent tip_event;
     uint16_t tip_event_bits_raw_13e9;
     uint16_t tip_winner_group_raw_0932;
@@ -289,6 +295,7 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
                      NbaSession *session);
 void nba_tipoff_update(NbaTipoff *tipoff, const NbaInput *input);
 bool nba_tipoff_try_tip_contact(NbaTipoff *tipoff);
+bool nba_tipoff_jump_reach(NbaTipoff *tipoff, unsigned actor);
 bool nba_tipoff_select_tip_receiver(NbaTipoff *tipoff);
 bool nba_tipoff_launch_tip_ball(NbaTipoff *tipoff);
 void nba_tipoff_render(const NbaTipoff *tipoff, NbaRenderer *renderer);

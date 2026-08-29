@@ -26,6 +26,7 @@ typedef struct {
     uint8_t free_throw_rating_38;
     uint8_t shot_range_49;
     uint8_t stamina_rating_35;
+    uint8_t jump_rating_3c,jump_rating_3d;
     uint8_t decision_profile_3f, decision_profile_40;
     uint8_t movement_profile_42;
     char name[33];
@@ -143,11 +144,22 @@ static const uint8_t *animation_resource(const NbaAssetPack *assets,
     uint32_t directory = read_u32(data + 28);
     if (directory > item->size) return NULL;
     if (count > (item->size - directory) / 12u) return NULL;
-    for (uint32_t i = 0; i < count; ++i) {
+    /* The pack directory is sorted by resource ID. Live layer diagnostics
+     * perform forty lookups per frame, so preserve exact data while avoiding
+     * a full directory scan for every actor/layer. */
+    uint32_t lo = 0u, hi = count;
+    while (lo < hi) {
+        uint32_t i = lo + (hi - lo) / 2u;
         const uint8_t *entry = data + directory + (size_t)i * 12u;
         uint16_t id = read_u16(entry);
-        if (id < resource_id) continue;
-        if (id > resource_id) break;
+        if (id < resource_id) {
+            lo = i + 1u;
+            continue;
+        }
+        if (id > resource_id) {
+            hi = i;
+            continue;
+        }
         uint32_t offset = read_u32(entry + 4), size = read_u32(entry + 8);
         if (offset > item->size || size > item->size - offset) return NULL;
         if (size_out) *size_out = size;
@@ -403,15 +415,16 @@ static const uint8_t *resource_tile(const uint8_t *resource, uint32_t size,
         ? resource + graphics_offset + rank * 32u : NULL;
 }
 
-static void draw_animation_resource(NbaRenderer *ren, const NbaAssetPack *assets,
+static uint32_t draw_animation_resource(NbaRenderer *ren, const NbaAssetPack *assets,
                                     uint16_t resource_id, const uint8_t *palette,
                                     int origin_x, int origin_y, bool flip,
                                     const uint8_t *tile_override, int scale) {
     uint32_t resource_size;
     const uint8_t *resource = animation_resource(assets, resource_id, &resource_size);
-    if (!resource || resource_size < 10u) return;
+    if (!resource || resource_size < 10u || !palette) return 0u;
     uint16_t part_count = read_u16(resource) & 0x7fffu;
-    if (part_count > 32u || 10u + (size_t)part_count * 7u > resource_size) return;
+    if (part_count > 32u || 10u + (size_t)part_count * 7u > resource_size) return 0u;
+    uint32_t opaque_pixels = 0u;
     /* Lower OAM indexes win, matching $80:B391's queued part order. */
     for (uint16_t n = part_count; n-- > 0;) {
         const uint8_t *part = resource + 10u + (size_t)n * 7u;
@@ -434,16 +447,19 @@ static void draw_animation_resource(NbaRenderer *ren, const NbaAssetPack *assets
             if (!tile) continue;
             uint8_t color_index = tile_pixel(tile, sx & 7, sy & 7);
             if (!color_index) continue;
+            ++opaque_pixels;
             uint32_t color = bgr555_to_argb(read_u16(palette + color_index * 2u));
             int dx = origin_x + (part_x + px) * scale;
             int dy = origin_y + (y + py) * scale;
             for (int oy = 0; oy < scale; ++oy) for (int ox = 0; ox < scale; ++ox) {
                 int tx = dx + ox, ty = dy + oy;
-                if (tx >= 0 && tx < NBA_SNES_WIDTH && ty >= 0 && ty < NBA_SNES_HEIGHT)
+                if (ren && tx >= 0 && tx < NBA_SNES_WIDTH &&
+                    ty >= 0 && ty < NBA_SNES_HEIGHT)
                     ren->pixels[ty * NBA_SNES_WIDTH + tx] = color;
             }
         }
     }
+    return opaque_pixels;
 }
 
 static uint16_t jersey_mask_word(const uint8_t *source, unsigned offset,
@@ -605,6 +621,7 @@ static bool player_record(const NbaAssetPack *assets, int team, int player,
     out->free_throw_rating_38 = p[26];
     out->shot_range_49 = p[27];
     out->stamina_rating_35 = p[28];
+    out->jump_rating_3c = p[29];out->jump_rating_3d = p[30];
     memcpy(out->name, p + 32, 32); out->name[32] = '\0';
     return true;
 }
@@ -657,6 +674,16 @@ bool nba_player_gameplay_shot_ratings(const NbaAssetPack *assets,
     *two_point = player.appearance_a;
     *three_point = player.appearance_b;
     return true;
+}
+
+bool nba_player_gameplay_jump_ratings(const NbaAssetPack *assets,
+    uint8_t team,uint8_t slot,uint8_t *rating_3c,uint8_t *rating_3d) {
+    PlayerLabRecord player;
+    /* Older packs used zero padding here. Reject rather than treating an
+     * absent extraction as a genuine zero player rating. */
+    if(!rating_3c || !rating_3d || !nba_assets_get(assets,NBA_ASSET_GAMEPLAY_JUMP_TABLES) ||
+       !player_record(assets,team,slot,&player))return false;
+    *rating_3c=player.jump_rating_3c;*rating_3d=player.jump_rating_3d;return true;
 }
 
 bool nba_player_gameplay_stamina_rating(const NbaAssetPack *assets,
@@ -796,6 +823,71 @@ bool nba_player_sprite_render_resources(NbaRenderer *renderer,
                                     origin_x, origin_y, scale);
 }
 
+bool nba_player_sprite_diagnose_resources(const NbaAssetPack *assets,
+                                    uint8_t team, uint8_t roster_slot,
+                                    uint8_t side, uint8_t direction,
+                                    uint16_t upper_resource,
+                                    uint16_t lower_resource,
+                                    NbaPlayerSpriteDiagnostics *diagnostics) {
+    PlayerLabRecord player;
+    if (!assets || !diagnostics || side > 1u || direction >= 8u ||
+        !player_record(assets, team, roster_slot, &player)) return false;
+    NbaPlayerSpriteDiagnostics next = {0};
+    next.upper_resource = upper_resource;
+    next.lower_resource = lower_resource;
+    const uint8_t *bank = animation_bank84(assets, NULL);
+    const uint8_t *palette = player_palette(
+        assets, team, side, player.palette_variant);
+    if (!bank || !palette) return false;
+    next.player_palette_valid = true;
+    next.head_resource = (uint16_t)(player.head_resource_base +
+        read_u16(bank + 0x436eu + direction * 2u));
+    next.upper_attach_x = animation_attachment(assets, lower_resource, false);
+    next.upper_attach_y = animation_attachment(assets, lower_resource, true);
+    next.head_attach_x = animation_attachment(assets, upper_resource, false);
+    next.head_attach_y = animation_attachment(assets, upper_resource, true);
+    next.number_attach_x = number_attachment(assets, upper_resource, false);
+    next.number_attach_y = number_attachment(assets, upper_resource, true);
+    next.lower_resource_valid = animation_resource(
+        assets, lower_resource, NULL) != NULL;
+    next.upper_resource_valid = animation_resource(
+        assets, upper_resource, NULL) != NULL;
+    next.head_resource_valid = animation_resource(
+        assets, next.head_resource, NULL) != NULL;
+    next.lower_opaque_pixels = draw_animation_resource(
+        NULL, assets, lower_resource, palette, 0, 0, false, NULL, 1);
+    next.upper_opaque_pixels = draw_animation_resource(
+        NULL, assets, upper_resource, palette, 0, 0, false, NULL, 1);
+    next.head_opaque_pixels = draw_animation_resource(
+        NULL, assets, next.head_resource, palette, 0, 0, false, NULL, 1);
+    next.number_allowed = number_allowed_for_upper(assets, upper_resource);
+    uint8_t number_tile[32];
+    next.number_composed = next.number_allowed &&
+        compose_jersey_tile(assets, player.jersey, direction, number_tile);
+    if (next.number_composed) {
+        static const uint16_t number_resources[8] = {
+            0x0593,0xffff,0x0591,0x0592,0x0593,0xffff,0x0591,0x0592
+        };
+        uint8_t number_palette[32];
+        next.number_resource = number_resources[direction];
+        next.number_resource_valid = animation_resource(
+            assets, next.number_resource, NULL) != NULL;
+        next.number_palette_valid = jersey_palette(
+            assets, team, side, number_palette);
+        if (next.number_palette_valid)
+            next.number_opaque_pixels = draw_animation_resource(
+                NULL, assets, next.number_resource, number_palette,
+                0, 0, next.number_resource == 0x0591u, number_tile, 1);
+    } else {
+        next.number_resource = 0xffffu;
+    }
+    *diagnostics = next;
+    return next.lower_resource_valid && next.upper_resource_valid &&
+           next.head_resource_valid &&
+           (!next.number_composed || (next.number_resource_valid &&
+                                      next.number_palette_valid));
+}
+
 /* $86:E545-$E592: complete unlatched selector, including B37C reversals.
  * Pack descriptors provide the native bank84 context (also for hard locks). */
 bool nba_player_owner_unlatched_pose(const NbaAssetPack *assets,
@@ -822,6 +914,13 @@ bool nba_player_owner_unlatched_pose(const NbaAssetPack *assets,
 bool nba_player_animation_command(const NbaAssetPack *assets,
     NbaPlayerAnimationChannels *c, NbaPlayerAnimationCommand command,
     uint16_t *request, bool boosted, bool alternate_lower) {
+    return nba_player_animation_command_scratch(assets,c,command,request,
+        boosted,alternate_lower,NULL);
+}
+
+bool nba_player_animation_command_scratch(const NbaAssetPack *assets,
+    NbaPlayerAnimationChannels *c, NbaPlayerAnimationCommand command,
+    uint16_t *request, bool boosted, bool alternate_lower,uint16_t *scratch_47) {
     if (!c || !request) return false;
     if (command == NBA_ANIMATION_CANCEL_UPPER ||
         command == NBA_ANIMATION_CANCEL_LOWER) {
@@ -839,9 +938,9 @@ bool nba_player_animation_command(const NbaAssetPack *assets,
     if (command == NBA_ANIMATION_REVERSE_BOTH) {
         NbaPlayerAnimationChannels next = *c;
         uint16_t requested = *request;
-        if (!nba_player_animation_command(assets, &next,
+        if (!nba_player_animation_command_scratch(assets, &next,
                 NBA_ANIMATION_INSTALL_BOTH, &requested, boosted,
-                alternate_lower)) return false;
+                alternate_lower,scratch_47)) return false;
         const uint8_t *lower = animation_descriptor(assets,
             alternate_lower ? PLAYER_LOWER_ALT_STATE_TABLE :
                               PLAYER_LOWER_STATE_TABLE,
@@ -872,6 +971,10 @@ bool nba_player_animation_command(const NbaAssetPack *assets,
         (uint8_t)state);
     if ((both || upper) && !ud) return false;
     if ((both || !upper) && !ld) return false;
+    if(scratch_47) {
+        const uint8_t *bank=animation_bank84(assets,NULL);
+        *scratch_47=(uint16_t)(0x8000u+(unsigned)((both||upper?ud:ld)-bank));
+    }
     if (both || upper) {
         c->upper_queue_cursor = 0xFFFF;
         c->upper_state = state;
@@ -1204,6 +1307,46 @@ bool nba_player_animation_resources(const NbaAssetPack *assets,
     return true;
 }
 
+bool nba_player_animation_resources_for_appearance(
+                                    const NbaAssetPack *assets,
+                                    uint8_t upper_state, uint8_t lower_state,
+                                    uint8_t direction, uint32_t upper_tick,
+                                    uint32_t lower_tick,
+                                    bool alternate_lower,
+                                    uint16_t variant_raw_6c,
+                                    uint16_t *upper_resource,
+                                    uint16_t *lower_resource) {
+    const uint8_t *bank = animation_bank84(assets, NULL);
+    const uint8_t *upper = animation_descriptor(
+        assets, PLAYER_UPPER_STATE_TABLE, upper_state);
+    const uint8_t *lower = animation_descriptor(
+        assets, alternate_lower ? PLAYER_LOWER_ALT_STATE_TABLE :
+                                  PLAYER_LOWER_STATE_TABLE, lower_state);
+    if (!bank || !upper || !lower || !upper_resource || !lower_resource ||
+        direction >= 8u) return false;
+    uint8_t lower_frame = animation_frame_index(lower, bank, lower_tick);
+    uint16_t upper_count = read_u16(upper + 6u);
+    if (!upper_count) return false;
+    uint8_t upper_frame = (int16_t)read_u16(upper) < 0
+        ? (uint8_t)(lower_frame % upper_count)
+        : animation_frame_index(upper, bank, upper_tick);
+    uint16_t next_lower = animation_frame_resource(
+        lower, bank, direction, lower_frame);
+    uint16_t next_upper = animation_frame_resource(
+        upper, bank, direction, upper_frame);
+    /* Native `$87:AC76-$AC95/$87:AD38-$AD57`: resource IDs below $00F0
+     * are only the base half of the upper-body set. Actor +$6C, XOR the
+     * rear-three-quarter facing group, selects the second 40-frame half.
+     * Omitting this at the legacy tick fallback produced valid but wrong
+     * torso art, which appeared in gameplay as a missing jersey. */
+    if (next_upper < 0x00F0u &&
+        (uint16_t)(variant_raw_6c ^ (direction < 3u ? 1u : 0u)) == 0u)
+        next_upper = (uint16_t)(next_upper + 0x0028u);
+    *upper_resource = next_upper;
+    *lower_resource = next_lower;
+    return true;
+}
+
 bool nba_player_animation_phases(const NbaAssetPack *assets,
                                  uint8_t upper_state, uint8_t lower_state,
                                  uint32_t upper_tick, uint32_t lower_tick,
@@ -1286,6 +1429,56 @@ bool nba_player_animation_self_test(const NbaAssetPack *assets) {
                 &out[0], &out[1], &out[2], &out[3], &out[4], &out[5]) ||
             memcmp(out, cadence[i].output, sizeof(out)) != 0) return false;
     }
+    /* Same-input appearance witness captured at the native first
+     * `$87:A47A` draw-prep entry (Orlando versus West). These are actor
+     * +$2A/+$2C after `$87:AFA2-$B053` and `$87:AAB2-$AD5A`, not values
+     * inferred from a C screenshot. It catches the former live fallback
+     * bug where the lab's base lower table was used for tall players. */
+    static const uint8_t appearance_teams[10] = {
+        18,18,18,18,18,28,28,28,28,28
+    };
+    static const uint8_t appearance_roster[10] = {
+        2,0,1,3,4,2,0,1,3,4
+    };
+    static const uint8_t appearance_direction[10] = {
+        6,0,4,7,5,2,4,0,3,1
+    };
+    static const uint16_t expected_head[10] = {
+        0x04A1,0x0514,0x04C9,0x04C9,0x04B0,
+        0x04BA,0x04B0,0x04BA,0x049C,0x04F1
+    };
+    static const uint16_t expected_upper[10] = {
+        0x00F3,0x00F3,0x00F1,0x00F4,0x00F2,
+        0x00F1,0x00F1,0x00F3,0x00F0,0x00F2
+    };
+    static const uint16_t expected_lower[10] = {
+        0x068C,0x068C,0x044D,0x0450,0x044E,
+        0x068A,0x068A,0x068C,0x044C,0x044E
+    };
+    NbaPlayerAppearanceSetup native_appearance;
+    if (!nba_player_appearance_setup(assets, appearance_teams,
+            appearance_roster, &native_appearance)) return false;
+    for (unsigned i = 0; i < 10u; ++i) {
+        uint16_t upper = 0xFFFFu, lower = 0xFFFFu;
+        const NbaPlayerAppearance *p = &native_appearance.players[i];
+        if (p->head_resource != expected_head[i] ||
+            !nba_player_animation_resources_for_appearance(
+                assets, 0u, 0u, appearance_direction[i], 0u, 0u,
+                p->alternate_lower != 0u, p->upper_variant,
+                &upper, &lower) ||
+            upper != expected_upper[i] || lower != expected_lower[i])
+            return false;
+    }
+    /* Native low-resource variant witness: Turner has roster +$08 == 1.
+     * Rear-three-quarter direction 2 therefore selects base+$28. */
+    uint16_t raw_upper, raw_lower, variant_upper, variant_lower;
+    if (!nba_player_animation_resources(assets, 11u, 3u, 2u, 0u, 0u,
+            &raw_upper, &raw_lower) || raw_upper >= 0x00F0u ||
+        !nba_player_animation_resources_for_appearance(
+            assets, 11u, 3u, 2u, 0u, 0u, true, 1u,
+            &variant_upper, &variant_lower) ||
+        variant_upper != (uint16_t)(raw_upper + 0x0028u) ||
+        variant_lower == raw_lower) return false;
     static const uint16_t heights[][3] = {
         {0x00F0, 0x044C, 55}, {0x00F1, 0x044D, 55},
         {0x00F1, 0x068A, 61}, {0x00F3, 0x068C, 60},

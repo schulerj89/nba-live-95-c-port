@@ -1,11 +1,12 @@
 # Gameplay work remaining after the tip-flow checkpoints
 
-Recounted 2026-08-27 with `DumpTipoffFlow.java`, saved in the bank86 Ghidra
-project. Fresh contiguous listing:
-`.analysis/tipoff-flow-proof-20260827/ghidra/tip_flow_bank86.txt`.
-`ghidra-final-census.log` confirms Save succeeded. Each count below is a
+Recounted 2026-08-28 with `DumpTipoffFlow.java`. Fresh contiguous listing:
+`.analysis/pending-diff-ghidra-20260828/tip_flow_bank86.txt`.
+The old E054 start was inside a JMP operand; the real ball initializer begins
+at E056 and has30 instructions, not31. That prefix is now verified/adopted.
+See `pending-gameplay-differential-plan.md`. Each count below is a
 decoded instruction start, not bytes, estimated effort, or a whole-game
-completion percentage. None of these bounded rows is in the verified ledger.
+completion percentage. The remaining nonzero rows are not in the verified ledger.
 Some already have partial C implementations: pending means complete native
 translation/adoption **and verification**, not necessarily absent C code.
 
@@ -13,9 +14,9 @@ translation/adoption **and verification**, not necessarily absent C code.
 
 | Area | ROM range(s) | Pending instructions | What remains |
 |---|---|---:|---|
-| Jump/reach startup | 86:EC32-ECF8 | 77 | Replace frame-based initial jump/pose selection with native inputs and cadence |
-| Loose-ball/jump continuation | 86:ECF9-EE75 | 162 | Complete downstream reach/jump decisions and animation integration |
-| Ball initialization prefix | 86:E054-E0AB | 31 | Native startup state/velocity; this is only a prefix, not the complete toss dispatcher |
+| Jump/reach startup | 86:EC32-ECF8 | 0 (77 verified) | Parent decision, caller cadence, actor motion and animation are runtime-wired |
+| Loose-ball/jump continuation | 86:ECF9-EE75 | 0 (162 verified) | Parent continuation wired; far EAA8 child remains separate/outside this range |
+| Ball initialization prefix | 86:E056-E0AB | 0 (30 verified) | Complete bounded prefix; later toss dispatcher remains separate |
 | Stationary defensive idle selector | 86:E39A-E3CA | 20 | Natural state7 selection; its animation cadence is already implemented |
 | Wider defensive pose caller | 86:E3E1-E4A6 | 79 | Integrate caller decisions before claiming native idle distribution |
 | Inbound owner continuation | 86:F43A-F4F1 | 89 | Replace/reverify remaining compatibility caller behavior |
@@ -26,22 +27,28 @@ translation/adoption **and verification**, not necessarily absent C code.
 | Inbound launch/orientation gate | 86:F60B-F653 | 31 | Exact basket-side gate and shared pass handoff |
 | Inbound continuation return | 86:F654-F668 | 11 | Timer reset and return/caller composition |
 | Timeout confirmation prefix | 86:844E-8467 | 9 | Connect confirmation to the complete timeout flow |
-| **CPU/gameplay subtotal for these bounded slices** | | **602** | Not a census of every unfinished routine |
+| **CPU/gameplay subtotal for these bounded slices** | | **332** | Not a census of every unfinished routine |
 | Optional human inbound steering | 86:F520-F54E | 19 | Outside current CPU-vs-CPU scope |
 
 The older **323 CPU/animation** subtotal is still valid: defensive99 +
 CPU inbound224. Including the separate human steering19 makes that neighborhood
-342. The newly expanded jump/toss prefixes add270; timeout adds9. Thus602,
-or621 including the human branch. Do not add323 again to this table.
+342. Timeout adds9, giving332 without human steering or351 including it.
+The corrected starting core was601; ball initialization30 and jump/reach239
+are now verified. Do not add323 again to this table.
 
 ## Important work not represented by that subtotal
 
+Jump/reach checkpoint details: `jump-reach-differential.md`. All239 parent
+starts have native decision witnesses and production integration. The far
+EAA8 child and graphics payload DMA are separate boundaries, not silently
+credited to the parent.
+
 | Area | Count/status | Boundary |
 |---|---|---|
-| Other contact alternatives | 35 gate starts not witnessed by this goal's tip fixtures | The focused geometric replay witnesses143/178; older shared contact proofs do not make the new tip witness branch-exhaustive. Not added to602. |
-| Complete initial toss/formation/dispatcher | Not fully censused | E054-E0AB above is only31 instructions; the current initial toss is still quadratic and the jump presentation uses frame constants. |
+| Other contact alternatives | 35 gate starts not witnessed by the tip-flow fixtures | The focused geometric replay witnesses143/178; older shared contact proofs do not make the new tip witness branch-exhaustive. Not added to the bounded subtotal. |
+| Complete initial formation/dispatcher | Not fully censused | Ball initialization, countdown, free-ball physics and EC32 jump are wired; wider formation/presentation dispatch remains uncensused. |
 | Ordinary pass adoption | Shared306-instruction launch body already verified; caller count not censused | Tip uses the complete99C4/9C45 implementation; ordinary/inbound adapters still need adoption/comparison. Do not call306 untranslated instructions. |
-| Held-ball/dribble/contact pose consumers | Not fully censused | B649/B66A integration still uses some legacy tick-derived resources/phases; isolated animation proof is not whole-call-chain parity. |
+| Held-ball/dribble/contact pose consumers | Appearance-aware fallback fixed; instruction parity incomplete | Legacy-tick callers now apply actor +A8/+6C and all derived resources exist in the asset pack. B649/B66A exact attachments retain strict replay proof, but 294 starts across the wider appearance/setup/draw census still lack observed execution or instruction-level replay. |
 | Camera input ownership and framing | Camera core/callers already verified; wider input producers not fully censused | Remaining ball/actor trajectories, alternate flags08BC/08CC, and owner093E inputs can still produce poor framing. Do not re-add the completed99 camera instructions. |
 | Court presentation | Not fully censused | Animated crowd CHR and downstream BG1/backboard/window composition; pack-derived map geometry is already checked. |
 | Timeout/period/substitution orchestration | Not fully censused | Initial43200 clock seed, period transitions, grants and bench promotion beyond the nine-instruction timeout prefix. |
@@ -62,10 +69,11 @@ represented-output mismatches. These datasets include deliberate controlled
 WRAM cases and duplicate natural witnesses; they are not independent whole
 matches. C ABI locals replace SNES stack preservation; cycle parity is excluded.
 
-The default C run first contacts at204 and catches at222; the recorded native
-calls are200 and220. That difference remains visible and is not concealed
-with a fitted frame offset. The initial toss/jump rows above are the next
-focused work, before claiming a ROM-identical tip-off presentation.
+After the current configured C launch, first contact is164 and possession is186.
+The retained native configured capture contacts at185 and possesses at206; its
+actor scheduler begins roughly20 frames later. That context offset remains
+visible and is not concealed with a fitted frame constant. Full matching-start
+trajectory equivalence still requires configuration/state alignment.
 
-Verification ledger:7,585/27,901 captured address positions,27.19%.
+Verification ledger:7,826/27,901 captured address positions,28.05%.
 Detailed checkpoint evidence and release results: `tipoff-flow-plan.md`.

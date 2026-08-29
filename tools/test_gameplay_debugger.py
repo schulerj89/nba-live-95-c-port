@@ -11,7 +11,7 @@ from pathlib import Path
 from PIL import Image
 
 
-EXPECTED_LAB_RGB = "b5a57739f864e9f0b4497b3d02100fb637349dab30c7532c0b275813843bced7"
+EXPECTED_LAB_RGB = "bb2f4cdd1a6912f620b5476eca717d2c2f23dc4fe9ba8322f08e4e34f249cf56"
 
 
 def run(command, label):
@@ -46,8 +46,10 @@ def main():
         sample = rows[-1]
         if len(sample["actors"]) != 10 or [a["id"] for a in sample["actors"]] != list(range(10)):
             raise AssertionError("telemetry did not preserve all ten actor slots")
-        if sum(bool(a["visible"]) for a in sample["actors"]) != 8:
-            raise AssertionError("settled tip-off visibility telemetry changed")
+        # By frame170 the contact actor has joined the ROM's historical
+        # eight-player pre-tip submission; the receiver joins at possession.
+        if sum(bool(a["visible"]) for a in sample["actors"]) != 9:
+            raise AssertionError("post-contact tip-off visibility changed")
         if sample["control"] != {
                 "actor": 255, "side_raw": -1, "initial_slot_raw": 0,
                 "selected_slot_raw": -1, "actor_pointer_raw": 0}:
@@ -106,9 +108,14 @@ def main():
                      "free_throw_start_tick_raw_09be": 0,
                      "free_throw_aim_x_raw_0980": 0,
                      "free_throw_aim_y_raw_0982": 0,
-                     "free_throw_flight_timer_raw_0930": 0,
+                     # `$0930` is overloaded: the BB17 side-change block
+                     # seeds $0258 on first tip possession; this is not a
+                     # free-throw event despite the host field name.
+                     "free_throw_flight_timer_raw_0930": 0x0258,
                      "deferred_shot_foul_phase_raw_0a02": 0,
-                     "latched_event_raw_08f0": 0,
+                     # Native ball initialization E0A3 writes FFFF (not a
+                     # triggered foul). Proven by ball-initialization.json.
+                     "latched_event_raw_08f0": 0xFFFF,
                      "whistle_active_raw_09b6": 0,
                      # `$85:EDB3` decrements signed `$08DE` every outer
                      # frame, even before live gameplay begins.

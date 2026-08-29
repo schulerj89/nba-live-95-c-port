@@ -29,8 +29,9 @@ EXPECTED_FRAME_HASHES = {
     "right_philadelphia": "487b0efe17269dcf04d1f004fd4ca1f5647ecd60e3a4b72099427bd03fab3acf",
     "east": "09902c67a6ce3b516c83b079ae8f609494459cf100a13c0ec735c9e0f5a5dfe7",
     "west": "94d3d4fe72c06911a9c27748dd1e5fdfcd83ec6e407706ca2c20326b7d9d0662",
-    # Assets 277/278/279 change F12's count; test_shot_assets proves the delta.
-    "logo_debug": "0c080a631497de4170b6ece2efbadcce7e167a15acaacbd186f00d2a325cefc1",
+    # Assets 277..281 change F12's count; test_shot_assets proves that the
+    # only changed pixels are in the debugger's index/count row.
+    "logo_debug": "e448a43ba3a9c01235fa3678a02127eea9d6dd9bf51725988c802c449125ad39",
 }
 
 EXPECTED_LOGO_HASHES = {

@@ -53,6 +53,28 @@ bool nba_player_sprite_render_resources(NbaRenderer *renderer,
                                     uint16_t upper_resource,
                                     uint16_t lower_resource, int origin_x,
                                     int origin_y, int scale);
+typedef struct {
+    uint16_t upper_resource, lower_resource, head_resource, number_resource;
+    uint32_t upper_opaque_pixels, lower_opaque_pixels;
+    uint32_t head_opaque_pixels, number_opaque_pixels;
+    int8_t upper_attach_x, upper_attach_y;
+    int8_t head_attach_x, head_attach_y;
+    int8_t number_attach_x, number_attach_y;
+    bool lower_resource_valid, upper_resource_valid, head_resource_valid;
+    bool number_resource_valid;
+    bool player_palette_valid, number_palette_valid;
+    bool number_allowed, number_composed;
+} NbaPlayerSpriteDiagnostics;
+/* Asset-only equivalent of the `$87:A47A` -> `$80:AD92` layer inputs.
+ * It does not render or depend on Mesen pixels. Zero-part resources are
+ * valid native no-op layers, so validity and opaque pixel counts are exposed
+ * separately. */
+bool nba_player_sprite_diagnose_resources(const NbaAssetPack *assets,
+                                    uint8_t team, uint8_t roster_slot,
+                                    uint8_t side, uint8_t direction,
+                                    uint16_t upper_resource,
+                                    uint16_t lower_resource,
+                                    NbaPlayerSpriteDiagnostics *diagnostics);
 /* ROM `$87:B572-$B648` preserves a channel phase when the replacement
  * descriptor can represent it. */
 /* Literal animation words owned by `$87:B37C-$B571` and `$87:AB72-$AD5A`.
@@ -103,6 +125,12 @@ typedef enum {
 bool nba_player_animation_command(const NbaAssetPack *assets,
     NbaPlayerAnimationChannels *channels, NbaPlayerAnimationCommand command,
     uint16_t *requested_state, bool boosted, bool alternate_lower);
+/* Same command, exposing the literal DP47 descriptor write when it occurs.
+ * Early exits preserve the caller's scratch word. */
+bool nba_player_animation_command_scratch(const NbaAssetPack *assets,
+    NbaPlayerAnimationChannels *channels, NbaPlayerAnimationCommand command,
+    uint16_t *requested_state, bool boosted, bool alternate_lower,
+    uint16_t * scratch_47);
 /* $86:E545-E592, including B37C reversal; writes +4E, never display +52.
  * Current resource IDs remain untouched until the next animation cadence. */
 bool nba_player_owner_unlatched_pose(const NbaAssetPack *assets,
@@ -141,6 +169,18 @@ bool nba_player_animation_resources(const NbaAssetPack *assets,
                                     uint32_t lower_tick,
                                     uint16_t *upper_resource,
                                     uint16_t *lower_resource);
+/* Snapshot form of `$87:AC76-$AC95/$87:AD38-$AD57`. Unlike the legacy
+ * lab helper above, this applies the active player's tall-body lower table
+ * and roster +$08 upper-body variant exactly as the live actor resolver. */
+bool nba_player_animation_resources_for_appearance(
+                                    const NbaAssetPack *assets,
+                                    uint8_t upper_state, uint8_t lower_state,
+                                    uint8_t direction, uint32_t upper_tick,
+                                    uint32_t lower_tick,
+                                    bool alternate_lower,
+                                    uint16_t variant_raw_6c,
+                                    uint16_t *upper_resource,
+                                    uint16_t *lower_resource);
 /* Descriptor-driven actor +$3A/+$3C frame phases used by native action
  * gates. These are frame indices, not elapsed logical-pass counters. */
 bool nba_player_animation_phases(const NbaAssetPack *assets,
@@ -177,6 +217,9 @@ bool nba_player_ball_attachment_point_offsets(const NbaAssetPack *assets,
                                         int16_t *x, int16_t *y, int16_t *z);
 bool nba_player_gameplay_roster_address(const NbaAssetPack *assets,
     uint8_t team, uint8_t roster_slot, uint32_t *address);
+/* Roster bytes3C/3D used by the EC32/ECF9 jump decision. */
+bool nba_player_gameplay_jump_ratings(const NbaAssetPack *assets,
+    uint8_t team,uint8_t slot,uint8_t *rating_3c,uint8_t *rating_3d);
 bool nba_player_gameplay_stamina_rating(const NbaAssetPack *assets,
     uint8_t team,uint8_t roster_slot,uint8_t *rating);
 bool nba_player_gameplay_shot_ratings(const NbaAssetPack *assets,

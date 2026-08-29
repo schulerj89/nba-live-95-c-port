@@ -39,6 +39,9 @@ typedef struct {
     uint16_t upper_resource_raw;
     uint16_t lower_resource_raw;
     uint16_t head_resource_raw;
+    uint16_t appearance_resource_raw[4]; /* lower, upper, head, number */
+    uint32_t appearance_opaque_pixels[4];
+    uint8_t appearance_flags_raw; /* palette, number gate/tile/palette, valid */
     uint16_t motion_38_raw;
     uint16_t motion_3a_raw;
     uint16_t motion_3c_raw;
@@ -113,6 +116,9 @@ typedef struct {
     uint32_t tip_contact_frame;
     uint32_t tip_possession_frame;
     uint16_t tip_reach_mask;
+    uint16_t tip_toss_countdown_raw, jump_scratch_raw;
+    uint32_t jump_calls, jump_launches, jump_rejections;
+    uint16_t ball_velocity_raw[3];
     uint8_t scheduler_due_raw;
     uint8_t actor_pass_dt_raw;
     uint16_t actor_pass_mask_raw;

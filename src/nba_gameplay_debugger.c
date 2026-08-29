@@ -416,7 +416,9 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
                 "\"upper_accumulator_42\":%u,\"lower_accumulator_44\":%u,"
                 "\"upper_lock_46\":%u,\"lower_lock_48\":%u,"
                 "\"upper_queue_18\":%u,\"lower_queue_1a\":%u,\"phase_target_b0\":%u,\"resources_valid\":%s,\"action_integrated\":%s},"
-                "\"palette\":%u}}",
+                "\"palette\":%u},\"appearance\":{"
+                "\"resources\":[%u,%u,%u,%u],"
+                "\"opaque_pixels\":[%u,%u,%u,%u],\"flags\":%u}}",
                 i ? "," : "", a->index, a->team_side, a->roster_slot,
                 a->control, a->visible ? "true" : "false", a->world_x,
                 a->world_y, a->world_z, a->world_z_fp, a->screen_x, a->screen_y,
@@ -455,7 +457,12 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
                 a->animation_rom_words[8], a->animation_rom_words[9],
                 a->animation_phase_target_raw_b0,
                 a->animation_resources_valid ? "true" : "false",
-                a->animation_action_integrated ? "true" : "false", a->palette_raw);
+                a->animation_action_integrated ? "true" : "false", a->palette_raw,
+                a->appearance_resource_raw[0], a->appearance_resource_raw[1],
+                a->appearance_resource_raw[2], a->appearance_resource_raw[3],
+                a->appearance_opaque_pixels[0], a->appearance_opaque_pixels[1],
+                a->appearance_opaque_pixels[2], a->appearance_opaque_pixels[3],
+                a->appearance_flags_raw);
     }
     fprintf(stream,"],\"shot_selection\":{\"serial\":%u,\"input\":[",
             telemetry->shot_selection_serial);
@@ -471,7 +478,11 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
     for(unsigned i=0;i<10;++i)fprintf(stream,"%s%u",i ? "," : "",telemetry->shot_made_run[i]);
     fputs("],\"defensive_run\":[",stream);
     for(unsigned i=0;i<10;++i)fprintf(stream,"%s%u",i ? "," : "",telemetry->shot_defensive_run[i]);
-    fprintf(stream,"]},\"shot_launch\":{\"serial\":%u,\"actor\":%u,\"value\":%u},\"tipoff\":{\"contact_actor\":%d,\"contact_frame\":%u,\"possession_frame\":%u,\"reach_mask\":%u}}\n",
+    fprintf(stream,"]},\"shot_launch\":{\"serial\":%u,\"actor\":%u,\"value\":%u},\"tipoff\":{\"contact_actor\":%d,\"contact_frame\":%u,\"possession_frame\":%u,\"reach_mask\":%u,",
             telemetry->shot_launch_serial,telemetry->shot_launch_actor,telemetry->shot_launch_value,
             telemetry->tip_contact_actor,telemetry->tip_contact_frame,telemetry->tip_possession_frame,telemetry->tip_reach_mask);
+    fprintf(stream,"\"hold_09f2\":%u,\"scratch_0046\":%u,\"jump_calls\":%u,\"jump_launches\":%u,\"rejected_contexts\":%u,\"ball_velocity_raw\":[%u,%u,%u]}}\n",
+        telemetry->tip_toss_countdown_raw,telemetry->jump_scratch_raw,telemetry->jump_calls,
+        telemetry->jump_launches,telemetry->jump_rejections,telemetry->ball_velocity_raw[0],
+        telemetry->ball_velocity_raw[1],telemetry->ball_velocity_raw[2]);
 }

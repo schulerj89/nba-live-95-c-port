@@ -9,7 +9,7 @@ public class DumpTipoffFlow extends GhidraScript {
         int bank=currentProgram.getName().contains("85")?0x85:0x86;
         int[][] ranges=bank==0x86?new int[][]{
             {0x99c4,0x9c44},{0x9c45,0x9c6e},{0xb04c,0xb0e1},{0xccfc,0xd43d},
-            {0xe054,0xe0ab},{0xec32,0xecf8},{0xecf9,0xee75},
+            {0xe056,0xe0ab},{0xec32,0xecf8},{0xecf9,0xee75},
             {0xe39a,0xe3ca},{0xe3e1,0xe4a6},{0xf43a,0xf4f1},
             {0xf4f2,0xf51f},{0xf520,0xf54e},{0xf54f,0xf58e},
             {0xf58f,0xf5ba},{0xf5bb,0xf60a},{0xf60b,0xf653},
@@ -33,6 +33,10 @@ public class DumpTipoffFlow extends GhidraScript {
             p+=ins.getLength();
         }if(p!=r[1]+1)throw new Exception("range ends inside instruction "+Integer.toHexString(r[1]));}
         String[][] labels=bank==0x86?new String[][]{
+            {"ec32","JumpReachDecision","nba_jump_reach_decide in src/nba_jump_reach.c. EC32-EE75 has239 instruction starts. Native decision projection checks XYZ velocities, RNG and ordered child requests; animation channel replay is separate. NOT integrated into ordinary tip-off scheduler yet; do not claim full WRAM or whole-game equivalence. docs/jump-reach-differential.md."},
+            {"ecf9","JumpReachFreeBallContinuation","Receiver/distance/height/rating/threshold gates. ED32 and EDEF are B9 0A 00 (LDA000A,Y): Y=003C, so read WRAM0046, NOT team-context X. ED3D/EDFA select roster3C/3D. Table86EE76-EF05 packed in asset280. CPU callers F787/F892 and shared0046 writer history still require runtime integration."},
+            {"eca1","JumpReachVerticalLaunch","Magnitude(ballVZ)<0040 gives0258. Otherwise exactly one CEE7 draw: low2bits0 rejects, bit1 selects0210 vs0258. State0081 requests B3BD state32. Non-tip continuation also requests upper33/lower1F or upper34/lower32. Child request is not child effect proof."},
+            {"e056","BallInitializationPrefix","nba_tip_ball_initialize / nba_tipoff_init. Actual start E056; E054 is inside preceding JMP at E053. 30 instruction starts,20 mapped words. Natural and poisoned-input full-WRAM differential witnesses: tests/fixtures/ball-initialization*.json. Startup velocity0258, height0050, native object-list links and sentinel globals. Later toss/jump dispatcher not certified by this prefix."},
             {"d3c6","TipContactState81","Temporary catch -> B04C. DP C2 remains ball record10 while96/9A swap; save/restore original ball Z, inhibit other center. Native wrapper replay in tip-acquisition.json."},
             {"d365","TipOrPossessionCompletion","Transfer/receiver/state distinguish temporary tip from actual possession. Whistle guards state clear. All28 starts replayed in tip-completion.json."},
             {"b04c","TipSelectReceiverAndLaunch","Native tip receiver uses RNG low bit plus team base. Copies DP C2 to0942, calls99C4 for launch; not a fixed actor8."}

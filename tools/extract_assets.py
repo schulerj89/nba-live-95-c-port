@@ -462,6 +462,8 @@ def build_player_roster_asset(rom_data):
             # from roster byte +$38 before their two independent RNG gates.
             packed[26] = record[0x38]
             packed[28] = record[0x35]  # stamina/recovery rating, $87:997D
+            packed[29] = record[0x3c]  # EC32/ECF9 jump/reach ratings
+            packed[30] = record[0x3d]
             # `$85:B7D9-$B801` compares roster +$49 with actor +$8C before
             # selecting the +$36 or +$37 CPU shot-decision rating.
             packed[27] = record[0x49]
@@ -746,6 +748,16 @@ def build_player_animation_asset(rom_data):
                 resources.update(struct.unpack_from(
                     f"<{frame_count}H", rom_data, list_offset))
 
+    # `$87:AC76-$AC95/$87:AD38-$AD57` dynamically selects a second
+    # 40-resource upper-body family by adding $28 to IDs below $00F0.
+    # Those derived IDs do not necessarily occur literally in the animation
+    # frame lists, so a literal-reference-only pack silently omitted valid
+    # jersey/torso resources used during gameplay. Preserve the complete
+    # native closure, not just the descriptor-table seeds.
+    resources.update(resource_id + 0x28
+                     for resource_id in tuple(resources)
+                     if resource_id < 0x00F0)
+
     # The roster-selected five-direction head families occupy this exact
     # resource range; include them so the lab composes the selected player.
     resources.update(range(0x049C, 0x049C + 39 * 5))
@@ -865,6 +877,13 @@ def build_fatigue_gameplay_asset(rom_data):
     return b'NBFAT1\0\0' + drain + recovery
 
 
+def build_jump_gameplay_asset(rom_data):
+    """EE76-EF05:72 vertical thresholds; F16F-F18E:32 direction bytes."""
+    return (b'NBJUMP1\0' +
+            rom_data[lorom_offset(0x86ee76):lorom_offset(0x86ef06)] +
+            rom_data[lorom_offset(0x85f16f):lorom_offset(0x85f18f)])
+
+
 def build_cpu_gameplay_ai_asset(rom_data):
     """Pack proven CPU strategy/pass tables used by banks $85/$86."""
     header_size = struct.calcsize("<8s9I")
@@ -879,6 +898,14 @@ def build_cpu_gameplay_ai_asset(rom_data):
     payload.extend(rom_data[lorom_offset(0x85C729):lorom_offset(0x85C729) + 28])
     payload.extend(rom_data[lorom_offset(0x869C6F):lorom_offset(0x869C6F) + 108])
     payload.extend(rom_data[lorom_offset(0x86A7A0):lorom_offset(0x86A7A0) + 8])
+    return bytes(payload)
+
+def build_graphics_scratch_asset(rom_data):
+    """Raw tables consumed by 82:F02F-F15B; excludes transfer payloads."""
+    payload=bytearray(b'NBGSCR1\0')
+    payload.extend(rom_data[lorom_offset(0x82ED61):lorom_offset(0x82EFE9)])
+    # DP EE is AF:E4F8 in the gameplay capture (baseline bytes F8 E4 AF).
+    payload.extend(rom_data[lorom_offset(0xAFE4F8):lorom_offset(0xAFE57C)])
     return bytes(payload)
 
 
@@ -1873,6 +1900,8 @@ def create_asset_pack(rom_path, output_path):
         (276, 29, 7, 0x85C661, gameplay_cpu_tables),
         (277, 5, 0, 0x869EB2, gameplay_shot_tables),
         (278, 4, 8, 0x8798DA, build_fatigue_gameplay_asset(rom_data)),
+        (280, 72, 16, 0x86EE76, build_jump_gameplay_asset(rom_data)),
+        (281, 22, 33, 0x82F02F, build_graphics_scratch_asset(rom_data)),
         (279, 148, 52, 0xA08000, rom_data[0x100000:0x100006 + 148 * 52 * 2]),
     ])
     assets.extend([

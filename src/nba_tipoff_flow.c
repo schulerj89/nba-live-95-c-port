@@ -2,6 +2,24 @@
 #include "nba_gameplay_ai.h"
 #include "nba_shot_action.h"
 
+void nba_tip_ball_initialize(NbaTipBallInitialization *s) {
+    /* `$86:E056-$E0AB`: confirmed against native entry/exit WRAM and bounded
+     * recomp C. E054 was an erroneous old boundary inside JMP at E053.
+     * This prefix does NOT implement the later toss scheduler/physics. */
+    s->ball_descriptor=s->cursor;
+    s->descriptor_record=0x3EEBu;
+    s->cursor=(uint16_t)(s->cursor+2u);
+    s->descriptor_terminator=0;
+    s->object_list_raw_08fe=0;
+    s->published_record=0x3EEBu;
+    s->x_fraction=s->x=s->y_fraction=s->y=s->z_fraction=0;
+    s->z=80;
+    s->velocity_x=s->velocity_y=0;
+    s->velocity_z=600; /* Native STA ball+$12 at $86:E092. */
+    s->group=s->context_4933=s->context_4935=s->event_08f0=0xFFFFu;
+    s->record_id=10;
+}
+
 static int16_t difference(int16_t a,int16_t b) {
     return (int16_t)(uint16_t)((uint16_t)a-(uint16_t)b);
 }

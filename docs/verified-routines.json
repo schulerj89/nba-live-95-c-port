@@ -2,6 +2,14 @@
   "comment": "Routines verified against emulator ground truth. Byte ranges are 24-bit SNES bus addresses. evidence points at the capture/replay artifacts; tools/progress.py counts these bytes as verified.",
   "routines": [
     {
+      "range": "86EC32-86EE75",
+      "name": "nba_jump_reach_decide / live jump-reach parent",
+      "source": "src/nba_jump_reach.c + src/nba_tipoff.c",
+      "method": "native decision/channel replay + runtime binding",
+      "evidence": "tests/fixtures/jump-reach-witnesses.jsonl: 647 retained calls, all239 Ghidra instruction starts, exact XYZ velocity/RNG/ordered child requests;100 animation starts match18 channel words and8 tamper guards reject altered oracles. Production F780/F886 binding consumes the asset-pack ratings and 82:F02F scratch scheduler, launches two actors, reaches physical contact164 and possession186. EAA8/BD1F are child routines outside this parent range; far EAA8 remains unverified. docs/jump-reach-differential.md.",
+      "date": "2026-08-28"
+    },
+    {
       "range": "86D3C6-86D43D",
       "name": "nba_tipoff_select_tip_receiver / tip wrapper",
       "source": "src/nba_tipoff.c",
@@ -1208,6 +1216,14 @@
       "method": "controlled/natural ROM replay + runtime binding",
       "evidence": "tests/fixtures/camera-handoff-witnesses.json; tools/verify_camera_handoff.py; tools/ghidra/DumpCameraHandoff.java. All 12 instruction starts in this slice observed/replayed (99 requested total). 62243 native calls: 3877 core,3 init,50055 resolve,4164 copy,4144 cadence; zero mismatches,1133 durable witnesses. Controlled WRAM inputs, actual native execution, no patched PC/ROM. Runtime tests cover before-wait latch, after-wait copy, second resolver, surplus tick discard, ball rather than actor height, basket orientation and live-state binding. Valid actor selectors0..9/negative; external callees retain separate proof. Frame-based tip outcome/trajectory and NMI cycle parity excluded. docs/camera-handoff-plan.md.",
       "date": "2026-08-27"
+    },
+    {
+      "range": "86E056-86E0AB",
+      "name": "ball initialization prefix",
+      "source": "src/nba_tipoff_flow.c + src/nba_tipoff.c",
+      "method": "same-entry native state differential + runtime binding",
+      "evidence": "tests/fixtures/ball-initialization.json and ball-initialization-poisoned.json; tools/verify_ball_init_differential.py and ball_init_runtime_probe.c. One natural and one controlled native call execute all30 instruction starts; 20 mapped words and full128KiB exit RAM agree with zero differences. Controlled case poisons all19 output words except the valid34E7 cursor before real native execution. No ROM/PC/flags/stack patching. Fresh Ghidra and bounded recomp confirm startE056: oldE054 was an operand of JMP atE053, not an instruction. Initial position/velocity, object-list bookkeeping,0910,4933/4935 and08F0 adopted in nba_tipoff_init. Valid ten-player startup cursor only; C object links are data rather than native pointers. Later quadratic toss, jump/caller schedule, human controls and whole-game trajectories remain unverified. docs/pending-gameplay-differential-plan.md.",
+      "date": "2026-08-28"
     }
   ]
 }

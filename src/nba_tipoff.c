@@ -274,14 +274,15 @@ static void actor_store_animation_channels(NbaTipoffActor *a,
 static void actor_animation_command(NbaTipoff *tipoff, NbaTipoffActor *actor,
     NbaPlayerAnimationCommand command, uint16_t state) {
     NbaPlayerAnimationChannels channels = actor_animation_channels(actor);
-    if (!nba_player_animation_command(tipoff->assets, &channels, command,
+    if (!nba_player_animation_command_scratch(tipoff->assets, &channels, command,
             &state, actor->movement_boost_timer != 0,
-            actor->free_throw_launch_half_raw_a8 != 0)) return;
+            actor->free_throw_launch_half_raw_a8 != 0,&tipoff->scratch_0047)) return;
+    tipoff->scratch_0046=(uint16_t)((tipoff->scratch_0046&255u)|(tipoff->scratch_0047<<8));
     actor_store_animation_channels(actor, &channels);
     actor->animation_resources_valid = false;
     /* `$87:AEC3` refreshes the new pose without consuming a cadence tick.
      * Adopt this only for the already-integrated live-pass action path. */
-    if (actor->exact_pass_animation) {
+    if (actor->exact_pass_animation || actor->exact_jump_animation) {
         NbaPlayerResolvedPose pose = {0};
         pose.direction = actor->direction;
         actor->animation_resources_valid = nba_player_resolve_pose(
@@ -293,6 +294,76 @@ static void actor_animation_command(NbaTipoff *tipoff, NbaTipoffActor *actor,
             actor->lower_animation_resource_raw_2c = pose.lower_resource;
         }
     }
+}
+
+/* EC32 caller binding. The focal record is 0910 (not always the ball),
+ * paired facing uses +74, and ratings are literal pack roster +3C/+3D. */
+bool nba_tipoff_jump_reach(NbaTipoff *t,unsigned slot) {
+    if(!t || !t->session || slot>=NBA_GAMEPLAY_ACTOR_COUNT)return false;
+    NbaTipoffActor *a=&t->actors[slot];
+    unsigned pair=a->assignment_current_raw>>1;
+    if(pair>=NBA_GAMEPLAY_ACTOR_COUNT)return false;
+    uint8_t r3c,r3d,team=slot<5?t->session->left_team:t->session->right_team;
+    if(!nba_player_gameplay_jump_ratings(t->assets,team,a->roster_slot,&r3c,&r3d))return false;
+    NbaJumpReachInput in={0};
+    in.actor_x=fp_integer_word(a->x_fp);in.actor_y=fp_integer_word(a->y_fp);
+    in.actor_z=fp_integer_word(a->z_fp);in.lower_state=a->lower_animation_state;
+    in.distance=a->focal_distance_raw_8e;in.direction=a->assignment_direction;
+    in.movement=a->movement_magnitude_raw;
+    const NbaTipoffActor *subject=NULL;
+    if(t->catch_actor_record_raw_0910==0x3eeb) {
+        in.subject_x=fp_integer_word(t->ball.x_fp);in.subject_y=fp_integer_word(t->ball.y_fp);
+        in.subject_z=fp_integer_word(t->ball.z_fp);in.subject_vz=t->ball.velocity_z;
+    } else {
+        uint16_t offset=(uint16_t)(t->catch_actor_record_raw_0910-0x34eb);
+        if((offset&255u) || (offset>>8)>=10)return false;
+        subject=&t->actors[offset>>8];
+        in.subject_x=fp_integer_word(subject->x_fp);in.subject_y=fp_integer_word(subject->y_fp);
+        in.subject_z=fp_integer_word(subject->z_fp);in.subject_vz=subject->velocity_z;
+        in.subject_direction=subject->anchor_direction_raw;
+    }
+    in.paired_direction=t->actors[pair].assignment_direction;
+    in.ball_x=fp_integer_word(t->ball.x_fp);in.ball_z=fp_integer_word(t->ball.z_fp);in.ball_vz=t->ball.velocity_z;
+    in.activity=t->ball_activity_raw;in.owner=t->possession_actor;in.receiver=t->pass_receiver_raw;
+    in.live_state=t->live_state_raw;in.block_mode=t->rim_raw_0962;in.raw_0046=t->scratch_0046;
+    in.velocity_x=a->velocity_x;in.velocity_y=a->velocity_y;in.velocity_z=a->velocity_z;
+    in.rng=t->rng.state;in.rating_3c=r3c;in.rating_3d=r3d;
+    NbaJumpReachResult out;
+    ++t->jump_decision_calls;t->last_jump_input=in;
+    if(!nba_jump_reach_decide(t->assets,&in,&out)) {
+        ++t->jump_rejected_contexts;return false;
+    }
+    t->last_jump_result=out;
+    a->velocity_x=(int16_t)out.velocity_x;a->velocity_y=(int16_t)out.velocity_y;
+    a->velocity_z=(int16_t)out.velocity_z;t->rng.state=out.rng;
+    for(unsigned i=0;i<out.request_count;++i) {
+        NbaJumpReachRequest request=out.requests[i];
+        if(request.routine==0x86EAA8) {
+            if(!subject){++t->jump_rejected_contexts;return false;}
+            NbaReachLaunch s={in.actor_x,in.actor_y,in.subject_x,in.subject_y,
+                (uint16_t)subject->velocity_x,(uint16_t)subject->velocity_y,
+                subject->anchor_distance_raw,(uint16_t)t->team_context[slot/5].anchor_x_raw_0a,
+                a->movement_direction,a->requested_direction,0,0,0,t->shot_bounce_timer_raw_091c};
+            nba_reach_launch(&s);
+            a->velocity_x=(int16_t)s.velocity_x;a->velocity_y=(int16_t)s.velocity_y;a->velocity_z=(int16_t)s.velocity_z;
+            a->movement_direction=(uint8_t)s.direction_4e;a->requested_direction=(uint8_t)s.direction_50;
+            t->shot_bounce_timer_raw_091c=s.timer_091c;
+            request=(NbaJumpReachRequest){0x87B3BD,0x32};
+        }
+        if(request.routine==0x86BD1F) {
+            /* BD25 uses N after CMP80, not a host unsigned comparison. */
+            if(((uint16_t)(t->live_state_raw-0x80u)&0x8000u)==0)continue;
+            a->exact_jump_animation=true;
+            actor_animation_command(t,a,NBA_ANIMATION_INSTALL_UPPER,0x13);
+            if(a->animation_state==0x13)a->velocity_x=a->velocity_y=0;
+        } else {
+            a->exact_jump_animation=true;
+            actor_animation_command(t,a,request.routine==0x87B3BD?NBA_ANIMATION_INSTALL_BOTH:
+                request.routine==0x87B47A?NBA_ANIMATION_INSTALL_UPPER:NBA_ANIMATION_INSTALL_LOWER,request.value);
+        }
+    }
+    if(out.request_count && a->velocity_z!= (int16_t)in.velocity_z)++t->jump_launches;
+    return true;
 }
 
 static void actor_set_upper_animation(NbaTipoffActor *actor, uint8_t upper) {
@@ -401,7 +472,7 @@ static void cpu_advance_actor_animation(NbaTipoff *tipoff,
                                         NbaTipoffActor *actor) {
     ++actor->upper_animation_tick;
     ++actor->lower_animation_tick;
-    if (actor->upper_animation_lock_raw_46 != 0u ||
+    if (actor->exact_jump_animation || actor->upper_animation_lock_raw_46 != 0u ||
         actor->animation_state == 7u || actor->animation_state == 13u || actor->animation_state == 18u ||
         actor->lower_animation_lock_raw_48 != 0u ||
         (actor->control_mode == 15u && actor->exact_pass_animation) ||
@@ -1161,6 +1232,13 @@ static void cpu_dispatch_normal_actor_behavior(NbaTipoff *tipoff,
     if (!((actor->control_mode >= 1u && actor->control_mode <= 6u) ||
           actor->control_mode == 11u)) return;
 
+    /* F79F-F7A7 bypass the ordinary reaction countdown during jump ball. */
+    if(tipoff->live_state_raw==0x81u) {
+        if(actor->controller_assignment_raw<0 && !actor->movement_boost_timer)
+            (void)nba_tipoff_jump_reach(tipoff,slot);
+        return;
+    }
+
     cpu_update_special_actor(tipoff, slot);
     if (actor->control_mode == 11u) {
         CpuOwnerContext context={tipoff,slot};
@@ -1261,6 +1339,11 @@ static void cpu_dispatch_normal_actor_behavior(NbaTipoff *tipoff,
         actor->requested_direction = velocity_direction;
     }
     actor->action_state = tipoff->cpu_play_state;
+    /* F780/F886: the normal defensive decision continuation. */
+    if(decision_due && actor->controller_assignment_raw<0 &&
+       (actor->control_mode==2 || actor->control_mode==4 || actor->control_mode==6) &&
+       !actor->movement_boost_timer)
+        (void)nba_tipoff_jump_reach(tipoff,slot);
 }
 
 /* Binding checks, not additional ROM witnesses: the independently replayed
@@ -1398,8 +1481,10 @@ static void cpu_move_actor(NbaTipoff *tipoff, unsigned slot) {
         actor->y_fp += (int32_t)actor->velocity_y * 2;
         actor->movement_magnitude_raw = actor_distance(
             actor->velocity_x, actor->velocity_y);
-        if (actor->reaction_threshold >= 2u)
-            actor->reaction_threshold -= 2u;
+        /* A5B8-A5BD already consumed the current actor delta inside
+         * cpu_update_rom_receiver.  ROM-COMPATIBILITY: do not apply a
+         * second host-side decrement here; the old duplicate countdown
+         * expired receivers twice as fast as the native 30-Hz pass. */
         cpu_integrate_actor_vertical(actor);
         return;
     }
@@ -1453,7 +1538,7 @@ static bool actor_animation_resources(const NbaTipoff *tipoff,
     /* Adopted live-play passes share the rendered ROM phase with their hand
      * point and release gate. Inbound remains a separate integration boundary.
      * `$87:AEC3` also resolves a just-installed action before its first tick. */
-    if (((actor->control_mode == 15u && actor->exact_pass_animation) ||
+    if ((actor->exact_jump_animation || (actor->control_mode == 15u && actor->exact_pass_animation) ||
          ((actor->control_mode == 12u || actor->control_mode == 17u) && actor->exact_shot_animation)) &&
         actor->animation_resources_valid &&
         direction == actor->direction) {
@@ -1465,9 +1550,11 @@ static bool actor_animation_resources(const NbaTipoff *tipoff,
      * tick representation. The exact +$2A/+$2C resources drive rendering;
      * switching physics here belongs with the remaining `$87:B649-$B952`
      * integration branch, not this animation-only increment. */
-    return nba_player_animation_resources(
+    return nba_player_animation_resources_for_appearance(
         tipoff->assets, actor->animation_state, actor->lower_animation_state,
         direction, actor->upper_animation_tick, actor->lower_animation_tick,
+        actor->free_throw_launch_half_raw_a8 != 0u,
+        actor->animation_variant_raw_6c,
         upper_resource, lower_resource);
 }
 
@@ -2705,8 +2792,35 @@ static int cpu_first_pass_contact(NbaTipoff *tipoff) {
         if (!receiver && actor / 5u == tipoff->offense_side) continue;
         int point = cpu_actor_ball_contact_index(
             tipoff, actor, receiver, receiver ? 16u : 12u);
-        if (point < 0 && receiver && cpu_actor_body_contacts_ball(
-                tipoff, actor, true, 16u)) point = 2;
+        if (point < 0 && receiver) {
+            NbaTipoffActor *receiver_state=&tipoff->actors[actor];
+            int16_t ball_x=fp_round(tipoff->ball.x_fp);
+            int16_t ball_y=fp_round(tipoff->ball.y_fp);
+            int16_t ball_z=fp_round(tipoff->ball.z_fp);
+            int16_t actor_z=fp_round(receiver_state->z_fp);
+            uint16_t height=0u;
+            bool coarse=cpu_actor_ball_contact_allowed(receiver_state) &&
+                nba_gameplay_ball_coarse_contact(
+                    fp_round(receiver_state->x_fp),
+                    fp_round(receiver_state->y_fp),actor_z,
+                    ball_x,ball_y,ball_z,true);
+            /* `$86:CF33-$CF50`: a high intended pass requests upper pose
+             * `$37` before the adjusted-height/body test.  The resource and
+             * contact-height projection becomes visible on the following
+             * actor pass, so this collision pass only installs the reach.
+             * Omitting this native continuation makes high tip passes sail
+             * through an otherwise correctly selected receiver. */
+            if(coarse && cpu_actor_contact_height(tipoff,actor,&height) &&
+               ball_z-actor_z>=(int)height &&
+               receiver_state->upper_animation_lock_raw_46==0u) {
+                receiver_state->exact_jump_animation=true;
+                actor_animation_command(tipoff,receiver_state,
+                    NBA_ANIMATION_INSTALL_UPPER,0x37u);
+                tipoff->tip_reach_mask|=(uint16_t)(1u<<actor);
+                continue;
+            }
+            if(cpu_actor_body_contacts_ball(tipoff,actor,true,16u))point=2;
+        }
         if (point < 0) continue;
         if (!receiver && fp_round(tipoff->ball.z_fp) < 24) {
             uint8_t random = (uint8_t)nba_gameplay_rng_next(&tipoff->rng);
@@ -4380,7 +4494,7 @@ static NbaGameplayRimResult cpu_update_live_ball(NbaTipoff *tipoff) {
     bool attached = ball->state == NBA_BALL_ATTACHED;
     if (attached) {
         ball_attach_to_actor(tipoff, tipoff->handler_actor);
-    } else if (ball->state == NBA_BALL_LOOSE || ball->state == NBA_BALL_PASS || ball->state == NBA_BALL_SHOT ||
+    } else if (ball->state == NBA_BALL_TOSS || ball->state == NBA_BALL_LOOSE || ball->state == NBA_BALL_PASS || ball->state == NBA_BALL_SHOT ||
                ball->state == NBA_BALL_BOUNCE) {
         NbaGameplayRimResult accumulated = NBA_GAMEPLAY_RIM_FLIGHT;
         /* `$85:9A6A/$A7A1`: DP C6 enters as two and drives two complete
@@ -4784,24 +4898,10 @@ static bool cpu_ball_substep_self_test(void) {
 }
 
 static void cpu_update_tip_ball(NbaTipoff *tipoff) {
-    NbaTipoffBall *ball = &tipoff->ball;
-    if(tipoff->tip_contact_actor>=0) {
-        (void)cpu_update_live_ball(tipoff);
-        return;
-    }
-    int32_t old_x = ball->x_fp, old_y = ball->y_fp, old_z = ball->z_fp;
-    if (tipoff->tip_contact_actor < 0) {
-        int t = tipoff->frame - 170;
-        int z = tipoff->frame < NBA_TIPOFF_TOSS_FRAME ? 80 :
-            108 - (t * t * (t < 0 ? 28 : 40)) / (t < 0 ? 625 : 784);
-        ball->x_fp = ball->y_fp = 0;
-        ball->z_fp = (int32_t)z * 256;
-        ball->state = tipoff->frame < NBA_TIPOFF_BALL_APPEAR_FRAME ?
-                      NBA_BALL_HIDDEN : NBA_BALL_TOSS;
-    }
-    ball->velocity_x = (int16_t)(ball->x_fp - old_x);
-    ball->velocity_y = (int16_t)(ball->y_fp - old_y);
-    ball->velocity_z = (int16_t)(ball->z_fp - old_z);
+    /* 859A24: the countdown gates the ordinary ownerless driver. */
+    if((int16_t)tipoff->tip_toss_countdown_raw_09f2>=0)return;
+    tipoff->ball.state=NBA_BALL_TOSS;
+    (void)cpu_update_live_ball(tipoff);
 }
 
 static bool cpu_load_next_play_control(NbaTipoff *tipoff) {
@@ -5761,6 +5861,8 @@ static void cpu_update_all_actors(NbaTipoff *tipoff) {
      * Possession and inbound changes do not rephase it. */
     if ((tipoff->simulation_tick & 1u) != 0u) return;
     ++tipoff->actor_update_tick;
+    if (tipoff->differential_observer)
+        tipoff->differential_observer(tipoff, "actors.begin", tipoff->differential_context);
     /* `$87:9090-$90A0` snapshots all ten +$5E modes into +$84 before any
      * actor dispatch. BC07 relies on this to recognize last frame's mode-6
      * helper after the normalizer has changed +$5E back to mode 2. */
@@ -5790,6 +5892,8 @@ static void cpu_update_all_actors(NbaTipoff *tipoff) {
             tipoff->ball.owner_actor == (int8_t)actor)
             ball_attach_to_actor(tipoff, actor);
     }
+    if (tipoff->differential_observer)
+        tipoff->differential_observer(tipoff, "actors.end", tipoff->differential_context);
 }
 
 static void cpu_update_actor_behaviors(NbaTipoff *tipoff) {
@@ -6684,6 +6788,8 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
     tipoff->session = session;
     tipoff->cpu_vs_cpu = true;
     nba_gameplay_rng_seed(&tipoff->rng, 0x9146u);
+    tipoff->graphics_scratch.rng=tipoff->rng.state;
+    for(unsigned i=0;i<3;++i)tipoff->graphics_scratch.slots[i].record=0xffffu;
     nba_gameplay_foul_init(&tipoff->fouls);
     static const uint8_t context_actor_order[2][5] = {
         {0x10u, 0x0Eu, 0x0Au, 0x12u, 0x0Cu},
@@ -6729,10 +6835,26 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
     tipoff->pass_receiver_raw = -1;
     tipoff->play_aux_selector_raw_09a6 = -1;
     tipoff->shot_actor_raw_09c8 = -1;
-    tipoff->ball.x_fp = 0;
-    tipoff->ball.y_fp = 0;
-    tipoff->ball.z_fp = 80 * 256;
+    /* `$86:E056-$E0AB`: native object list has ten actor entries before
+     * the ball link at34E7. C keeps the link bookkeeping as data; rendering
+     * still traverses its own actors, not a captured SNES display list. */
+    tipoff->ball_initialization.cursor=0x34D3u+2u*NBA_GAMEPLAY_ACTOR_COUNT;
+    nba_tip_ball_initialize(&tipoff->ball_initialization);
+    const NbaTipBallInitialization *ball_init=&tipoff->ball_initialization;
+    tipoff->ball.x_fp=(int32_t)(int16_t)ball_init->x*256;
+    tipoff->ball.y_fp=(int32_t)(int16_t)ball_init->y*256;
+    tipoff->ball.z_fp=(int32_t)(int16_t)ball_init->z*256;
+    tipoff->ball.velocity_x=(int16_t)ball_init->velocity_x;
+    tipoff->ball.velocity_y=(int16_t)ball_init->velocity_y;
+    tipoff->ball.velocity_z=(int16_t)ball_init->velocity_z;
+    tipoff->catch_actor_record_raw_0910=ball_init->published_record;
+    tipoff->context_raw_4933=ball_init->context_4933;
+    tipoff->context_raw_4935=ball_init->context_4935;
+    tipoff->fouls.latched_event_raw_08f0=ball_init->event_08f0;
     tipoff->ball.owner_actor = -1;
+    /* 878DDA-8DE4 starts the first/overtime jump-ball hold at120. */
+    tipoff->tip_toss_countdown_raw_09f2=120;
+    tipoff->ball.state=NBA_BALL_HIDDEN;
     static const uint8_t active_lineup[5] = {2u, 0u, 1u, 3u, 4u};
     uint8_t appearance_teams[NBA_PLAYER_APPEARANCE_COUNT];
     uint8_t appearance_roster[NBA_PLAYER_APPEARANCE_COUNT];
@@ -6756,6 +6878,7 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
         state->controller_assignment_raw = -1;
         state->shot_stamina_raw_18=0x7FFFu;
         state->lower_animation_state = 0u;
+        state->exact_jump_animation=true;
         state->animation_upper_queue_cursor_raw_18 = 0xFFFFu;
         state->animation_lower_queue_cursor_raw_1a = 0xFFFFu;
         /* `$86:D86C-$D89B`: +$76 is derived from the active-lineup
@@ -6773,9 +6896,10 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
             assets, team, state->roster_slot, &state->assignment_role_raw_92);
         state->free_throw_launch_half_raw_a8 = appearance.players[actor].alternate_lower;
         state->animation_variant_raw_6c = appearance.players[actor].upper_variant;
-        state->reaction_threshold = nba_gameplay_reaction_threshold(
-            &tipoff->rng, formation[actor].world_x, formation[actor].world_y,
-            0, 0);
+        /* DF4B-DF84 uses the same already-zero accumulator for +60. The
+         * earlier host randomized ten timers here, advancing 07F6 before
+         * the first F787/EC32 pass and changing both jumpers' launch branch. */
+        state->reaction_threshold = 0;
         state->behavior_timer = 0x2Fu;
         state->control_mode = actor == 0u || actor == 5u ? 4u : 2u;
         state->visible = actor != 4u && actor != 9u;
@@ -6848,6 +6972,17 @@ void nba_tipoff_update(NbaTipoff *tipoff, const NbaInput *input) {
     ++tipoff->simulation_tick;
     ++tipoff->camera.presentation_ticks_0564;
     ++tipoff->session->game_clock_ticks;
+    /* The ROM shares07F6 between presentation scheduling and EC32. Run its
+     * portable state effect before the actor pass, matching the prior-frame
+     * transfer writer observed at F13D. */
+    tipoff->graphics_scratch.rng=tipoff->rng.state;
+    tipoff->graphics_scratch.scratch_0046=tipoff->scratch_0046;
+    if((tipoff->simulation_tick&1u)==0u &&
+       nba_graphics_scratch_step(tipoff->assets,&tipoff->graphics_scratch,2u)) {
+        tipoff->rng.state=tipoff->graphics_scratch.rng;
+        tipoff->scratch_0046=tipoff->graphics_scratch.scratch_0046;
+        tipoff->scratch_0047=tipoff->scratch_0046>>8;
+    }
     /* `$85:EDB3`: presentation timer and master tick advance on every
      * outer update, independent of actor scheduling or gameplay state. */
     tipoff->fouls.whistle_timer_raw_08de = (int16_t)(uint16_t)(
@@ -6871,11 +7006,28 @@ void nba_tipoff_update(NbaTipoff *tipoff, const NbaInput *input) {
         tipoff->elapsed_shot_clock_raw_13f7=clock.elapsed_shot_clock;
     }
     bool advancing_tip=tipoff->tip_contact_actor>=0;
-    if (!advancing_tip)
+    if (!advancing_tip) {
+        /* 85EE3E-EE43: NMI countdown, saturating atFFFF. The host starts
+         * this after setup; ROM video-transfer startup latency is separate. */
+        if((int16_t)tipoff->tip_toss_countdown_raw_09f2>=0)
+            --tipoff->tip_toss_countdown_raw_09f2;
+        cpu_update_all_actors(tipoff);
         cpu_update_tip_ball(tipoff);
+        if(!(tipoff->simulation_tick&1u)) {
+            for(unsigned slot=0;slot<10;++slot) {
+                NbaTipoffActor *a=&tipoff->actors[slot];
+                (void)nba_gameplay_target_direction(
+                    (int16_t)(fp_integer_word(a->x_fp)-fp_integer_word(tipoff->ball.x_fp)),
+                    (int16_t)(fp_integer_word(a->y_fp)-fp_integer_word(tipoff->ball.y_fp)),
+                    &a->focal_distance_raw_8e);
+            }
+        }
+    }
     if (!advancing_tip && nba_tipoff_try_tip_contact(tipoff)) {
         cpu_commit_ball_acquisition(tipoff,(uint8_t)tipoff->tip_contact_actor);
     }
+    if(!advancing_tip && !(tipoff->simulation_tick&1u))
+        cpu_update_actor_behaviors(tipoff);
     if (advancing_tip) {
         /* $87:8EF3 calls fatigue before the due actor pass. All 24 roster
          * records persist; actors only mirror the currently active slots. */
@@ -6903,31 +7055,21 @@ void nba_tipoff_update(NbaTipoff *tipoff, const NbaInput *input) {
         cpu_dispatch_pending_event(tipoff);
     }
     cpu_update_camera(tipoff);
+    /* A61E writes the status of the final projected visible actor to DP47.
+     * Preserve the overlapping byte for the next presentation scheduler. */
+    if(tipoff->tip_contact_actor<0 && (tipoff->simulation_tick&1u)==0u) {
+        unsigned last=visible_submission[7];
+        tipoff->scratch_0047=tipoff->actors[last].actor_status_raw_28;
+        tipoff->scratch_0046=(uint16_t)((tipoff->scratch_0046&255u)|(tipoff->scratch_0047<<8));
+    }
     if (tipoff->tip_possession_frame) tipoff->phase = NBA_TIPOFF_LIVE;
     else if (tipoff->tip_contact_actor >= 0)
         tipoff->phase = NBA_TIPOFF_POSSESSION;
-    else if (tipoff->frame >= NBA_TIPOFF_TOSS_FRAME)
+    else if ((int16_t)tipoff->tip_toss_countdown_raw_09f2<0)
         tipoff->phase = NBA_TIPOFF_JUMP_BALL;
 }
 
-static int center_jump_height(int frame) {
-    if (frame < NBA_TIPOFF_JUMP_FRAME || frame >= NBA_TIPOFF_POSSESSION_FRAME)
-        return 0;
-    int t = frame - NBA_TIPOFF_JUMP_FRAME;
-    /* Mesen actor +$0C: 7,15,18,20,20,18,12,3 across frames 160..195. */
-    int d = t - 20;
-    int height = 20 - (d * d) / 20;
-    return height > 0 ? height : 0;
-}
-
 static void ball_position(const NbaTipoff *tipoff, int *x, int *y) {
-    int frame=tipoff->frame;
-    if (frame < NBA_TIPOFF_TOSS_FRAME) { *x = 125; *y = 40; return; }
-    if (tipoff->tip_contact_actor < 0) {
-        int t = frame - 170;
-        int z = 108 - (t * t * (t < 0 ? 28 : 40)) / (t < 0 ? 625 : 784);
-        *x = 125; *y = 120 - z; return;
-    }
     int bx=fp_integer_word(tipoff->ball.x_fp),by=fp_integer_word(tipoff->ball.y_fp);
     *x=bx+by-tipoff->camera_x;
     *y=(by-bx)/4-tipoff->camera_y-fp_integer_word(tipoff->ball.z_fp);
@@ -6940,20 +7082,13 @@ static bool actor_visible(unsigned actor) {
 }
 
 static uint8_t actor_animation(const NbaTipoff *tipoff, unsigned actor) {
-    if (actor == 5u && tipoff->frame >= NBA_TIPOFF_JUMP_FRAME &&
-        tipoff->frame < NBA_TIPOFF_CONTACT_FRAME) return 0x32u;
-    if (actor == 5u && tipoff->frame >= NBA_TIPOFF_CONTACT_FRAME &&
-        tipoff->frame < 210) return 0x25u;
-    if (actor == 0u && tipoff->frame >= NBA_TIPOFF_CONTACT_FRAME &&
-        tipoff->frame < 220) return 0x37u;
-    return 0;
+    return tipoff->actors[actor].animation_state;
 }
 
 static uint32_t actor_animation_tick(const NbaTipoff *tipoff,unsigned actor) {
     /* Keep contact and rendering on the same existing presentation clock.
      * Native jump-channel startup/cadence is a separate remaining slice. */
-    (void)actor;
-    return (uint32_t)tipoff->frame;
+    return tipoff->actors[actor].upper_animation_tick;
 }
 
 bool nba_tipoff_try_tip_contact(NbaTipoff *tipoff) {
@@ -6972,15 +7107,12 @@ bool nba_tipoff_try_tip_contact(NbaTipoff *tipoff) {
         in.side_group=tipoff->camera_side_group_raw==255?-1:tipoff->camera_side_group_raw;
         in.hoop_x=tipoff->court_presentation.basket_x_3fef;
         in.actor_x=fp_integer_word(actor->x_fp);in.actor_y=fp_integer_word(actor->y_fp);
-        /* Until the jump startup checkpoint, use precisely the existing
-         * rendered pose/height, not an invisible idle collision sprite. */
-        in.actor_z=(int16_t)(slot==5?center_jump_height(tipoff->frame):0);
+        in.actor_z=fp_integer_word(actor->z_fp);
         in.ball_x=fp_integer_word(tipoff->ball.x_fp);in.ball_y=fp_integer_word(tipoff->ball.y_fp);
         in.ball_z=fp_integer_word(tipoff->ball.z_fp);in.ball_vz=tipoff->ball.velocity_z;
-        uint16_t upper,lower;uint8_t direction=formation[slot].direction;
+        uint16_t upper,lower;uint8_t direction=actor->direction;
         uint8_t team=slot>=5?tipoff->session->right_team:tipoff->session->left_team;
-        if(!nba_player_animation_resources(tipoff->assets,(uint8_t)in.upper_state,(uint8_t)in.upper_state,
-                direction,actor_animation_tick(tipoff,slot),actor_animation_tick(tipoff,slot),&upper,&lower) ||
+        if(!actor_animation_resources(tipoff,actor,direction,&upper,&lower) ||
            !nba_player_animation_contact_height(tipoff->assets,team,actor->roster_slot,upper,lower,direction,&in.head_height))continue;
         for(unsigned point=0;point<2;++point) {
             int16_t x,y,z;
@@ -7050,7 +7182,15 @@ bool nba_tipoff_launch_tip_ball(NbaTipoff *t) {
     /* `$86:D41B-$D426`: keep BOTH original Z words, then zero VZ. */
     t->ball.velocity_z=0;t->ball.owner_actor=-1;t->ball.state=NBA_BALL_PASS;
     t->possession_actor=-1;t->rim_raw_094a=s.latch;t->catch_actor_record_raw_0910=s.ball_record;
-    t->live_state_raw=s.live_state;r->velocity_x=s.receiver_vx;r->velocity_y=s.receiver_vy;r->reaction_threshold=s.receiver_timer;
+    t->live_state_raw=s.live_state;r->velocity_x=s.receiver_vx;r->velocity_y=s.receiver_vy;
+    /* `$86:D3C6-$D43D` publishes the launch with the receiver's exact +$60
+     * value.  The normal mode-10 actor pass performs the later two-count
+     * decrement.  Keeping that scheduling boundary matters: subtracting
+     * here made this wrapper disagree with every native witness (39 -> 37).
+     *
+     * ROM-COMPATIBILITY QUIRK: +$60 is an odd value for these tip launches;
+     * the signed countdown intentionally advances through odd values. */
+    r->reaction_threshold=s.receiver_timer;
     p->control_mode=(uint8_t)s.passer_mode;p->reaction_threshold=s.passer_timer;p->behavior_timer=s.behavior_timer;
     p->behavior_flags_raw=s.flags;p->actor_status_raw_28=s.status;p->contact_inhibit_raw_5a=s.inhibit;
     /* `$86:D429-$D43C`: inhibit the opposite center as well. */
@@ -7071,6 +7211,14 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
     telemetry->tip_contact_frame=tipoff->tip_contact_frame;
     telemetry->tip_possession_frame=tipoff->tip_possession_frame;
     telemetry->tip_reach_mask=tipoff->tip_reach_mask;
+    telemetry->tip_toss_countdown_raw=tipoff->tip_toss_countdown_raw_09f2;
+    telemetry->jump_scratch_raw=tipoff->scratch_0046;
+    telemetry->jump_calls=tipoff->jump_decision_calls;
+    telemetry->jump_launches=tipoff->jump_launches;
+    telemetry->jump_rejections=tipoff->jump_rejected_contexts;
+    telemetry->ball_velocity_raw[0]=(uint16_t)tipoff->ball.velocity_x;
+    telemetry->ball_velocity_raw[1]=(uint16_t)tipoff->ball.velocity_y;
+    telemetry->ball_velocity_raw[2]=(uint16_t)tipoff->ball.velocity_z;
     telemetry->simulation_tick = tipoff->simulation_tick;
     telemetry->phase = (uint8_t)tipoff->phase;
     telemetry->scheduler_due_raw =
@@ -7277,12 +7425,11 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
         out->index = (uint8_t)actor;
         out->team_side = actor >= 5u;
         out->roster_slot = state->roster_slot;
-        bool live = tipoff->tip_contact_actor >= 0;
+        bool live = true; /* Initial tip uses the same actor state as live play. */
         out->control = NBA_GAMEPLAY_CONTROL_CPU;
         out->world_x = live ? fp_round(state->x_fp) : formation[actor].world_x;
         out->world_y = live ? fp_round(state->y_fp) : formation[actor].world_y;
-        out->world_z = live ? fp_round(state->z_fp) :
-            actor == 5u ? (int16_t)center_jump_height(tipoff->frame) : 0;
+        out->world_z = fp_integer_word(state->z_fp);
         out->world_z_fp = live ? state->z_fp : (int32_t)out->world_z * 256;
         out->screen_x = live ? (int16_t)(out->world_x + out->world_y -
             tipoff->camera_x) : formation[actor].screen_x;
@@ -7318,6 +7465,35 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
             out->lower_resource_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
         }
         out->head_resource_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
+        if (live && out->upper_resource_raw != NBA_GAMEPLAY_UNKNOWN_WORD &&
+            out->lower_resource_raw != NBA_GAMEPLAY_UNKNOWN_WORD) {
+            uint8_t team_side = actor >= 5u;
+            uint8_t team = team_side ? tipoff->session->right_team :
+                                       tipoff->session->left_team;
+            NbaPlayerSpriteDiagnostics appearance = {0};
+            bool appearance_valid = nba_player_sprite_diagnose_resources(
+                tipoff->assets, team, state->roster_slot, team_side,
+                state->direction, out->upper_resource_raw,
+                out->lower_resource_raw, &appearance);
+            out->head_resource_raw = appearance.head_resource;
+            out->appearance_resource_raw[0] = appearance.lower_resource;
+            out->appearance_resource_raw[1] = appearance.upper_resource;
+            out->appearance_resource_raw[2] = appearance.head_resource;
+            out->appearance_resource_raw[3] = appearance.number_resource;
+            out->appearance_opaque_pixels[0] = appearance.lower_opaque_pixels;
+            out->appearance_opaque_pixels[1] = appearance.upper_opaque_pixels;
+            out->appearance_opaque_pixels[2] = appearance.head_opaque_pixels;
+            out->appearance_opaque_pixels[3] = appearance.number_opaque_pixels;
+            out->appearance_flags_raw =
+                (appearance.player_palette_valid ? 0x01u : 0u) |
+                (appearance.number_allowed ? 0x02u : 0u) |
+                (appearance.number_composed ? 0x04u : 0u) |
+                (appearance.number_palette_valid ? 0x08u : 0u) |
+                (appearance.lower_resource_valid ? 0x10u : 0u) |
+                (appearance.upper_resource_valid ? 0x20u : 0u) |
+                (appearance.head_resource_valid ? 0x40u : 0u) |
+                (appearance_valid ? 0x80u : 0u);
+        }
         /* `$87:B572-$B648` consumes these exact actor words. Export the
          * represented values instead of hiding them behind FFFF so a Mesen
          * trace can distinguish locomotion-state errors from descriptor
@@ -7391,8 +7567,7 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
         out->behavior_flags_raw = state->behavior_flags_raw;
         out->palette_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
         out->actor_routine = live ? 0x85963Du : 0x80AD92u;
-        out->ai_routine = tipoff->tip_contact_actor >= 0 ?
-            nba_gameplay_behavior_routine(state->control_mode) : 0u;
+        out->ai_routine = nba_gameplay_behavior_routine(state->control_mode);
     }
 }
 
@@ -7411,16 +7586,9 @@ void nba_tipoff_render(const NbaTipoff *tipoff, NbaRenderer *ren) {
     int16_t screen_x[NBA_GAMEPLAY_ACTOR_COUNT];
     int16_t screen_y[NBA_GAMEPLAY_ACTOR_COUNT];
     unsigned render_count = 0;
-    if (tipoff->tip_contact_actor < 0) {
-        for (int order = 7; order >= 0; --order) {
-            unsigned actor = visible_submission[order];
-            render_order[render_count] = (uint8_t)actor;
-            screen_x[actor] = formation[actor].screen_x;
-            screen_y[actor] = formation[actor].screen_y;
-            ++render_count;
-        }
-    } else {
+    {
         for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
+            if(tipoff->tip_contact_actor<0 && !actor_visible(actor))continue;
             int x = fp_round(tipoff->actors[actor].x_fp);
             int y = fp_round(tipoff->actors[actor].y_fp);
             int z = fp_round(tipoff->actors[actor].z_fp);
@@ -7448,28 +7616,13 @@ void nba_tipoff_render(const NbaTipoff *tipoff, NbaRenderer *ren) {
         uint8_t slot = tipoff->actors[actor].roster_slot;
         uint8_t team = team_side ? tipoff->session->right_team :
                                    tipoff->session->left_team;
-        uint8_t state = tipoff->tip_contact_actor >= 0 ?
-                        tipoff->actors[actor].animation_state :
-                        actor_animation(tipoff, actor);
-        int jump = 0;
-        if (tipoff->tip_contact_actor < 0 && actor == 5u &&
-            tipoff->frame >= NBA_TIPOFF_JUMP_FRAME &&
-            tipoff->frame < NBA_TIPOFF_CONTACT_FRAME) {
-            jump = center_jump_height(tipoff->frame);
-        }
-        uint8_t direction = tipoff->tip_contact_actor >= 0 ?
-                            tipoff->actors[actor].direction :
-                            formation[actor].direction;
-        uint8_t lower_state = tipoff->tip_contact_actor >= 0 ?
-                              tipoff->actors[actor].lower_animation_state : state;
-        uint32_t upper_tick = tipoff->tip_contact_actor >= 0 ?
-                              tipoff->actors[actor].upper_animation_tick :
-                              actor_animation_tick(tipoff,actor);
-        uint32_t lower_tick = tipoff->tip_contact_actor >= 0 ?
-                              tipoff->actors[actor].lower_animation_tick :
-                              actor_animation_tick(tipoff,actor);
-        if (tipoff->tip_contact_actor >= 0 &&
-            tipoff->actors[actor].animation_resources_valid) {
+        uint8_t state=tipoff->actors[actor].animation_state;
+        int jump=0; /* screen_y already contains actual actor Z. */
+        uint8_t direction=tipoff->actors[actor].direction;
+        uint8_t lower_state=tipoff->actors[actor].lower_animation_state;
+        uint32_t upper_tick=tipoff->actors[actor].upper_animation_tick;
+        uint32_t lower_tick=tipoff->actors[actor].lower_animation_tick;
+        if (tipoff->actors[actor].animation_resources_valid) {
             nba_player_sprite_render_resources(
                 ren, tipoff->assets, team, slot, uniform_side, direction,
                 tipoff->actors[actor].upper_animation_resource_raw_2a,
@@ -7492,7 +7645,7 @@ void nba_tipoff_render(const NbaTipoff *tipoff, NbaRenderer *ren) {
         ball_x = x + y - tipoff->camera_x;
         ball_y = (y - x) / 4 - tipoff->camera_y - z;
     }
-    if (tipoff->frame >= NBA_TIPOFF_BALL_APPEAR_FRAME)
+    if (tipoff->ball.state!=NBA_BALL_HIDDEN)
         draw_ball(tipoff, ren, ball_x, ball_y);
 
     if (tipoff->frame < 15) {
