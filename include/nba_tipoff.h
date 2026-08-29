@@ -273,6 +273,7 @@ typedef struct NbaTipoff {
     uint16_t dead_ball_raw_097e;
     int16_t dead_ball_x_raw_09b0;
     int16_t dead_ball_y_raw_09b2;
+    uint16_t dead_ball_dispatch_busy_raw_09b4;
     uint16_t rim_force_raw_1866;
     int16_t shot_actor_raw_09c8;
     uint16_t leading_side_raw_1403;
@@ -357,5 +358,7 @@ bool nba_tipoff_replay_formation_route(NbaTipoff *tipoff, uint8_t actor,
 /* Exact `$85:B678-$B8CA` mode-11 decision parent (0 return, 1 consumed,
  * 2 shot-started), including its native formation velocity continuation. */
 uint8_t nba_tipoff_replay_mode11_dispatch(NbaTipoff *tipoff, uint8_t actor);
+/* Exact early `$87:92A5-$949E` violation/dead-ball parent boundary. */
+void nba_tipoff_replay_violation_dispatch(NbaTipoff *tipoff);
 
 #endif

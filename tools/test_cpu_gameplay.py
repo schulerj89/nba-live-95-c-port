@@ -67,13 +67,17 @@ EXPECTED_RGB = {
     # `$85:B3C9`'s distance<=8 damping branch and native negative /16 bias.
     # The final five frames in `.analysis/inbound-final-review-20260829`
     # retain ten complete players, ball, court/goal bounds and clear HUD.
-    1300: "0a2b43207538157200cb30cde5c10d89fea26afedf69239b52c53a17730d98a9",
-    3480: "c5285d019c74fd9bdc12419dde368b11f9f2d7b4e2aff181cae43f64537ec175",
+    # Re-reviewed after `$87:92A5-$949E` restored the native violation and
+    # boundary-dead-ball parent ordering. The corrected boundary possession
+    # changes the deterministic path after frame 600. These four anchors show
+    # ten complete actors, the ball, both baskets/court bounds and a clear HUD.
+    1300: "1a16dd2c633d1f4ad061b6b84a0d41899cf008d796892257c5ab78ea0691acac",
+    3480: "c720c8377e57b32a2943ac9bd94fa65cb90202ebfd654a945228bc0a14909398",
     # Reviewed after the native `$85:BB5A->$85:BBAE` one-way help assignment
     # replaced the former symmetric port behavior. The exact ROM-call corpus
     # and matchup runtime probe independently protect the semantic change.
-    6932: "020c45f7eb24bbc2262df87f166c780bb466e3baf1fba5de1319e18d24fadf91",
-    6954: "e4ae2ac6c06271984c08960b148d7a5f2a4791618bb8b035ae6428203948502c",
+    6932: "d8bfd081e9c7e60faf133e61957a0017fe2124509686f167456db03f50e95745",
+    6954: "5bc06dd8a173da287f71c5d37e16914612782a3795424b9fec2a2e644d981d20",
 }
 
 
@@ -691,9 +695,21 @@ def main():
                           if actor["animation"] != actor["lower_animation"]}
         if not {(0x0B, 0x03), (0x16, 0x32)}.issubset(mismatch_pairs):
             raise AssertionError(f"independent animation pairs missing: {mismatch_pairs}")
-        if any(row["possession"]["rng_state_raw"] in (0, 0xFFFF)
-               for row in rows[219:]):
+        rng_states = [row["possession"]["rng_state_raw"] for row in rows[219:]]
+        if 0xFFFF in rng_states:
             raise AssertionError("$80:CEE7 RNG state was not retained")
+        # `$80:CEE7` can publish zero for one idle span when a left shift
+        # exhausts the state; its next actual call reseeds to `$9146`.
+        # Preserve that native quirk while rejecting a stuck/uninitialized RNG.
+        for index, value in enumerate(rng_states):
+            if value != 0 or (index and rng_states[index - 1] == 0):
+                continue
+            following = next((state for state in rng_states[index + 1:]
+                              if state != 0), None)
+            reseed_prefix = {0x9146, 0x3F0B, 0x7E16, 0xFC2C,
+                             0xE5DF, 0xD639, 0xB1F5, 0x7E6D}
+            if following not in reseed_prefix:
+                raise AssertionError("$80:CEE7 zero state did not reseed")
 
         # `$87:8EFB-$8F92`: one global, possession-independent 30-Hz pass,
         # fixed `$0938=2`, strict actor records 0 through 9.
@@ -964,13 +980,13 @@ def main():
             if layout == 0:
                 expected_target = (394, -64, 6) if provisional_actor == 2 \
                     else (-394, 64, 2)
-            elif layout in (3, 4):
+            elif layout in (1, 3, 4):
                 # `$85:C37D` consumes the rounded live ball record; `$09B0/B2`
                 # separately preserve its signed integer-word floor.
                 source_x = first["ball"]["x"]
                 source_y = first["ball"]["y"]
                 side_anchor = -336 if provisional_actor == 2 else 336
-                if layout == 4:
+                if layout in (1, 4):
                     target_x = (-40 if side_anchor < 0 else 40) if \
                         (side_anchor ^ source_x) < 0 else source_x
                 else:
@@ -1340,7 +1356,7 @@ def main():
             same_frame_catch = row["ball"]["state"] == 4 and \
                 0 <= row["ball"]["owner"] < 10 and \
                 row["possession"]["actor"] == row["ball"]["owner"]
-            boundary_dead_ball = row["ball"]["state"] == 4 and \
+            boundary_dead_ball = row["ball"]["state"] in (4, 6) and \
                 row["ball"]["owner"] == -1 and \
                 row["match"]["live_state_raw"] == 0x82
             # Family four is `$86:A6EC->$A749`: the descending boosted-pass
@@ -1358,7 +1374,16 @@ def main():
             if not phase_released or \
                     not (detached or same_frame_catch or boundary_dead_ball) or \
                     old_pass_still_active:
-                raise AssertionError("pass released before `$86:A736-$A747` phase gate")
+                raise AssertionError(
+                    "pass released before `$86:A736-$A747` phase gate: "
+                    f"frame={row['frame']} actor={actor['id']} "
+                    f"family={before_actor['raw']['pass_family_c0']} "
+                    f"phase={before_actor['raw']['upper_phase']} "
+                    f"threshold={raw['pass_release_threshold']} "
+                    f"ball={row['ball']['state']}/{row['ball']['owner']} "
+                    f"live={row['match']['live_state_raw']:04x} "
+                    f"active={row['possession']['pass_active_raw']}/"
+                    f"{row['possession']['pass_actor_raw']}")
         pass_animations = {actor["animation"] for _, _, actor in pass_rows}
         # Which pass directions occur depends on prior release positions.
         # The deterministic end-to-end run must sustain multiple families;

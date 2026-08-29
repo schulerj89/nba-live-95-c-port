@@ -506,6 +506,14 @@ identifies the final layer, BG/OBJ priority, Mode-1 rank, palette/color indexes
 
 ### Other utilities
 
+Violation/dead-ball differential checkpoint: `mesen_violation_parent_control.lua`
+drives ten labeled real-entry branch families through `$87:92A5-$949E`.
+`normalize_violation_parent.py` retains only complete parent calls, and
+`verify_violation_parent_vectors.py` replays the checked-in fixture through
+the production dispatcher. The build gate also checks the exact Ghidra PC
+census; `test_cpu_gameplay.py` protects live boundary-event consumption and
+layout-1 inbound recovery.
+
 Jump/reach differential checkpoint: `mesen_jump_reach.lua` observes native
 EC32 entry, parent child-call sites and returns. `run_differential.py
 --capture-jump-reach` launches it; optional `--jump-cases` uses explicitly

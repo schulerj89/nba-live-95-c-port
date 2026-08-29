@@ -1592,6 +1592,14 @@
       "method": "natural and boundary-controlled real-entry differential + nested child trace + runtime owner-flow binding",
       "evidence": "246 uninterrupted natural calls plus urgent-clock and context-$3B controlled families compare the three-way return, RNG, live/shot state, and all ten actors' targets, flags, velocities and animation modes with zero mismatches. Controls cover B6A2 urgency, B83E controller-shot, B85F clock, B875 clear/blocked lane and B87D anchor steering without patching PC, stack, ROM or RNG. The trace exposed integer-word geometry, X/Y-before-Z ordering, preserved shooter state and required direction-8 deceleration. One B734 and two parent samples crossing NMI frame boundaries are explicitly excluded because the interrupt independently advances $07F6. The 61-call permanent corpus retains both stable exits and every controlled source.",
       "date": "2026-08-29"
+    },
+    {
+      "range": "8792A5-87949E",
+      "name": "gameplay violation and early dead-ball dispatcher",
+      "source": "src/nba_tipoff.c + src/nba_gameplay_foul.c",
+      "method": "boundary-controlled native parent differential + complete headless Ghidra listing + production frame binding",
+      "evidence": "Ten real-entry native calls cover unchanged state, interference, X-boundary violation, codes 5/7, defensive/charging/offensive fouls, deferred shooting-foul resolution and its wait branch. The fixture compares live/camera/owner/inbound/event/free-throw/clock/dead-ball state, both context actors, ball velocity and all ten actor modes with zero mismatches. Controls mutate documented WRAM at 92A5 only and never patch ROM, PC, stack, flags or RNG. The split production scheduler preserves 94A2's pending event and runs C37D/foul consumption only after this parent boundary, matching the ROM ordering.",
+      "date": "2026-08-29"
     }
   ]
 }

@@ -85,3 +85,4 @@ dead-ball reset ranges a second time.
 | Live-play request selection | 73 | 10,682 (38.29%) | 36 controlled B120-B352 calls; exact score, strategy, range, override and RNG ordering |
 | Formation target and steering | 147 | 10,829 (38.81%) | 400 natural plus five controlled families; 64 permanent full-state witnesses and exact nested child census |
 | Mode-11 parent dispatcher | 67 | 10,896 (39.05%) | 246 natural calls and four controlled branch families; 61 permanent witnesses; fixed context-$3B route and direction-8 arrival deceleration |
+| Violation/dead-ball parent dispatch | 98 | 10,994 (39.40%) | Ten controlled real-entry families and 61 permanent calls; exact event/dead-ball outputs, boundary scheduling, and parent/child split; CPU endurance covers live layout-1 inbound recovery |

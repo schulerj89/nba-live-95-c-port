@@ -238,6 +238,11 @@ if ($Test) {
         --vectors (Join-Path $Root 'tests\fixtures\mode11-parent-witnesses.json') `
         --probe (Join-Path $BuildDir 'mode11_parent_vector_probe.exe') --pack $AssetPack
     if ($LASTEXITCODE -ne 0) { throw 'Mode-11 parent dispatcher ROM replay failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name violation_parent_vector_probe
+    & python (Join-Path $Root 'tools\verify_violation_parent_vectors.py') `
+        --vectors (Join-Path $Root 'tests\fixtures\violation-parent-witnesses.json') `
+        --probe (Join-Path $BuildDir 'violation_parent_vector_probe.exe') --pack $AssetPack
+    if ($LASTEXITCODE -ne 0) { throw 'Violation parent dispatcher ROM replay failed.' }
     & python (Join-Path $Root 'tools\test_shot_assets.py') --pack $AssetPack --rom $RomPath --exe $ConsoleExePath
     if ($LASTEXITCODE -ne 0) { throw 'Shot asset ROM comparison failed.' }
     & python (Join-Path $Root 'tools\test_special_shot_integration.py') --pack $AssetPack --rom $RomPath --exe $ConsoleExePath
