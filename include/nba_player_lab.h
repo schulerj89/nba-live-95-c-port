@@ -60,6 +60,21 @@ uint32_t nba_rom_sprite_resource_render(NbaRenderer *renderer,
                                     uint16_t resource_id,
                                     const uint8_t palette[32], int origin_x,
                                     int origin_y, bool flip, int scale);
+typedef struct {
+    int16_t x;
+    uint8_t y, tile, attribute, large;
+} NbaRomSpriteOamEntry;
+typedef struct {
+    NbaRomSpriteOamEntry entries[32];
+    uint8_t count;
+} NbaRomSpriteOamComposition;
+/* Portable gameplay-visible output of `$80:B344-$B529`: decode a packed ROM
+ * resource into the same clipped low-OAM entries, in submission order. */
+bool nba_rom_sprite_resource_compose(const NbaAssetPack *assets,
+                                    uint16_t resource_id,
+                                    uint16_t caller_attribute,
+                                    int16_t origin_x, int16_t origin_y,
+                                    NbaRomSpriteOamComposition *composition);
 bool nba_player_compose_jersey_number(const NbaAssetPack *assets,
                                       uint8_t jersey, uint8_t direction,
                                       uint8_t side, uint8_t tile[32]);

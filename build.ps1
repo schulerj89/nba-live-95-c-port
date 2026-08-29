@@ -247,6 +247,12 @@ if ($Test) {
         --vectors (Join-Path $Root 'tests\fixtures\draw-indicator-witnesses.json') `
         --probe (Join-Path $BuildDir 'draw_indicator_vector_probe.exe')
     if ($LASTEXITCODE -ne 0) { throw 'Human edge-indicator ROM witness regression failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name raw_sprite_compositor_probe
+    & python (Join-Path $Root 'tools\verify_raw_sprite_compositor.py') `
+        --vectors (Join-Path $Root 'tests\fixtures\raw-sprite-compositor-witnesses.json') `
+        --probe (Join-Path $BuildDir 'raw_sprite_compositor_probe.exe') `
+        --assets $AssetPack
+    if ($LASTEXITCODE -ne 0) { throw 'Raw ROM sprite compositor regression failed.' }
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name appearance_upload_runtime_probe
     & python (Join-Path $Root 'tools\verify_appearance_upload.py') `
         --vectors (Join-Path $Root 'tests\fixtures\appearance-upload-witness.json') `

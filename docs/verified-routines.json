@@ -1432,6 +1432,14 @@
       "method": "natural and controlled native entry/exit differential + runtime binding",
       "evidence": "tests/fixtures/draw-indicator-witnesses.json and tools/verify_draw_indicator_vectors.py: 200 natural plus 32 controlled real-entry calls cover four controllers and all eight edge classes; resource, attribute, clipped X/Y and actor sentinel outputs match exactly. Separate broad visibility and 17..207 indicator bounds preserve the native top-only asymmetry. docs/player-edge-indicator-differential.md.",
       "date": "2026-08-29"
+    },
+    {
+      "range": "80B37C-80B529",
+      "name": "raw ROM sprite descriptor clipping mirroring and OAM composition",
+      "source": "src/nba_player_lab.c",
+      "method": "natural native real-entry OAM differential + asset-pack runtime binding",
+      "evidence": "tests/fixtures/raw-sprite-compositor-witnesses.json and tools/verify_raw_sprite_compositor.py: 2000 paired native calls, 25 resources, both flips, 43 inputs and 3492 exact signed-X/Y/size/palette/priority outputs. B344-B37B VRAM allocation and tile/name-select outputs excluded because the host reads pack pixels directly. docs/raw-sprite-compositor-differential.md.",
+      "date": "2026-08-29"
     }
   ]
 }

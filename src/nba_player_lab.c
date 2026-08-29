@@ -472,6 +472,43 @@ uint32_t nba_rom_sprite_resource_render(NbaRenderer *renderer,
                                    origin_x, origin_y, flip, NULL, scale);
 }
 
+bool nba_rom_sprite_resource_compose(const NbaAssetPack *assets,
+                                    uint16_t resource_id,
+                                    uint16_t caller_attribute,
+                                    int16_t origin_x, int16_t origin_y,
+                                    NbaRomSpriteOamComposition *out) {
+    uint32_t resource_size = 0;
+    const uint8_t *resource = animation_resource(
+        assets, resource_id, &resource_size);
+    if (!out) return false;
+    memset(out, 0, sizeof(*out));
+    if (!resource || resource_size < 10u) return false;
+    uint16_t part_count = read_u16(resource) & 0x7fffu;
+    if (part_count > 32u || 10u + (size_t)part_count * 7u > resource_size)
+        return false;
+    bool flip = (caller_attribute & 0x4000u) != 0u;
+    for (uint16_t i = 0; i < part_count; ++i) {
+        const uint8_t *part = resource + 10u + (size_t)i * 7u;
+        int16_t descriptor_x = (int16_t)read_u16(part);
+        int16_t descriptor_y = (int16_t)read_u16(part + 2u);
+        int extent = part[6] == 0xffu ? 16 : 8;
+        int16_t x = flip ?
+            (int16_t)((uint16_t)origin_x - (uint16_t)descriptor_x -
+                      (uint16_t)(extent - 1)) :
+            (int16_t)((uint16_t)origin_x + (uint16_t)descriptor_x);
+        int16_t y = (int16_t)((uint16_t)origin_y + (uint16_t)descriptor_y);
+        if (x < -16 || x >= 256 || y < -16 || y >= 224) continue;
+        uint16_t attributes = read_u16(part + 4u) ^ caller_attribute;
+        NbaRomSpriteOamEntry *entry = &out->entries[out->count++];
+        entry->x = x;
+        entry->y = (uint8_t)y;
+        entry->tile = (uint8_t)attributes;
+        entry->attribute = (uint8_t)(attributes >> 8);
+        entry->large = extent == 16 ? 1u : 0u;
+    }
+    return true;
+}
+
 static uint16_t jersey_mask_word(const uint8_t *source, unsigned offset,
                                  bool first_side) {
     uint16_t word = read_u16(source + offset);

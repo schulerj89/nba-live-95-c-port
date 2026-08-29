@@ -85,6 +85,7 @@ host-side outcome without pretending the C port executes SNES DMA machinery.
 | Presentation prelude and gameplay load | 92 | 9,339 (33.47%) | Exact projection/culling plus fresh E0B0/E208 native loads; fixed dormant pre-tip `$0954`; all-team asset closure |
 | Pending foul consumer and whistle child | 53 | 9,392 (33.66%) | Four controlled real-entry ROM cases, 13 owned outputs, both timer paths, zero mismatches; long CPU regression passes |
 | Human player edge indicator | 82 | 9,474 (33.96%) | 200 natural plus 32 controlled real-entry calls; four controllers/eight edges; exact resource, attribute, clipping and actor-sentinel outputs |
+| Shared raw sprite compositor | 196 | 9,670 (34.66%) | 2,000 paired native calls/3,492 parts; exact signed-X, Y, size, flip, palette and priority; SNES-only VRAM allocation excluded |
 
 ### Route from checkpoint 2 to 35%
 
