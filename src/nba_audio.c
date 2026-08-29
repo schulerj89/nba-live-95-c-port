@@ -4,6 +4,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* `$80:A9B3-$AB05` owns the native $2140-$2143 wait/parameter/ack transport.
+ * The host never races a separate SPC chip: frame/cycle-stamped port events
+ * are applied to nba_spc.c in their recorded order before the corresponding
+ * PCM slice is rendered. This preserves the complete hardware-visible
+ * command stream while deliberately omitting busy-wait loops. Title, Setup,
+ * Player Introduction and gameplay SFX tests all reject captured WAVs and
+ * require ROM BRR/SPC/DSP assets from the asset pack. */
+
 #define NBA_SETUP_LOOP_START_SAMPLE 2053956u
 #define NBA_SETUP_LOOP_END_SAMPLE   4048365u
 

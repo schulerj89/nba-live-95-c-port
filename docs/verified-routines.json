@@ -1632,6 +1632,38 @@
       "method": "boundary-controlled native parent differential + complete headless Ghidra listing + production frame binding",
       "evidence": "Ten real-entry native calls cover unchanged state, interference, X-boundary violation, codes 5/7, defensive/charging/offensive fouls, deferred shooting-foul resolution and its wait branch. The fixture compares live/camera/owner/inbound/event/free-throw/clock/dead-ball state, both context actors, ball velocity and all ten actor modes with zero mismatches. Controls mutate documented WRAM at 92A5 only and never patch ROM, PC, stack, flags or RNG. The split production scheduler preserves 94A2's pending event and runs C37D/foul consumption only after this parent boundary, matching the ROM ordering.",
       "date": "2026-08-29"
+    },
+    {
+      "range": "80815A-808626",
+      "name": "NMI OAM and queued VRAM frame service host equivalent",
+      "source": "src/nba_snes_ppu.c + src/nba_tipoff.c + asset-pack native PPU inputs",
+      "method": "native scanout differential + complete Mode-1 production binding",
+      "evidence": "Headless Ghidra identifies the NMI prologue, OAM address/rotation handling, queued transfers and frame publication in this family. The port makes the same VRAM/CGRAM inputs and ordered OAM submissions immutable for one Mode-1 frame instead of emulating asynchronous DMA. The native frame-989 oracle compares every non-player background winner plus OAM 33/34 goal pixels: 54,688 background and 182 goal pixels match Mesen exactly. The frame-1000 production trace locks all 57,344 winners, per-pixel rank/palette and lower-OAM tie order; the Bank80 service probe repeats the compositor self-test in the release gate.",
+      "date": "2026-08-29"
+    },
+    {
+      "range": "808627-808BF2",
+      "name": "PPU palette and VRAM transfer helper host equivalent",
+      "source": "src/nba_snes_ppu.c + asset-pack VRAM/CGRAM/OAM snapshots",
+      "method": "raw native PPU state replay + pixel-provenance regression",
+      "evidence": "Ghidra proves the selected family programs $4200 and performs CGRAM/VRAM DMA setup. The port consumes the resulting raw 64 KiB VRAM, 512-byte CGRAM and OAM state directly. Independent snes_ppu_oracle replay and the production compositor agree on background, goal, clipping, brightness, windows, priority, palette indices and OAM ordering. Tests reject rendered/captured art and require the ROM-derived asset pack.",
+      "date": "2026-08-29"
+    },
+    {
+      "range": "80A9B3-80AB05",
+      "name": "APU command parameter and acknowledgement transport host equivalent",
+      "source": "src/nba_audio.c + src/nba_spc.c + asset-pack APU/DSP event streams",
+      "method": "cycle/frame-stamped native port replay + SPC700/S-DSP synthesis",
+      "evidence": "Ghidra shows the $2140 ready waits, $2141-$2143 parameters, acknowledgement waits and queue tail. The host deliberately removes only the busy-wait while applying the complete stamped write stream to the original SPC700 driver before each PCM slice. Title locks all 43,777 APU writes and its generated PCM; Setup and Player Introduction lock cycle-timed DSP events, BRR-derived PCM fingerprints and loop continuity; gameplay locks the whistle BRR waveform. The asset tests reject prerecorded WAV/song shortcuts.",
+      "date": "2026-08-29"
+    },
+    {
+      "range": "80CE33-80CE8D",
+      "name": "controller serial scan and edge-state publication host equivalent",
+      "source": "src/nba_game.c",
+      "method": "complete Ghidra branch census + production input edge probe",
+      "evidence": "Ghidra identifies two eight-bit serial reads, disconnected-$FFFF detection and four controller bytes. Win32 supplies the completed serial value; nba_game_input_update publishes held/pressed/released with the same frame-edge contract. bank80_services_probe locks first press, held repeat, simultaneous release/press, debug-key isolation and final release in the full build gate.",
+      "date": "2026-08-29"
     }
   ]
 }

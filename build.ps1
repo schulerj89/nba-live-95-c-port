@@ -158,6 +158,11 @@ if ($Test) {
     & python (Join-Path $Root 'tools\test_snes_mode1.py') `
         --pack $AssetPack --exe $ConsoleExePath --rom $RomPath
     if ($LASTEXITCODE -ne 0) { throw 'SNES Mode-1 compositor regression failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name bank80_services_probe
+    & (Join-Path $BuildDir 'bank80_services_probe.exe')
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Bank $80 NMI/PPU/APU/controller host-service gate failed.'
+    }
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name court_runtime_probe
     & (Join-Path $BuildDir 'court_runtime_probe.exe') $AssetPack
     if ($LASTEXITCODE -ne 0) { throw 'Court runtime integration failed.' }

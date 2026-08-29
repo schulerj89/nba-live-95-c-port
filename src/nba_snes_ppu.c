@@ -2,6 +2,15 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* `$80:815A-$8626` is the native NMI/OAM/VRAM service and
+ * `$80:8627-$8BF2` contains its palette/VRAM transfer helpers. The host port
+ * has no asynchronous PPU bus: asset-pack VRAM/CGRAM and the frame's OAM
+ * submissions are immutable for the duration of nba_snes_mode1_begin/release.
+ * This compositor is therefore the portable hardware-visible equivalent of
+ * both families, rather than a 65816 DMA emulator. Native scanout parity is
+ * enforced by test_runtime_ppu_inputs.py; test_snes_mode1.py additionally
+ * locks all 57,344 layer winners, priority ranks, palettes and OAM ordering. */
+
 #define MODE1_META_COLOR_MASK     0x000000ffu
 #define MODE1_META_PALETTE_SHIFT  8u
 #define MODE1_META_LAYER_SHIFT    16u

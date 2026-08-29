@@ -456,10 +456,11 @@ void nba_game_shutdown(NbaGame *game) {
     printf("[GAME] Shutdown complete.\n");
 }
 
-/**
- * Offset/Address/Size: 0x00059A | $00:059A | size: 0x10
- * Purpose: Polls controller joypad button edge states (pressed, held, released) per frame.
- */
+/* `$80:CE33-$CE8D`: the native routine serially reads both controller ports,
+ * rejects the disconnected $FFFF signature and publishes current/edge state.
+ * Win32 has already performed the serial read, so this is its exact portable
+ * state-publication tail. Debug keys occupy host-only bits above the twelve
+ * SNES buttons and intentionally use the same edge contract. */
 void nba_game_input_update(NbaInput *input, uint32_t raw_buttons) {
     if (!input) return;
     input->pressed = raw_buttons & ~input->held;
