@@ -63,6 +63,13 @@ test covers 52 upper states, both sets of 39 lower states, 2,610 resource pairs
 and every direction/appearance variant; see
 `docs/gameplay-sprite-animation-closure.md`.
 
+Dynamic bases-9/11 dribbles now attach through the actor's published
+`+$2A/+$2C` resources, matching `$87:B649/$B66A -> $87:B832/$B953`; the port no
+longer reconstructs a conflicting hand point from its logical animation tick.
+The permanent 20,000-frame unforced probe observes natural reversals and exact
+cached-resource X/Y attachment, and the sustained CPU regression no longer
+excludes those bases. See `docs/dynamic-dribble-attachment.md`.
+
 ## Verified gameplay checkpoint
 
 Latest bounded work: `docs/gameplay-100-percent-plan.md`. A fresh headless

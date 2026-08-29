@@ -375,6 +375,9 @@ if ($Test) {
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name owner_pose_runtime_probe
     & (Join-Path $BuildDir 'owner_pose_runtime_probe.exe') $AssetPack
     if ($LASTEXITCODE -ne 0) { throw 'Owner pose/natural-special runtime regression failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name dynamic_dribble_attachment_probe
+    & (Join-Path $BuildDir 'dynamic_dribble_attachment_probe.exe') $AssetPack
+    if ($LASTEXITCODE -ne 0) { throw 'Dynamic dribble ball-attachment ordering regression failed.' }
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name action_pose_vector_probe
     & python (Join-Path $Root 'tools\verify_action_pose_vectors.py') `
         --normalized --vectors (Join-Path $Root 'tests\fixtures\action-pose-witnesses.json') `

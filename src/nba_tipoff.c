@@ -1982,6 +1982,27 @@ static uint8_t actor_draw_direction(const NbaTipoff *tipoff,
     return output.direction;
 }
 
+static bool actor_attachment_resources(const NbaTipoff *tipoff,
+                                       const NbaTipoffActor *actor,
+                                       uint8_t direction,
+                                       uint16_t *upper_resource,
+                                       uint16_t *lower_resource) {
+    /* `$87:B649/$B66A -> $87:B832/$B953` consume the resources already
+     * published in actor +$2A/+$2C by the preceding `$87:8EFB-$8F92`
+     * animation pass. They do not reconstruct an ordinary dribble resource
+     * from the host's logical `upper_animation_tick`. This distinction is
+     * observable when `$86:E545-$E592` reverses bases 9/11 after the ball
+     * pass: the preserved resource remains the attachment oracle until the
+     * next native animation cadence step. */
+    if (actor->animation_resources_valid && direction == actor->direction) {
+        *upper_resource = actor->upper_animation_resource_raw_2a;
+        *lower_resource = actor->lower_animation_resource_raw_2c;
+        return true;
+    }
+    return actor_animation_resources(tipoff, actor, direction,
+                                     upper_resource, lower_resource);
+}
+
 static void ball_position_at_actor(NbaTipoff *tipoff, unsigned owner) {
     /* `$87:B649`, `$87:B66A`, `$87:B832`, `$87:B953`: resolve the current independent upper
      * and lower resources, then compose their ROM attachment tables. */
@@ -1993,7 +2014,7 @@ static void ball_position_at_actor(NbaTipoff *tipoff, unsigned owner) {
     uint16_t upper_resource = 0u, lower_resource = 0u;
     int16_t offset_x = 0, offset_y = 0, offset_z = 0;
     uint16_t mirror_flags = direction < 3u ? 0x8000u : 0u;
-    bool resolved = actor_animation_resources(
+    bool resolved = actor_attachment_resources(
         tipoff, actor, direction, &upper_resource, &lower_resource) &&
         nba_player_ball_attachment_offsets(
             tipoff->assets, upper_resource, lower_resource, mirror_flags,

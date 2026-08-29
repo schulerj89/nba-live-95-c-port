@@ -1241,12 +1241,9 @@ def main():
             if row["ball"]["state"] == 4 and owner >= 0 and \
                     row["fouls"]["free_throw_state_raw"] == 0:
                 actor = row["actors"][owner]
-                # Dynamic dribble bases 9/11 use a separate native hand-point
-                # cadence that is not represented by this static end-row
-                # resource oracle. Their +$38/+$4E selection is covered by
-                # the dedicated function-vector replay.
-                if actor["raw"]["motion_38"] in (9, 11):
-                    continue
+                # `$87:B649/$B66A` consume the cached +$2A/+$2C resources,
+                # including bases 9/11 after `$86:E545-$E592` reverses their
+                # channels. Do not reconstruct or exclude that cadence here.
                 signature = lambda candidate: (
                     candidate["direction"], candidate["animation"],
                     candidate["lower_animation"],

@@ -128,6 +128,9 @@ reports success.
   successful `+$86 -> +$50` requested-facing write.
   `verify_owner_unlatched_pose_vectors.py` covers `$86:E545-$E592`, replaying
   the relative-velocity 9/11 pose choice and `+$50 -> +$4E` facing write.
+  `dynamic_dribble_attachment_probe.c` follows that selector through natural
+  production cadence and requires `$87:B649/$B66A` to consume the published
+  `+$2A/+$2C` pair across bases-9/11 reversals for 20,000 unforced frames.
   `verify_velocity_step_vectors.py` resolves dynamic actor/profile pointers
   (including LoROM profile byte `[$E0]+$42`) and replays 2,000 calls through
   `$85:A82C-$AB16`, comparing velocity `+$0E/+$10` and boost `+$72`.
