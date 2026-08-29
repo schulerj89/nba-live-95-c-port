@@ -56,7 +56,11 @@ EXPECTED_RGB = {
     # roles) and restores the DP-$5C short-timer target. The differential gate
     # independently proves targets, flags and velocity; these anchors retain
     # complete uniforms, ball, court/goal bounds and a clear HUD.
-    600: "80bffaec71f523becd4c43beec0b25aa17b75bfcf91baec9d2bcbe433f68ef1e",
+    # Re-reviewed after exact `$86:F1B0-$F2C9` parent timing stopped derived
+    # movement from leading the ROM by one scheduled actor pass. All five
+    # frames retain valid player composition, ball, court and clear HUD; the
+    # changed trajectory is protected independently by the new ROM fixtures.
+    600: "7bff9493a5c9baf9e2b85a900e056fb8416e1d88209314936900e3650d8317a7",
     # Re-reviewed after the live renderer adopted `$87:AFA2-$B053`'s tall
     # lower-body selector and the asset pack gained every dynamically chosen
     # `$87:AC76-$AC95` base+$28 torso resource. All five anchors show ten
@@ -71,13 +75,13 @@ EXPECTED_RGB = {
     # boundary-dead-ball parent ordering. The corrected boundary possession
     # changes the deterministic path after frame 600. These four anchors show
     # ten complete actors, the ball, both baskets/court bounds and a clear HUD.
-    1300: "1a16dd2c633d1f4ad061b6b84a0d41899cf008d796892257c5ab78ea0691acac",
-    3480: "c720c8377e57b32a2943ac9bd94fa65cb90202ebfd654a945228bc0a14909398",
+    1300: "3a57e7b59d53828d25510ee3ec13c7e1b278c0160353bd075e8204f20fa20a0d",
+    3480: "c7ab789a83e0892192a7d8db57307892c8a171ee55450cea79a42fa079007989",
     # Reviewed after the native `$85:BB5A->$85:BBAE` one-way help assignment
     # replaced the former symmetric port behavior. The exact ROM-call corpus
     # and matchup runtime probe independently protect the semantic change.
-    6932: "d8bfd081e9c7e60faf133e61957a0017fe2124509686f167456db03f50e95745",
-    6954: "5bc06dd8a173da287f71c5d37e16914612782a3795424b9fec2a2e644d981d20",
+    6932: "2f5328f314fe7b6733e9da5f28bc23a69179a686c1d02380b91744ec387ad3ae",
+    6954: "31b1cc98cfcd57550cccfe8cbacca3ca244fa5f8ab2b109864b44f740aabded5",
 }
 
 
@@ -618,6 +622,19 @@ def main():
                 commit_magnitude = native_target_distance(
                     actor["vx"], actor["vy"])
                 expected_magnitudes = {resolver_magnitude, commit_magnitude}
+                # Exact `$86:F1B0-$F2C9` parent replay proves the normal CPU
+                # parent installs next-pass velocity without publishing the
+                # derived +$4C during that actor pass. `$85:963D` therefore
+                # reports magnitude from the pre-step velocity (the preceding
+                # host-frame sample), not the newly installed velocity.
+                if previous is not None:
+                    pre_step = previous["actors"][actor["id"]]
+                    pre_vx, pre_vy = pre_step["vx"], pre_step["vy"]
+                    expected_magnitudes.add(
+                        max(abs(pre_vx), abs(pre_vy)) +
+                        min(abs(pre_vx), abs(pre_vy)) // 4)
+                    expected_magnitudes.add(native_target_distance(
+                        pre_vx, pre_vy))
                 # `+$4C` is written by the velocity resolver and remains
                 # latched if a later branch zeros/skips velocity that frame.
                 # `$86:BD41/$BF0B` likewise rewrites planar velocity after

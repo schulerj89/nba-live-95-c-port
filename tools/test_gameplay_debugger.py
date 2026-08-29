@@ -17,7 +17,10 @@ from PIL import Image
 # Re-reviewed after native lineup-position matchup assignment and the
 # side-correct jersey-number compositor. The selected actor, ten-player court
 # view, ball, goal, debug HUD and marker overlays remain complete/readable.
-EXPECTED_LAB_RGB = "811e51a95945ef206baa1eaab6cd67ca2a6c2e3d360ce8fbab84ec070960d2f6"
+# Re-reviewed after exact `$86:F1B0-$F2C9` parent timing corrected actor
+# positions. The selected actor marker, nine visible pre-possession players,
+# ball, center court, debug HUD and telemetry text remain complete/readable.
+EXPECTED_LAB_RGB = "d6e5e07757e57bcaa961ac650283d829f4d157a8fae75e26a73380ac71072015"
 
 
 def run(command, label):

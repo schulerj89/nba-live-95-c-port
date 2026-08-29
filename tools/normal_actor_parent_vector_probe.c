@@ -42,9 +42,9 @@ int main(int argc,char **argv){NbaAssetPack assets={0};static uint8_t raw[SIZE];
   s.possession_actor=(int8_t)(int16_t)word(raw,0x93e);s.ball_activity_raw=word(raw,0x948);s.rim_raw_094a=word(raw,0x94a);
   s.inbound_state_raw=(int16_t)word(raw,0x952);s.inbound_actor_raw=word(raw,0x954);s.inbound_target_x_raw=(int16_t)word(raw,0x958);s.inbound_target_y_raw=(int16_t)word(raw,0x95a);
   s.dead_ball_raw_0968=word(raw,0x968);s.fouls.free_throw_state_raw_0978=word(raw,0x978);s.rim_raw_097c=word(raw,0x97c);
-  s.play_code=word(raw,0x996);s.play_step_raw=(int16_t)word(raw,0x998);s.play_mirror_raw=word(raw,0x99c);
-  s.special_actor_raw=word(raw,0x9a2);s.play_cycle_raw=word(raw,0x9a4);s.cpu_play_state=word(raw,0x9d8);s.formation_override_raw_005c=word(raw,0x5c);
-  s.collision_actor_b_raw=(int16_t)word(raw,0x492f);s.ball.x_fp=fixed(raw,0x3eef);s.ball.y_fp=fixed(raw,0x3ef3);
+  s.play_code=(uint8_t)word(raw,0x996);s.play_step_raw=(int16_t)word(raw,0x998);s.play_mirror_raw=word(raw,0x99c);
+  s.special_actor_raw=word(raw,0x9a2);s.play_cycle_raw=word(raw,0x9a4);s.cpu_play_state=(uint8_t)word(raw,0x9d8);s.formation_override_raw_005c=word(raw,0x5c);
+  s.collision_actor_b_raw=(int8_t)(int16_t)word(raw,0x492f);s.ball.x_fp=fixed(raw,0x3eef);s.ball.y_fp=fixed(raw,0x3ef3);
   s.ball.velocity_x=(int16_t)word(raw,0x3ef9);s.ball.velocity_y=(int16_t)word(raw,0x3efb);s.ball.owner_actor=s.possession_actor;
   for(unsigned side=0;side<2;side++){unsigned c=side?0x476b:0x46eb;s.team_context[side].anchor_x_raw_0a=(int16_t)word(raw,c+0xa);s.team_context[side].mode_raw_30=word(raw,c+0x30);s.team_context[side].flags_raw_32=word(raw,c+0x32);}
   unsigned slot=word(raw,0xc2);bool ok=nba_tipoff_replay_normal_actor(&s,(uint8_t)slot);

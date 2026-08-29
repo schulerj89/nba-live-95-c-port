@@ -797,7 +797,10 @@ bool nba_tipoff_begin_rom_pass(NbaTipoff *tipoff, unsigned passer_slot,
                     relative = (uint8_t)(
                         (pass_direction - passer->movement_direction) & 7u);
                     selector = relative;
-                } else selector = fine_relative == 9u ? 5 : 3;
+                /* `$86:ACF4-$ACFB` maps fine-relative 9 to selector 3 and
+                 * the opposite oblique to 5. Preserve that asymmetric table
+                 * order: reversing it swaps the native `$2D/$2E` pose. */
+                } else selector = fine_relative == 9u ? 3 : 5;
             }
             int16_t sign_test = (int16_t)(selector * 2 - 7);
             if (passer->movement_direction < 3u)

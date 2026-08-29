@@ -89,3 +89,17 @@ dead-ball reset ranges a second time.
 | Mode-six defensive target family | 19 | 11,013 (39.47%) | Corrected the false EA03 capture exit to the shared E82E continuation; 200 natural calls and 20 permanent target witnesses, zero mismatches |
 | Normal mode-one/mode-three actor parents | 112 | 11,125 (39.87%) | 579 uninterrupted natural parent calls; 64 permanent hold/due witnesses; fixed state-81 cadence, premature derived state, and loose-pursuit target corruption |
 | Requested-direction finalizer | 58 | **11,183 (40.08%)** | 300 uninterrupted natural E5AB calls and 32 permanent witnesses cover CPU target-box, human velocity, ball-facing and preserve-current branches |
+
+## Release result
+
+The goal closed at **11,183 / 27,901 verified captured address positions
+(40.08%)**, up from 9,767 (35.01%). `build.ps1 -Test` passes the complete
+suite, including the 63,800-frame CPU endurance run, all new differential
+fixtures, Mode-1 provenance census, asset checks, tip-off anchors, Gameplay
+Lab telemetry and the five reviewed CPU visual anchors. The two-match
+owner-pose smoke now always runs both schedules and requires states 13 and 18
+across the combined deterministic run, avoiding a matchup-local rare-event
+assumption without weakening the exact 326-call ROM replay.
+
+The desktop shortcut was recreated and read back against the rebuilt
+`build/nba95_port.exe`, `build/nba95_assets.pak`, and the F-drive ROM.

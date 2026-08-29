@@ -35,7 +35,10 @@ EXPECTED_FRAMES = {
     # Re-reviewed after `$85:B678-$B8CA` restored the native direction-8
     # arrival deceleration. Court, ten players, ball, goal and HUD are intact;
     # only the corrected post-acquisition actor positions change this hash.
-    220: ("TIP PH:LIVE", "d418a768306f59c799357aad73d7fdef7506380709bb18ad37a525511e416d26"),
+    # Re-reviewed after exact `$86:F1B0-$F2C9` actor-parent timing stopped
+    # publishing derived movement one actor pass early. The live frame retains
+    # ten complete players, ball, center court and an unobstructed HUD.
+    220: ("TIP PH:LIVE", "85e8824265afa48bd41005c4d397b0db3e74482a21e11ef96ecfca82453e4e6d"),
 }
 
 
