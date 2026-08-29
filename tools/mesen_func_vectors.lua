@@ -159,6 +159,7 @@ local shared_exits = os.getenv("NBA95_VEC_SHARED_EXITS") == "1"
 local drive = os.getenv("NBA95_VEC_DRIVE") == "1"
 local force_cpu_vs_cpu = os.getenv("NBA95_CPU_VS_CPU") == "1"
 local record_delay = tonumber(os.getenv("NBA95_VEC_DELAY")) or 0
+local force_play_request = os.getenv("NBA95_VEC_FORCE_PLAY_REQUEST") == "1"
 -- Default to on-court play while driving; pregame captures need the roster
 -- initialization that runs before the first gameplay frame.
 local recording = not drive or os.getenv("NBA95_VEC_PREGAME") == "1"
@@ -179,6 +180,13 @@ emu.addEventCallback(function() frame = frame + 1 end, emu.eventType.endFrame)
 for _, pc in ipairs(entry_pcs) do
 emu.addMemoryCallback(function()
     if done or not recording then return end
+    -- Controlled request-dispatch vectors mutate the live request word at
+    -- the callable boundary, before both the snapshot and native execution.
+    -- No PC, stack, ROM, RNG, or other gameplay state is patched.
+    if force_play_request and pc == 0x85B128 then
+        emu.write(0x0994, 1, emu.memType.snesWorkRam)
+        emu.write(0x0995, 0, emu.memType.snesWorkRam)
+    end
     -- LIFO so recursive or interrupt-nested calls pair with the right exit.
     pending[#pending + 1] = {
         pc = pc,

@@ -1496,6 +1496,78 @@
       "method": "natural native helper-boundary differential + production runtime binding",
       "evidence": "342 natural real-entry calls across nine observed entry/exit pairs have zero represented-state mismatches. tests/fixtures/matchup-helper-witnesses.json permanently retains all rare one-way-help calls plus spread witnesses for every pair; tools/verify_matchup_helper_vectors.py protects actor modes, distances, assignments and tie ordering. tools/matchup_helper_runtime_probe.c independently protects one-way opposite-half help, symmetric same-half primary assignment and first-tie selection. This differential found and fixed a symmetric-assignment error in the production port.",
       "date": "2026-08-29"
+    },
+    {
+      "range": "86A6B3-86A7D9",
+      "name": "grounded CPU pass-release state machine",
+      "source": "src/nba_tipoff.c + src/nba_gameplay_ai.c",
+      "method": "natural native real-entry differential + long-run production binding",
+      "evidence": "100 natural $86:A6B3 calls cover all four observed exits with zero owned-state mismatches; tests/fixtures/pass-release-witnesses.json permanently retains four spread witnesses per exit. Actor/global outputs are protected by tools/verify_pass_release_vectors.py. Attachment and deflection children are deliberately excluded here and tested by their own existing gates. The 63,800-frame CPU regression reports 2,527 exact pass frames and 112 automatic unlocks.",
+      "date": "2026-08-29"
+    },
+    {
+      "range": "86AB73-86AF4C",
+      "name": "CPU pass receiver initialization core",
+      "source": "src/nba_tipoff.c + src/nba_gameplay_ai.c",
+      "method": "natural native real-entry differential + long-run production binding",
+      "evidence": "All 15 natural $86:AB73 calls compare the represented passer, receiver, globals, movement, direction and mode outputs with zero mismatches in tests/fixtures/pass-init-witnesses.json and tools/verify_pass_init_vectors.py. Child pose-resource resolution is excluded from this core and independently protected by appearance/action tests. Production is exercised by the exact-pass endurance assertions.",
+      "date": "2026-08-29"
+    },
+    {
+      "range": "86D652-86D6EE",
+      "name": "ordered ten-player contact sweep orchestration",
+      "source": "src/nba_tipoff.c + src/nba_gameplay_ball.c",
+      "method": "natural native real-entry player/ball differential + production endurance binding",
+      "evidence": "The complete 300-call native corpus separates parent-owned player effects from nested ball/event/animation/RNG effects. The player view passes 293 calls (18 state-changing) and the ball view passes all four substantive ball/event calls with zero mismatches. Permanent fixtures retain every changing player call, 20 spread no-op ordering calls, and every accepted ball call. Nested effects are excluded or normalized only when owned by separately verified child routines. The 63,800-frame regression protects ordered collision and possession invariants.",
+      "date": "2026-08-29"
+    },
+    {
+      "range": "86E6B7-86E7B0",
+      "name": "context-mode-three defensive target branch",
+      "source": "src/nba_gameplay_ai.c + src/nba_tipoff.c",
+      "method": "natural native real-entry differential + production defensive-mode binding",
+      "evidence": "200 natural E6B7 calls compare exact target X/Y with zero mismatches, including native three-point arc and ROM player-rating gates. The verifier resolves the same ROM player record selected through the actor resource table; it does not infer rating from the result. Twenty spread witnesses are permanent in tests/fixtures/defense-target-family-witnesses.json.",
+      "date": "2026-08-29"
+    },
+    {
+      "range": "86E7B3-86E7DB",
+      "name": "weak-side absolute-X defensive target branch",
+      "source": "src/nba_gameplay_ai.c + src/nba_tipoff.c",
+      "method": "natural native real-entry differential + production defensive-mode binding",
+      "evidence": "200 natural E7B3 calls cover table selection, pair prediction and both anchor signs with zero exact target mismatches. Twenty spread calls are retained by the permanent defense-target-family build gate.",
+      "date": "2026-08-29"
+    },
+    {
+      "range": "86E96F-86E9B2",
+      "name": "positional defender stop-or-spacing selector",
+      "source": "src/nba_gameplay_ai.c + src/nba_tipoff.c",
+      "method": "natural native real-entry differential with corrected return-boundary census",
+      "evidence": "200 natural E96F calls pass exactly. Capture watches both the dedicated E9A8 stop return and common E82E return; this corrected an earlier false pairing where common steering zeroed velocity after target selection. Twenty spread witnesses and entry/exit census are permanent. Live defensive actors call this same core through cpu_refresh_defense_target.",
+      "date": "2026-08-29"
+    },
+    {
+      "range": "85B120-85B18A",
+      "name": "play-request prefix and made-score stream rewind branch",
+      "source": "src/nba_tipoff.c",
+      "method": "controlled native caller-boundary differential + production binding",
+      "evidence": "100 B120->B352 native calls with request $0994=1 at the real B116 caller boundary pass exactly for the made-score state. The control changes only request; PC, stack, ROM and RNG remain native. This found and fixed two port errors: active side must derive from DP $9E rather than camera proxy $093A, and $09A2 survives B377. Twenty-five spread witnesses protect globals, both context modes, RNG and ten actor readiness words. The separate live-state B18A-B244 selector remains explicitly unverified.",
+      "date": "2026-08-29"
+    },
+    {
+      "range": "85B245-85B249",
+      "name": "play-request stream reset dispatch",
+      "source": "src/nba_tipoff.c",
+      "method": "nested execution in controlled made-score request differential",
+      "evidence": "Every retained request witness executes B245->B377 and returns through B249 before the existing record-zero loader. Outputs and RNG state match exactly in tests/fixtures/play-request-witnesses.json.",
+      "date": "2026-08-29"
+    },
+    {
+      "range": "85B377-85B3A9",
+      "name": "play-control stream rewind initializer",
+      "source": "src/nba_tipoff.c",
+      "method": "nested execution in controlled request differential + long-run play-control binding",
+      "evidence": "B377 clears countdown/step/mirror and readiness bits while deliberately preserving $09A2. The complete represented state matches 100 native made-score request calls; the permanent fixture and 63,800-frame play-control assertions protect production use.",
+      "date": "2026-08-29"
     }
   ]
 }

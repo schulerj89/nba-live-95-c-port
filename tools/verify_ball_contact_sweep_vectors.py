@@ -24,22 +24,26 @@ def main():
     parser.add_argument("--probe", required=True)
     parser.add_argument("--pack", required=True)
     args = parser.parse_args()
-    vectors = [json.loads(line) for line in Path(args.vectors).open()
-               if line.strip()]
-    vectors = [vector for vector in vectors
-               if native_ball_or_event_changed(
-                   memory(vector["entry"]), memory(vector["exit"]))]
-    # `$81` continues into the separately owned jump-ball swap at D3C6.
-    vectors = [vector for vector in vectors
-               if word(memory(vector["entry"]), 0x0936) != 0x81]
-    # Event-bit/RNG-only changes belong to nested animation/effect dispatch,
-    # not the actor/ball classifier represented by this replay.
-    vectors = [vector for vector in vectors
-               if any(a != b for index, (a, b) in enumerate(zip(
-                   row(memory(vector["entry"])),
-                   row(memory(vector["exit"])))) if index not in (0, 4))]
-    images = [memory(vector["entry"]) for vector in vectors]
-    expected = [row(memory(vector["exit"])) for vector in vectors]
+    path = Path(args.vectors)
+    normalized = path.suffix == ".json"
+    if normalized:
+        vectors = json.loads(path.read_text())["calls"]
+        images = [bytes.fromhex(vector["input"]) for vector in vectors]
+        expected = [vector["expected"] for vector in vectors]
+    else:
+        vectors = [json.loads(line) for line in path.open() if line.strip()]
+        vectors = [vector for vector in vectors
+                   if native_ball_or_event_changed(
+                       memory(vector["entry"]), memory(vector["exit"]))]
+        # `$81` continues into the separately owned jump-ball swap at D3C6.
+        vectors = [vector for vector in vectors
+                   if word(memory(vector["entry"]), 0x0936) != 0x81]
+        vectors = [vector for vector in vectors
+                   if any(a != b for index, (a, b) in enumerate(zip(
+                       row(memory(vector["entry"])),
+                       row(memory(vector["exit"])))) if index not in (0, 4))]
+        images = [memory(vector["entry"]) for vector in vectors]
+        expected = [row(memory(vector["exit"])) for vector in vectors]
     run = subprocess.run([args.probe, args.pack, "ball"],
                          input=b"".join(images), capture_output=True,
                          check=True)
@@ -48,7 +52,9 @@ def main():
               if line and not line.startswith("[")]
     mismatches = []
     for index, (want, got) in enumerate(zip(expected, actual), 1):
-        acquisition = want[2] != row(memory(vectors[index - 1]["entry"]))[2]
+        acquisition = (vectors[index - 1].get("acquisition", False)
+                       if normalized else
+                       want[2] != row(memory(vectors[index - 1]["entry"]))[2])
         differences = [(field, a, b) for field, (a, b) in
                        enumerate(zip(want, got))
                        if a != b and not (field == 0 and acquisition)]

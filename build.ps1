@@ -199,6 +199,35 @@ if ($Test) {
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name matchup_helper_runtime_probe
     & (Join-Path $BuildDir 'matchup_helper_runtime_probe.exe') $AssetPack
     if ($LASTEXITCODE -ne 0) { throw 'Defensive matchup-helper runtime binding failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name pass_init_vector_probe
+    & python (Join-Path $Root 'tools\verify_pass_init_vectors.py') `
+        --vectors (Join-Path $Root 'tests\fixtures\pass-init-witnesses.json') `
+        --probe (Join-Path $BuildDir 'pass_init_vector_probe.exe') --pack $AssetPack
+    if ($LASTEXITCODE -ne 0) { throw 'CPU pass initialization ROM replay failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name pass_release_vector_probe
+    & python (Join-Path $Root 'tools\verify_pass_release_vectors.py') `
+        --vectors (Join-Path $Root 'tests\fixtures\pass-release-witnesses.json') `
+        --probe (Join-Path $BuildDir 'pass_release_vector_probe.exe') --pack $AssetPack
+    if ($LASTEXITCODE -ne 0) { throw 'CPU grounded pass-release ROM replay failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name player_contact_sweep_vector_probe
+    & python (Join-Path $Root 'tools\verify_player_contact_sweep_vectors.py') `
+        --vectors (Join-Path $Root 'tests\fixtures\player-contact-sweep-witnesses.json') `
+        --probe (Join-Path $BuildDir 'player_contact_sweep_vector_probe.exe') --pack $AssetPack
+    if ($LASTEXITCODE -ne 0) { throw 'Player contact-sweep ROM replay failed.' }
+    & python (Join-Path $Root 'tools\verify_ball_contact_sweep_vectors.py') `
+        --vectors (Join-Path $Root 'tests\fixtures\ball-contact-sweep-witnesses.json') `
+        --probe (Join-Path $BuildDir 'player_contact_sweep_vector_probe.exe') --pack $AssetPack
+    if ($LASTEXITCODE -ne 0) { throw 'Ball contact-sweep ROM replay failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name defense_target_family_probe
+    & python (Join-Path $Root 'tools\verify_defense_target_families.py') `
+        --vectors (Join-Path $Root 'tests\fixtures\defense-target-family-witnesses.json') `
+        --probe (Join-Path $BuildDir 'defense_target_family_probe.exe') --rom $RomPath
+    if ($LASTEXITCODE -ne 0) { throw 'Defensive target-family ROM replay failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name play_request_vector_probe
+    & python (Join-Path $Root 'tools\verify_play_request_vectors.py') `
+        --vectors (Join-Path $Root 'tests\fixtures\play-request-witnesses.json') `
+        --probe (Join-Path $BuildDir 'play_request_vector_probe.exe') --pack $AssetPack
+    if ($LASTEXITCODE -ne 0) { throw 'Play-request dispatcher ROM replay failed.' }
     & python (Join-Path $Root 'tools\test_shot_assets.py') --pack $AssetPack --rom $RomPath --exe $ConsoleExePath
     if ($LASTEXITCODE -ne 0) { throw 'Shot asset ROM comparison failed.' }
     & python (Join-Path $Root 'tools\test_special_shot_integration.py') --pack $AssetPack --rom $RomPath --exe $ConsoleExePath

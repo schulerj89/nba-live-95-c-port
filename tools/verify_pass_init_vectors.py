@@ -48,10 +48,17 @@ def main():
     parser.add_argument("--probe", required=True)
     parser.add_argument("--pack", required=True)
     args = parser.parse_args()
-    vectors = [json.loads(line) for line in
-               Path(args.vectors).read_text().splitlines() if line.strip()]
-    entry_images = [memory(vector["entry"]) for vector in vectors]
-    expected = [expected_row(vector) for vector in vectors]
+    path = Path(args.vectors)
+    normalized = path.suffix == ".json"
+    if normalized:
+        vectors = json.loads(path.read_text())["calls"]
+        entry_images = [bytes.fromhex(vector["input"]) for vector in vectors]
+        expected = [vector["expected"] for vector in vectors]
+    else:
+        vectors = [json.loads(line) for line in
+                   path.read_text().splitlines() if line.strip()]
+        entry_images = [memory(vector["entry"]) for vector in vectors]
+        expected = [expected_row(vector) for vector in vectors]
     run = subprocess.run([args.probe, args.pack], input=b"".join(entry_images),
                          capture_output=True, check=True)
     actual = [[int(item, 16) for item in line.split()]

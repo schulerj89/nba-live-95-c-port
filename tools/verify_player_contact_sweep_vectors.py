@@ -83,22 +83,28 @@ def main():
     parser.add_argument("--probe", required=True)
     parser.add_argument("--pack", required=True)
     args = parser.parse_args()
-    all_vectors = [json.loads(line) for line in Path(args.vectors).open()
-                   if line.strip()]
-    vectors = []
-    for vector in all_vectors:
-        entry, exit_mem = memory(vector["entry"]), memory(vector["exit"])
-        if (not native_ball_or_event_changed(entry, exit_mem) and
-                not native_nested_animation_only(entry, exit_mem) and
-                not native_nested_rng_only(entry, exit_mem)):
-            vectors.append(vector)
-    images = [memory(vector["entry"]) for vector in vectors]
-    expected = []
-    for vector in vectors:
-        entry = memory(vector["entry"])
-        exit_mem = memory(vector["exit"])
-        normalize_nested_receiver_animation(entry, exit_mem)
-        expected.append(row(exit_mem))
+    path = Path(args.vectors)
+    normalized = path.suffix == ".json"
+    if normalized:
+        vectors = json.loads(path.read_text())["calls"]
+        images = [bytes.fromhex(vector["input"]) for vector in vectors]
+        expected = [vector["expected"] for vector in vectors]
+    else:
+        all_vectors = [json.loads(line) for line in path.open() if line.strip()]
+        vectors = []
+        for vector in all_vectors:
+            entry, exit_mem = memory(vector["entry"]), memory(vector["exit"])
+            if (not native_ball_or_event_changed(entry, exit_mem) and
+                    not native_nested_animation_only(entry, exit_mem) and
+                    not native_nested_rng_only(entry, exit_mem)):
+                vectors.append(vector)
+        images = [memory(vector["entry"]) for vector in vectors]
+        expected = []
+        for vector in vectors:
+            entry = memory(vector["entry"])
+            exit_mem = memory(vector["exit"])
+            normalize_nested_receiver_animation(entry, exit_mem)
+            expected.append(row(exit_mem))
     run = subprocess.run([args.probe, args.pack], input=b"".join(images),
                          capture_output=True, check=True)
     actual = [[int(value, 16) for value in line.split()]
@@ -114,8 +120,10 @@ def main():
         raise AssertionError(
             f"probe returned {len(actual)} rows for {len(expected)} vectors; "
             f"stderr={run.stderr.decode(errors='replace')}")
-    changed = sum(row(memory(v["entry"])) != row(memory(v["exit"]))
-                  for v in vectors)
+    changed = (sum(vector.get("changed", False) for vector in vectors)
+               if normalized else
+               sum(row(memory(v["entry"])) != row(memory(v["exit"]))
+                   for v in vectors))
     if mismatches:
         for call, differences in mismatches[:12]:
             print(f"call {call}: {differences}")

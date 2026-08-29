@@ -5357,7 +5357,8 @@ static void cpu_reset_play_control(NbaTipoff *tipoff) {
     tipoff->play_countdown_raw = 0;
     tipoff->play_event_wait_raw = 0u;
     tipoff->play_cycle_raw = 0u;
-    tipoff->special_actor_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
+    /* `$85:B377-$B3A9` does not touch `$09A2`; an active cutter survives a
+     * stream rewind, including the made-score request branch. */
     tipoff->play_mirror_raw = tipoff->play_code >= 0x12u ?
         (tipoff->rng.state & 1u) : 0u;
     for (unsigned i = 0; i < 3u; ++i) tipoff->play_selector_raw[i] = -1;
