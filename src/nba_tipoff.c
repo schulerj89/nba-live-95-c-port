@@ -335,8 +335,10 @@ static int cpu_select_rom_receiver(const NbaTipoff *tipoff,
                                    uint8_t passer_slot) {
     NbaGameplayReceiverState actors[NBA_GAMEPLAY_ACTOR_COUNT];
     for (unsigned i = 0; i < NBA_GAMEPLAY_ACTOR_COUNT; ++i) {
-        actors[i].x = fp_round(tipoff->actors[i].x_fp);
-        actors[i].y = fp_round(tipoff->actors[i].y_fp);
+        /* `$85:F5E4` consumes actor +$04/+$08 integer words. Subpixel
+         * screen rounding can move a defender across a half-open corridor. */
+        actors[i].x = fp_integer_word(tipoff->actors[i].x_fp);
+        actors[i].y = fp_integer_word(tipoff->actors[i].y_fp);
         actors[i].control_mode = tipoff->actors[i].control_mode;
         actors[i].travel_direction = tipoff->actors[i].assignment_direction;
         actors[i].travel_distance = tipoff->actors[i].pair_distance;
@@ -1495,7 +1497,7 @@ static bool cpu_owner_flow_call(void *context,NbaOwnerFlow *s,NbaOwnerCall call,
         CpuMode11Outcome outcome=cpu_dispatch_rom_mode11(t,c->slot,&direction);
         returns=outcome==CPU_MODE11_NORMAL_RETURN;
         if(!returns && a->control_mode==13)ball_attach_to_actor(t,c->slot);
-        else if(outcome==CPU_MODE11_CONSUMED_ACTION && direction<8)
+        else if(outcome==CPU_MODE11_CONSUMED_ACTION)
             cpu_owner_accelerate(t,c->slot,direction);
     } else if(call==NBA_OWNER_CALL_FORMATION) {
         uint8_t direction=a->movement_direction;
@@ -3307,7 +3309,8 @@ static bool cpu_start_rom_shot(NbaTipoff *tipoff, unsigned slot) {
     tipoff->shot_origin_x = fp_round(shooter->x_fp);
     tipoff->shot_origin_y = fp_round(shooter->y_fp);
     tipoff->shot_value_raw = 0u;
-    tipoff->shot_actor_raw_09c8 = -1;
+    /* `$86:B625` preserves the existing `$09C8` shooter chain. It is
+     * replaced by the later launch/ownership routines, not shot startup. */
     tipoff->shot_chance_raw = 0u;
     tipoff->shot_inner_veto_raw = false;
     tipoff->shot_miss_index_raw = 0xFFu;
@@ -3456,9 +3459,44 @@ static CpuMode11Outcome cpu_dispatch_rom_mode11(
     if (!tipoff || slot >= NBA_GAMEPLAY_ACTOR_COUNT)
         return CPU_MODE11_NORMAL_RETURN;
     NbaTipoffActor *actor = &tipoff->actors[slot];
-    int16_t rom_x = fp_round(actor->x_fp);
-    int16_t y = fp_round(actor->y_fp);
-    int16_t z = fp_round(actor->z_fp);
+    /* `$85:B684/$B714/$B820` read actor +$04/+$08/+$0C integer words.
+     * Render rounding can cross the exact X=$E2 shot-rectangle boundary. */
+    int16_t rom_x = fp_integer_word(actor->x_fp);
+    int16_t y = fp_integer_word(actor->y_fp);
+    int16_t z = fp_integer_word(actor->z_fp);
+    unsigned context_side = tipoff->offense_side ? 1u : 0u;
+
+    /* `$85:B67C-$B88A`: context +$3B replaces the ordinary rectangle/policy
+     * route. A matching active controller, either late clock, or a clear lane
+     * sends the actor toward the team anchor; only the first three conditions
+     * start a shot. This path is normally dormant in CPU-vs-CPU play. */
+    if (tipoff->mode11_context_raw_3b[context_side] != 0u) {
+        for (unsigned control = 0; control < 5u; ++control) {
+            if (tipoff->mode11_control_group_raw[control] >= 0 &&
+                (uint16_t)tipoff->mode11_control_group_raw[control] ==
+                    tipoff->camera_side_group_raw &&
+                (tipoff->mode11_control_flags_raw[control] & 0x0040u) != 0u) {
+                if (z != 0) return CPU_MODE11_NORMAL_RETURN;
+                return cpu_start_rom_shot(tipoff, slot) ?
+                    CPU_MODE11_SHOT_STARTED : CPU_MODE11_NORMAL_RETURN;
+            }
+        }
+        if (tipoff->rim_raw_092c < 120u ||
+            tipoff->match_clock_raw_0928 < 120u) {
+            if (z != 0) return CPU_MODE11_NORMAL_RETURN;
+            return cpu_start_rom_shot(tipoff, slot) ?
+                CPU_MODE11_SHOT_STARTED : CPU_MODE11_NORMAL_RETURN;
+        }
+        if (!cpu_lane_to_basket_is_clear(tipoff, slot))
+            return CPU_MODE11_NORMAL_RETURN;
+        if (direction) {
+            *direction = nba_gameplay_target_direction(
+                (int16_t)(tipoff->team_context[context_side].anchor_x_raw_0a -
+                          rom_x), (int16_t)-y, NULL);
+        }
+        return CPU_MODE11_CONSUMED_ACTION;
+    }
+
     if (rom_x < -338 || rom_x >= 338) return CPU_MODE11_NORMAL_RETURN;
 
     if (tipoff->rim_raw_092c < 120u ||
@@ -3494,9 +3532,13 @@ static CpuMode11Outcome cpu_dispatch_rom_mode11(
 
     if (!same_attack_half) return CPU_MODE11_NORMAL_RETURN;
     if (same_attack_half &&
-        nba_gameplay_mode11_shot_rectangle(rom_x, y, z))
+        nba_gameplay_mode11_shot_rectangle(rom_x, y, 0)) {
+        /* `$85:B714-$B731` classifies X/Y before `$85:B820` tests Z.
+         * Airborne rectangle entries return without visiting RNG policy. */
+        if (z != 0) return CPU_MODE11_NORMAL_RETURN;
         return cpu_start_rom_shot(tipoff, slot) ?
             CPU_MODE11_SHOT_STARTED : CPU_MODE11_NORMAL_RETURN;
+    }
 
     uint8_t team = slot >= 5u ? tipoff->session->right_team :
                                tipoff->session->left_team;
@@ -3526,6 +3568,18 @@ static CpuMode11Outcome cpu_dispatch_rom_mode11(
         return cpu_start_rom_shot(tipoff, slot) ?
             CPU_MODE11_SHOT_STARTED : CPU_MODE11_NORMAL_RETURN;
     return CPU_MODE11_NORMAL_RETURN;
+}
+
+uint8_t nba_tipoff_replay_mode11_dispatch(NbaTipoff *tipoff, uint8_t actor) {
+    if (!tipoff || actor >= NBA_GAMEPLAY_ACTOR_COUNT)
+        return CPU_MODE11_NORMAL_RETURN;
+    uint8_t direction = tipoff->actors[actor].movement_direction;
+    CpuMode11Outcome outcome = cpu_dispatch_rom_mode11(
+        tipoff, actor, &direction);
+    if (outcome == CPU_MODE11_CONSUMED_ACTION &&
+        tipoff->actors[actor].control_mode != 13u)
+        cpu_owner_accelerate(tipoff, actor, direction);
+    return (uint8_t)outcome;
 }
 
 /* $86:9D6E/$9DA6-$A476. One shared launch owns the complete persistent

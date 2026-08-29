@@ -1584,6 +1584,14 @@
       "method": "natural and controlled native real-entry differential + nested child trace + runtime binding",
       "evidence": "400 natural calls and five 40-call boundary-controlled families compare target X/Y, flags, velocity and boost for all ten actors with zero mismatches. The nested trace proves each AD6B invocation's B3AA/B402 child and exposed a wrong C role<3 restriction: every opposite-X actor uses B3AA unless the activity edge route owns roles 3/4. Controlled calls cover AD77 owner/dead-ball return, live inbound-carrier skip, AE1F special actor, activity edge steering and AE97-AEBB DP-$5C short-timer override. The 64-case permanent fixture retains both exits and all controlled sources; controls mutate documented WRAM inputs only, never PC, stack, ROM or RNG. Runtime modes 1/3/5 and owner flow use the same route and velocity child.",
       "date": "2026-08-29"
+    },
+    {
+      "range": "85B678-85B8CA",
+      "name": "mode-11 parent shot, layup, urgency and formation dispatcher",
+      "source": "src/nba_tipoff.c + src/nba_gameplay_ai.c",
+      "method": "natural and boundary-controlled real-entry differential + nested child trace + runtime owner-flow binding",
+      "evidence": "246 uninterrupted natural calls plus urgent-clock and context-$3B controlled families compare the three-way return, RNG, live/shot state, and all ten actors' targets, flags, velocities and animation modes with zero mismatches. Controls cover B6A2 urgency, B83E controller-shot, B85F clock, B875 clear/blocked lane and B87D anchor steering without patching PC, stack, ROM or RNG. The trace exposed integer-word geometry, X/Y-before-Z ordering, preserved shooter state and required direction-8 deceleration. One B734 and two parent samples crossing NMI frame boundaries are explicitly excluded because the interrupt independently advances $07F6. The 61-call permanent corpus retains both stable exits and every controlled source.",
+      "date": "2026-08-29"
     }
   ]
 }

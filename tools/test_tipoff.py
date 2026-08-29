@@ -32,7 +32,10 @@ EXPECTED_FRAMES = {
     # Live frame re-reviewed after the exact direction-specific AD92 torso /
     # number queue ordering; formation/possession anchors do not overlap the
     # affected pixels and remain byte-identical.
-    220: ("TIP PH:LIVE", "a259bc68279154470d9091e8d6f2a4ee4d39533a785c74985672ec81fe35d46a"),
+    # Re-reviewed after `$85:B678-$B8CA` restored the native direction-8
+    # arrival deceleration. Court, ten players, ball, goal and HUD are intact;
+    # only the corrected post-acquisition actor positions change this hash.
+    220: ("TIP PH:LIVE", "d418a768306f59c799357aad73d7fdef7506380709bb18ad37a525511e416d26"),
 }
 
 

@@ -32,8 +32,13 @@ def main():
     parser.add_argument("--rom", required=True)
     args = parser.parse_args()
     rom = Path(args.rom).read_bytes()
-    vectors = [json.loads(line) for line in
-               Path(args.vectors).read_text().splitlines() if line.strip()]
+    captured = [json.loads(line) for line in
+                Path(args.vectors).read_text().splitlines() if line.strip()]
+    # A routine may be interrupted at the video-frame boundary. The NMI path
+    # also advances $07F6, so do not attribute that asynchronous write to B734.
+    vectors = [vector for vector in captured
+               if vector["entry_frame"] == vector["exit_frame"]]
+    interrupted = len(captured) - len(vectors)
     inputs, expected = [], []
     exits = Counter()
     for vector in vectors:
@@ -61,7 +66,7 @@ def main():
                   if expected[i] != produced[i]]
     print(f"[MODE-11 SHOT POLICY] {'PASS' if not mismatches else 'FAIL'}: "
           f"vectors={len(vectors)} mismatches={len(mismatches)} "
-          f"exits={dict(exits)}")
+          f"interrupted={interrupted} exits={dict(exits)}")
     for mismatch in mismatches[:10]:
         print("  call=%d rom=%s port=%s" % mismatch)
     if len(produced) != len(expected) or mismatches or len(exits) != 2:

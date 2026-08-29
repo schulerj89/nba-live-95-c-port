@@ -233,6 +233,11 @@ if ($Test) {
         --vectors (Join-Path $Root 'tests\fixtures\formation-route-witnesses.json') `
         --probe (Join-Path $BuildDir 'formation_route_vector_probe.exe') --pack $AssetPack
     if ($LASTEXITCODE -ne 0) { throw 'Formation-route ROM replay failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name mode11_parent_vector_probe
+    & python (Join-Path $Root 'tools\verify_mode11_parent_vectors.py') `
+        --vectors (Join-Path $Root 'tests\fixtures\mode11-parent-witnesses.json') `
+        --probe (Join-Path $BuildDir 'mode11_parent_vector_probe.exe') --pack $AssetPack
+    if ($LASTEXITCODE -ne 0) { throw 'Mode-11 parent dispatcher ROM replay failed.' }
     & python (Join-Path $Root 'tools\test_shot_assets.py') --pack $AssetPack --rom $RomPath --exe $ConsoleExePath
     if ($LASTEXITCODE -ne 0) { throw 'Shot asset ROM comparison failed.' }
     & python (Join-Path $Root 'tools\test_special_shot_integration.py') --pack $AssetPack --rom $RomPath --exe $ConsoleExePath

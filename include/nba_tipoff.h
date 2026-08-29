@@ -177,6 +177,11 @@ typedef struct NbaTipoff {
     uint16_t free_throw_resolution_raw_0972;
     uint16_t free_throw_flight_timer_raw_0930;
     NbaGameplayTeamContext team_context[2]; /* `$46EB/$476B` +$30/+32/+39 */
+    /* `$85:B83E-$B85D` scans the five $47EB+$40n controller records when
+     * team context +$3B requests the alternate mode-11 path. */
+    uint16_t mode11_context_raw_3b[2];
+    int16_t mode11_control_group_raw[5];
+    uint16_t mode11_control_flags_raw[5];
     uint16_t period_raw_0926;
     uint16_t match_clock_raw_0928;
     int8_t possession_actor;
@@ -349,5 +354,8 @@ bool nba_tipoff_replay_matchup_helper(NbaTipoff *tipoff, uint16_t entry,
 /* Exact `$85:AD6B-$AF5B` formation target/steering boundary. */
 bool nba_tipoff_replay_formation_route(NbaTipoff *tipoff, uint8_t actor,
                                        uint8_t *direction);
+/* Exact `$85:B678-$B8CA` mode-11 decision parent (0 return, 1 consumed,
+ * 2 shot-started), including its native formation velocity continuation. */
+uint8_t nba_tipoff_replay_mode11_dispatch(NbaTipoff *tipoff, uint8_t actor);
 
 #endif

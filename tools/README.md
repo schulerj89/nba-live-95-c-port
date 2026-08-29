@@ -137,6 +137,11 @@ reports success.
   then covers `$85:B50E-$B5FE` priority/order selection through both stable
   exits, and `verify_mode11_shot_policy_vectors.py` covers `$85:B734-$B820`
   while checking both the policy result and every resulting `$07F6` RNG state.
+  `verify_mode11_parent_vectors.py` replays the complete `$85:B678-$B8CA`
+  dispatcher through its normal, consumed-action and shot-start contracts.
+  Its permanent corpus combines natural calls with urgent-clock, context-shot,
+  clear-lane and blocked-lane controls; video-frame-interrupted calls are
+  excluded because the NMI path can independently advance `$07F6`.
   `verify_court_presentation.py` replays 480 durable wrapper/stream/core
   witnesses and requires the exact 510-PC Ghidra census with `--require-census`.
   `test_court_presentation.py` checks the full 148x52 raw ROM map, 29 complete

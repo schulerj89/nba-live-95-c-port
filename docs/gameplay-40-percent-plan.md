@@ -82,3 +82,6 @@ dead-ball reset ranges a second time.
 | Pass/contact regression hardening | 24 | 10,403 (37.29%) | 115 pass calls and split player/ball contact corpus moved into permanent build gates; overlap recount prevents duplicate credit |
 | Defensive target families | 158 | 10,561 (37.85%) | 600 natural calls across context-3, weak-side and positional families, exact ROM player-rating lookup, zero mismatches |
 | Made-score play-request rewind | 48 | 10,609 (38.02%) | 100 controlled native caller-boundary calls; fixed active-context source and cutter preservation; live-play selector remains unclaimed |
+| Live-play request selection | 73 | 10,682 (38.29%) | 36 controlled B120-B352 calls; exact score, strategy, range, override and RNG ordering |
+| Formation target and steering | 147 | 10,829 (38.81%) | 400 natural plus five controlled families; 64 permanent full-state witnesses and exact nested child census |
+| Mode-11 parent dispatcher | 67 | 10,896 (39.05%) | 246 natural calls and four controlled branch families; 61 permanent witnesses; fixed context-$3B route and direction-8 arrival deceleration |
