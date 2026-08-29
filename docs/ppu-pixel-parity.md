@@ -45,12 +45,14 @@ memory with the scanline TM schedule produces a 57,344/57,344 match.
 |---|---|---|
 | Raw PPU replay | BG1/BG2/BG3 tilemaps, CGRAM, OAM, windows, brightness, Mode-1 priority | C equals independent oracle |
 | Raster state | Apply main-screen layer selection per scanline | C equals Mesen for goal and boundary witnesses |
-| Runtime input parity | Replace guessed goal/court submissions with asset-pack tiles and the ROM-derived presentation state | Port trace has the same layer/source decisions as native |
-| Camera-aligned frames | Match native and port by camera/actor state rather than arbitrary frame number | First divergent pixel and source are reported |
-| Regression set | Left basket, right basket, center court, both sidelines, HUD overlap, moving players | All witness frames pass |
+| Runtime input parity | Replace guessed goal/court submissions with asset-pack tiles and the ROM-derived presentation state | **PASS:** 54,688 background + 182 goal OBJ pixels match native |
+| Camera-aligned frames | Match native and port by camera/actor state rather than arbitrary frame number | **PASS:** settled frame 989 at camera `(135,-220)` |
+| Regression set | Left basket, right basket, center court, both sidelines, HUD overlap, moving players | **IN PROGRESS:** 812 indexed runtime viewports pass; additional native moving frames remain |
 
-The first two phases are wired and passing. The remaining visual discrepancy is
-now isolated to the runtime's inputs: it still submits a predecoded panorama and
-separate guessed goal layers instead of replaying the exact asset-pack tilemap,
-window, and raster state. That is the next correction; the PPU compositor itself
-is no longer an unverified variable.
+The runtime now consumes pack v31's `NBPPUIN1` entry for all 29 home teams.
+BG2 is sampled as indexed ROM-map/CHR data, color zero remains transparent,
+BG3 and backdrop are submitted, and BG1 uses the native hardware window plus
+the scanline-123 TM split. The `$0822` rim/net resource uses native OBJ priority
+3 and OAM witness slots 33/34. At camera `(135,-220)`, every non-player pixel
+and every native goal OBJ pixel matches the original scanout. Remaining parity
+work is player/ball OBJ state and additional moving-camera witness frames.

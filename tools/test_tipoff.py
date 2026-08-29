@@ -19,12 +19,14 @@ EXPECTED_FRAMES = {
     # Updated only after the EC32 actor launch and ROM countdown/scratch
     # scheduler were bound to production movement/render state.
     # Re-reviewed after `$87:A3BB-$A43B` replaced host rounding with native
-    # integer-word projection/culling. All ten players, the ball and court
-    # composition remain present at their ROM-correct sprite origins.
-    90: ("TIP PH:FORMATION", "5d95dba97cdca0297823979dddf5e57953a4659d10279b8b5895eec549988b13"),
-    170: ("TIP PH:POSSESSION", "2ea502aef623e3ab0b04104fbf41b6a0ebb7574446b70bca9125adb2e984888f"),
+    # integer-word projection/culling and pack v31 replaced the opaque court
+    # panorama with indexed BG1/BG2/BG3/backdrop inputs. All ten players, the
+    # ball and native court composition remain present at their ROM-correct
+    # sprite origins.
+    90: ("TIP PH:FORMATION", "5ccbdab56024c5c1fa0cf471de0b4102fa8d36dcc1731877f4fabf15677d65b6"),
+    170: ("TIP PH:POSSESSION", "2c58d5bc6d502779ddc13ffddd37eb387d367f7571b0170c630f4f81055ec9dc"),
     # `$86:CF38` receiver reach now permits `$86:D365` possession at frame186.
-    220: ("TIP PH:LIVE", "c292a8dbfab9d7b779b467771a1db4f1e446351c54afac55f3e899a02aa69d48"),
+    220: ("TIP PH:LIVE", "859c643434c776800d70971706e1de2711f9345792d9582290534ae8ec06e611"),
 }
 
 
@@ -33,7 +35,7 @@ def pack_assets(path):
     if raw[:8] != b"NBA95PAK":
         raise AssertionError("invalid pack magic")
     version, count = struct.unpack_from("<II", raw, 8)
-    if version != 30 or 16 + count * 24 > len(raw):
+    if version != 31 or 16 + count * 24 > len(raw):
         raise AssertionError("invalid tip-off pack version/directory")
     assets = {}
     for index in range(count):
@@ -131,7 +133,7 @@ def main():
     text = source.read_text()
     for value in ("tip_toss_countdown_raw_09f2",
                   "nba_tipoff_jump_reach", "nba_graphics_scratch_step",
-                  "nba_player_sprite_render", "nba_assets_gameplay_court_panorama",
+                  "nba_player_sprite_render", "nba_assets_gameplay_ppu_input",
                   "visible_submission[8]"):
         if value not in text:
             raise AssertionError(f"tip-off implementation lost {value}")

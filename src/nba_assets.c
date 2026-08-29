@@ -5,7 +5,7 @@
 
 #define NBA_ASSET_MAGIC "NBA95PAK"
 
-#define NBA_ASSET_PACK_VERSION 30u
+#define NBA_ASSET_PACK_VERSION 31u
 #define NBA_ASSET_HEADER_SIZE 16u
 #define NBA_ASSET_ENTRY_SIZE 24u
 
@@ -161,6 +161,9 @@ static bool asset_metadata_valid(uint32_t id, uint32_t size, uint32_t width,
     if (id == NBA_ASSET_GAMEPLAY_CROWD_TILES)
         return size == 3548u && width == 28u && height == 3u &&
                flags == 0x805280u;
+    if (id == NBA_ASSET_GAMEPLAY_PPU_INPUTS)
+        return size == 24u + 29u * (0x10000u + 0x200u) &&
+               width == 0x10000u && height == 0x200u && flags == 29u;
     if (id == NBA_ASSET_EA_A_FIXED_SEQUENCE) {
         uint32_t x = flags >> 16;
         uint32_t y = flags & 0xFFFFu;
@@ -469,6 +472,24 @@ const uint32_t *nba_assets_gameplay_court_panorama(const NbaAssetPack *pack,
         asset_u32(data + 20) != 416u)
         return NULL;
     return (const uint32_t *)(data + 24u + (size_t)home_team * frame_size);
+}
+
+bool nba_assets_gameplay_ppu_input(const NbaAssetPack *pack, uint8_t home_team,
+                                   const uint8_t **vram,
+                                   const uint8_t **cgram) {
+    const NbaAssetItem *item = nba_assets_get(pack,
+        NBA_ASSET_GAMEPLAY_PPU_INPUTS);
+    const size_t state_size = 0x10000u + 0x200u;
+    if (!item || !item->data || !vram || !cgram || home_team >= 29u ||
+        item->size != 24u + 29u * state_size) return false;
+    const uint8_t *data = (const uint8_t *)item->data;
+    if (memcmp(data, "NBPPUIN1", 8) || asset_u32(data + 8) != 1u ||
+        asset_u32(data + 12) != 29u || asset_u32(data + 16) != 0x10000u ||
+        asset_u32(data + 20) != 0x200u) return false;
+    const uint8_t *state = data + 24u + (size_t)home_team * state_size;
+    *vram = state;
+    *cgram = state + 0x10000u;
+    return true;
 }
 
 bool nba_assets_gameplay_formation_offset(const NbaAssetPack *pack,

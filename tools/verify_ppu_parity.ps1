@@ -27,6 +27,7 @@ if ($process.ExitCode -ne 0 -or !(Test-Path (Join-Path $capture 'capture_complet
     throw 'Native PPU scanout capture failed.'
 }
 
+$env:NBA95_PPU_INPUT_CAPTURE_DIR = $capture
 & (Join-Path $root 'build.ps1') -RomPath $rom
 if ($LASTEXITCODE -ne 0) { throw 'Port build failed.' }
 & (Join-Path $PSScriptRoot 'build_vector_probe.ps1') -Name ppu_snapshot_probe
@@ -39,4 +40,14 @@ $report = Join-Path $capture 'ppu-parity-report.json'
     --raster-log (Join-Path $capture 'ppu_raster_writes.txt') `
     --out $output --report $report
 if ($LASTEXITCODE -ne 0) { throw 'PPU scanout parity failed.' }
+& (Join-Path $PSScriptRoot 'build_vector_probe.ps1') -Name court_runtime_probe
+if ($LASTEXITCODE -ne 0) { throw 'Runtime court probe build failed.' }
+$runtimeFrame = Join-Path $capture 'runtime_native_camera.bmp'
+& (Join-Path $root 'build\court_runtime_probe.exe') `
+    (Join-Path $root 'build\nba95_assets.pak') $runtimeFrame
+if ($LASTEXITCODE -ne 0) { throw 'Runtime indexed court integration failed.' }
+& python (Join-Path $PSScriptRoot 'test_runtime_ppu_inputs.py') `
+    --native-dir $capture --port-frame $runtimeFrame --frame 989 `
+    --report (Join-Path $capture 'runtime-ppu-input-report.json')
+if ($LASTEXITCODE -ne 0) { throw 'Runtime PPU input parity failed.' }
 Write-Host "PPU parity evidence: $report" -ForegroundColor Green

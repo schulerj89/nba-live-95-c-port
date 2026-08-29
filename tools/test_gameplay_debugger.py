@@ -12,9 +12,9 @@ from PIL import Image
 
 
 # Re-reviewed after `$87:A3BB-$A43B` replaced host projection/culling with
-# native integer-word player origins. HUD content is unchanged; court actors
-# beneath it now occupy their ROM-correct pixels.
-EXPECTED_LAB_RGB = "831d24a602bf3552079321fe93b0003f93ddab97ed6436be389a582b2215a8d1"
+# native integer-word player origins and pack v31 supplied indexed gameplay
+# BG1/BG2/BG3/backdrop inputs. HUD content and actor state are unchanged.
+EXPECTED_LAB_RGB = "d8cea01600032957393a0cecab682be2c827ac3676ffa82c39f6369fba8c6384"
 
 
 def run(command, label):

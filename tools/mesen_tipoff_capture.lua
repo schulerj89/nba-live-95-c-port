@@ -502,6 +502,10 @@ local function dump_gameplay_jsonl(frame)
         "\"step_x_raw\":%u,\"step_y_raw\":%u," ..
         "\"subject_x_low_raw\":%u,\"subject_x_raw\":%d," ..
         "\"subject_y_low_raw\":%u,\"subject_y_raw\":%d," ..
+        "\"goal_hscroll_raw_087c\":%u,\"goal_vscroll_raw_087e\":%u," ..
+        "\"goal_window_left_raw_0880\":%u," ..
+        "\"goal_window_right_raw_0882\":%u," ..
+        "\"basket_x_raw_3fef\":%d," ..
         "\"stream_source_bank_raw\":%u},",
         exported_control_actor, force_cpu_vs_cpu and -1 or signed_word(0x093a),
         signed_word(0x0954), exported_control_actor,
@@ -519,7 +523,8 @@ local function dump_gameplay_jsonl(frame)
         word(0x086c), word(0x086e), word(0x0874), word(0x0876),
         word(0x0878), word(0x087a), word(0x088c), word(0x088e),
         word(0x0890), word(0x0892), word(0x4a56), signed_word(0x4a58),
-        word(0x4a5a), signed_word(0x4a5c), word(0x00ec)))
+        word(0x4a5a), signed_word(0x4a5c), word(0x087c), word(0x087e),
+        word(0x0880), word(0x0882), signed_word(0x3fef), word(0x00ec)))
     local ball = 0x3eeb
     local ball_x, ball_y, ball_z = signed_word(ball + 4),
         signed_word(ball + 8), signed_word(ball + 12)

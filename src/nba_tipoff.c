@@ -52,6 +52,55 @@ static uint8_t tile_pixel(const uint8_t *tile, int x, int y) {
         (((tile[17 + y * 2] >> bit) & 1) << 3));
 }
 
+static void draw_gameplay_court_bg2(const NbaTipoff *tipoff,
+                                    NbaRenderer *ren,
+                                    const uint8_t *vram,
+                                    const uint8_t *cgram,
+                                    int crop_x, int crop_y) {
+    const NbaAssetItem *map = nba_assets_get(
+        tipoff->assets, NBA_ASSET_GAMEPLAY_COURT_MAP);
+    if (!map || map->size != 15398u) return;
+    const uint8_t *data = (const uint8_t *)map->data;
+    for (int sy = 0; sy < NBA_SNES_HEIGHT; ++sy) {
+        int py = crop_y + sy;
+        for (int sx = 0; sx < NBA_SNES_WIDTH; ++sx) {
+            int px = crop_x + sx;
+            size_t offset = 6u + ((size_t)(px >> 3) * 52u +
+                                  (size_t)(py >> 3)) * 2u;
+            uint16_t entry = read_u16(data + offset);
+            int tx = px & 7, ty = py & 7;
+            if (entry & 0x4000u) tx = 7 - tx;
+            if (entry & 0x8000u) ty = 7 - ty;
+            uint8_t color = tile_pixel(
+                vram + 0x4000u + (entry & 0x03ffu) * 32u, tx, ty);
+            if (!color) continue; /* Hardware BG transparency. */
+            uint8_t palette = (uint8_t)(((entry >> 10) & 7u) * 16u + color);
+            nba_snes_mode1_submit_indexed(
+                ren, cgram, 15, sx, sy, NBA_SNES_LAYER_BG2,
+                (uint8_t)((entry >> 13) & 1u), palette, color, 127u);
+        }
+    }
+}
+
+static void draw_gameplay_hud_bg3(NbaRenderer *ren, const uint8_t *vram,
+                                  const uint8_t *cgram) {
+    /* Settled gameplay PPU state: BG3 map word $0400, shared CHR word
+     * $1000, HOFS=0, VOFS=$03FF. The asset retains indexed tiles so color
+     * zero exposes the court and Mode-1 BG3-high can cover players exactly. */
+    for (int y = 0; y < NBA_SNES_HEIGHT; ++y) {
+        for (int x = 0; x < NBA_SNES_WIDTH; ++x) {
+            NbaSnesBgPixel pixel;
+            if (!nba_snes_sample_bg(vram, 0x0800, 0x2000, 2, false, false,
+                                    0, 0x03ff, x, y, &pixel)) continue;
+            uint8_t palette = (uint8_t)(pixel.palette * 4 + pixel.color_index);
+            nba_snes_mode1_submit_indexed(
+                ren, cgram, 15, x, y, NBA_SNES_LAYER_BG3,
+                (uint8_t)pixel.priority, palette,
+                (uint8_t)pixel.color_index, 127u);
+        }
+    }
+}
+
 static void draw_animated_crowd(const NbaTipoff *tipoff, NbaRenderer *ren,
                                 int crop_x, int crop_y) {
     const NbaAssetItem *anim = nba_assets_get(
@@ -100,19 +149,11 @@ static void draw_animated_crowd(const NbaTipoff *tipoff, NbaRenderer *ren,
     }
 }
 
-static void draw_gameplay_goal_bg(const NbaTipoff *tipoff, NbaRenderer *ren) {
-    const NbaAssetItem *layer = nba_assets_get(
-        tipoff->assets, NBA_ASSET_GAMEPLAY_GOAL_LAYER);
-    if (!layer || layer->size != 35352u ||
-        memcmp(layer->data, "NBGOAL2", 7)) return;
-    const uint8_t *data = (const uint8_t *)layer->data;
-    const uint8_t *map = data + 24u;
-    const uint8_t *chr = map + 0x800u;
-    const uint8_t *cgram = chr + 0x8000u;
-    int16_t basket_x = (int16_t)tipoff->court_presentation.basket_x_3fef;
-    int16_t screen_x, screen_y;
-    nba_court_project_actor(basket_x, 0, 80, tipoff->camera_x,
-                            tipoff->camera_y, &screen_x, &screen_y);
+static void draw_gameplay_goal_bg(const NbaTipoff *tipoff, NbaRenderer *ren,
+                                  const uint8_t *vram,
+                                  const uint8_t *cgram) {
+    const uint8_t *map = vram;
+    const uint8_t *chr = vram + 0x2000u;
     int window_low = (int)tipoff->court_presentation.window_right_0882;
     int window_high = (int)tipoff->court_presentation.window_left_0880;
     if (window_low <= window_high) {
@@ -121,16 +162,13 @@ static void draw_gameplay_goal_bg(const NbaTipoff *tipoff, NbaRenderer *ren) {
         /* Gameplay PPU state proves BG1 map word $0000 / CHR word $1000,
          * with `$0882` and `$0880` copied to the active clip window by
          * `$87:A81D-$A845`. Color zero exposes BG2 beneath the structure. */
-        int goal_low = basket_x < 0 ? screen_x - 96 : screen_x - 16;
-        int goal_high = basket_x < 0 ? screen_x + 16 : screen_x + 96;
-        int y_low = screen_y - 40, y_high = screen_y + 70;
-        if (goal_low < 0) goal_low = 0;
-        if (goal_high >= NBA_SNES_WIDTH) goal_high = NBA_SNES_WIDTH - 1;
-        if (y_low < 0) y_low = 0;
-        if (y_high >= NBA_SNES_HEIGHT) y_high = NBA_SNES_HEIGHT - 1;
-        for (int sy = y_low; sy <= y_high; ++sy) {
+        /* `$80:8440` publishes TM=$17 for scanout. `$85:EF37` changes it to
+         * $16 at scanline 123, so BG1 is selected solely by its hardware
+         * window in the upper raster. The old projected rectangle was not a
+         * native input and clipped valid board/support tiles at camera edges. */
+        for (int sy = 0; sy < 123; ++sy) {
             unsigned py = ((unsigned)sy + vscroll + 1u) & 0xffu;
-            for (int sx = goal_low; sx <= goal_high; ++sx) {
+            for (int sx = 0; sx < NBA_SNES_WIDTH; ++sx) {
                 if (!nba_snes_window_visible(sx, (uint8_t)window_low,
                                               (uint8_t)window_high, true))
                     continue;
@@ -154,13 +192,8 @@ static void draw_gameplay_goal_bg(const NbaTipoff *tipoff, NbaRenderer *ren) {
 }
 
 static void draw_gameplay_goal_obj(const NbaTipoff *tipoff,
-                                   NbaRenderer *ren) {
-    const NbaAssetItem *layer = nba_assets_get(
-        tipoff->assets, NBA_ASSET_GAMEPLAY_GOAL_LAYER);
-    if (!layer || layer->size != 35352u ||
-        memcmp(layer->data, "NBGOAL2", 7)) return;
-    const uint8_t *data = (const uint8_t *)layer->data;
-    const uint8_t *cgram = data + 24u + 0x800u + 0x8000u;
+                                   NbaRenderer *ren,
+                                   const uint8_t *cgram) {
     int16_t basket_x = (int16_t)tipoff->court_presentation.basket_x_3fef;
     int16_t screen_x, screen_y;
     nba_court_project_actor(basket_x, 0, 80, tipoff->camera_x,
@@ -6896,6 +6929,7 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
         return false; \
     } \
 } while (0)
+    const uint8_t *ppu_vram = NULL, *ppu_cgram = NULL;
     NBA_TIPOFF_REQUIRE("gameplay RNG", nba_gameplay_rng_self_test());
     NBA_TIPOFF_REQUIRE("SNES Mode-1 compositor", nba_snes_mode1_self_test());
     NBA_TIPOFF_REQUIRE("gameplay AI", nba_gameplay_ai_self_test());
@@ -6924,7 +6958,9 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
     NBA_TIPOFF_REQUIRE("shot branches", cpu_shot_branches_self_test(assets, session));
     NBA_TIPOFF_REQUIRE("special shot lifecycle", cpu_special_shot_self_test(assets, session));
     NBA_TIPOFF_REQUIRE("fatigue tables", nba_shot_state_assets_valid(assets));
-    NBA_TIPOFF_REQUIRE("court panorama", nba_assets_gameplay_court_panorama(assets, session->right_team));
+    NBA_TIPOFF_REQUIRE("indexed gameplay PPU inputs",
+        nba_assets_gameplay_ppu_input(assets, session->right_team,
+                                      &ppu_vram, &ppu_cgram));
     NBA_TIPOFF_REQUIRE("court stream map", nba_assets_get(assets, NBA_ASSET_GAMEPLAY_COURT_MAP));
     NBA_TIPOFF_REQUIRE("tipoff ball asset", nba_assets_get(assets, NBA_ASSET_TIPOFF_BALL));
 #undef NBA_TIPOFF_REQUIRE
@@ -7738,32 +7774,19 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
 
 void nba_tipoff_render(const NbaTipoff *tipoff, NbaRenderer *ren) {
     if (!tipoff || !tipoff->is_initialized || !ren) return;
-    const uint32_t *court = nba_assets_gameplay_court_panorama(
-        tipoff->assets, tipoff->session->right_team);
-    const NbaAssetItem *court_map = nba_assets_get(
-        tipoff->assets, NBA_ASSET_GAMEPLAY_COURT_MAP);
-    const uint8_t *map_data = court_map && court_map->size == 15398u ?
-        (const uint8_t *)court_map->data : NULL;
+    const uint8_t *gameplay_vram = NULL, *gameplay_cgram = NULL;
+    if (!nba_assets_gameplay_ppu_input(
+            tipoff->assets, tipoff->session->right_team,
+            &gameplay_vram, &gameplay_cgram)) return;
     int crop_x,crop_y;
     nba_court_viewport(tipoff->camera_x,tipoff->camera_y,&crop_x,&crop_y);
-    if (!nba_snes_mode1_begin(ren, 0xFF000000u, true)) return;
-    for (int y = 0; y < NBA_SNES_HEIGHT; ++y) {
-        int py = crop_y + y;
-        for (int x = 0; x < NBA_SNES_WIDTH; ++x) {
-            int px = crop_x + x;
-            uint8_t priority = 0u;
-            if (map_data) {
-                size_t offset = 6u + ((size_t)(px >> 3) * 52u +
-                                      (size_t)(py >> 3)) * 2u;
-                priority = (uint8_t)((read_u16(map_data + offset) >> 13) & 1u);
-            }
-            nba_snes_mode1_submit_color(
-                ren, x, y, NBA_SNES_LAYER_BG2, priority, 127u,
-                court[(size_t)py * NBA_COURT_WIDTH + (size_t)px]);
-        }
-    }
+    uint32_t backdrop = nba_snes_cgram_color(gameplay_cgram, 0, 15, 0, 0, 0);
+    if (!nba_snes_mode1_begin(ren, backdrop, true)) return;
+    draw_gameplay_court_bg2(tipoff, ren, gameplay_vram, gameplay_cgram,
+                            crop_x, crop_y);
     draw_animated_crowd(tipoff, ren, crop_x, crop_y);
-    draw_gameplay_goal_bg(tipoff, ren);
+    draw_gameplay_goal_bg(tipoff, ren, gameplay_vram, gameplay_cgram);
+    draw_gameplay_hud_bg3(ren, gameplay_vram, gameplay_cgram);
 
     /* The application is single-threaded like the SNES scanout. Reusing one
      * transparent object plane avoids allocating a framebuffer every frame. */
@@ -7774,8 +7797,11 @@ void nba_tipoff_render(const NbaTipoff *tipoff, NbaRenderer *ren) {
         object_plane_initialized = true;
     }
     nba_renderer_clear(&object_plane, 0u);
-    draw_gameplay_goal_obj(tipoff, &object_plane);
-    submit_argb_object(ren, &object_plane, 2u, 38u);
+    draw_gameplay_goal_obj(tipoff, &object_plane, gameplay_cgram);
+    /* `$87:A7D5-$A81B` submits the basket resource into native OAM slots
+     * 33/34 with OBJ priority 3. Priority 2 incorrectly placed rim/net
+     * pixels behind BG1's high-priority board edge. */
+    submit_argb_object(ren, &object_plane, 3u, 33u);
 
     uint8_t render_order[NBA_GAMEPLAY_ACTOR_COUNT];
     int16_t screen_x[NBA_GAMEPLAY_ACTOR_COUNT];

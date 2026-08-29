@@ -1,6 +1,6 @@
 # Project status
 
-Last updated 2026-08-28. This is a current-state handoff, not a milestone log.
+Last updated 2026-08-29. This is a current-state handoff, not a milestone log.
 Use Git history for older checkpoints and run
 `python tools/progress.py --write docs/progress.md` for live measurements.
 
@@ -28,12 +28,14 @@ captures. This is an address-coverage metric, **not an instruction census or
 percentage of the whole game completed**. Disassembled instruction counts
 for a requested slice are reported separately.
 
-Court presentation assets now use pack v30. Asset 282 stores the native BG1
-basket map/4bpp CHR/CGRAM and asset 283 stores the 28 animated BG2 fan tiles
-seen at `$5280-$55FF`. The renderer applies `$087C/$087E` scroll,
+Court presentation assets now use pack v31. Asset 282 stores the native BG1
+basket map/4bpp CHR/CGRAM, asset 283 stores the 28 animated BG2 fan tiles
+seen at `$5280-$55FF`, and asset 284 stores per-team indexed gameplay
+VRAM/CGRAM inputs. The renderer applies `$087C/$087E` scroll,
 `$0882..$0880` clipping, the projected `$3FEB` basket selection and raw OBJ
 resources `$0822/$082C-$082F`. Center court, team paint, sidelines and stands
-remain the verified asset-273 panorama. See `docs/court-assets-audit.md` and
+now render from asset 284's indexed state; asset 273 remains an offline
+panorama oracle. See `docs/court-assets-audit.md` and
 `tools/test_court_assets.py`; no screenshot pixels are runtime art.
 
 Gameplay court composition now runs through the reusable Mode-1 library in
@@ -116,7 +118,7 @@ recent slices are:
   fixing the old 34-column truncation and premature right-side scroll clamp.
   Asset 279 supplies the raw map; all runtime art remains asset-pack data.
   There are 480 durable call witnesses, 12 native viewport map/scroll checks,
-  16,000 runtime binding frames and 522 rendered viewports across 29 teams.
+  16,000 runtime binding frames and 812 rendered viewports across 29 teams.
   The old full-camera ledger claim was narrowed to exact slices; the later
   60 core corrections and 39 setup/caller instructions have separate proofs
   above. Animated crowd graphics and downstream BG1/backboard composition

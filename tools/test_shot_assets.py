@@ -8,9 +8,9 @@ import tempfile
 from PIL import Image, ImageChops
 from extract_assets import build_shot_gameplay_asset, build_fatigue_gameplay_asset, lorom_offset
 
-OLD_F12={126:'73056055dbc5ebcb67e0005ad49c6025c06cc9dd4018141399f3c591eb382920',
-         128:'a9034cc85cf92e237fdb9bc9d88219d63c754120a3904a9676ceb0273083ca42',
-         160:'db347dfe608602a1677140cd13f80d5e3ebf149c69b7a9a6416fdb50e33c886d'}
+OLD_F12={126:'92c8fe62770b73b205c9beb0d014b68f6614a011bfb142ac47e1c8322ab14458',
+         128:'70db5852e6c46f451ab3a059b22aff0cfca2403fb4c585370819883b7d71bee2',
+         160:'0c080a631497de4170b6ece2efbadcce7e167a15acaacbd186f00d2a325cefc1'}
 
 def main():
     p=argparse.ArgumentParser()
@@ -37,8 +37,9 @@ def main():
             raise AssertionError(f'roster recovery rating mismatch: {i}')
     old=bytearray(raw)
     # The historical count predates shot/fatigue, court map279, jump280 and
-    # graphics-scratch281. Remove all five for the old-count oracle; displayed asset art must
-    # remain identical and only the count row may change.
+    # graphics-scratch281. Remove all five for the old-count oracle; later
+    # court/PPU assets 282-284 legitimately advance that count. Displayed
+    # asset art must remain identical and only the count row may change.
     keep=[e for e in entries if e[0] not in (277,278,279,280,281)]
     struct.pack_into('<I',old,12,len(keep))
     for i,e in enumerate(keep):struct.pack_into('<6I',old,16+i*24,*e)

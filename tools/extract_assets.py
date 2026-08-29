@@ -246,7 +246,8 @@ def build_home_court_catalog(home_portrait_dir):
 
 
 def build_gameplay_home_court_catalog(rom_data, base_vram, base_cgram,
-                                       home_portrait_dir, legacy_home_court):
+                                       home_portrait_dir, legacy_home_court,
+                                       ppu_base_vram, ppu_base_cgram):
     """Replay the ROM's $84:E55D-$E57A team court selection offline.
 
     `$84:E6B5/$E6B7` supplies one compressed 0x8c0-byte tile block per team.
@@ -258,6 +259,7 @@ def build_gameplay_home_court_catalog(rom_data, base_vram, base_cgram,
     palette_table = 0x265BD
     courts = []
     panoramas = []
+    ppu_states = []
 
     def render_panorama(vram, cgram):
         """Render the complete $A0:8006 court map, not a captured viewport.
@@ -347,6 +349,15 @@ def build_gameplay_home_court_catalog(rom_data, base_vram, base_cgram,
         # Preserve the established frame-140 Orlando oracle byte-for-byte.
         courts.append(legacy_home_court if team == 18 else court)
         panoramas.append(render_panorama(vram, cgram))
+        ppu_vram = bytearray(ppu_base_vram)
+        ppu_cgram = bytearray(ppu_base_cgram)
+        if team != 18:
+            ppu_vram[tile_destination:tile_destination + len(team_tiles)] = team_tiles
+            ppu_cgram[0:2] = palette[0:2]
+            ppu_cgram[34:38] = palette[2:6]
+            ppu_cgram[64:192] = palette[0x20:0xA0]
+            ppu_cgram[240:246] = palette[0xD0:0xD6]
+        ppu_states.append(bytes(ppu_vram) + bytes(ppu_cgram))
 
     if len({hashlib.sha256(court).digest() for court in courts}) < 27:
         raise RuntimeError("Gameplay home-court catalog lost team variation")
@@ -366,7 +377,11 @@ def build_gameplay_home_court_catalog(rom_data, base_vram, base_cgram,
         panorama_payload.extend(panorama)
     print("[ASSET EXTRACTOR] Replayed 29 ROM home-court tile/palette selections")
     print("[ASSET EXTRACTOR] Rendered 29 complete $A0:8006 court panoramas")
-    return bytes(payload), bytes(panorama_payload)
+    ppu_payload = bytearray(struct.pack(
+        "<8sIIII", b"NBPPUIN1", 1, 29, 0x10000, 0x200))
+    for state in ppu_states:
+        ppu_payload.extend(state)
+    return bytes(payload), bytes(panorama_payload), bytes(ppu_payload)
 
 
 def build_gameplay_court_object_assets(tipoff_capture_dir):
@@ -1870,12 +1885,21 @@ def create_asset_pack(rom_path, output_path):
         raise RuntimeError("Invalid settled tip-off PPU state")
     gameplay_goal_palette, gameplay_crowd_tiles = \
         build_gameplay_court_object_assets(tipoff_capture_dir)
+    ppu_input_dir = os.environ.get("NBA95_PPU_INPUT_CAPTURE_DIR") or os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "..", ".analysis",
+        "ppu-scanout-audit-20260828")
+    with open(os.path.join(ppu_input_dir, "scanout_0989_vram.bin"), "rb") as f:
+        gameplay_ppu_vram = f.read()
+    with open(os.path.join(ppu_input_dir, "scanout_0989_cgram.bin"), "rb") as f:
+        gameplay_ppu_cgram = f.read()
+    if len(gameplay_ppu_vram) != 0x10000 or len(gameplay_ppu_cgram) != 0x200:
+        raise RuntimeError("Invalid gameplay indexed PPU input state")
     gameplay_court = decode_bg_layer(gameplay_vram, gameplay_cgram,
                                      0x1000, 0x4000, 4, True, False, 6, 6)
-    gameplay_home_courts, gameplay_court_panoramas = \
+    gameplay_home_courts, gameplay_court_panoramas, gameplay_ppu_inputs = \
         build_gameplay_home_court_catalog(
         rom_data, gameplay_vram, gameplay_cgram, player_intro_portrait_dir,
-        gameplay_court)
+        gameplay_court, gameplay_ppu_vram, gameplay_ppu_cgram)
 
     assets = [
         (1, 128, 11, 0, nintendo_license_bytes),               # ASSET_NINTENDO_LICENSE
@@ -1957,6 +1981,7 @@ def create_asset_pack(rom_path, output_path):
         (279, 148, 52, 0xA08000, rom_data[0x100000:0x100006 + 148 * 52 * 2]),
         (282, 32, 32, 0x87A73B, gameplay_goal_palette),
         (283, 28, 3, 0x805280, gameplay_crowd_tiles),
+        (284, 0x10000, 0x200, 29, gameplay_ppu_inputs),
     ])
     assets.extend([
         (124, 0, 0, 0, rules_vram_bytes),
@@ -2016,7 +2041,7 @@ def create_asset_pack(rom_path, output_path):
                     extra_audio_id += 1
 
     header_magic = b"NBA95PAK"
-    version = 30
+    version = 31
     asset_count = len(assets)
     entry_size = 24 # 6 * 4 bytes
 

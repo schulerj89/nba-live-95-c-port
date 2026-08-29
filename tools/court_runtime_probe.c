@@ -1,6 +1,12 @@
 #include "nba_tipoff.h"
+#include "nba_snes_ppu.h"
 #include <stdio.h>
 #include <string.h>
+
+static uint16_t u16(const uint8_t *p){return (uint16_t)(p[0]|((uint16_t)p[1]<<8));}
+static uint8_t tile_pixel(const uint8_t *tile,int x,int y){int bit=7-x;return(uint8_t)(
+    ((tile[y*2]>>bit)&1)|(((tile[y*2+1]>>bit)&1)<<1)|
+    (((tile[16+y*2]>>bit)&1)<<2)|(((tile[17+y*2]>>bit)&1)<<3));}
 
 int main(int argc,char **argv) {
     NbaAssetPack pack={0};NbaSession session;NbaTipoff game;NbaInput input={0};
@@ -52,22 +58,52 @@ int main(int argc,char **argv) {
         game.player_screen_visible[a]=false;
     }
     game.ball.x_fp=10000*256;game.ball.y_fp=10000*256;
+    game.frame=989;
     NbaRenderer renderer;nba_renderer_init(&renderer);
-    const int xs[]={-582,-128,74,75,194,328},ys[]={-242,-124,-53};
+    const int xs[]={-582,-128,74,75,135,194,328},ys[]={-242,-220,-124,-53};
+    uint64_t verified_bg2=0,verified_backdrop=0,verified_bg3=0,verified_bg1=0;
+    const NbaAssetItem *map_item=nba_assets_get(&pack,NBA_ASSET_GAMEPLAY_COURT_MAP);
+    if(!map_item || map_item->size!=15398u)return 9;
+    const uint8_t *map=(const uint8_t *)map_item->data;
     for(unsigned team=0;team<29;++team) {
         session.right_team=(uint8_t)team;
-        const uint32_t *panorama=nba_assets_gameplay_court_panorama(&pack,(uint8_t)team);
-        if(!panorama)return 9;
-        for(unsigned xi=0;xi<6;++xi)for(unsigned yi=0;yi<3;++yi) {
+        const uint8_t *vram=NULL,*cgram=NULL;
+        if(!nba_assets_gameplay_ppu_input(&pack,(uint8_t)team,&vram,&cgram))return 9;
+        for(unsigned xi=0;xi<7;++xi)for(unsigned yi=0;yi<4;++yi) {
             game.camera_x=(int16_t)xs[xi];game.camera_y=(int16_t)ys[yi];
+            nba_court_presentation_update(&game.court_presentation,
+                game.camera_x,game.camera_y,game.period_raw_0926,
+                game.team_context[0].anchor_x_raw_0a,
+                game.team_context[1].anchor_x_raw_0a);
             nba_tipoff_render(&game,&renderer);
-            /* Independent unclamped expected origin, including first pixel
-             * past the OLD panorama limit at camera X75. */
             int px=xs[xi]+582,py=ys[yi]+243;
-            for(unsigned row=0;row<224;++row)
-                if(memcmp(renderer.pixels+row*256,panorama+(py+row)*1184+px,256*sizeof(uint32_t)))return 10;
+            for(int y=0;y<224;++y)for(int x=0;x<256;++x){
+                int world_x=px+x,world_y=py+y;
+                uint16_t entry=u16(map+6+((world_x>>3)*52+(world_y>>3))*2);
+                int tx=world_x&7,ty=world_y&7;
+                if(entry&0x4000)tx=7-tx;
+                if(entry&0x8000)ty=7-ty;
+                uint8_t color=tile_pixel(vram+0x4000+(entry&0x3ff)*32,tx,ty);
+                NbaSnesMode1Pixel pixel;
+                if(!nba_snes_mode1_pixel(&renderer,x,y,&pixel))return 10;
+                if(pixel.layer==NBA_SNES_LAYER_BG2){
+                    uint8_t palette=(uint8_t)(((entry>>10)&7)*16+color);
+                    if(!color || pixel.color_index!=color ||
+                       pixel.palette_index!=palette ||
+                       pixel.priority!=((entry>>13)&1) ||
+                       pixel.argb!=nba_snes_cgram_color(cgram,palette,15,0,0,0))return 10;
+                    ++verified_bg2;
+                } else if(pixel.layer==NBA_SNES_LAYER_BACKDROP){
+                    if(color || pixel.argb!=nba_snes_cgram_color(cgram,0,15,0,0,0))return 10;
+                    ++verified_backdrop;
+                } else if(pixel.layer==NBA_SNES_LAYER_BG3)++verified_bg3;
+                else if(pixel.layer==NBA_SNES_LAYER_BG1)++verified_bg1;
+            }
+            if(argc>=3 && team==18 && xs[xi]==135 && ys[yi]==-220 &&
+               !nba_renderer_save_bmp(&renderer,argv[2]))return 19;
         }
     }
+    if(!verified_bg2 || !verified_backdrop || !verified_bg3 || !verified_bg1)return 20;
     /* 8E28 loads current period 0926, NOT quarter-length setting 1701.
      * Give them opposite half selections to catch a wrong caller binding.
      * These are isolated integration scenarios, not natural period flow. */
@@ -80,6 +116,8 @@ int main(int argc,char **argv) {
         if(game.court_presentation.basket_x_3fef!=
            (uint16_t)game.team_context[side].anchor_x_raw_0a)return 12;
     }
-    puts("COURT runtime PASS:16000 frames of caller binding;522 whole-viewport renders across29 teams;4 independent period/length scenarios");
+    printf("COURT runtime PASS:16000 caller frames;812 indexed viewports across29 teams; BG2=%llu BG3=%llu BG1=%llu backdrop=%llu;4 period scenarios\n",
+        (unsigned long long)verified_bg2,(unsigned long long)verified_bg3,
+        (unsigned long long)verified_bg1,(unsigned long long)verified_backdrop);
     nba_assets_free(&pack);return 0;
 }

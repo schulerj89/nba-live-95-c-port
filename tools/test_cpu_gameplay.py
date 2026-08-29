@@ -31,17 +31,20 @@ EXPECTED_RGB = {
     # Re-reviewed after gameplay adopted the shared Mode-1 priority/window
     # compositor. These changes are isolated to BG/OBJ overlap and the newly
     # visible low-priority basket cells; CPU state/trajectory is unchanged.
-    600: "32ac22e1554ec6412b5815963a89ba53f3775c593c9deaa4dbe2841687d586c0",
+    # Re-reviewed again after pack v31 replaced the opaque court panorama with
+    # indexed BG1/BG2/BG3/backdrop inputs. The full CPU trace and state guards
+    # remain unchanged; these hashes lock the corrected presentation output.
+    600: "a1ad7664295ada41412b897ca55736f8f0fdef3f629782a0ebb4341dff065525",
     # Re-reviewed after the live renderer adopted `$87:AFA2-$B053`'s tall
     # lower-body selector and the asset pack gained every dynamically chosen
     # `$87:AC76-$AC95` base+$28 torso resource. All five anchors show ten
     # complete, correctly colored player uniforms; the altered body resources
     # also correct native ball attachment points, so later CPU paths diverge
     # from the retired incomplete-resource trajectory by design.
-    1300: "2645813bb32cc083ebe41011b741218e75ff7c5c91fcb2b05a00d2832464d4d9",
-    3480: "60db8e9d583b940d25e00698977813a790cfbc4b2ccfcc8f5855894bfa272327",
-    6932: "4633a0413b80843496ab9e6e68e5e6ee43f5cb4c02f774151c07fa330a6da9dc",
-    6954: "2139990b320f00fb71ef86eddc58ef96f66b1563553eaec94da49073777fc96b",
+    1300: "074ca750180cbd34b47e4d9bdb2fbeb157057307a29ffce81d90dc2b9d4bc4cd",
+    3480: "dcb684eff2735db561497cd089f5b70c2ad05b812e9b7055d5f496b6def32c4c",
+    6932: "3d479c311fb3ca29d057e595ca0d3c8d4a567cdd73db53b1b5d2f4e009f235f6",
+    6954: "aefa319130b0400c82427eb40769e01a26d373ebda5747c47b13bf84bc3fdbad",
 }
 
 

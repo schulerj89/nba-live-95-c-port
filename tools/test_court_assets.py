@@ -6,7 +6,7 @@ from pathlib import Path
 
 def assets(raw):
     assert raw[:8] == b"NBA95PAK"
-    assert struct.unpack_from("<I", raw, 8)[0] == 30
+    assert struct.unpack_from("<I", raw, 8)[0] == 31
     count = struct.unpack_from("<I", raw, 12)[0]
     result = {}
     for index in range(count):
@@ -56,6 +56,12 @@ def main():
     present = {struct.unpack_from("<H", animation, directory + i * 12)[0]
                for i in range(count)}
     assert {0x0822, 0x082C, 0x082D, 0x082E, 0x082F} <= present
+    _, off, size, width, height, flags = items[284]
+    ppu = raw[off:off + size]
+    assert (width, height, flags) == (0x10000, 0x200, 29)
+    assert size == 24 + 29 * (0x10000 + 0x200)
+    assert ppu[:8] == b"NBPPUIN1" and struct.unpack_from("<4I", ppu, 8) == (
+        1, 29, 0x10000, 0x200)
     print("court asset tests passed (map geometry + goal resources + animated fans)")
 
 

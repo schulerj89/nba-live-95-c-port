@@ -9,7 +9,7 @@ from extract_assets import decode_bg_layer,load_verified_rom
 
 def assets(path):
     raw=Path(path).read_bytes()
-    assert raw[:8]==b'NBA95PAK' and struct.unpack_from('<I',raw,8)[0]==30
+    assert raw[:8]==b'NBA95PAK' and struct.unpack_from('<I',raw,8)[0]==31
     result={}
     for i in range(struct.unpack_from('<I',raw,12)[0]):
         ident,offset,size,w,h,flags=struct.unpack_from('<6I',raw,16+i*24)

@@ -39,7 +39,9 @@ def main():
             assert summary["state_frame"] == 1000
             assert summary["visible"]["bg1"] > 0
             assert summary["visible"]["bg2"] > 0
+            assert summary["visible"]["bg3"] > 0
             assert summary["visible"]["obj"] > 0
+            assert summary["visible"]["backdrop"] > 0
             counts = {name: 0 for name in
                       ("BACKDROP", "BG1", "BG2", "BG3", "OBJ")}
             indexed = direct = rows = 0
@@ -54,11 +56,18 @@ def main():
                     direct += 1
                 else:
                     indexed += 1
-                    assert 0 < pixel["color"] < 16
+                    if layer == "BACKDROP":
+                        assert pixel["palette"] == 0 and pixel["color"] == 0
+                    elif layer == "BG3":
+                        assert 0 < pixel["color"] < 4
+                    else:
+                        assert 0 < pixel["color"] < 16
             assert rows == 256 * 224
             assert counts["BG1"] == summary["visible"]["bg1"]
             assert counts["BG2"] == summary["visible"]["bg2"]
+            assert counts["BG3"] == summary["visible"]["bg3"]
             assert counts["OBJ"] == summary["visible"]["obj"]
+            assert counts["BACKDROP"] == summary["visible"]["backdrop"]
             assert indexed > 0 and direct > 0
 
     print("SNES Mode-1 PASS: priority ladder, OAM self-test, indexed colors, window, CLI JSONL")

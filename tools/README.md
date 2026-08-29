@@ -141,8 +141,14 @@ reports success.
   witnesses and requires the exact 510-PC Ghidra census with `--require-census`.
   `test_court_presentation.py` checks the full 148x52 raw ROM map, 29 complete
   panoramas and 12 native viewport map hashes. `court_runtime_probe.c` checks
-  live binding for 16,000 frames and 522 rendered viewports. All run in
-  `build.ps1 -Test`. Use `capture_camera_presentation.ps1 -Kind core|wrapper|stream`
+  live binding for 16,000 frames and 812 indexed viewports. Pack v31 asset 284
+  supplies per-team raw VRAM/CGRAM rather than a flattened court screenshot;
+  `test_runtime_ppu_inputs.py` compares an exact native camera witness and
+  requires zero mismatch across 54,688 non-player and 182 goal OBJ pixels.
+  `verify_ppu_parity.ps1` recaptures and runs both raw PPU and runtime-input
+  parity gates. The compositor and 812-view runtime probes also run in
+  `build.ps1 -Test`; the native recapture remains an explicit Mesen test. Use
+  `capture_camera_presentation.ps1 -Kind core|wrapper|stream`
   (one kind per run) with `-Controlled` for boundary cases; detailed commands,
   Ghidra labels, pixel-proof limits and evidence are in
   `docs/camera-presentation-plan.md`.

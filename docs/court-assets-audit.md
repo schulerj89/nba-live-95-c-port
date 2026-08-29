@@ -66,7 +66,7 @@ count is uncensused rather than zero.
 
 ## Regression boundary
 
-`tools/test_court_assets.py` locks pack v30, the complete goal BG1 payload,
+`tools/test_court_assets.py` locks pack v31, the complete goal BG1 payload,
 all five basket/net descriptors, all 28 fan tile IDs and distinct animation
 states. `tools/test_court_presentation.py` continues to lock the complete
 center/logo/sideline panorama and both camera extremes. Right-goal visual
@@ -81,9 +81,11 @@ frame proof `.analysis/ppu-mode1-verified.jsonl` reports
 2,098 winning BG1, 51,845 BG2 and 3,401 OBJ pixels. The paired BMP is
 `.analysis/ppu-mode1-verified.bmp`; generated evidence is not packed art.
 
-The trace uses palette/color index 255 for predecoded direct-color sources.
-Accordingly, the team-court panorama and composed player objects remain
-visibly distinguishable from indexed BG1/fan submissions in differential
-analysis. Gameplay BG3 is supported by the library but is not yet submitted
-by this court path; its zero count is an explicit pending presentation item,
-not a false completeness claim.
+Pack v31's `NBPPUIN1` input stores each home team's indexed gameplay VRAM and
+CGRAM. The runtime now submits the native BG2 court, BG3 scoreboard/HUD,
+backdrop, raster-limited BG1 goal, and goal OBJ through the Mode-1 compositor;
+only composed player objects remain predecoded direct-color inputs. The exact
+frame-989 gate compares 54,688 non-player pixels and all 182 pixels belonging
+to the native goal OAM slots 33/34 with zero mismatches. Run
+`tools/test_runtime_ppu_inputs.py` directly, or `tools/verify_ppu_parity.ps1`
+to recapture the Mesen witness before testing it.

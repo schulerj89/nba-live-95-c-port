@@ -138,7 +138,10 @@ typedef enum {
     NBA_ASSET_GAMEPLAY_GRAPHICS_SCRATCH         = 281,
     NBA_ASSET_GAMEPLAY_GOAL_LAYER               = 282,
     NBA_ASSET_GAMEPLAY_CROWD_TILES              = 283,
-    NBA_ASSET_MAX                   = 284
+    /* NBPPUIN1: 29 raw gameplay VRAM/CGRAM states. Runtime samples original
+     * indexed tiles instead of treating a flattened panorama as opaque. */
+    NBA_ASSET_GAMEPLAY_PPU_INPUTS                = 284,
+    NBA_ASSET_MAX                   = 285
 } NbaAssetId;
 
 typedef struct {
@@ -167,6 +170,9 @@ const uint32_t *nba_assets_gameplay_home_court(const NbaAssetPack *pack,
                                                 uint8_t home_team);
 const uint32_t *nba_assets_gameplay_court_panorama(const NbaAssetPack *pack,
                                                     uint8_t home_team);
+bool nba_assets_gameplay_ppu_input(const NbaAssetPack *pack, uint8_t home_team,
+                                   const uint8_t **vram,
+                                   const uint8_t **cgram);
 bool nba_assets_gameplay_formation_offset(const NbaAssetPack *pack,
                                           uint8_t play, uint8_t role,
                                           uint8_t index, bool mirror_y,
