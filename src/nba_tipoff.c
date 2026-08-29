@@ -7,6 +7,16 @@
 #include <stdio.h>
 #include <string.h>
 
+/* Production host equivalent of the captured gameplay ownership families:
+ * `$85:8000-$FFFF` actor/camera/ball/play/event helpers,
+ * `$86:8000-$FFFF` input/shot/contact/AI/inbound helpers, and
+ * `$87:8000-$BFFF` scheduler/event/draw/animation helpers. Exact callable
+ * children stay separated in nba_gameplay_*.c, nba_shot_*.c, owner-flow and
+ * animation modules. This parent owns their native ordering and shared state.
+ * Focused vector replays remain the function oracles; the deterministic
+ * 48,000-frame gameplay85 gate protects production composition across three
+ * asymmetric team pairs, including rendered asset-pack output. */
+
 typedef struct {
     int16_t world_x, world_y;
     int16_t screen_x, screen_y;

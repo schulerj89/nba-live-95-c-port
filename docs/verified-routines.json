@@ -1736,6 +1736,38 @@
       "method": "fresh headless Ghidra listing + native asset/frame hashes + end-to-end production phase probe",
       "evidence": "Fresh Ghidra identifies $83:F790 court-backed phase control, $83:F891 both logo/gold panels and $83:F901 five rank-to-basketball rows. gameplay65_flow_probe executes three asymmetric home/away pairs through matchup, ratings and all 30 card instances, verifies phase cadence/team persistence and distinct rendered hashes. Existing tests independently lock the selected home court, six ROM basketball poses, exact fonts, all 290 portraits, ten-card order, 434-frame cadence, music path and final gameplay handoff.",
       "date": "2026-08-29"
+    },
+    {
+      "range": "80A7C6-80BF00",
+      "name": "indexed object OAM text and resource publication host equivalents",
+      "source": "src/nba_snes_ppu.c + src/nba_renderer.c + src/nba_font.c + src/nba_audio.c + src/nba_player_lab.c",
+      "method": "fresh all-capture headless Ghidra closure + Bank $80 recomp roots + native hardware-visible output differentials",
+      "evidence": "The fresh closure sees 2,358 captured positions and 48 decoded call sites in this selected neighborhood. Recomp roots $80:A973/$A9B3/$AB06/$AB7E/$AC0D/$AC89/$BB93/$BE6B agree with Ghidra ownership for APU publication, indexed objects, OAM clear/commit and text/resource streams. Existing exact gates protect APU/SPC writes, 2,000 raw sprite calls, clipping/flip/OAM order, all Mode-1 layer winners, native VRAM/CGRAM/pixels, fonts and scene hashes. The three-matchup gameplay85 digest additionally locks these services in production scanout; DMA latency and busy-wait timing remain intentionally outside the host boundary.",
+      "date": "2026-08-29"
+    },
+    {
+      "range": "858000-85FFFF",
+      "name": "gameplay actor camera ball play strategy event and geometry host equivalents",
+      "source": "src/nba_tipoff.c + src/nba_gameplay_camera.c + src/nba_gameplay_ball.c + src/nba_gameplay_ai.c + src/nba_court_presentation.c",
+      "method": "fresh all-capture headless Ghidra closure + exact native child replays + deterministic production endurance",
+      "evidence": "The fresh closure maps all 5,095 captured Bank $85 positions and 121 decoded call sites (62 unique targets). Focused native fixtures protect camera/court streaming, actor commit, ownerless and attached ball physics, rim/score, play requests, formations, defensive assignment, inbound targets, foul/event consumption and direction/geometry helpers. The new gameplay85 endurance gate runs 48,000 production frames over Atlanta/Chicago, Chicago/Orlando and West/Denver with three RNG seeds; it pins every frame's camera, actor, ball, owner, clock, play and score state plus periodic rendered asset-pack frames, while requiring passes, shots, scores and dead-ball recovery.",
+      "date": "2026-08-29"
+    },
+    {
+      "range": "868000-86FFFF",
+      "name": "gameplay input shot pass catch collision AI jump and inbound host equivalents",
+      "source": "src/nba_tipoff.c + src/nba_shot_action.c + src/nba_shot_launch.c + src/nba_shot_state.c + src/nba_jump_reach.c + src/nba_owner_flow.c",
+      "method": "fresh all-capture headless Ghidra closure + native branch/vector census + deterministic production endurance",
+      "evidence": "The fresh closure maps all 6,114 captured Bank $86 positions and 305 decoded call sites (99 unique targets). Permanent native replays cover ownership/control, shot selectors/modifiers/launch, pass initialization/release, catches, special actions, player/ball contact sweeps, foul classification, appearance setup, defensive poses, jump/reach, ordinary owner flow and CPU/human inbound continuations. The gameplay85 state digest rejects any changed branch ordering or shared-state result across 48,000 frames; the existing 63,800-frame gate independently rejects possession and dead-ball stalls.",
+      "date": "2026-08-29"
+    },
+    {
+      "range": "878000-87BFFF",
+      "name": "gameplay scheduler behavior event draw animation resource and attachment host equivalents",
+      "source": "src/nba_tipoff.c + src/nba_player_lab.c + src/nba_gameplay_effect.c + src/nba_gameplay_foul.c",
+      "method": "fresh all-capture headless Ghidra closure + native draw/animation/event replays + deterministic production render endurance",
+      "evidence": "The fresh closure maps all 3,381 captured selected Bank $87 positions and 168 decoded call sites (113 unique targets). Exact gates protect scheduler sweep boundaries, behavior dispatch, violation/dead-ball handling, actor projection and culling, direction/preparation/edge-indicator drawing, raw resource composition, effect cadence, locomotion/action channels, appearance resources, jersey numbers, pose points and attached-ball XYZ. The gameplay85 probe observes 107,032 animation-resource changes and 395 distinct sampled rendered-frame changes across three team pairs while hashing all actor resources/phases every frame; native Mode-1 and raw-sprite oracles remain the final pixel authority.",
+      "date": "2026-08-29"
     }
   ]
 }

@@ -452,6 +452,11 @@ if ($Test) {
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name tip_flow_endurance_probe
     & (Join-Path $BuildDir 'tip_flow_endurance_probe.exe') $AssetPack
     if ($LASTEXITCODE -ne 0) { throw 'Tip flow endurance failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name gameplay85_endurance_probe
+    & (Join-Path $BuildDir 'gameplay85_endurance_probe.exe') $AssetPack
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Multi-team gameplay-85 state/render endurance failed.'
+    }
     foreach ($witness in @('tip-contact-natural.json', 'tip-contact-controlled.json')) {
         & python (Join-Path $Root 'tools\verify_tip_contact.py') --normalized `
             --vectors (Join-Path $Root "tests\fixtures\$witness") --probe (Join-Path $BuildDir 'tip_contact_probe.exe')

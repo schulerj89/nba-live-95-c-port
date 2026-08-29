@@ -2,6 +2,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* `$80:A7C6-$BF00` is the observed indexed-object, OAM-queue, text/resource
+ * publication neighborhood. Its host-visible ownership is split across this
+ * Mode-1 compositor, nba_renderer.c, nba_font.c, nba_audio.c and the ROM
+ * sprite compositor. The portable boundary is final CGRAM/VRAM/OAM/audio and
+ * pixel output; SNES busy waits and DMA latency are intentionally not copied.
+ * Raw sprite census, exact native PPU scanout, screen/font frame oracles and
+ * the gameplay85 multi-team state/render digest protect the combined path. */
+
 /* `$80:815A-$8626` is the native NMI/OAM/VRAM service and
  * `$80:8627-$8BF2` contains its palette/VRAM transfer helpers. The host port
  * has no asynchronous PPU bus: asset-pack VRAM/CGRAM and the frame's OAM
