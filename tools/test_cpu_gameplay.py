@@ -114,14 +114,14 @@ def main():
         ], capture_output=True, text=True, check=False)
         if whistle_run.returncode or (
                 "command $44 SRCN $12 pitch=$0556 voice=4 "
-                "ADSR1/2=$8E/$A0 VOL=$14/$14 peak=3598"
+                "ADSR1/2=$8E/$A0 VOL=$14/$14 peak=2240"
                 not in whistle_run.stdout):
             raise AssertionError(whistle_run.stdout + whistle_run.stderr)
         wav = whistle.read_bytes()
         if len(wav) != 96044 or wav[:4] != b"RIFF" or wav[36:40] != b"data":
             raise AssertionError("gameplay whistle WAV shape changed")
         whistle_hash = hashlib.sha256(wav[44:]).hexdigest()
-        if whistle_hash != "3c8bfb56d2bffd1a0a8b85136c316d0d1f5b1b329ffc1daff1693a5628397846":
+        if whistle_hash != "d047862c692b0b6a6c6b7b7b1f0c249407f53dd9db41d23393d2818ae0ac0894":
             raise AssertionError(
                 f"gameplay command-$44 whistle PCM changed: {whistle_hash}")
         trace = root / "cpu_gameplay.jsonl"

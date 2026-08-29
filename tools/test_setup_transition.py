@@ -46,8 +46,8 @@ EXPECTED_AUDIO_CHANNEL_RMS = [3363, 3363]
 # the pixel delta remains confined to that row before these hashes are used.
 # Pack v31 adds the indexed gameplay PPU entry, changing only F12's displayed
 # entry count; the decoded VRAM and OAM artwork remains locked below.
-EXPECTED_ASSET_DEBUGGER_SHA256 = "d6d39d96dab6ae7ff7206c4ef4a511db9dec409e6fd96cfdb693f7184ec24545"
-EXPECTED_OAM_DEBUGGER_SHA256 = "9f948999d2b1d55899cde4ad9218a1070960078cd679d9e4239968cb95febe0f"
+EXPECTED_ASSET_DEBUGGER_SHA256 = "dcaa84d82a55bbb9d059b3edc38ce0c253e4f0da505a30624904dbed1de19659"
+EXPECTED_OAM_DEBUGGER_SHA256 = "16e131f9335105af500eaac73d02e690da20da8b1d0e5a7efbbffa1d572d6465"
 EXPECTED_RENDERED_MENU_SFX_SHA256 = {
     0x1A: "447a1ea48a94e2036ff0bdf1f4c5248d6284daec0b723b9a966f841976e703c4",
     0x1B: "96de89e954e4e8f75e555625abba5bf4380b8868b3263776a4cc27a6285de664",

@@ -141,7 +141,9 @@ typedef enum {
     /* NBPPUIN1: 29 raw gameplay VRAM/CGRAM states. Runtime samples original
      * indexed tiles instead of treating a flattened panorama as opaque. */
     NBA_ASSET_GAMEPLAY_PPU_INPUTS                = 284,
-    NBA_ASSET_MAX                   = 285
+    /* NBGAUD1: ROM-decoded gameplay BRR sources used by the live mixer. */
+    NBA_ASSET_GAMEPLAY_AUDIO_BANK                = 285,
+    NBA_ASSET_MAX                   = 286
 } NbaAssetId;
 
 typedef struct {

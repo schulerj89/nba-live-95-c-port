@@ -293,7 +293,10 @@ static int run_closure(const NbaAssetPack *assets, ClosureResult *result) {
 }
 
 int main(int argc, char **argv) {
-    static const uint64_t expected_digest = 0x39974258c482a822ull;
+    /* Re-reviewed after the gameplay ball presentation was latched to the
+     * same OAM frame as its owning player (fa6fd63). Simulation counters are
+     * unchanged; the closure digest intentionally includes rendered pixels. */
+    static const uint64_t expected_digest = 0x3918d225b3a7cf48ull;
     if (argc != 2) return 2;
     NbaAssetPack assets = {0};
     if (!nba_assets_load(&assets, argv[1])) return 3;

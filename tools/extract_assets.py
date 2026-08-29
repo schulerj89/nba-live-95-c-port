@@ -2040,6 +2040,42 @@ def create_asset_pack(rom_path, output_path):
                     assets.append((extra_audio_id, 0, 0, off, wav_bytes))
                     extra_audio_id += 1
 
+    # Gameplay sound bank.  These are byte-identical BRR starts found by
+    # matching the resident gameplay ARAM directory back to ROM; Mesen is an
+    # address oracle only and no captured PCM/SPC data enters this asset.
+    gameplay_brr_offsets = {
+        0x00: 0x1324C3, 0x01: 0x0DF1C2, 0x02: 0x129628,
+        0x03: 0x12A844, 0x04: 0x149BCA, 0x05: 0x131904,
+        0x06: 0x13510C, 0x07: 0x150818, 0x08: 0x160040,
+        0x09: 0x15D809, 0x0A: 0x130040, 0x0B: 0x150FF0,
+        0x0C: 0x10D20B, 0x0D: 0x108040, 0x10: 0x179440,
+        0x11: 0x13BD08, 0x12: 0x143A04, 0x13: 0x179440,
+        0x14: 0x109C06, 0x15: 0x109F15, 0x16: 0x10A34D,
+        0x17: 0x179449, 0x18: 0x13C407, 0x19: 0x143E69,
+        0x1A: 0x179440, 0x1B: 0x179440, 0x1C: 0x160F08,
+        0x1D: 0x1669B9,
+    }
+    gameplay_pcm = []
+    for srcn, off in gameplay_brr_offsets.items():
+        pcm, consumed = decode_brr_to_pcm(rom_data[off:])
+        if pcm and consumed:
+            # Only crowd sources loop in the host mixer. Their SPC directory
+            # loop pointers are one BRR block after the source start.
+            loop_start = 16 if srcn in (0x0C, 0x0D) else 0xFFFFFFFF
+            gameplay_pcm.append((srcn, loop_start, pcm))
+    header_size = 16 + len(gameplay_pcm) * 20
+    gameplay_audio_bytes = bytearray(b"NBGAUD1\0")
+    gameplay_audio_bytes.extend(struct.pack("<II", 1, len(gameplay_pcm)))
+    pcm_offset = header_size
+    pcm_blob = bytearray()
+    for srcn, loop_start, pcm in gameplay_pcm:
+        gameplay_audio_bytes.extend(struct.pack(
+            "<IIIII", srcn, 32000, len(pcm), loop_start, pcm_offset))
+        pcm_blob.extend(struct.pack(f"<{len(pcm)}h", *pcm))
+        pcm_offset += len(pcm) * 2
+    gameplay_audio_bytes.extend(pcm_blob)
+    assets.append((285, 0, 0, 0, bytes(gameplay_audio_bytes)))
+
     header_magic = b"NBA95PAK"
     version = 31
     asset_count = len(assets)

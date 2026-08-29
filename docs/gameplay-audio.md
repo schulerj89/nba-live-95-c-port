@@ -2,11 +2,13 @@
 
 ## Current port boundary
 
-As of commit `fa6fd63`, gameplay calls only the proven whistle renderer.
-Crowd ambience/reactions, ball bounce/catch, rim/make, shoe squeak, player
-contact, clock warning and buzzer commands are not yet dispatched by the C
-gameplay state. F11 exposes 52 ROM-derived BRR/WAV resources, but those items
-are an inspection catalog rather than a reconstructed gameplay sound bank.
+Gameplay now starts a dedicated eight-voice host mixer when Tip-off begins.
+Voices 0/1 continuously loop the ROM `$0C/$0D` crowd sources; voices 2-7 are
+an overlapping effect pool for bounce/catch, rim/make, shoe/floor, contact,
+clock, three-point, whistle, and crowd-reaction commands. The mixer consumes
+the same `$13E7/$13E9` presentation boundary as `$82:FD65-$FF84`, after all
+gameplay producers and before the read-only telemetry snapshot. It never
+mutates those gameplay words or advances the CPU/ball RNG.
 
 The gameplay sound system is not one large WAV. The 65816 raises event bits,
 `$82:FD65-$FF84` converts them to indexed commands, and `$80:9DF3` submits the
@@ -60,10 +62,16 @@ the live gameplay SPC directory found these sources in the ROM:
 | `$14/$15` | crowd reaction/presentation family | `$A1:9C06/$A1:9F15` |
 | `$1C` | additional gameplay effect | `$AC:8F08` (file `$160F08`) |
 
-These ranges overlap the existing F11 ROM sample inventory. Runtime gameplay
-still needs a ROM-derived gameplay bank/sequence asset and an event mixer;
-Mesen RAM/DSP dumps remain comparison oracles and must not become shipped art
-or audio assets.
+Asset 285 (`NBGAUD1`) contains all 28 byte-matched gameplay BRR sources decoded
+directly from those ROM offsets at the native 32-kHz DSP rate. It contains no
+Mesen capture audio. Mesen RAM/DSP dumps remain comparison oracles and never
+become shipped art or audio assets. `nba_audio_start_gameplay` validates the
+bank, keys the two crowd loops, and starts the `waveOut` stream;
+`nba_audio_dispatch_gameplay_events` mirrors the native command families.
+
+`tools/test_gameplay_audio.py` locks the complete bank digest, source bounds,
+crowd loop points, mixer startup, and a natural 1,200-frame command sequence
+that includes catch, crowd, rim, made-basket, and bounce events.
 
 ## Reproduction
 

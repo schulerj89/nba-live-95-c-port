@@ -76,12 +76,12 @@ def check_asset_loader(exe, directory):
     invalid_packs = {
         "bad_magic.pak": b"NOTAPACK" + struct.pack("<II", PACK_VERSION, 1) + pack_entry(1, 40, 1) + b"\0",
         "bad_version.pak": b"NBA95PAK" + struct.pack("<II", 4, 1) + pack_entry(1, 40, 1) + b"\0",
-        "too_many.pak": b"NBA95PAK" + struct.pack("<II", PACK_VERSION, 285),
+        "too_many.pak": b"NBA95PAK" + struct.pack("<II", PACK_VERSION, 286),
         "truncated_directory.pak": b"NBA95PAK" + struct.pack("<II", PACK_VERSION, 2) + pack_entry(1, 64, 1),
         "duplicate_id.pak": duplicate,
         "directory_overlap.pak": b"NBA95PAK" + struct.pack("<II", PACK_VERSION, 1) + pack_entry(1, 16, 1) + b"\0",
         "wrapped_range.pak": b"NBA95PAK" + struct.pack("<II", PACK_VERSION, 1) + pack_entry(1, 0xFFFFFFF0, 64) + b"\0",
-        "bad_id.pak": b"NBA95PAK" + struct.pack("<II", PACK_VERSION, 1) + pack_entry(285, 40, 1) + b"\0",
+        "bad_id.pak": b"NBA95PAK" + struct.pack("<II", PACK_VERSION, 1) + pack_entry(286, 40, 1) + b"\0",
         "short_license.pak": b"NBA95PAK" + struct.pack("<II", PACK_VERSION, 1) +
             pack_entry(1, 40, 1, 128, 11) + b"\0",
         "short_court_map.pak": b"NBA95PAK" + struct.pack("<II", PACK_VERSION, 1) +

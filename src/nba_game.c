@@ -361,6 +361,10 @@ bool nba_game_enter_state(NbaGame *game, NbaGameState state) {
             fprintf(stderr, "[GAME] Tip-off asset initialization failed.\n");
             return false;
         }
+        if (!nba_audio_start_gameplay(&game->audio, &game->assets)) {
+            fprintf(stderr, "[GAMEPLAY AUDIO] ROM gameplay bank failed to start; "
+                            "continuing silently.\n");
+        }
     }
     return true;
 }
@@ -497,6 +501,7 @@ void nba_game_tick(NbaGame *game, float delta_time) {
             printf("[GAMEPLAY LAB] F8 is available after gameplay begins.\n");
         }
     }
+
     if (game->input.pressed & NBA_BTN_DEBUG_F9) {
         nba_player_lab_toggle(&game->player_lab, &game->assets);
         if (game->player_lab.is_active) {
@@ -716,14 +721,10 @@ void nba_game_tick(NbaGame *game, float delta_time) {
 
         case NBA_STATE_TIPOFF:
             {
-                uint16_t whistle_before =
-                    game->scene.tipoff.fouls.whistle_active_raw_09b6;
                 nba_tipoff_update(&game->scene.tipoff, &game->input);
-                if (whistle_before == 0u &&
-                    game->scene.tipoff.fouls.whistle_active_raw_09b6 != 0u &&
-                    game->scene.tipoff.fouls.whistle_presentation_queued_raw != 0u)
-                    (void)nba_audio_play_gameplay_whistle(
-                        &game->audio, &game->assets);
+                nba_audio_dispatch_gameplay_events(
+                    &game->audio, game->scene.tipoff.rim_raw_13e7,
+                    game->scene.tipoff.tip_event_bits_raw_13e9);
                 nba_tipoff_capture_telemetry(&game->scene.tipoff, &game->input,
                                              &game->gameplay_telemetry);
                 game->gameplay_telemetry.global_frame = game->frame_count;

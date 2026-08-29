@@ -37,10 +37,11 @@ def main():
             raise AssertionError(f'roster recovery rating mismatch: {i}')
     old=bytearray(raw)
     # The historical count predates shot/fatigue, court map279, jump280 and
-    # graphics-scratch281. Remove all five for the old-count oracle; later
-    # court/PPU assets 282-284 legitimately advance that count. Displayed
+    # graphics-scratch281. Remove all five plus the unrelated gameplay-audio
+    # bank 285 for the old-count oracle; court/PPU assets 282-284 legitimately
+    # advance that count. Displayed
     # asset art must remain identical and only the count row may change.
-    keep=[e for e in entries if e[0] not in (277,278,279,280,281)]
+    keep=[e for e in entries if e[0] not in (277,278,279,280,281,285)]
     struct.pack_into('<I',old,12,len(keep))
     for i,e in enumerate(keep):struct.pack_into('<6I',old,16+i*24,*e)
     # Keep all original payload offsets: the final unused directory slot is padding.

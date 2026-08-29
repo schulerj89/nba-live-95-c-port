@@ -15,12 +15,18 @@ typedef struct {
     uint8_t *generated_wav;
     size_t generated_wav_size;
     void *loop_playback;
+    void *gameplay_mixer;
     uint8_t *setup_sfx_wav;
     size_t setup_sfx_wav_size;
     size_t setup_sfx_wav_length;
     uint16_t setup_sfx_volume;
     uint16_t setup_music_volume;
     uint8_t last_setup_sfx_srcn;
+    uint8_t last_gameplay_command;
+    uint8_t last_gameplay_srcn;
+    uint32_t gameplay_event_count;
+    uint16_t gameplay_latched_13e7;
+    uint16_t gameplay_latched_13e9;
     uint8_t active_track;
     uint8_t status;
     bool host_playback_enabled;
@@ -49,6 +55,11 @@ void nba_audio_play_wav(NbaAudio *audio, const void *data, size_t size);
 void nba_audio_play_setup_sfx(NbaAudio *audio, const NbaAssetPack *assets, uint8_t srcn);
 bool nba_audio_play_gameplay_whistle(NbaAudio *audio,
                                      const NbaAssetPack *assets);
+bool nba_audio_start_gameplay(NbaAudio *audio, const NbaAssetPack *assets);
+void nba_audio_dispatch_gameplay_events(NbaAudio *audio,
+                                        uint16_t event_bits_raw_13e7,
+                                        uint16_t crowd_bits_raw_13e9);
+bool nba_audio_gameplay_self_test(const NbaAssetPack *assets);
 void nba_audio_set_setup_music_volume(NbaAudio *audio, uint16_t value, uint16_t maximum);
 void nba_audio_set_setup_sfx_volume(NbaAudio *audio, uint16_t value, uint16_t maximum);
 bool nba_audio_play_title_spc(NbaAudio *audio, const NbaAssetPack *assets);

@@ -29,9 +29,9 @@ EXPECTED_FRAME_HASHES = {
     "right_philadelphia": "487b0efe17269dcf04d1f004fd4ca1f5647ecd60e3a4b72099427bd03fab3acf",
     "east": "09902c67a6ce3b516c83b079ae8f609494459cf100a13c0ec735c9e0f5a5dfe7",
     "west": "94d3d4fe72c06911a9c27748dd1e5fdfcd83ec6e407706ca2c20326b7d9d0662",
-    # Assets 277..284 change F12's count; test_shot_assets proves that the
+    # Assets 277..285 change F12's count; test_shot_assets proves that the
     # only changed pixels are in the debugger's index/count row.
-    "logo_debug": "440e65c782e447f4997a284619c8fe81ae7e5f3c18dc625697de047771a5bede",
+    "logo_debug": "559c639f0d6e4736b84bc746b29cf8224953d71f7f657c9826ad708ff735b802",
 }
 
 EXPECTED_LOGO_HASHES = {

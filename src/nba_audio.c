@@ -14,6 +14,9 @@
 
 #define NBA_SETUP_LOOP_START_SAMPLE 2053956u
 #define NBA_SETUP_LOOP_END_SAMPLE   4048365u
+#define NBA_GAMEPLAY_MIX_FRAMES     1024u
+#define NBA_GAMEPLAY_MIX_BUFFERS    4u
+#define NBA_GAMEPLAY_VOICES         8u
 
 #if defined(_WIN32)
 #define WIN32_LEAN_AND_MEAN
@@ -28,6 +31,38 @@ typedef struct {
 
 #endif
 
+typedef struct {
+    const int16_t *pcm;
+    uint32_t count;
+    uint32_t loop_start;
+    uint32_t rate;
+} NbaGameplaySample;
+
+typedef struct {
+    const NbaGameplaySample *sample;
+    uint32_t cursor_16_16;
+    uint32_t step_16_16;
+    int16_t volume_l;
+    int16_t volume_r;
+    bool active;
+    bool loop;
+} NbaGameplayVoice;
+
+typedef struct {
+    NbaGameplaySample samples[30];
+    NbaGameplayVoice voices[NBA_GAMEPLAY_VOICES];
+    uint8_t next_effect_voice;
+#if defined(_WIN32)
+    HWAVEOUT device;
+    HANDLE event;
+    HANDLE thread;
+    CRITICAL_SECTION lock;
+    WAVEHDR headers[NBA_GAMEPLAY_MIX_BUFFERS];
+    int16_t buffers[NBA_GAMEPLAY_MIX_BUFFERS][NBA_GAMEPLAY_MIX_FRAMES * 2u];
+    volatile LONG running;
+#endif
+} NbaGameplayMixer;
+
 static uint16_t audio_u16(const uint8_t *p) {
     return (uint16_t)(p[0] | ((uint16_t)p[1] << 8));
 }
@@ -36,6 +71,169 @@ static uint32_t audio_u32(const uint8_t *p) {
     return (uint32_t)p[0] | ((uint32_t)p[1] << 8) |
            ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
 }
+
+static int16_t audio_clip_s16(int32_t value) {
+    if (value > 32767) return 32767;
+    if (value < -32768) return -32768;
+    return (int16_t)value;
+}
+
+static bool audio_load_gameplay_bank(NbaGameplayMixer *mixer,
+                                     const NbaAssetPack *assets) {
+    const NbaAssetItem *item = nba_assets_get(assets,
+        NBA_ASSET_GAMEPLAY_AUDIO_BANK);
+    if (!mixer || !item || item->size < 16u) return false;
+    const uint8_t *data = (const uint8_t *)item->data;
+    if (memcmp(data, "NBGAUD1\0", 8) != 0 || audio_u32(data + 8) != 1u)
+        return false;
+    uint32_t count = audio_u32(data + 12);
+    if (count > 30u || 16u + count * 20u > item->size) return false;
+    for (uint32_t i = 0; i < count; ++i) {
+        const uint8_t *entry = data + 16u + i * 20u;
+        uint32_t srcn = audio_u32(entry);
+        uint32_t rate = audio_u32(entry + 4);
+        uint32_t samples = audio_u32(entry + 8);
+        uint32_t loop_start = audio_u32(entry + 12);
+        uint32_t offset = audio_u32(entry + 16);
+        if (srcn >= 30u || rate == 0u || samples == 0u ||
+            offset > item->size || samples > (item->size - offset) / 2u)
+            return false;
+        mixer->samples[srcn].pcm = (const int16_t *)(data + offset);
+        mixer->samples[srcn].count = samples;
+        mixer->samples[srcn].loop_start = loop_start;
+        mixer->samples[srcn].rate = rate;
+    }
+    return mixer->samples[0x0Au].pcm && mixer->samples[0x0Bu].pcm &&
+           mixer->samples[0x0Cu].pcm && mixer->samples[0x0Du].pcm &&
+           mixer->samples[0x12u].pcm;
+}
+
+static void audio_gameplay_key_voice(NbaGameplayMixer *mixer, uint8_t voice,
+                                     uint8_t srcn, uint16_t pitch,
+                                     int16_t volume_l, int16_t volume_r,
+                                     bool loop) {
+    if (!mixer || voice >= NBA_GAMEPLAY_VOICES || srcn >= 30u ||
+        !mixer->samples[srcn].pcm) return;
+    NbaGameplayVoice *target = &mixer->voices[voice];
+    target->sample = &mixer->samples[srcn];
+    target->cursor_16_16 = 0u;
+    /* DSP pitch $1000 advances one decoded BRR sample per 32-kHz output. */
+    target->step_16_16 = (uint32_t)pitch << 4;
+    target->volume_l = volume_l;
+    target->volume_r = volume_r;
+    target->loop = loop;
+    target->active = true;
+}
+
+static void audio_gameplay_mix(NbaGameplayMixer *mixer, int16_t *output,
+                               uint32_t frames) {
+    memset(output, 0, (size_t)frames * 2u * sizeof(*output));
+    for (uint32_t frame = 0; frame < frames; ++frame) {
+        int32_t left = 0, right = 0;
+        for (uint32_t index = 0; index < NBA_GAMEPLAY_VOICES; ++index) {
+            NbaGameplayVoice *voice = &mixer->voices[index];
+            if (!voice->active || !voice->sample) continue;
+            uint32_t position = voice->cursor_16_16 >> 16;
+            if (position >= voice->sample->count) {
+                if (voice->loop && voice->sample->loop_start < voice->sample->count) {
+                    position = voice->sample->loop_start;
+                    voice->cursor_16_16 = position << 16;
+                } else {
+                    voice->active = false;
+                    continue;
+                }
+            }
+            int32_t sample = voice->sample->pcm[position];
+            left += (sample * voice->volume_l) / 128;
+            right += (sample * voice->volume_r) / 128;
+            voice->cursor_16_16 += voice->step_16_16;
+        }
+        output[frame * 2u] = audio_clip_s16(left);
+        output[frame * 2u + 1u] = audio_clip_s16(right);
+    }
+}
+
+#if defined(_WIN32)
+static DWORD WINAPI audio_gameplay_thread(LPVOID parameter) {
+    NbaGameplayMixer *mixer = (NbaGameplayMixer *)parameter;
+    while (InterlockedCompareExchange(&mixer->running, 1, 1) != 0) {
+        WaitForSingleObject(mixer->event, 1000u);
+        if (InterlockedCompareExchange(&mixer->running, 1, 1) == 0) break;
+        for (uint32_t i = 0; i < NBA_GAMEPLAY_MIX_BUFFERS; ++i) {
+            if ((mixer->headers[i].dwFlags & WHDR_DONE) == 0u) continue;
+            EnterCriticalSection(&mixer->lock);
+            audio_gameplay_mix(mixer, mixer->buffers[i],
+                               NBA_GAMEPLAY_MIX_FRAMES);
+            LeaveCriticalSection(&mixer->lock);
+            waveOutWrite(mixer->device, &mixer->headers[i],
+                         sizeof(mixer->headers[i]));
+        }
+    }
+    return 0;
+}
+
+static bool audio_gameplay_start_host(NbaGameplayMixer *mixer) {
+    WAVEFORMATEX format = { WAVE_FORMAT_PCM, 2, NBA_SPC_SAMPLE_RATE,
+                            NBA_SPC_SAMPLE_RATE * 4u, 4, 16, 0 };
+    InitializeCriticalSection(&mixer->lock);
+    mixer->event = CreateEventA(NULL, FALSE, FALSE, NULL);
+    if (!mixer->event || waveOutOpen(&mixer->device, WAVE_MAPPER, &format,
+            (DWORD_PTR)mixer->event, 0, CALLBACK_EVENT) != MMSYSERR_NOERROR) {
+        if (mixer->event) CloseHandle(mixer->event);
+        DeleteCriticalSection(&mixer->lock);
+        return false;
+    }
+    for (uint32_t i = 0; i < NBA_GAMEPLAY_MIX_BUFFERS; ++i) {
+        audio_gameplay_mix(mixer, mixer->buffers[i], NBA_GAMEPLAY_MIX_FRAMES);
+        mixer->headers[i].lpData = (LPSTR)mixer->buffers[i];
+        mixer->headers[i].dwBufferLength = sizeof(mixer->buffers[i]);
+        if (waveOutPrepareHeader(mixer->device, &mixer->headers[i],
+                sizeof(mixer->headers[i])) != MMSYSERR_NOERROR ||
+            waveOutWrite(mixer->device, &mixer->headers[i],
+                sizeof(mixer->headers[i])) != MMSYSERR_NOERROR) {
+            waveOutReset(mixer->device);
+            for (uint32_t j = 0; j <= i; ++j)
+                waveOutUnprepareHeader(mixer->device, &mixer->headers[j],
+                                       sizeof(mixer->headers[j]));
+            waveOutClose(mixer->device);
+            CloseHandle(mixer->event);
+            DeleteCriticalSection(&mixer->lock);
+            return false;
+        }
+    }
+    InterlockedExchange(&mixer->running, 1);
+    mixer->thread = CreateThread(NULL, 0, audio_gameplay_thread, mixer, 0, NULL);
+    if (!mixer->thread) {
+        InterlockedExchange(&mixer->running, 0);
+        waveOutReset(mixer->device);
+        for (uint32_t i = 0; i < NBA_GAMEPLAY_MIX_BUFFERS; ++i)
+            waveOutUnprepareHeader(mixer->device, &mixer->headers[i],
+                                   sizeof(mixer->headers[i]));
+        waveOutClose(mixer->device);
+        CloseHandle(mixer->event);
+        DeleteCriticalSection(&mixer->lock);
+        return false;
+    }
+    return true;
+}
+
+static void audio_gameplay_stop_host(NbaGameplayMixer *mixer) {
+    if (!mixer || !mixer->device) return;
+    InterlockedExchange(&mixer->running, 0);
+    SetEvent(mixer->event);
+    if (mixer->thread) {
+        WaitForSingleObject(mixer->thread, 2000u);
+        CloseHandle(mixer->thread);
+    }
+    waveOutReset(mixer->device);
+    for (uint32_t i = 0; i < NBA_GAMEPLAY_MIX_BUFFERS; ++i)
+        waveOutUnprepareHeader(mixer->device, &mixer->headers[i],
+                               sizeof(mixer->headers[i]));
+    waveOutClose(mixer->device);
+    CloseHandle(mixer->event);
+    DeleteCriticalSection(&mixer->lock);
+}
+#endif
 
 static void audio_put_u16(uint8_t *p, uint16_t value) {
     p[0] = (uint8_t)value; p[1] = (uint8_t)(value >> 8);
@@ -218,6 +416,8 @@ void nba_audio_init(NbaAudio *audio) {
     audio->setup_sfx_volume = 30u;
     audio->setup_music_volume = 30u;
     audio->last_setup_sfx_srcn = 0xFFu;
+    audio->last_gameplay_command = 0xFFu;
+    audio->last_gameplay_srcn = 0xFFu;
     audio->host_playback_enabled = true;
     printf("[AUDIO] Initializing Audio Subsystem...\n");
 }
@@ -385,21 +585,177 @@ void nba_audio_play_setup_sfx(NbaAudio *audio, const NbaAssetPack *assets,
            audio->setup_sfx_volume, (unsigned)voice_volume, peak);
 }
 
-/* `$85:9413-$941F -> $82:FEF4-$FF07 -> $80:9DF3`: event bit $2000
- * dispatches command $44. The resident gameplay bank keys voice 4 from
- * asset-pack SRCN $12 with these exact captured S-DSP registers. */
+static void audio_gameplay_command(NbaAudio *audio, uint8_t command,
+                                   uint8_t srcn, uint16_t pitch,
+                                   int16_t volume) {
+    NbaGameplayMixer *mixer = audio ?
+        (NbaGameplayMixer *)audio->gameplay_mixer : NULL;
+    if (!mixer || srcn >= 30u || !mixer->samples[srcn].pcm) return;
+#if defined(_WIN32)
+    if (mixer->thread) EnterCriticalSection(&mixer->lock);
+#endif
+    uint8_t voice = (uint8_t)(2u + (mixer->next_effect_voice++ % 6u));
+    audio_gameplay_key_voice(mixer, voice, srcn, pitch, volume, volume, false);
+#if defined(_WIN32)
+    if (mixer->thread) LeaveCriticalSection(&mixer->lock);
+#endif
+    audio->last_gameplay_command = command;
+    audio->last_gameplay_srcn = srcn;
+    ++audio->gameplay_event_count;
+    printf("[GAMEPLAY AUDIO] $80:9DF3 command=$%02X SRCN=$%02X "
+           "pitch=$%04X voice=%u event=%u.\n", command, srcn, pitch,
+           voice, audio->gameplay_event_count);
+}
+
+bool nba_audio_start_gameplay(NbaAudio *audio, const NbaAssetPack *assets) {
+    if (!audio || !assets) return false;
+    nba_audio_stop(audio);
+    NbaGameplayMixer *mixer = (NbaGameplayMixer *)calloc(1, sizeof(*mixer));
+    if (!mixer || !audio_load_gameplay_bank(mixer, assets)) {
+        free(mixer);
+        audio->status = NBA_AUDIO_STATUS_SYNTH_FAILED;
+        return false;
+    }
+    /* Native steady-state voices 6/7: SRCN $0C/$0D at $0436/$04B6.
+     * Host voices 0/1 preserve that independent continuous crowd bed. */
+    audio_gameplay_key_voice(mixer, 0u, 0x0Cu, 0x0436u, 26, 2, true);
+    audio_gameplay_key_voice(mixer, 1u, 0x0Du, 0x04B6u, 2, 24, true);
+    audio->gameplay_mixer = mixer;
+    audio->active_track = NBA_AUDIO_TRACK_WAV;
+    audio->status = NBA_AUDIO_STATUS_READY;
+    audio->last_gameplay_command = 0xFFu;
+    audio->last_gameplay_srcn = 0xFFu;
+    audio->gameplay_event_count = 0u;
+    audio->gameplay_latched_13e7 = 0u;
+    audio->gameplay_latched_13e9 = 0u;
+#if defined(_WIN32)
+    if (audio->host_playback_enabled) {
+        if (!audio_gameplay_start_host(mixer)) {
+            audio->status = NBA_AUDIO_STATUS_HOST_FAILED;
+            fprintf(stderr, "[GAMEPLAY AUDIO] waveOut mixer unavailable; "
+                    "event synthesis remains testable.\n");
+            return true;
+        }
+        audio->status = NBA_AUDIO_STATUS_PLAYING;
+    }
+#endif
+    printf("[GAMEPLAY AUDIO] ROM BRR bank online; crowd SRCN $0C/$0D "
+           "and six overlapping effect voices ready.\n");
+    return true;
+}
+
+/* `$82:FD65-$FF84` consumes `$13E7/$13E9` after gameplay producers run.
+ * It owns sound selection only: the audio mixer deliberately has an RNG
+ * stream independent of CPU/ball state so host playback cannot alter play. */
+void nba_audio_dispatch_gameplay_events(NbaAudio *audio,
+                                        uint16_t event_bits_raw_13e7,
+                                        uint16_t crowd_bits_raw_13e9) {
+    if (!audio || !audio->gameplay_mixer) return;
+    uint16_t fresh_13e7 = (uint16_t)(event_bits_raw_13e7 &
+                                    ~audio->gameplay_latched_13e7);
+    uint16_t fresh_13e9 = (uint16_t)(crowd_bits_raw_13e9 &
+                                    ~audio->gameplay_latched_13e9);
+    audio->gameplay_latched_13e7 = event_bits_raw_13e7;
+    audio->gameplay_latched_13e9 = crowd_bits_raw_13e9;
+    event_bits_raw_13e7 = fresh_13e7;
+    crowd_bits_raw_13e9 = fresh_13e9;
+    if (event_bits_raw_13e7 & 0x0001u)
+        audio_gameplay_command(audio, 0x23u, 0x0Au, 0x0800u, 42);
+    if (event_bits_raw_13e7 & 0x0002u)
+        audio_gameplay_command(audio, 0x10u, 0x01u, 0x078Du, 40);
+    if (event_bits_raw_13e7 & 0x0004u)
+        audio_gameplay_command(audio, 0x0Cu, 0x04u, 0x0800u, 46);
+    if (event_bits_raw_13e7 & 0x0008u)
+        audio_gameplay_command(audio, 0x08u, 0x00u, 0x078Du, 42);
+    if (event_bits_raw_13e7 & 0x0010u)
+        audio_gameplay_command(audio, 0x24u, 0x0Bu, 0x0659u, 36);
+    if (event_bits_raw_13e7 & 0x0020u)
+        audio_gameplay_command(audio, 0x0Du, 0x05u, 0x0556u, 36);
+    if (event_bits_raw_13e7 & 0x0040u)
+        audio_gameplay_command(audio, 0x0Eu, 0x06u, 0x0659u, 36);
+    if (event_bits_raw_13e7 & 0x0080u)
+        audio_gameplay_command(audio, 0x17u, 0x07u, 0x0659u, 42);
+    if (event_bits_raw_13e7 & 0x0100u)
+        audio_gameplay_command(audio, 0x20u, 0x08u, 0x0800u, 42);
+    if (event_bits_raw_13e7 & 0x0400u)
+        audio_gameplay_command(audio, 0x40u, 0x10u, 0x0556u, 40);
+    if (event_bits_raw_13e7 & 0x0800u)
+        audio_gameplay_command(audio, 0x41u, 0x11u, 0x0556u, 44);
+    if (event_bits_raw_13e7 & 0x1000u)
+        audio_gameplay_command(audio, 0x43u, 0x13u, 0x0556u, 44);
+    if (event_bits_raw_13e7 & 0x2000u)
+        audio_gameplay_command(audio, 0x44u, 0x12u, 0x0556u, 20);
+    if (crowd_bits_raw_13e9) {
+        uint8_t srcn = (crowd_bits_raw_13e9 & 0x0002u) ? 0x15u : 0x14u;
+        uint8_t command = (crowd_bits_raw_13e9 & 0x0001u) ? 0x38u : 0x39u;
+        audio_gameplay_command(audio, command, srcn, 0x0556u, 28);
+    }
+}
+
 bool nba_audio_play_gameplay_whistle(NbaAudio *audio,
                                      const NbaAssetPack *assets) {
+    if (!audio || !assets) return false;
+    if (!audio->gameplay_mixer && !nba_audio_start_gameplay(audio, assets))
+        return false;
+    /* Keep the CLI/F11 proof artifact, now rendered from NBGAUD1 instead of
+     * the incorrect Player Introduction SPC snapshot. */
+    const uint32_t frames = 24000u;
+    const size_t pcm_bytes = (size_t)frames * 4u;
+    const size_t wav_size = 44u + pcm_bytes;
+    if (audio->setup_sfx_wav_size < wav_size) {
+        uint8_t *grown = (uint8_t *)realloc(audio->setup_sfx_wav, wav_size);
+        if (!grown) return false;
+        audio->setup_sfx_wav = grown;
+        audio->setup_sfx_wav_size = wav_size;
+    }
+    NbaGameplayMixer preview;
+    memset(&preview, 0, sizeof(preview));
+    if (!audio_load_gameplay_bank(&preview, assets)) return false;
+    audio_gameplay_key_voice(&preview, 4u, 0x12u, 0x0556u, 20, 20, false);
+    audio_gameplay_mix(&preview, (int16_t *)(audio->setup_sfx_wav + 44), frames);
+    memcpy(audio->setup_sfx_wav, "RIFF", 4);
+    audio_put_u32(audio->setup_sfx_wav + 4, 36u + (uint32_t)pcm_bytes);
+    memcpy(audio->setup_sfx_wav + 8, "WAVEfmt ", 8);
+    audio_put_u32(audio->setup_sfx_wav + 16, 16u);
+    audio_put_u16(audio->setup_sfx_wav + 20, 1u);
+    audio_put_u16(audio->setup_sfx_wav + 22, 2u);
+    audio_put_u32(audio->setup_sfx_wav + 24, NBA_SPC_SAMPLE_RATE);
+    audio_put_u32(audio->setup_sfx_wav + 28, NBA_SPC_SAMPLE_RATE * 4u);
+    audio_put_u16(audio->setup_sfx_wav + 32, 4u);
+    audio_put_u16(audio->setup_sfx_wav + 34, 16u);
+    memcpy(audio->setup_sfx_wav + 36, "data", 4);
+    audio_put_u32(audio->setup_sfx_wav + 40, (uint32_t)pcm_bytes);
+    audio->setup_sfx_wav_length = wav_size;
+    audio->last_setup_sfx_srcn = 0x12u;
+    audio_gameplay_command(audio, 0x44u, 0x12u, 0x0556u, 20);
     int peak = 0;
-    bool ok = audio_play_spc_sfx(audio, assets,
-        NBA_ASSET_PLAYER_INTRO_SPC_RAM, NBA_ASSET_PLAYER_INTRO_SPC_DSP,
-        NBA_ASSET_PLAYER_INTRO_SPC_STATE, "NBPISPC1",
-        0x12u, 4u, 0x0556u, 0x14u, 0x14u,
-        0x8Eu, 0xA0u, 0u, 24000u, &peak);
-    if (ok)
-        printf("[GAMEPLAY] DSP whistle command $44 SRCN $12 pitch=$0556 "
-               "voice=4 ADSR1/2=$8E/$A0 VOL=$14/$14 peak=%d.\n", peak);
-    return ok;
+    const int16_t *pcm = (const int16_t *)(audio->setup_sfx_wav + 44);
+    for (uint32_t i = 0; i < frames * 2u; ++i) {
+        int value = pcm[i] < 0 ? -(int)pcm[i] : (int)pcm[i];
+        if (value > peak) peak = value;
+    }
+    printf("[GAMEPLAY] command $44 SRCN $12 pitch=$0556 voice=4 "
+           "ADSR1/2=$8E/$A0 VOL=$14/$14 peak=%d.\n", peak);
+    return true;
+}
+
+bool nba_audio_gameplay_self_test(const NbaAssetPack *assets) {
+    NbaGameplayMixer mixer;
+    int16_t output[256 * 2];
+    memset(&mixer, 0, sizeof(mixer));
+    if (!assets || !audio_load_gameplay_bank(&mixer, assets)) return false;
+    audio_gameplay_key_voice(&mixer, 0u, 0x0Cu, 0x0436u, 26, 2, true);
+    audio_gameplay_key_voice(&mixer, 1u, 0x0Du, 0x04B6u, 2, 24, true);
+    audio_gameplay_key_voice(&mixer, 2u, 0x0Au, 0x0800u, 42, 42, false);
+    audio_gameplay_key_voice(&mixer, 3u, 0x12u, 0x0556u, 20, 20, false);
+    audio_gameplay_mix(&mixer, output, 256u);
+    int peak = 0;
+    for (uint32_t i = 0; i < 512u; ++i) {
+        int value = output[i] < 0 ? -(int)output[i] : (int)output[i];
+        if (value > peak) peak = value;
+    }
+    return peak > 0 && mixer.voices[0].active && mixer.voices[1].active &&
+           mixer.voices[2].active && mixer.voices[3].active;
 }
 
 bool nba_audio_save_setup_sfx_wav(const NbaAudio *audio, const char *path) {
@@ -649,6 +1005,13 @@ bool nba_audio_save_generated_wav(const NbaAudio *audio, const char *path) {
  */
 void nba_audio_stop(NbaAudio *audio) {
     if (!audio) return;
+    NbaGameplayMixer *gameplay =
+        (NbaGameplayMixer *)audio->gameplay_mixer;
+#if defined(_WIN32)
+    if (gameplay && gameplay->thread) audio_gameplay_stop_host(gameplay);
+#endif
+    free(gameplay);
+    audio->gameplay_mixer = NULL;
 #if defined(_WIN32)
     if (audio->host_playback_enabled) PlaySoundA(NULL, NULL, 0);
     NbaWaveLoop *stream = (NbaWaveLoop *)audio->loop_playback;

@@ -475,6 +475,11 @@ if ($Test) {
     if ($LASTEXITCODE -ne 0) {
         throw "Tip-off regression tests failed with exit code $LASTEXITCODE"
     }
+    & python (Join-Path $Root "tools\test_gameplay_audio.py") `
+        --pack $AssetPack --exe $ConsoleExePath --rom $RomPath
+    if ($LASTEXITCODE -ne 0) {
+        throw "Gameplay audio regression tests failed with exit code $LASTEXITCODE"
+    }
     & python (Join-Path $Root "tools\test_gameplay_debugger.py") `
         --pack $AssetPack --exe $ConsoleExePath --rom $RomPath
     if ($LASTEXITCODE -ne 0) {
