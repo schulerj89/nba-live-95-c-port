@@ -6715,6 +6715,23 @@ static void cpu_update_camera(NbaTipoff *tipoff) {
     tipoff->court_stream.scroll_y=tipoff->court_stream.next_scroll_y;
 }
 
+static void latch_player_screen_origins(NbaTipoff *tipoff) {
+    /* Live Mesen `$87:A47A` traces show that player OAM submissions persist
+     * across the intervening rendered frame. Reprojecting against a newer
+     * camera on that frame produces a non-native A->B->A screen shake. */
+    for (unsigned actor=0;actor<NBA_GAMEPLAY_ACTOR_COUNT;++actor) {
+        const NbaTipoffActor *state=&tipoff->actors[actor];
+        int16_t z=fp_integer_word(state->z_fp);
+        nba_court_project_actor(fp_integer_word(state->x_fp),
+            fp_integer_word(state->y_fp),z,tipoff->camera_x,tipoff->camera_y,
+            &tipoff->player_screen_x[actor],&tipoff->player_screen_y[actor]);
+        tipoff->player_screen_visible[actor]=nba_court_actor_visible(
+            tipoff->player_screen_x[actor],
+            (int16_t)((uint16_t)tipoff->player_screen_y[actor]+(uint16_t)z),
+            z,state->controller_assignment_raw>=0);
+    }
+}
+
 static void draw_ball(const NbaTipoff *tipoff, NbaRenderer *ren, int x, int y) {
     const NbaAssetItem *item = nba_assets_get(tipoff->assets, NBA_ASSET_TIPOFF_BALL);
     if (!item || !item->data || item->size != 56u ||
@@ -6945,6 +6962,7 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
     nba_gameplay_camera_place(&tipoff->camera,&initial_camera);
     tipoff->camera_x = tipoff->camera.x;
     tipoff->camera_y = tipoff->camera.y;
+    latch_player_screen_origins(tipoff);
     /* Scene entry starts on the due presentation phase. Subsequent credits
      * come from outer updates; pauses do not consume or invent camera ticks. */
     tipoff->camera.presentation_ticks_0564 = 1;
@@ -7055,6 +7073,9 @@ void nba_tipoff_update(NbaTipoff *tipoff, const NbaInput *input) {
         cpu_dispatch_pending_event(tipoff);
     }
     cpu_update_camera(tipoff);
+    /* `$87:8EFB`'s due actor pass feeds `$87:A357-$A47A`. OAM retains the
+     * previous complete origins on the camera-only frame in between. */
+    if ((tipoff->simulation_tick&1u)==0u) latch_player_screen_origins(tipoff);
     /* A61E writes the status of the final projected visible actor to DP47.
      * Preserve the overlapping byte for the next presentation scheduler. */
     if(tipoff->tip_contact_actor<0 && (tipoff->simulation_tick&1u)==0u) {
@@ -7433,14 +7454,13 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
         out->world_y = live ? fp_round(state->y_fp) : formation[actor].world_y;
         out->world_z = fp_integer_word(state->z_fp);
         out->world_z_fp = live ? state->z_fp : (int32_t)out->world_z * 256;
-        if(live)nba_court_project_actor(fp_integer_word(state->x_fp),
-            fp_integer_word(state->y_fp),fp_integer_word(state->z_fp),
-            tipoff->camera_x,tipoff->camera_y,&out->screen_x,&out->screen_y);
+        if(live) {
+            out->screen_x=tipoff->player_screen_x[actor];
+            out->screen_y=tipoff->player_screen_y[actor];
+        }
         else { out->screen_x=formation[actor].screen_x;
                out->screen_y=(int16_t)(formation[actor].screen_y-out->world_z); }
-        out->visible = live ? nba_court_actor_visible(out->screen_x,
-            (int16_t)((uint16_t)out->screen_y+(uint16_t)fp_integer_word(state->z_fp)),
-            fp_integer_word(state->z_fp),state->controller_assignment_raw>=0) :
+        out->visible = live ? tipoff->player_screen_visible[actor] :
             actor_visible(actor);
         /* Actor +$0E/+$10 are already signed 8.8 ROM velocity words. Keep
          * them raw so CLI/JSON can compare directly with the Mesen oracle. */
@@ -7593,14 +7613,9 @@ void nba_tipoff_render(const NbaTipoff *tipoff, NbaRenderer *ren) {
     {
         for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
             if(tipoff->tip_contact_actor<0 && !actor_visible(actor))continue;
-            int16_t x=fp_integer_word(tipoff->actors[actor].x_fp);
-            int16_t y=fp_integer_word(tipoff->actors[actor].y_fp);
-            int16_t z=fp_integer_word(tipoff->actors[actor].z_fp);
-            nba_court_project_actor(x,y,z,tipoff->camera_x,tipoff->camera_y,
-                &screen_x[actor],&screen_y[actor]);
-            if (nba_court_actor_visible(screen_x[actor],
-                (int16_t)((uint16_t)screen_y[actor]+(uint16_t)z),
-                z,tipoff->actors[actor].controller_assignment_raw>=0))
+            screen_x[actor]=tipoff->player_screen_x[actor];
+            screen_y[actor]=tipoff->player_screen_y[actor];
+            if (tipoff->player_screen_visible[actor])
                 render_order[render_count++] = (uint8_t)actor;
         }
         for (unsigned i = 1; i < render_count; ++i) {

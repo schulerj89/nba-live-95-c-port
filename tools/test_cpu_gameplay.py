@@ -94,6 +94,26 @@ def main():
         rows = [json.loads(line) for line in trace.read_text().splitlines()]
         if len(rows) != 63800:
             raise AssertionError(f"expected 63800 CPU frames, got {len(rows)}")
+        # Consecutive native frames 180..620 contain no small A->B->A player
+        # origin reversals. This specifically guards the SNES OAM hold between
+        # `$87:A47A` submission passes; sparse screenshot anchors cannot see it.
+        presentation_reversals = []
+        for actor in range(10):
+            for index in range(181, 620):
+                origins = [(rows[row]["actors"][actor]["screen_x"],
+                            rows[row]["actors"][actor]["screen_y"])
+                           for row in (index - 2, index - 1, index)]
+                first = (origins[1][0] - origins[0][0],
+                         origins[1][1] - origins[0][1])
+                second = (origins[2][0] - origins[1][0],
+                          origins[2][1] - origins[1][1])
+                if first != (0, 0) and second == (-first[0], -first[1]) and \
+                        max(abs(first[0]), abs(first[1])) <= 3:
+                    presentation_reversals.append((index + 1, actor, first))
+        if presentation_reversals:
+            raise AssertionError(
+                "player OAM origins shake between native presentation passes: "
+                f"{presentation_reversals[:12]}")
         for row in rows:
             for actor in row["actors"]:
                 appearance = actor.get("appearance")
@@ -1309,6 +1329,7 @@ def main():
                    "nba_tipoff_update_rom_passer",
                    "$87:A3BB-$A3DC", "nba_court_project_actor",
                    "$87:A3DF-$A43B", "nba_court_actor_visible",
+                   "latch_player_screen_origins", "player_screen_visible",
                    "$86:D035-$D205", "nba_gameplay_owned_contact_attempt",
                    "cpu_try_owned_ball_contact",
                    "$86:D5DB", "$86:D652-$D728", "$86:BD41-$BF08",

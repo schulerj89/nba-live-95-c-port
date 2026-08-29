@@ -27,6 +27,14 @@ local gameplay_frame = -1
 local player_load_seen = false
 local PRESS_TITLE_AT, PRESS_SETUP_AT = 850, 400
 local LAST_GAMEPLAY_FRAME = tonumber(os.getenv("NBA95_TIPOFF_FRAMES")) or 900
+-- Consecutive-frame visual audits can opt into a bounded every-frame window.
+-- The normal evidence capture remains every fifth frame to keep it compact.
+local SCREENSHOT_EVERY = tonumber(os.getenv("NBA95_SCREENSHOT_EVERY")) or 5
+local SCREENSHOT_FROM = tonumber(os.getenv("NBA95_SCREENSHOT_FROM")) or 0
+local SCREENSHOT_TO = tonumber(os.getenv("NBA95_SCREENSHOT_TO")) or LAST_GAMEPLAY_FRAME
+local TRACE_DRAW_FROM = tonumber(os.getenv("NBA95_TRACE_DRAW_FROM"))
+local TRACE_DRAW_TO = tonumber(os.getenv("NBA95_TRACE_DRAW_TO"))
+assert(SCREENSHOT_EVERY >= 1, "NBA95_SCREENSHOT_EVERY must be positive")
 local segments = {
     { name="formation", first=0, last=139 },
     { name="jump_ball", first=140, last=219 },
@@ -191,6 +199,9 @@ end, emu.callbackType.exec, 0x85963d, 0x85963d,
     emu.cpuType.snes, emu.memType.snesMemory)
 
 local function trace_draw_frame()
+    if TRACE_DRAW_FROM and TRACE_DRAW_TO then
+        return gameplay_frame >= TRACE_DRAW_FROM and gameplay_frame <= TRACE_DRAW_TO
+    end
     return (gameplay_frame >= 89 and gameplay_frame <= 92) or
            (gameplay_frame >= 218 and gameplay_frame <= 222)
 end
@@ -580,7 +591,10 @@ emu.addEventCallback(function()
     gameplay_frame = gameplay_frame + 1
     if frame <= 300 then dump_actor_states(frame) end
     dump_gameplay_jsonl(frame)
-    if frame % 5 == 0 then shot(string.format("tipoff_%04d.png", frame)) end
+    if frame >= SCREENSHOT_FROM and frame <= SCREENSHOT_TO and
+       (frame - SCREENSHOT_FROM) % SCREENSHOT_EVERY == 0 then
+        shot(string.format("tipoff_%04d.png", frame))
+    end
     if frame == 0 or frame == 140 or frame == 220 or frame == 400 or
        frame == LAST_GAMEPLAY_FRAME then
         dump_mem(string.format("tipoff_%04d_vram.bin", frame),

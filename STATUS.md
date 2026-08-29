@@ -239,6 +239,11 @@ recent slices are:
   unobserved starts, five are the statically translated high-jump culling
   branch; the other 23 are separate queue/effect/ball presentation setup.
   See `docs/gameplay-sprite-jitter.md`.
+- `$87:A47A` player presentation cadence: consecutive Mesen frames prove that
+  submitted OAM origins persist between alternating draw passes. The port now
+  latches those origins on its due actor pass instead of reprojecting them on
+  the intervening camera-only render. Frames 180..620 improve from 51 small
+  A -> B -> A reversals to zero, matching the native trace's zero.
 - `$85:A692-$A755`, `$85:B971-$B9D1`, `$85:F3C3-$F472`: court Y/clamp tail,
   reaction threshold/RNG, and fine pass direction.
 - `$85:96B5-$9961` (three owned slices): live actor vertical and planar

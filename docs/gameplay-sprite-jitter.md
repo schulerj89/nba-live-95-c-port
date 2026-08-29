@@ -43,6 +43,26 @@ After the fix, all eight players submitted by the native opening frame match
 the port exactly at their screen origins; the other two are intentionally
 excluded from that pre-tip native submission list.
 
+## Consecutive-frame OAM cadence
+
+Sparse proof frames hid a second, independent presentation error. A fresh
+Mesen capture saved every frame from 180 through 620 and traced every
+`$87:A47A` submission. Native player OAM coordinates persist between scheduled
+draw passes; the draw normally occurs on alternating frames, with occasional
+NMI-split submissions that resume without clearing the previous OAM image.
+
+The port previously reprojected every actor on every 60 Hz host render. Its
+camera pass and actor pass occupy opposite cadence phases, so that recompute
+created 51 small A -> B -> A screen-origin reversals in frames 180..620 even
+though the underlying actor motion was monotonic. The same detector finds zero
+in the native trace.
+
+`latch_player_screen_origins` now stores the complete player origin/visibility
+result on the native due actor/presentation pass. The renderer and telemetry
+retain it on the intervening camera-only frame, matching persistent SNES OAM.
+The identical port window now also contains zero A -> B -> A reversals. This is
+presentation latching, not invented interpolation or a change to game physics.
+
 ## Verification
 
 - `court_runtime_probe` checks native negative-remainder projection witnesses,
@@ -51,6 +71,9 @@ excluded from that pre-tip native submission list.
 - The 63,800-frame CPU regression retains gameplay/appearance/physics guards.
 - Five reviewed screenshot anchors were refreshed only after their changed
   pixels were confirmed to be the corrected native player origins.
+- The CPU regression examines every consecutive player origin from frames
+  180..620 and rejects any small A -> B -> A reversal. The captured before/
+  after counts are 51 and zero; the native count is zero.
 - Before/after 60 Hz videos live under `.analysis/jitter-audit-20260828/`.
 
 The ROM itself advances player logic on its scheduled cadence rather than

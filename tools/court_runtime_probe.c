@@ -44,7 +44,13 @@ int main(int argc,char **argv) {
     }
     /* Render the actual port with actors/ball outside the viewport. This is
      * an isolated renderer fixture, not a natural-gameplay claim. */
-    for(unsigned a=0;a<10;++a){game.actors[a].x_fp=10000*256;game.actors[a].y_fp=10000*256;}
+    for(unsigned a=0;a<10;++a){
+        game.actors[a].x_fp=10000*256;game.actors[a].y_fp=10000*256;
+        /* The fixture mutates world state outside an update pass. Native OAM
+         * keeps its old submissions, so explicitly hide the latched sprites
+         * when validating the panorama alone. */
+        game.player_screen_visible[a]=false;
+    }
     game.ball.x_fp=10000*256;game.ball.y_fp=10000*256;
     NbaRenderer renderer;nba_renderer_init(&renderer);
     const int xs[]={-582,-128,74,75,194,328},ys[]={-242,-124,-53};
