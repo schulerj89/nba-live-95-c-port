@@ -1376,6 +1376,54 @@
       "method": "natural native selector replay + runtime binding",
       "evidence": "tests/fixtures/inbound-selector-witnesses.json; two genuine native F653 launches select the exact same receiver; 387 natural return calls; side and timer boundary guards; sustained both-team inbound completion. docs/inbound-arrival-selector-differential.md.",
       "date": "2026-08-29"
+    },
+    {
+      "range": "86C4FE-86C6AC",
+      "name": "player-contact foul classifier and bookkeeping dispatch",
+      "source": "src/nba_gameplay_foul.c + src/nba_tipoff.c",
+      "method": "direct native vectors + enclosing collision differential + runtime binding",
+      "evidence": "tests/fixtures/foul-classifier-witnesses.json and tools/verify_foul_classifier_vectors.py: six direct natural calls, zero mismatches across RNG/event/shooting/free-throw/whistle/team-foul/event-bit outputs. Existing 1475-call player-contact sweep has 175 state-changing calls and zero represented mismatches at the production call site. Forced helper tests cover accepted defensive/charging/offensive branches, detached shot, bonus thresholds and foul cap. External C493 child excluded. docs/foul-classifier-differential.md.",
+      "date": "2026-08-29"
+    },
+    {
+      "range": "87A47A-87A845",
+      "name": "whole gameplay player draw and queue-flush pass",
+      "source": "src/nba_gameplay_ai.c + src/nba_player_lab.c + src/nba_tipoff.c",
+      "method": "whole native call census + exact layer replay + production Mode-1 binding",
+      "evidence": "tests/fixtures/player-draw-whole-witnesses.json and tools/verify_player_draw_pipeline.py: 200 complete natural A47A->A845 calls, no orphan exits, eight queue shapes and 101 presentation-copy states. Combined with 2000 exact preparation calls, 5568 exhaustive compositor cases, exact native OAM order and 16000-frame/812-viewport production rendering. Controller indicator A846+ and DMA remain separate. docs/player-draw-preparation-differential.md.",
+      "date": "2026-08-29"
+    },
+    {
+      "range": "87A357-87A479",
+      "name": "gameplay presentation prelude projection culling and ball setup",
+      "source": "src/nba_court_presentation.c + src/nba_tipoff.c",
+      "method": "native projection witnesses + whole draw census + production Mode-1 binding",
+      "evidence": "Exact signed projection/culling boundaries and high-jump fallback; 200 whole natural draw passes; 16000 production updates and 812 viewports over all29 courts. Player origins, ball origin, effect queues, visibility and native OAM priority are asserted. Adjacent human indicator A846 remains separate. docs/player-draw-preparation-differential.md.",
+      "date": "2026-08-29"
+    },
+    {
+      "range": "86E0B0-86E389",
+      "name": "gameplay appearance resource-list and table initialization",
+      "source": "src/nba_player_lab.c + src/nba_tipoff.c",
+      "method": "natural native load calls + represented-state replay + exhaustive pack/runtime binding",
+      "evidence": "tests/fixtures/appearance-upload-witness.json and tools/verify_appearance_upload.py: natural E0B0-E207 and E208-E24B calls; 19 persistent gameplay-load words match. Corrected dormant pre-tip0954 from FFFF to native zero. Active appearance runtime covers 300 records/all29 teams; pack/resource composition and missing-resource rejection pass. CPU-vs-CPU controller normalization excluded. docs/gameplay-load-differential.md.",
+      "date": "2026-08-29"
+    },
+    {
+      "range": "8593F5-85945E",
+      "name": "pending foul event consumer and whistle state",
+      "source": "src/nba_gameplay_foul.c + src/nba_tipoff.c",
+      "method": "controlled same-entry native state differential + runtime binding",
+      "evidence": "tests/fixtures/foul-consume-witnesses.json and tools/verify_foul_consume_vectors.py: four real-entry cases cover busy/empty exits, defensive negative-timer queue and offensive busy-presentation short timer; 13 owned outputs, zero mismatches. docs/foul-consumer-differential.md.",
+      "date": "2026-08-29"
+    },
+    {
+      "range": "87BACB-87BAF4",
+      "name": "whistle presentation queue/gate child",
+      "source": "src/nba_gameplay_foul.c + src/nba_tipoff.c",
+      "method": "nested native execution in controlled consumer differential",
+      "evidence": "Both accepted 8593F5 cases execute BACB naturally. Negative08DE queues presentation while nonnegative08DE clears08E2; resulting consumer state matches production exactly. docs/foul-consumer-differential.md.",
+      "date": "2026-08-29"
     }
   ]
 }

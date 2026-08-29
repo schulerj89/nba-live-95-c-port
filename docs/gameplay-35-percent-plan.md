@@ -81,6 +81,9 @@ host-side outcome without pretending the C port executes SNES DMA machinery.
 | CPU inbound motion core | 89 | 8,757 (31.39%) | 500 natural native calls; all 111 non-arrival motion calls retained and replayed with zero mismatches; fixed duplicate integration, integer-word gates, close-range damping and negative /16 bias |
 | Player draw preparation / target-facing selector | 128 | 8,885 (31.84%) | 2,000 natural native compositor-input calls, all ten actors, 175 resource pairs, five modes and 30 movement/draw direction differences; zero mismatches; renderer now preserves presentation-facing separately from physics-facing |
 | CPU inbound arrival and natural launch selector | 100 | 8,985 (32.20%) | 387 exact arrived-state replays plus two genuine native launches; fixed missing `$09F6` attachment and stale `$09B8`; 63,800-frame CPU endurance gate passes |
+| Whole player draw/queue pass | 262 | 9,247 (33.14%) | 200 complete native calls, eight queue shapes, 101 copy states, 2,000 exact preparations and exhaustive compositor/runtime binding |
+| Presentation prelude and gameplay load | 92 | 9,339 (33.47%) | Exact projection/culling plus fresh E0B0/E208 native loads; fixed dormant pre-tip `$0954`; all-team asset closure |
+| Pending foul consumer and whistle child | 53 | 9,392 (33.66%) | Four controlled real-entry ROM cases, 13 owned outputs, both timer paths, zero mismatches; long CPU regression passes |
 
 ### Route from checkpoint 2 to 35%
 

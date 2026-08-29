@@ -7194,7 +7194,9 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
     /* Native pre-tip $097E is FFFF: no prior dead-ball side. A zero
      * default falsely makes later same-side acquisition look like a turnover. */
     tipoff->dead_ball_raw_097e = 0xFFFFu;
-    tipoff->inbound_actor_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
+    /* `$86:E0B0-$E207` leaves pre-tip `$0954` at its cleared zero; FFFF is
+     * used for possession/team selectors, not this dormant inbound slot. */
+    tipoff->inbound_actor_raw = 0u;
     tipoff->pass_actor_raw = -1;
     tipoff->pass_receiver_raw = -1;
     tipoff->play_aux_selector_raw_09a6 = -1;

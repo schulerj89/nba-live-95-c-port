@@ -217,6 +217,16 @@ if ($Test) {
         --vectors (Join-Path $Root 'tests\fixtures\inbound-selector-witnesses.json') `
         --probe (Join-Path $BuildDir 'inbound_selector_vector_probe.exe')
     if ($LASTEXITCODE -ne 0) { throw 'Inbound selector ROM witness regression failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name foul_classifier_vector_probe
+    & python (Join-Path $Root 'tools\verify_foul_classifier_vectors.py') `
+        --vectors (Join-Path $Root 'tests\fixtures\foul-classifier-witnesses.json') `
+        --probe (Join-Path $BuildDir 'foul_classifier_vector_probe.exe')
+    if ($LASTEXITCODE -ne 0) { throw 'Contact-foul classifier ROM witness regression failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name foul_consume_vector_probe
+    & python (Join-Path $Root 'tools\verify_foul_consume_vectors.py') `
+        --vectors (Join-Path $Root 'tests\fixtures\foul-consume-witnesses.json') `
+        --probe (Join-Path $BuildDir 'foul_consume_vector_probe.exe')
+    if ($LASTEXITCODE -ne 0) { throw 'Pending-foul consumer ROM witness regression failed.' }
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name draw_direction_vector_probe
     & python (Join-Path $Root 'tools\verify_draw_direction_vectors.py') `
         --vectors (Join-Path $Root 'tests\fixtures\draw-direction-witnesses.json') `
@@ -227,6 +237,16 @@ if ($Test) {
         --vectors (Join-Path $Root 'tests\fixtures\draw-preparation-witnesses.json') `
         --probe (Join-Path $BuildDir 'draw_preparation_vector_probe.exe')
     if ($LASTEXITCODE -ne 0) { throw 'Player draw-preparation ROM witness regression failed.' }
+    & python (Join-Path $Root 'tools\verify_player_draw_pipeline.py') `
+        --whole (Join-Path $Root 'tests\fixtures\player-draw-whole-witnesses.json') `
+        --preparation (Join-Path $Root 'tests\fixtures\draw-preparation-witnesses.json') `
+        --direction (Join-Path $Root 'tests\fixtures\draw-direction-witnesses.json')
+    if ($LASTEXITCODE -ne 0) { throw 'Whole player-draw pipeline census regression failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name appearance_upload_runtime_probe
+    & python (Join-Path $Root 'tools\verify_appearance_upload.py') `
+        --vectors (Join-Path $Root 'tests\fixtures\appearance-upload-witness.json') `
+        --probe (Join-Path $BuildDir 'appearance_upload_runtime_probe.exe') --pack $AssetPack
+    if ($LASTEXITCODE -ne 0) { throw 'Gameplay appearance-load ROM witness regression failed.' }
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name owner_pose_runtime_probe
     & (Join-Path $BuildDir 'owner_pose_runtime_probe.exe') $AssetPack
     if ($LASTEXITCODE -ne 0) { throw 'Owner pose/natural-special runtime regression failed.' }

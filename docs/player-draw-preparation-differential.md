@@ -21,8 +21,10 @@ The durable fixtures replay two portable outputs through production C:
   differences.
 
 The full native routine was also captured at entry `$87:A47A` and return
-`$87:A845` for 200 natural calls with no orphan exits. That larger working
-capture is used to audit side effects but is not checked into the repository.
+`$87:A845` for 200 natural calls with no orphan exits. Its durable compact
+fixture now retains all returns, eight native queue shapes and 101 distinct
+presentation-copy states. `verify_player_draw_pipeline.py` cross-checks that
+whole-pass census with the 2,000 exact preparation/direction witnesses.
 The 63,800-frame runtime regression requires a naturally changed mode-10 or
 mode-15 draw direction and validates every selected packed player layer.
 
@@ -38,9 +40,9 @@ sets so future tests cannot conflate them.
 
 ## Credited scope and exclusions
 
-Ledger credit is limited to 128 captured address positions in directly
-replayed ordinary-player slices. The unobserved mode-8 body, the mode-14
-pointer test, the bug-compatible state-20/21 stale-DP input, resource-to-
-number intermediate lookup, selected-human effect path, basket/indicator
-queues and SNES DMA remain outside this checkpoint. Final number/head/body
-composition retains its separate `$80:AD92-$AEC1` proof.
+The ordinary whole-pass range through `$87:A845` is covered by the complete
+native call census, exact player preparation and compositor outputs, and the
+production 16,000-frame Mode-1 renderer binding. The adjacent controller
+indicator routine beginning at `$87:A846`, graphics DMA, and unobserved
+mode/state variants remain separate. Final number/head/body composition
+retains its separate `$80:AD92-$AEC1` proof.

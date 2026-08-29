@@ -1,0 +1,1 @@
+{"routine":"$86:E0B0-$E24B gameplay load/resource-list/table result","provenance":"two natural ROM calls in Mesen; no PC/ROM patching","table_init_calls":1,"expected":[65535,65535,65535,16107,0,0,129,0,0,0,0,80,0,0,600,0,0,0,0]}
