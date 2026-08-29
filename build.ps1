@@ -208,6 +208,10 @@ if ($Test) {
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name match_lifecycle_probe
     & (Join-Path $BuildDir 'match_lifecycle_probe.exe') $AssetPack $RomPath
     if ($LASTEXITCODE -ne 0) { throw 'Match lifecycle initialization binding failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name match_lifecycle_expiry_probe
+    & (Join-Path $BuildDir 'match_lifecycle_expiry_probe.exe') `
+        (Join-Path $Root 'tests\fixtures\match-lifecycle-expiry-witnesses.json')
+    if ($LASTEXITCODE -ne 0) { throw 'Match lifecycle expiry native replay failed.' }
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name complete_shot_vector_probe
     & python (Join-Path $Root 'tools\verify_complete_shot_vectors.py') `
         --normalized --vectors (Join-Path $Root 'tests\fixtures\complete-shot-witnesses.json') `

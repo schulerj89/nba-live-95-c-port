@@ -160,6 +160,8 @@ local drive = os.getenv("NBA95_VEC_DRIVE") == "1"
 local force_cpu_vs_cpu = os.getenv("NBA95_CPU_VS_CPU") == "1"
 local record_delay = tonumber(os.getenv("NBA95_VEC_DELAY")) or 0
 local force_play_request = os.getenv("NBA95_VEC_FORCE_PLAY_REQUEST") == "1"
+local force_sub_request = os.getenv("NBA95_VEC_FORCE_SUB_REQUEST") == "1"
+local sub_request_forced = false
 -- Default to on-court play while driving; pregame captures need the roster
 -- initialization that runs before the first gameplay frame.
 local recording = not drive or os.getenv("NBA95_VEC_PREGAME") == "1"
@@ -176,6 +178,34 @@ local function finish()
 end
 
 emu.addEventCallback(function() frame = frame + 1 end, emu.eventType.endFrame)
+
+-- Controlled foul-out continuation witness.  This preserves the genuine
+-- presentation-parent call/stack and mutates only the request-facing WRAM at
+-- its real $83:EBD8 entry.  Keep it opt-in: it is an oracle acquisition aid,
+-- not part of normal gameplay or any production test.
+if force_sub_request then
+    emu.addMemoryCallback(function()
+        if done or not recording or sub_request_forced then return end
+        local function putw(address, value)
+            emu.write(address, value & 0xff, emu.memType.snesWorkRam)
+            emu.write(address + 1, (value >> 8) & 0xff,
+                emu.memType.snesWorkRam)
+        end
+        putw(0x09ca, 0x0008) -- left-side foul-out pending
+        putw(0x09cc, 0x0000)
+        putw(0x09ce, 0xffff)
+        putw(0x0a08, 0x0001) -- typed substitution request
+        putw(0x492d, 0x0000) -- valid active left-team lineup slot
+        putw(0x4726, 0x0000) -- native automatic, not human/UI branch
+        putw(0x08e8, 0x0011) -- substitution/foul presentation selector
+        -- The prior presentation pass normally advances this latch to one.
+        -- Seed that already-reached state so the next genuine parent call
+        -- enters the transaction immediately and remains a bounded capture.
+        putw(0x497f, 0x0001)
+        sub_request_forced = true
+    end, emu.callbackType.exec, 0x83ebd8, 0x83ebd8,
+        emu.cpuType.snes, emu.memType.snesMemory)
+end
 
 for _, pc in ipairs(entry_pcs) do
 emu.addMemoryCallback(function()

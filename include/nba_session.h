@@ -17,14 +17,30 @@ typedef struct {
     uint16_t options[NBA_SETUP_OPTION_COUNT];         /* $7E:17B5 commit block  */
 } NbaGameConfig;
 
-/* Persistent match-owned state.  `$0926`, `$4715/$4795`, and the selected
- * five roster slots outlive an individual court presentation.  Period-end,
- * timeout-menu, and substitution orchestration are separate later slices;
- * this model intentionally does not invent those callers. */
+typedef enum {
+    NBA_MATCH_FLOW_LIVE = 0,
+    NBA_MATCH_FLOW_HORN_BALL_LIVE,
+    NBA_MATCH_FLOW_PERIOD_PRESENTATION_PENDING,
+    NBA_MATCH_FLOW_PERIOD_RESTART_PENDING,
+    NBA_MATCH_FLOW_POSTGAME_PRESENTATION_PENDING,
+    NBA_MATCH_FLOW_FINAL
+} NbaMatchFlowState;
+
+typedef enum {
+    NBA_MATCH_FINAL_ACTIVE = 0,
+    NBA_MATCH_FINAL_CONFIRMED
+} NbaMatchFinalMarker;
+
+/* Persistent match-owned state. `$0926`, `$4715/$4795`, the selected five
+ * roster slots, and lifecycle phase outlive an individual court presentation.
+ * Timeout-menu and substitution orchestration remain separate slices. */
 typedef struct {
     uint16_t period_raw_0926;
     uint16_t timeouts_remaining[NBA_MATCH_TEAM_COUNT];
     uint8_t active_lineup[NBA_MATCH_TEAM_COUNT][NBA_MATCH_LINEUP_SIZE];
+    NbaMatchFlowState flow_state;
+    NbaMatchFinalMarker final_marker;
+    uint16_t presentation_ticks_remaining;
 } NbaMatchLifecycle;
 
 typedef struct {

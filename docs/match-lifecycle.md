@@ -23,11 +23,26 @@ initialization at `$86:DD2D-$DD44` selects the overtime value when `$0926` is
 at least four.  `nba_tipoff_init` consumes this session state and still uses
 the already verified `$85:EDC6-$EE3D` clock writer during play.
 
-This increment does **not** implement clock-expiry detection, period
-advancement, halftime, timeout menus, substitutions, or postgame routing.
-Those callers require their own native captures and differential gates.
+## Increment B: expiry and gameplay handoff
+
+The session now carries typed live, horn-flight, period-presentation,
+period-restart, postgame-presentation, and final phases. The `$09B4` latch and
+the exact owner/Z/`$0946` horn gate keep an unresolved high ball live. Once the
+gate resolves, the runtime applies the common and period-specific stamina
+grants, updates raw period `$0926`, selects regulation/OT clock tables, resets
+the shot clocks, reverses anchors on raw-period 2 entry, and either resumes a
+quarter/OT or marks a non-tied period-four result final.
+
+The long `$87:95E9-$9765` presentation and `$87:97A0-$985C` postgame children
+remain explicit typed placeholders rather than fabricated fades/screens.
+Timeout menus and substitutions remain separate captured increments.
 
 `tools/match_lifecycle_probe.c`, run by `build.ps1 -Test`, reads all eight
 values back from the canonical ROM, compares the C helpers, and protects
 default timeout/lineup persistence plus production Tipoff binding for both
 regulation and overtime.
+
+`tools/match_lifecycle_expiry_probe.c` replays the four checked-in Mesen
+witnesses plus the shot-in-flight horn branch. A short-clock headless smoke
+also proves that gameplay advances from raw period 0 to 1 and reseeds the
+clock instead of remaining at zero.

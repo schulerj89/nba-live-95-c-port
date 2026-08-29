@@ -204,6 +204,7 @@ typedef struct NbaTipoff {
     NbaTipEvent tip_event;
     uint16_t tip_event_bits_raw_13e9;
     uint16_t tip_winner_group_raw_0932;
+    uint16_t overtime_tie_marker_raw_15bd;
     NbaTipLaunch tip_last_launch; /* diagnostics: $99C4 result before wrapper */
     int8_t possession_team;
     uint8_t camera_side_group_raw; /* persistent `$093A`: 0/5, FF before tip */
@@ -315,6 +316,10 @@ typedef struct NbaTipoff {
 bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
                      NbaSession *session);
 void nba_tipoff_update(NbaTipoff *tipoff, const NbaInput *input);
+/* `$86:97CD-$97F2 -> $87:8EB2-$8ECF -> $87:95E9-$979D`.
+ * Returns true while the normal gameplay pass is frozen. */
+bool nba_tipoff_step_match_lifecycle(NbaTipoff *tipoff);
+bool nba_tipoff_match_horn_transition_ready(const NbaTipoff *tipoff);
 bool nba_tipoff_try_tip_contact(NbaTipoff *tipoff);
 bool nba_tipoff_jump_reach(NbaTipoff *tipoff, unsigned actor);
 bool nba_tipoff_select_tip_receiver(NbaTipoff *tipoff);

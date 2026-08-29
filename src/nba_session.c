@@ -42,6 +42,8 @@ void nba_session_init(NbaSession *session) {
     session->right_team = 18; /* Orlando */
     session->player_one_side = 1; /* Live Exhibition path defaults to home/right. */
     session->match.period_raw_0926 = 0u;
+    session->match.flow_state = NBA_MATCH_FLOW_LIVE;
+    session->match.final_marker = NBA_MATCH_FINAL_ACTIVE;
     for (unsigned side = 0; side < NBA_MATCH_TEAM_COUNT; ++side) {
         session->match.timeouts_remaining[side] = NBA_MATCH_INITIAL_TIMEOUTS;
         static const uint8_t initial_lineup[NBA_MATCH_LINEUP_SIZE] = {

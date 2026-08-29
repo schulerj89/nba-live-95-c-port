@@ -7952,8 +7952,180 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
     return true;
 }
 
+/* `$87:95E9-$985C` owns a much longer audiovisual scene.  The state boundary
+ * is exact; 120 host ticks are deliberately a typed presentation placeholder
+ * until those children have independent native captures. */
+#define NBA_MATCH_PRESENTATION_PLACEHOLDER_TICKS 120u
+
+bool nba_tipoff_match_horn_transition_ready(const NbaTipoff *tipoff) {
+    if (!tipoff) return false;
+    /* `$87:8EB7-$8ECF`: an owner, a low ball, or non-negative `$0946`
+     * resolves the horn.  An ownerless unresolved ball at Z >= 8 stays live. */
+    return tipoff->possession_actor >= 0 ||
+           fp_integer_word(tipoff->ball.z_fp) < 8 ||
+           tipoff->pass_receiver_raw >= 0;
+}
+
+static uint16_t match_period_inbound_group(const NbaTipoff *tipoff) {
+    uint16_t winner = tipoff->tip_winner_group_raw_0932 == 5u ? 5u : 0u;
+    /* The opening-tip loser starts Q2 and Q3; the winner starts Q4.  This is
+     * the gameplay owner selected by the native period formation branches
+     * following `$86:DDFD`, not presentation-side inference. */
+    return tipoff->period_raw_0926 == 1u || tipoff->period_raw_0926 == 2u ?
+        (uint16_t)(winner ^ 5u) : winner;
+}
+
+static void match_refresh_anchor_geometry(NbaTipoff *tipoff) {
+    for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
+        NbaTipoffActor *state = &tipoff->actors[actor];
+        int16_t anchor = tipoff->team_context[actor / 5u].anchor_x_raw_0a;
+        state->anchor_direction_raw = nba_gameplay_pass_direction(
+            (int16_t)(anchor - fp_round(state->x_fp)),
+            (int16_t)-fp_round(state->y_fp),
+            &state->anchor_distance_raw);
+    }
+}
+
+static void match_restart_period(NbaTipoff *tipoff) {
+    NbaSession *session = tipoff->session;
+    tipoff->period_raw_0926 = session->match.period_raw_0926;
+    tipoff->match_clock_raw_0928 = nba_match_period_clock(session);
+    /* `$86:DD47-$DD53`: both clock words and the period-start play selector
+     * are written before actor formation is rebuilt. */
+    tipoff->rim_raw_092c = 0x05A0u;
+    tipoff->shot_clock_mirror_raw_09c6 = 0x05A0u;
+    tipoff->play_request_raw = 0x05A0u;
+    tipoff->play_code = 1u;
+    tipoff->elapsed_shot_clock_raw_13f7 = 0u;
+    tipoff->dead_clock_enabled_raw_0a04 = 0u;
+
+    /* `$86:DD56-$DD75`: only the Q3 entry negates both team anchors. */
+    if (tipoff->period_raw_0926 == 2u) {
+        tipoff->team_context[0].anchor_x_raw_0a =
+            (int16_t)-tipoff->team_context[0].anchor_x_raw_0a;
+        tipoff->team_context[1].anchor_x_raw_0a =
+            (int16_t)-tipoff->team_context[1].anchor_x_raw_0a;
+        match_refresh_anchor_geometry(tipoff);
+    }
+
+    /* `$86:DD80-$DD86`: release owner and Assistance before rebuilding the
+     * period formation. */
+    tipoff->possession_actor = -1;
+    tipoff->ball.owner_actor = -1;
+    tipoff->assistance_team_raw_09c0 = 0xFFFFu;
+    tipoff->pass_actor_raw = -1;
+    tipoff->pass_receiver_raw = -1;
+    tipoff->pass_active_raw = 0u;
+    tipoff->ball_activity_raw = 0u;
+
+    if (tipoff->period_raw_0926 >= 4u) {
+        /* `$86:DD97-$DDA4` selects the opening formation for overtime. */
+        const NbaTipBallInitialization *ball = &tipoff->ball_initialization;
+        tipoff->ball.x_fp = (int32_t)(int16_t)ball->x * 256;
+        tipoff->ball.y_fp = (int32_t)(int16_t)ball->y * 256;
+        tipoff->ball.z_fp = (int32_t)(int16_t)ball->z * 256;
+        tipoff->ball.velocity_x = (int16_t)ball->velocity_x;
+        tipoff->ball.velocity_y = (int16_t)ball->velocity_y;
+        tipoff->ball.velocity_z = (int16_t)ball->velocity_z;
+        tipoff->ball.state = NBA_BALL_HIDDEN;
+        tipoff->tip_contact_actor = -1;
+        tipoff->tip_possession_frame = 0u;
+        tipoff->tip_toss_countdown_raw_09f2 = 120u;
+        tipoff->live_state_raw = 0x81u;
+        tipoff->phase = NBA_TIPOFF_FORMATION;
+    } else {
+        uint16_t side_group = match_period_inbound_group(tipoff);
+        uint8_t inbounder = (uint8_t)(side_group + 2u);
+        cpu_begin_dead_ball(tipoff, inbounder, side_group, 0, false);
+        cpu_finalize_dead_ball_inbound(tipoff);
+        tipoff->play_code = 1u;
+        tipoff->play_request_raw = 1u;
+        tipoff->phase = NBA_TIPOFF_LIVE;
+    }
+
+    tipoff->dead_ball_dispatch_busy_raw_09b4 = 0u;
+    tipoff->rim_raw_13e7 &= 0xF7FFu;
+    session->match.presentation_ticks_remaining = 0u;
+    session->match.flow_state = NBA_MATCH_FLOW_LIVE;
+}
+
+static void match_finish_period(NbaTipoff *tipoff) {
+    NbaSession *session = tipoff->session;
+    uint16_t old_period = tipoff->period_raw_0926;
+    bool tied = session->score[0] == session->score[1];
+
+    /* `$87:96F6-$974B`: common, halftime, then tied-regulation/OT grants. */
+    nba_shot_stamina_grant(&tipoff->fatigue, 0x1000u);
+    if (old_period == 1u) nba_shot_stamina_grant(&tipoff->fatigue, 0x6000u);
+    else if (old_period >= 3u && tied) {
+        tipoff->overtime_tie_marker_raw_15bd = 1u;
+        nba_shot_stamina_grant(&tipoff->fatigue, 0x3000u);
+    }
+
+    /* `$87:9766-$979D`: increment only below raw period four.  Period four
+     * is reused for every OT; a non-tie stores five as the final marker. */
+    uint16_t next_period = old_period < 4u ? (uint16_t)(old_period + 1u) : old_period;
+    bool final = next_period == 4u && !tied;
+    if (final) next_period = 5u;
+    tipoff->period_raw_0926 = next_period;
+    session->match.period_raw_0926 = next_period;
+    session->match.final_marker = final ?
+        NBA_MATCH_FINAL_CONFIRMED : NBA_MATCH_FINAL_ACTIVE;
+    session->match.presentation_ticks_remaining =
+        NBA_MATCH_PRESENTATION_PLACEHOLDER_TICKS;
+    session->match.flow_state = final ?
+        NBA_MATCH_FLOW_POSTGAME_PRESENTATION_PENDING :
+        NBA_MATCH_FLOW_PERIOD_PRESENTATION_PENDING;
+}
+
+bool nba_tipoff_step_match_lifecycle(NbaTipoff *tipoff) {
+    if (!tipoff || !tipoff->session) return false;
+    NbaMatchLifecycle *match = &tipoff->session->match;
+
+    if (match->flow_state == NBA_MATCH_FLOW_FINAL) return true;
+    if (match->flow_state == NBA_MATCH_FLOW_PERIOD_PRESENTATION_PENDING ||
+        match->flow_state == NBA_MATCH_FLOW_POSTGAME_PRESENTATION_PENDING) {
+        if (match->presentation_ticks_remaining > 0u)
+            --match->presentation_ticks_remaining;
+        if (match->presentation_ticks_remaining == 0u) {
+            if (match->flow_state == NBA_MATCH_FLOW_POSTGAME_PRESENTATION_PENDING)
+                match->flow_state = NBA_MATCH_FLOW_FINAL;
+            else
+                match->flow_state = NBA_MATCH_FLOW_PERIOD_RESTART_PENDING;
+        }
+        return true;
+    }
+    if (match->flow_state == NBA_MATCH_FLOW_PERIOD_RESTART_PENDING) {
+        match_restart_period(tipoff);
+        return true;
+    }
+
+    /* `$86:97CD-$97F2`: zero and wrapped/sentinel clocks latch the horn.
+     * Values one through five are warning values, not an expiry latch. */
+    if (match->flow_state == NBA_MATCH_FLOW_LIVE &&
+        (tipoff->match_clock_raw_0928 == 0u ||
+         tipoff->match_clock_raw_0928 >= 0xF000u)) {
+        tipoff->dead_ball_dispatch_busy_raw_09b4 = 1u;
+        tipoff->rim_raw_13e7 |= 0x0800u;
+        match->flow_state = NBA_MATCH_FLOW_HORN_BALL_LIVE;
+    }
+    if (match->flow_state != NBA_MATCH_FLOW_HORN_BALL_LIVE) return false;
+    if (!nba_tipoff_match_horn_transition_ready(tipoff)) return false;
+    match_finish_period(tipoff);
+    return true;
+}
+
 void nba_tipoff_update(NbaTipoff *tipoff, const NbaInput *input) {
     if (!tipoff || !tipoff->is_initialized) return;
+    /* Period presentation is a hard gameplay boundary.  Its child visuals
+     * are still pending, but neither actor physics nor clocks may leak across
+     * it. */
+    if (tipoff->session &&
+        tipoff->session->match.flow_state >=
+            NBA_MATCH_FLOW_PERIOD_PRESENTATION_PENDING) {
+        (void)nba_tipoff_step_match_lifecycle(tipoff);
+        return;
+    }
     tipoff->pad_held_raw = input ? (uint16_t)(input->held & 0x0FFFu) : 0u;
     /* `$13E7` is an outer-frame event bitfield. Acquisition's bit $0010 is
      * observable for one completed frame, then the next outer pass clears it. */
@@ -8002,6 +8174,7 @@ void nba_tipoff_update(NbaTipoff *tipoff, const NbaInput *input) {
         tipoff->elapsed_clock_raw_13f9=clock.elapsed_clock;
         tipoff->elapsed_shot_clock_raw_13f7=clock.elapsed_shot_clock;
     }
+    if (nba_tipoff_step_match_lifecycle(tipoff)) return;
     bool advancing_tip=tipoff->tip_contact_actor>=0;
     if (!advancing_tip) {
         /* 85EE3E-EE43: NMI countdown, saturating atFFFF. The host starts

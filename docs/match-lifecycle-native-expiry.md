@@ -56,15 +56,16 @@ non-tie stores 5 at `$87:979A-$979D` and enters postgame cleanup at `$87:97A0`.
 The next-play route eventually reaches `$86:DD2D-$DD44`: raw period >=4 selects
 the OT table into `$0A0C`, then `$86:DD44` copies `$0A0C` to `$0928`.
 
-## Implementation dependency order
+## Implemented dependency order
 
-1. Model the expiry latch plus the signed owner/Z/resolution horn gate.
+1. Model the expiry latch plus the signed owner/Z/resolution horn gate. Done.
 2. Add a period-scene orchestration phase so the C tick cannot mutate periods
    directly from clock code.
-3. Port common, halftime, and tied-regulation stamina/event branches.
-4. Port raw-period increment and score-based OT/final selection.
+   Done; presentation remains a typed placeholder.
+3. Port common, halftime, and tied-regulation stamina/event branches. Done.
+4. Port raw-period increment and score-based OT/final selection. Done.
 5. Re-enter gameplay through the existing table helper and reset the latch;
-   keep postgame routing a separate explicit state.
+   keep postgame routing a separate explicit state. Done.
 6. Add presentation/audio fidelity only after the state transition witnesses
    match, because `$87:95E9-$9765` owns substantial scene and audio work.
 
