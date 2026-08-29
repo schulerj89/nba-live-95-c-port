@@ -238,6 +238,16 @@ if ($Test) {
         --vectors (Join-Path $Root 'tests\fixtures\mode11-parent-witnesses.json') `
         --probe (Join-Path $BuildDir 'mode11_parent_vector_probe.exe') --pack $AssetPack
     if ($LASTEXITCODE -ne 0) { throw 'Mode-11 parent dispatcher ROM replay failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name normal_actor_parent_vector_probe
+    & python (Join-Path $Root 'tools\verify_normal_actor_parent_vectors.py') `
+        --vectors (Join-Path $Root 'tests\fixtures\normal-actor-parent-witnesses.json') `
+        --probe (Join-Path $BuildDir 'normal_actor_parent_vector_probe.exe') --pack $AssetPack
+    if ($LASTEXITCODE -ne 0) { throw 'Normal CPU actor-parent ROM replay failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name requested_direction_vector_probe
+    & python (Join-Path $Root 'tools\verify_requested_direction_vectors.py') `
+        --vectors (Join-Path $Root 'tests\fixtures\requested-direction-witnesses.json') `
+        --probe (Join-Path $BuildDir 'requested_direction_vector_probe.exe')
+    if ($LASTEXITCODE -ne 0) { throw 'CPU requested-direction ROM replay failed.' }
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name violation_parent_vector_probe
     & python (Join-Path $Root 'tools\verify_violation_parent_vectors.py') `
         --vectors (Join-Path $Root 'tests\fixtures\violation-parent-witnesses.json') `

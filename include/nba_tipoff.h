@@ -345,6 +345,8 @@ void nba_tipoff_replay_ball_acquisition(NbaTipoff *tipoff, uint8_t catcher);
 void nba_tipoff_replay_ball_acquisition_core(NbaTipoff *tipoff,
                                               uint8_t catcher);
 bool nba_tipoff_replay_defensive_pose(NbaTipoff *tipoff, uint8_t actor);
+bool nba_tipoff_replay_normal_actor(NbaTipoff *tipoff, uint8_t actor);
+bool nba_tipoff_replay_requested_direction(NbaTipoff *tipoff, uint8_t actor);
 bool nba_tipoff_replay_passive_mode(NbaTipoff *tipoff, uint8_t actor);
 bool nba_tipoff_replay_mode13_close_finish(NbaTipoff *tipoff, uint8_t actor);
 bool nba_tipoff_replay_mode14_close_finish(NbaTipoff *tipoff, uint8_t actor);

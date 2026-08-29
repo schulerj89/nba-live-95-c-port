@@ -7,7 +7,9 @@ $families=@(
     @{Label='mode2_context3';Entry='86E6B7';Exits='86E82E'},
     @{Label='mode24_weakside';Entry='86E7B3';Exits='86E82E'},
     @{Label='mode24_position';Entry='86E96F';Exits='86E82E'},
-    @{Label='mode6_target';Entry='86E9B3';Exits='86EA03'}
+    # E9B3 installs the mode-6 table and rejoins the common E7EA/E7FD
+    # steering continuation; it does not return through the neighboring EA03.
+    @{Label='mode6_target';Entry='86E9B3';Exits='86E82E'}
 )
 $processes=@()
 foreach($family in $families) {

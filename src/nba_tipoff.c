@@ -797,7 +797,7 @@ bool nba_tipoff_begin_rom_pass(NbaTipoff *tipoff, unsigned passer_slot,
                     relative = (uint8_t)(
                         (pass_direction - passer->movement_direction) & 7u);
                     selector = relative;
-                } else selector = fine_relative == 9u ? 3 : 5;
+                } else selector = fine_relative == 9u ? 5 : 3;
             }
             int16_t sign_test = (int16_t)(selector * 2 - 7);
             if (passer->movement_direction < 3u)
@@ -908,10 +908,12 @@ static bool cpu_refresh_defense_target(NbaTipoff *tipoff, unsigned slot,
     }
     actor->assignment_actor = (uint8_t)paired_slot;
     NbaTipoffActor *paired = &tipoff->actors[paired_slot];
-    int16_t actor_x = fp_round(actor->x_fp);
-    int16_t actor_y = fp_round(actor->y_fp);
-    int16_t paired_x = fp_round(paired->x_fp);
-    int16_t paired_y = fp_round(paired->y_fp);
+    /* E6B7/E9B3 read actor +$04/+$08 integer words. Subpixel rounding can
+     * cross a target-direction boundary one scheduled pass too early. */
+    int16_t actor_x = fp_integer_word(actor->x_fp);
+    int16_t actor_y = fp_integer_word(actor->y_fp);
+    int16_t paired_x = fp_integer_word(paired->x_fp);
+    int16_t paired_y = fp_integer_word(paired->y_fp);
 
     /* `$85:BC52-$BC81`: refresh coarse +$86 and shared +$8A only at the
      * bound-pair decision boundary, not by rebuilding assignments per frame. */
@@ -1159,6 +1161,44 @@ static bool cpu_active_decision_due(NbaTipoff *tipoff, unsigned slot) {
     return nba_gameplay_decision_timer_step(
         &actor->reaction_threshold, profile_40,
         mode == 2u ? 0x30u : 0x20u, same_half);
+}
+
+/* `$86:E5AB-$E612`: finalize +$50 after a normal CPU behavior decision.
+ * CPU actors keep their current +$4E unless they are already inside the
+ * target's [-20,+19] box, where they may face the loose ball. Human actors
+ * use the same ball-facing result only while planar velocity is inside
+ * [-128,+127]. */
+static void cpu_finalize_requested_direction(NbaTipoff *tipoff,
+                                             unsigned slot) {
+    NbaTipoffActor *actor = &tipoff->actors[slot];
+    bool use_ball = actor->lower_animation_state != 0x25u;
+    if (use_ball && actor->controller_assignment_raw < 0) {
+        int16_t dx = (int16_t)(actor->target_x -
+                               fp_integer_word(actor->x_fp));
+        int16_t dy = (int16_t)(actor->target_y -
+                               fp_integer_word(actor->y_fp));
+        use_ball = dx >= -20 && dx < 20 && dy >= -20 && dy < 20;
+    } else if (use_ball) {
+        use_ball = actor->velocity_x >= -128 && actor->velocity_x < 128 &&
+                   actor->velocity_y >= -128 && actor->velocity_y < 128;
+    }
+    uint8_t requested = actor->movement_direction;
+    if (use_ball) {
+        uint8_t toward_ball = nba_gameplay_target_direction(
+            (int16_t)(fp_integer_word(tipoff->ball.x_fp) -
+                      fp_integer_word(actor->x_fp)),
+            (int16_t)(fp_integer_word(tipoff->ball.y_fp) -
+                      fp_integer_word(actor->y_fp)), NULL);
+        if (toward_ball != 8u) requested = toward_ball;
+    }
+    actor->requested_direction = requested;
+}
+
+bool nba_tipoff_replay_requested_direction(NbaTipoff *tipoff,
+                                           uint8_t actor) {
+    if (!tipoff || actor >= NBA_GAMEPLAY_ACTOR_COUNT) return false;
+    cpu_finalize_requested_direction(tipoff, actor);
+    return true;
 }
 
 /* `$85:AE35-$AE95`: during the left-baseline state-$82 inbound plays 6..9,
@@ -1530,12 +1570,10 @@ static void cpu_dispatch_normal_actor_behavior(NbaTipoff *tipoff,
     if (!((actor->control_mode >= 1u && actor->control_mode <= 6u) ||
           actor->control_mode == 11u)) return;
 
-    /* F79F-F7A7 bypass the ordinary reaction countdown during jump ball. */
-    if(tipoff->live_state_raw==0x81u) {
-        if(actor->controller_assignment_raw<0 && !actor->movement_boost_timer)
-            (void)nba_tipoff_jump_reach(tipoff,slot);
-        return;
-    }
+    /* Natural F1B0/F23F parent captures include the state-$81 lineup: the
+     * normal reaction timer and behavior continuation still run there.
+     * F79F's jump/reach branch is a later action decision, not a replacement
+     * for this parent dispatcher. */
 
     cpu_update_special_actor(tipoff, slot);
     if (actor->control_mode == 11u) {
@@ -1589,11 +1627,14 @@ static void cpu_dispatch_normal_actor_behavior(NbaTipoff *tipoff,
         nba_gameplay_loose_ball_pursuit_allowed(&pursuit);
     if (loose_pursuit && decision_due &&
         actor->recovery_inhibit_raw == 0u) {
-        cpu_predicted_ball_xy(tipoff, &actor->target_x, &actor->target_y);
+        int16_t pursuit_x = 0, pursuit_y = 0;
+        /* F176 loads the predicted ball words into DP scratch for B3AA; it
+         * does not overwrite the actor's persistent +$56/+$58 formation or
+         * defensive target. */
+        cpu_predicted_ball_xy(tipoff, &pursuit_x, &pursuit_y);
         direction = nba_gameplay_target_direction(
-            (int16_t)(actor->target_x - x),
-            (int16_t)(actor->target_y - y), NULL);
-        if (direction < 8u) actor->requested_direction = direction;
+            (int16_t)(pursuit_x - x),
+            (int16_t)(pursuit_y - y), NULL);
         apply_velocity_step = true;
     } else if (decision_due) {
         uint8_t mode = actor->control_mode;
@@ -1612,7 +1653,6 @@ static void cpu_dispatch_normal_actor_behavior(NbaTipoff *tipoff,
             apply_velocity_step = !stop_velocity;
         } else
             direction = actor->movement_direction;
-        if (direction < 8u) actor->requested_direction = direction;
     }
     if (stop_velocity) actor->velocity_x = actor->velocity_y = 0;
     uint8_t team = slot >= 5u ? tipoff->session->right_team :
@@ -1626,21 +1666,32 @@ static void cpu_dispatch_normal_actor_behavior(NbaTipoff *tipoff,
             &actor->movement_boost_timer, direction, profile_42, 2u,
             tipoff->live_state_raw == 0x81u || fp_round(actor->z_fp) != 0,
             (int16_t)tipoff->possession_actor);
-    actor->movement_magnitude_raw = actor_distance(
-        actor->velocity_x, actor->velocity_y);
-    uint8_t velocity_direction = nba_gameplay_target_direction(
-        actor->velocity_x, actor->velocity_y, NULL);
-    actor->velocity_direction_raw_a2 = velocity_direction;
-    if (velocity_direction < 8u) {
-        actor->movement_direction = velocity_direction;
-        actor->requested_direction = velocity_direction;
-    }
+    /* `$86:F236-$F23E/$86:F2C1-$F2C9`: a timer-hold pass restores the
+     * current movement direction (+$4E) from the requested direction (+$50).
+     * This happens even though no velocity decision ran. */
+    if (!decision_due)
+        actor->movement_direction = actor->requested_direction;
+    else if (loose_pursuit)
+        /* `$86:F22D-$F235`: accepted pursuit retains +$4E in +$50. */
+        actor->requested_direction = actor->movement_direction;
+    else
+        cpu_finalize_requested_direction(tipoff, slot);
+    /* F1B0/F23F install next-pass velocity but do not publish +$4C, +$4E
+     * or +$A2 from that velocity. The following `$85:963D` actor commit owns
+     * those derived fields. Doing it here made the visible facing and
+     * movement magnitude lead the ROM by one scheduled actor pass. */
     actor->action_state = tipoff->cpu_play_state;
     /* F780/F886: the normal defensive decision continuation. */
     if(decision_due && actor->controller_assignment_raw<0 &&
        (actor->control_mode==2 || actor->control_mode==4 || actor->control_mode==6) &&
        !actor->movement_boost_timer)
         (void)nba_tipoff_jump_reach(tipoff,slot);
+}
+
+bool nba_tipoff_replay_normal_actor(NbaTipoff *tipoff, uint8_t actor) {
+    if (!tipoff || actor >= NBA_GAMEPLAY_ACTOR_COUNT) return false;
+    cpu_dispatch_normal_actor_behavior(tipoff, actor);
+    return true;
 }
 
 /* Binding checks, not additional ROM witnesses: the independently replayed

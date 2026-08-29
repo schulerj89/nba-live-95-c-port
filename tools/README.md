@@ -514,6 +514,19 @@ the production dispatcher. The build gate also checks the exact Ghidra PC
 census; `test_cpu_gameplay.py` protects live boundary-event consumption and
 layout-1 inbound recovery.
 
+Defensive target-family capture uses `capture_defense_target_families.ps1`.
+Mode 6 enters at `$86:E9B3` and returns through the shared `$86:E82E`
+continuation; `normalize_defense_target_families.py` retains spread witnesses
+for each family and the build gate replays all target coordinates.
+
+Normal CPU actor parents use `normal_actor_parent_vector_probe.c` and
+`verify_normal_actor_parent_vectors.py` for `$86:F1B0-$F2C9`. The permanent
+fixture retains timer-hold and decision-due calls from both entry points.
+Nested formation/direction child writes are excluded only when the decision
+is due; the parents' own F236/F2C1 direction-copy paths remain compared.
+The nested `$86:E5AB-$E633` requested-direction finalizer has its own 300-call
+natural corpus and `requested-direction-witnesses.json` build gate.
+
 Jump/reach differential checkpoint: `mesen_jump_reach.lua` observes native
 EC32 entry, parent child-call sites and returns. `run_differential.py
 --capture-jump-reach` launches it; optional `--jump-cases` uses explicitly

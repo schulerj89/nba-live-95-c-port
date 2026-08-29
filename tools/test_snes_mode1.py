@@ -37,16 +37,17 @@ def main():
             summary = json.loads(next(stream))
             assert summary["type"] == "summary"
             assert summary["state_frame"] == 1000
-            # Re-reviewed after the exact $85:AD6B-$AF5B parent route moved
-            # crossing back roles through B3AA instead of the incorrect B402
-            # child. The corrected deterministic formation fully occludes BG1
-            # here. Pin every layer winner so later gameplay or PPU changes
-            # cannot silently trade pixels while satisfying positive checks.
-            assert summary["visible"]["bg1"] == 0
-            assert summary["visible"]["bg2"] == 46854
+            # Re-reviewed after the exact $86:F1B0-$F2C9 actor parents stopped
+            # publishing derived motion a pass early. That correction changes
+            # the deterministic camera/actor state at frame 1000, so refresh
+            # its layer census while retaining per-pixel rank, palette, and
+            # complete-accounting checks below. Pin every winner so later PPU
+            # changes cannot silently trade pixels while satisfying positives.
+            assert summary["visible"]["bg1"] == 2176
+            assert summary["visible"]["bg2"] == 38780
             assert summary["visible"]["bg3"] == 5641
-            assert summary["visible"]["obj"] == 1598
-            assert summary["visible"]["backdrop"] == 3251
+            assert summary["visible"]["obj"] == 2496
+            assert summary["visible"]["backdrop"] == 8251
             counts = {name: 0 for name in
                       ("BACKDROP", "BG1", "BG2", "BG3", "OBJ")}
             indexed = direct = rows = 0

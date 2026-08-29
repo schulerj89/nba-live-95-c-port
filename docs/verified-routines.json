@@ -1530,6 +1530,38 @@
       "date": "2026-08-29"
     },
     {
+      "range": "86E9B3-86E9E3",
+      "name": "mode-six paired-anchor defensive target selector",
+      "source": "src/nba_gameplay_ai.c + src/nba_tipoff.c",
+      "method": "natural native real-entry differential + shared-continuation proof",
+      "evidence": "200 natural $86:E9B3 calls return through the real shared $86:E7EA-$E82E continuation. Twenty spread witnesses in tests/fixtures/defense-target-family-witnesses.json reproduce target X/Y with zero mismatches. The capture correction proves the former EA03 exit assumption was invalid; production mode 6 uses the same paired anchor direction/distance table selected by the ROM.",
+      "date": "2026-08-29"
+    },
+    {
+      "range": "86F1B0-86F23E",
+      "name": "normal mode-one CPU actor continuation",
+      "source": "src/nba_tipoff.c + src/nba_gameplay_ai.c",
+      "method": "natural native parent-boundary differential + production endurance binding",
+      "evidence": "293 uninterrupted natural $86:F1B0 calls replay with zero parent-owned mismatches. tests/fixtures/normal-actor-parent-witnesses.json retains timer-hold and decision-due calls across the capture. The differential fixed state-$81 timer bypass, premature +$4C/+$4E publication, persistent-target corruption during loose pursuit, and the E5AB requested-direction cadence. Nested bank-$85 formation and E5AB direction writes are excluded only on decision-due calls and remain separate child boundaries; F236's parent-owned hold copy stays compared.",
+      "date": "2026-08-29"
+    },
+    {
+      "range": "86E5AB-86E633",
+      "name": "post-decision requested-direction finalizer",
+      "source": "src/nba_tipoff.c",
+      "method": "natural native real-entry differential + parent production binding",
+      "evidence": "300 uninterrupted natural $86:E5AB calls reproduce actor +$50 with zero mismatches across CPU target-box, human velocity, ball-facing and preserve-current branches. Thirty-two spread calls are permanent in tests/fixtures/requested-direction-witnesses.json and tools/verify_requested_direction_vectors.py. Both F1B0/F23F production parents call this helper only on the native rejected-pursuit continuation.",
+      "date": "2026-08-29"
+    },
+    {
+      "range": "86F23F-86F2C9",
+      "name": "normal mode-three CPU actor continuation",
+      "source": "src/nba_tipoff.c + src/nba_gameplay_ai.c",
+      "method": "natural native parent-boundary differential + production endurance binding",
+      "evidence": "286 uninterrupted natural $86:F23F calls replay with zero parent-owned mismatches. Permanent witnesses cover both F2C0 and F2C9 returns, timer hold/due cadence, loose-pursuit acceptance/rejection, formation fallback and velocity outputs. Child-owned due-decision +$4E/+$50 writes are normalized at their independently tested boundaries; the parent's own F2C1 hold copy remains exact.",
+      "date": "2026-08-29"
+    },
+    {
       "range": "86E7B3-86E7DB",
       "name": "weak-side absolute-X defensive target branch",
       "source": "src/nba_gameplay_ai.c + src/nba_tipoff.c",
