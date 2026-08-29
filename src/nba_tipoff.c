@@ -1805,6 +1805,54 @@ static bool actor_animation_resources(const NbaTipoff *tipoff,
         upper_resource, lower_resource);
 }
 
+static uint8_t actor_draw_direction(const NbaTipoff *tipoff,
+                                    unsigned actor_index) {
+    const NbaTipoffActor *actor = &tipoff->actors[actor_index];
+    NbaGameplayDrawDirection input = {
+        .current_direction = actor->direction,
+        .control_mode = actor->control_mode,
+        .actor_status = actor->actor_status_raw_28,
+        .upper_state = actor->animation_state,
+        .anchor_direction = actor->anchor_direction_raw
+    };
+    if (actor->control_mode == 15u && tipoff->pass_receiver_raw >= 0 &&
+        tipoff->pass_receiver_raw < NBA_GAMEPLAY_ACTOR_COUNT) {
+        const NbaTipoffActor *target =
+            &tipoff->actors[(unsigned)tipoff->pass_receiver_raw];
+        input.candidate_valid = true;
+        input.candidate_dx = (int16_t)(
+            fp_integer_word(target->x_fp) - fp_integer_word(actor->x_fp));
+        input.candidate_dy = (int16_t)(
+            fp_integer_word(target->y_fp) - fp_integer_word(actor->y_fp));
+    } else if (actor->control_mode == 10u ||
+               (actor->control_mode == 14u &&
+                tipoff->possession_actor == (int8_t)actor_index)) {
+        /* `$3EEB+$04/+$08` are the live ball integer words. */
+        input.candidate_valid = true;
+        input.candidate_dx = (int16_t)(
+            fp_integer_word(tipoff->ball.x_fp) - fp_integer_word(actor->x_fp));
+        input.candidate_dy = (int16_t)(
+            fp_integer_word(tipoff->ball.y_fp) - fp_integer_word(actor->y_fp));
+    }
+    /* The upper-state 20/21 branch feeds a stale DP-$AE word into F02D.
+     * It was not reached by the 2,000-call native CPU capture, so preserve
+     * movement facing until that bug-compatible producer has direct proof. */
+    NbaGameplayDrawPreparationInput preparation = {
+        .direction = input,
+        .status = actor->actor_status_raw_28,
+        .upper_resource = actor->upper_animation_resource_raw_2a,
+        .lower_resource = actor->lower_animation_resource_raw_2c,
+        .world_x = fp_integer_word(actor->x_fp),
+        .world_y = fp_integer_word(actor->y_fp),
+        .world_z = fp_integer_word(actor->z_fp),
+        .screen_x = tipoff->player_screen_x[actor_index],
+        .screen_y = tipoff->player_screen_y[actor_index]
+    };
+    NbaGameplayDrawPreparation output;
+    nba_gameplay_prepare_player_draw(&preparation, &output);
+    return output.direction;
+}
+
 static void ball_position_at_actor(NbaTipoff *tipoff, unsigned owner) {
     /* `$87:B649`, `$87:B66A`, `$87:B832`, `$87:B953`: resolve the current independent upper
      * and lower resources, then compose their ROM attachment tables. */
@@ -7794,6 +7842,8 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
         out->velocity_y = live ? state->velocity_y : 0;
         out->velocity_z = live ? state->velocity_z : 0;
         out->direction = live ? state->direction : formation[actor].direction;
+        out->draw_direction_raw = live ? actor_draw_direction(tipoff, actor) :
+                                  out->direction;
         out->animation_state = live ? state->animation_state :
             actor_animation(tipoff, actor);
         out->lower_animation_state = live ? state->lower_animation_state :
@@ -7815,16 +7865,26 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
             out->lower_resource_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
         }
         out->head_resource_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
-        if (live && out->upper_resource_raw != NBA_GAMEPLAY_UNKNOWN_WORD &&
-            out->lower_resource_raw != NBA_GAMEPLAY_UNKNOWN_WORD) {
+        uint16_t draw_upper_resource = 0u, draw_lower_resource = 0u;
+        if (live && actor_animation_resources(tipoff, state,
+                (uint8_t)out->draw_direction_raw,
+                &draw_upper_resource, &draw_lower_resource)) {
+            out->draw_upper_resource_raw = draw_upper_resource;
+            out->draw_lower_resource_raw = draw_lower_resource;
+        } else {
+            out->draw_upper_resource_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
+            out->draw_lower_resource_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
+        }
+        if (live && out->draw_upper_resource_raw != NBA_GAMEPLAY_UNKNOWN_WORD &&
+            out->draw_lower_resource_raw != NBA_GAMEPLAY_UNKNOWN_WORD) {
             uint8_t team_side = actor >= 5u;
             uint8_t team = team_side ? tipoff->session->right_team :
                                        tipoff->session->left_team;
             NbaPlayerSpriteDiagnostics appearance = {0};
             bool appearance_valid = nba_player_sprite_diagnose_resources(
                 tipoff->assets, team, state->roster_slot, team_side,
-                state->direction, out->upper_resource_raw,
-                out->lower_resource_raw, &appearance);
+                (uint8_t)out->draw_direction_raw, out->draw_upper_resource_raw,
+                out->draw_lower_resource_raw, &appearance);
             out->head_resource_raw = appearance.head_resource;
             out->appearance_resource_raw[0] = appearance.lower_resource;
             out->appearance_resource_raw[1] = appearance.upper_resource;
@@ -7977,7 +8037,7 @@ void nba_tipoff_render(const NbaTipoff *tipoff, NbaRenderer *ren) {
                                    tipoff->session->left_team;
         uint8_t state=tipoff->actors[actor].animation_state;
         int jump=0; /* screen_y already contains actual actor Z. */
-        uint8_t direction=tipoff->actors[actor].direction;
+        uint8_t direction=actor_draw_direction(tipoff, actor);
         uint8_t lower_state=tipoff->actors[actor].lower_animation_state;
         uint32_t upper_tick=tipoff->actors[actor].upper_animation_tick;
         uint32_t lower_tick=tipoff->actors[actor].lower_animation_tick;

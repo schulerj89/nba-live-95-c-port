@@ -386,9 +386,11 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
                 "\"ai_routine\":%u,\"raw\":{\"base\":%u,\"id\":%u,"
                 "\"action\":%u,\"flags\":%u,\"upper_resource\":%u,"
                 "\"lower_resource\":%u,\"head_resource\":%u,"
+                "\"draw_upper_resource\":%u,\"draw_lower_resource\":%u,"
                 "\"motion_38\":%u,\"motion_3a\":%u,\"motion_3c\":%u,"
                 "\"direction_4e\":%u,\"direction_50\":%u,"
-                "\"direction_52\":%u,\"target_x_56\":%d,"
+                "\"direction_52\":%u,\"draw_direction\":%u,"
+                "\"target_x_56\":%d,"
                 "\"target_y_58\":%d,\"control_mode\":%u,"
                 "\"mode_saved_62\":%u,\"pass_band_62\":%u,"
                 "\"pass_direction_66\":%u,"
@@ -429,9 +431,11 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
                 a->ai_target_actor, a->actor_routine, a->ai_routine,
                 a->actor_base, a->id_raw, a->action_raw, a->flags_raw,
                 a->upper_resource_raw, a->lower_resource_raw,
-                a->head_resource_raw, a->motion_38_raw, a->motion_3a_raw,
+                a->head_resource_raw, a->draw_upper_resource_raw,
+                a->draw_lower_resource_raw, a->motion_38_raw, a->motion_3a_raw,
                 a->motion_3c_raw, a->direction_4e_raw, a->direction_50_raw,
-                a->direction_52_raw, a->target_x_56_raw, a->target_y_58_raw,
+                a->direction_52_raw, a->draw_direction_raw,
+                a->target_x_56_raw, a->target_y_58_raw,
                 a->control_mode_raw, a->mode_saved_62_raw,
                 a->pass_band_62_raw, a->pass_direction_66_raw,
                 a->control_mode_saved_raw, a->saved_mode_84_raw,

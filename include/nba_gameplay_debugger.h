@@ -39,6 +39,8 @@ typedef struct {
     uint16_t flags_raw;
     uint16_t upper_resource_raw;
     uint16_t lower_resource_raw;
+    uint16_t draw_upper_resource_raw;
+    uint16_t draw_lower_resource_raw;
     uint16_t head_resource_raw;
     uint16_t appearance_resource_raw[4]; /* lower, upper, head, number */
     uint32_t appearance_opaque_pixels[4];
@@ -49,6 +51,7 @@ typedef struct {
     uint16_t direction_4e_raw;
     uint16_t direction_50_raw;
     uint16_t direction_52_raw;
+    uint16_t draw_direction_raw;
     int16_t target_x_56_raw;
     int16_t target_y_58_raw;
     uint16_t control_mode_raw;

@@ -141,8 +141,15 @@ def main():
             raise AssertionError(
                 "player OAM origins shake between native presentation passes: "
                 f"{presentation_reversals[:12]}")
+        draw_direction_changes = []
         for row in rows:
             for actor in row["actors"]:
+                draw_direction = actor["raw"]["draw_direction"]
+                if draw_direction != actor["raw"]["direction_52"]:
+                    draw_direction_changes.append(
+                        (row["frame"], actor["id"],
+                         actor["raw"]["control_mode"],
+                         actor["raw"]["direction_52"], draw_direction))
                 appearance = actor.get("appearance")
                 if not appearance or not appearance["flags"] & 0x80:
                     raise AssertionError(
@@ -150,8 +157,8 @@ def main():
                         f"from the asset pack: frame={row['frame']} actor={actor['id']} "
                         f"appearance={appearance}")
                 if appearance["resources"][0:2] != [
-                        actor["raw"]["lower_resource"],
-                        actor["raw"]["upper_resource"]]:
+                        actor["raw"]["draw_lower_resource"],
+                        actor["raw"]["draw_upper_resource"]]:
                     raise AssertionError(
                         "appearance diagnostic did not inspect the rendered resources")
                 if not all(appearance["opaque_pixels"][:3]):
@@ -162,6 +169,10 @@ def main():
                 if appearance["flags"] & 0x04 and not appearance["opaque_pixels"][3]:
                     raise AssertionError(
                         "visible jersey-number overlay has no packed ROM pixels")
+        if not draw_direction_changes or not any(
+                mode in (10, 15) for _, _, mode, _, _ in draw_direction_changes):
+            raise AssertionError(
+                "$87:A52C-$A5FA target-facing draw selector was not runtime-bound")
         verify_shot_state_trace(rows)
         initial_fouls = {
             "event_raw": 0, "shooting_raw": 0,

@@ -79,6 +79,7 @@ host-side outcome without pretending the C port executes SNES DMA machinery.
 | Player projection/culling core | 50 | 8,552 (30.65%) | Native signed-coordinate witnesses, exact CPU/human visibility boundaries, retained OAM cadence and 16,000-update runtime binding |
 | Sprite-part compositor | 116 | 8,668 (31.07%) | All 32 native opening resource/origin/order calls plus 5,568 team/roster/direction/side cases; fixed direction-dependent torso/number priority |
 | CPU inbound motion core | 89 | 8,757 (31.39%) | 500 natural native calls; all 111 non-arrival motion calls retained and replayed with zero mismatches; fixed duplicate integration, integer-word gates, close-range damping and negative /16 bias |
+| Player draw preparation / target-facing selector | 128 | 8,885 (31.84%) | 2,000 natural native compositor-input calls, all ten actors, 175 resource pairs, five modes and 30 movement/draw direction differences; zero mismatches; renderer now preserves presentation-facing separately from physics-facing |
 
 ### Route from checkpoint 2 to 35%
 

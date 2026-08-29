@@ -1288,6 +1288,70 @@
       "method": "natural native entry/exit differential + runtime binding",
       "evidence": "tests/fixtures/inbound-motion-witnesses.json; tools/normalize_inbound_continuation.py; tools/verify_inbound_motion_vectors.py; tools/inbound_motion_vector_probe.c. 500 natural native calls at $86:F43A with zero orphan exits; all111 non-arrival motion calls retained, covering three acceleration profiles and both signs of velocity. Exact next-pass X/Y velocity and direction agree with zero mismatches (104 nonnegative and118 negative components). Production helper is called by live CPU flow; 63,800-frame regression covers both teams, scores, installed inbound carrier, arrival/pass transfer and resumed play. Corrected duplicate host integration, signed integer-word arrival/side gates, distance<=8 damping and native negative /16 bias. Credit stops before $86:F4F2; arrival/timer/selector/launch remain pending. docs/inbound-motion-differential.md.",
       "date": "2026-08-29"
+    },
+    {
+      "range": "87A47A-87A487",
+      "name": "ordinary player draw record selection",
+      "source": "src/nba_gameplay_ai.c + src/nba_tipoff.c",
+      "method": "natural native compositor-input replay + runtime binding",
+      "evidence": "tests/fixtures/draw-preparation-witnesses.json; tools/verify_draw_preparation_vectors.py. 2000 natural ROM calls, all10 actors,175 resource pairs, both priority bands; zero mismatches. docs/player-draw-preparation-differential.md.",
+      "date": "2026-08-29"
+    },
+    {
+      "range": "87A52C-87A532",
+      "name": "player draw mode dispatch prefix",
+      "source": "src/nba_gameplay_ai.c + src/nba_tipoff.c",
+      "method": "natural native selector replay + runtime binding",
+      "evidence": "tests/fixtures/draw-direction-witnesses.json; tools/verify_draw_direction_vectors.py. 2000 calls, five natural modes,65 target candidates,30 changed presentation facings, zero mismatches. docs/player-draw-preparation-differential.md.",
+      "date": "2026-08-29"
+    },
+    {
+      "range": "87A558-87A583",
+      "name": "player target-facing source selection",
+      "source": "src/nba_gameplay_ai.c + src/nba_tipoff.c",
+      "method": "natural native selector replay + runtime binding",
+      "evidence": "tests/fixtures/draw-direction-witnesses.json; tools/verify_draw_direction_vectors.py. Natural mode15 raw-$0946 and mode10 ball candidates retained; zero mismatches. docs/player-draw-preparation-differential.md.",
+      "date": "2026-08-29"
+    },
+    {
+      "range": "87A58F-87A59A",
+      "name": "player target-facing state fallback",
+      "source": "src/nba_gameplay_ai.c + src/nba_tipoff.c",
+      "method": "natural native selector replay + runtime binding",
+      "evidence": "tests/fixtures/draw-direction-witnesses.json; ordinary fallback exits replay exactly; state20/21 body at A59C-A5A2 excluded. docs/player-draw-preparation-differential.md.",
+      "date": "2026-08-29"
+    },
+    {
+      "range": "87A5A4-87A5FA",
+      "name": "player target direction and two-step easing",
+      "source": "src/nba_gameplay_ai.c + src/nba_tipoff.c",
+      "method": "natural native selector replay + runtime binding",
+      "evidence": "tests/fixtures/draw-direction-witnesses.json;65 F02D candidate calls and30 changed presentation facings; zero mismatches. docs/player-draw-preparation-differential.md.",
+      "date": "2026-08-29"
+    },
+    {
+      "range": "87A5FB-87A65D",
+      "name": "player mirror, head, priority and attribute preparation",
+      "source": "src/nba_gameplay_ai.c + src/nba_tipoff.c",
+      "method": "natural native compositor-input replay + runtime binding",
+      "evidence": "tests/fixtures/draw-preparation-witnesses.json;2000 zero-mismatch status/head/priority/resource/origin outputs, all directions and both priorities. docs/player-draw-preparation-differential.md.",
+      "date": "2026-08-29"
+    },
+    {
+      "range": "87A673-87A677",
+      "name": "player prepared origin load",
+      "source": "src/nba_gameplay_ai.c + src/nba_tipoff.c",
+      "method": "natural native compositor-input replay + runtime binding",
+      "evidence": "tests/fixtures/draw-preparation-witnesses.json;2000 exact submitted X/Y pairs across all ten actors. docs/player-draw-preparation-differential.md.",
+      "date": "2026-08-29"
+    },
+    {
+      "range": "87A69F-87A6A8",
+      "name": "ordinary player compositor submission",
+      "source": "src/nba_gameplay_ai.c + src/nba_tipoff.c",
+      "method": "natural native compositor-input replay + runtime binding",
+      "evidence": "tests/fixtures/draw-preparation-witnesses.json plus sprite_compositor_probe;2000 exact preparation calls and5568 exhaustive packed compositions. Selected-human A67E-A69D excluded. docs/player-draw-preparation-differential.md.",
+      "date": "2026-08-29"
     }
   ]
 }

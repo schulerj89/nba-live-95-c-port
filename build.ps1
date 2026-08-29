@@ -207,6 +207,16 @@ if ($Test) {
         --vectors (Join-Path $Root 'tests\fixtures\inbound-motion-witnesses.json') `
         --probe (Join-Path $BuildDir 'inbound_motion_vector_probe.exe')
     if ($LASTEXITCODE -ne 0) { throw 'Inbound continuation ROM witness regression failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name draw_direction_vector_probe
+    & python (Join-Path $Root 'tools\verify_draw_direction_vectors.py') `
+        --vectors (Join-Path $Root 'tests\fixtures\draw-direction-witnesses.json') `
+        --probe (Join-Path $BuildDir 'draw_direction_vector_probe.exe')
+    if ($LASTEXITCODE -ne 0) { throw 'Player draw-direction ROM witness regression failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name draw_preparation_vector_probe
+    & python (Join-Path $Root 'tools\verify_draw_preparation_vectors.py') `
+        --vectors (Join-Path $Root 'tests\fixtures\draw-preparation-witnesses.json') `
+        --probe (Join-Path $BuildDir 'draw_preparation_vector_probe.exe')
+    if ($LASTEXITCODE -ne 0) { throw 'Player draw-preparation ROM witness regression failed.' }
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name owner_pose_runtime_probe
     & (Join-Path $BuildDir 'owner_pose_runtime_probe.exe') $AssetPack
     if ($LASTEXITCODE -ne 0) { throw 'Owner pose/natural-special runtime regression failed.' }

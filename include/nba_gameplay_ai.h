@@ -56,6 +56,31 @@ typedef struct {
     uint8_t direction;
 } NbaGameplayInboundMotion;
 
+typedef struct {
+    uint8_t current_direction;
+    uint8_t control_mode;
+    uint16_t actor_status;
+    uint16_t upper_state;
+    uint16_t anchor_direction;
+    bool candidate_valid;
+    int16_t candidate_dx, candidate_dy;
+} NbaGameplayDrawDirection;
+
+typedef struct {
+    NbaGameplayDrawDirection direction;
+    uint16_t status, upper_resource, lower_resource;
+    int16_t world_x, world_y, world_z;
+    int16_t screen_x, screen_y;
+    uint16_t head_base, palette_offset;
+} NbaGameplayDrawPreparationInput;
+
+typedef struct {
+    uint8_t direction;
+    uint16_t status, upper_resource, lower_resource, head_resource;
+    uint16_t attribute;
+    int16_t x, y;
+} NbaGameplayDrawPreparation;
+
 /* Portable boundary for `$86:E39A-$E3CA` and its wider
  * `$86:E3E1-$E4A6` defensive pose caller. Values retain their native actor
  * record meaning instead of being inferred from rendered sprites. */
@@ -259,6 +284,12 @@ bool nba_gameplay_inbound_arrived(int16_t actor_x, int16_t actor_y,
                                   int16_t target_x, int16_t target_y);
 bool nba_gameplay_inbound_pass_due(uint16_t timer, uint16_t random_word);
 void nba_gameplay_inbound_motion_step(NbaGameplayInboundMotion *motion);
+/* `$87:A52C-$A5FA`: presentation-only facing selector. It deliberately does
+ * not mutate the actor's movement direction. */
+uint8_t nba_gameplay_draw_direction(const NbaGameplayDrawDirection *input);
+void nba_gameplay_prepare_player_draw(
+    const NbaGameplayDrawPreparationInput *input,
+    NbaGameplayDrawPreparation *output);
 void nba_gameplay_velocity_step(int16_t *velocity_x, int16_t *velocity_y,
                                 uint16_t *boost_timer, uint8_t direction,
                                 uint8_t profile_42, uint16_t dispatch_dt,

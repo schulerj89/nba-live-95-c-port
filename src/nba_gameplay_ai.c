@@ -563,6 +563,54 @@ void nba_gameplay_inbound_motion_step(NbaGameplayInboundMotion *motion) {
         motion->movement_blocked, motion->owner_actor_raw_093e);
 }
 
+uint8_t nba_gameplay_draw_direction(const NbaGameplayDrawDirection *input) {
+    if (!input) return 0u;
+    uint8_t current = input->current_direction & 7u;
+    /* `$87:A52F-$A555`: mode 8's two status bits rotate the visible pose by
+     * one step without changing actor +$52. */
+    if (input->control_mode == 8u) {
+        if (input->actor_status & 0x0008u) return (uint8_t)((current - 1u) & 7u);
+        if (input->actor_status & 0x0010u) return (uint8_t)((current + 1u) & 7u);
+        return current;
+    }
+    if (!input->candidate_valid) return current;
+
+    uint16_t distance = 0u;
+    uint8_t candidate = nba_gameplay_target_direction(
+        input->candidate_dx, input->candidate_dy, &distance);
+    if (candidate >= 8u) return current;
+    /* `$87:A5C1-$A5F5`: large quarter-turn differences are eased by two
+     * directions; adjacent and wrap-adjacent targets adopt immediately. */
+    int16_t delta = (int16_t)candidate - (int16_t)current;
+    uint16_t magnitude = (uint16_t)(delta < 0 ? -delta : delta);
+    if (magnitude < 3u || magnitude >= 6u) return candidate;
+    return (uint8_t)(((delta & 7) == 5 ? current - 2u : current + 2u) & 7u);
+}
+
+void nba_gameplay_prepare_player_draw(
+        const NbaGameplayDrawPreparationInput *input,
+        NbaGameplayDrawPreparation *output) {
+    static const int16_t head_offset[8] = {3, 2, 1, 0, 1, 2, 3, 4};
+    if (!output) return;
+    NbaGameplayDrawPreparation next = {0};
+    if (!input) { *output = next; return; }
+    next.direction = nba_gameplay_draw_direction(&input->direction);
+    next.status = (uint16_t)(input->status & 0xFFFBu);
+    if (next.direction < 3u) next.status |= 0x0004u;
+    next.upper_resource = input->upper_resource;
+    next.lower_resource = input->lower_resource;
+    next.head_resource = (uint16_t)(input->head_base +
+        head_offset[next.direction]);
+    uint16_t priority = 0x3000u;
+    if (input->world_x < 0 ||
+        (input->world_x >= 346 && (int16_t)(input->world_y + 8) < 0))
+        priority = 0x2000u;
+    next.attribute = (uint16_t)(input->palette_offset + priority);
+    next.x = input->screen_x;
+    next.y = (int16_t)(input->screen_y - input->world_z);
+    *output = next;
+}
+
 void nba_gameplay_rng_seed(NbaGameplayRng *rng, uint16_t seed) {
     rng->state = seed;
 }
