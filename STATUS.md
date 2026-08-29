@@ -16,9 +16,9 @@ Current measured coverage:
 
 | metric | captured address positions | % of captured addresses |
 |---|---:|---:|
-| observed executed code | 27,901 | 100.0% |
-| documented by ROM-address provenance | 27,901 | 100.0% |
-| verified against ROM/recomp/Ghidra ground truth | 27,901 | 100.0% |
+| observed executed code | 28,643 | 100.0% |
+| documented by ROM-address provenance | 28,643 | 100.0% |
+| verified against ROM/recomp/Ghidra ground truth | 28,643 | 100.0% |
 
 These values are generated, not estimated. The detailed per-bank report is
 `docs/progress.md`; the authoritative verified list and evidence paths are in
@@ -56,8 +56,11 @@ Latest bounded work: `docs/gameplay-100-percent-plan.md`. A fresh headless
 Ghidra closure classified the final 4,064 retained positions across Banks
 `$00/$80-$84`; recomp cross-checks were used for Banks `$00/$80-$82` and the
 indirect/table-owned Banks `$83/$84` remain Ghidra/native-grounded. The exact
-closure gate reports 27,901 executed, 27,901 verified and zero pending.
-`tools/progress.py` independently reports all 27,901 positions documented.
+closure gate originally reported 27,901 executed and verified positions. The
+gameplay-audio variant sweeps subsequently expanded the retained local capture
+union by 742 positions; the current recount reports **28,643 executed, 28,643
+verified and zero pending**. `tools/progress.py` independently reports all
+28,643 positions documented.
 
 The permanent `gameplay100_closure_probe` traverses Rules and Options with
 real commits and all four page transitions, Team Select, Player Setup,
@@ -84,8 +87,10 @@ ledger.
   all128KiB exit RAM. Runtime initialization now uses native VZ600, object
   bookkeeping and sentinel writes. Default whole-game baseline differences
   fell82->81; this is not a passing trajectory comparison. The later toss and
-  jump/reach path is now native-state driven. Bounded core remaining:332 plus
-  optional19.
+  jump/reach path is now native-state driven. The former 332-core/19-human
+  backlog is obsolete: the defensive and inbound slices were subsequently
+  translated, bound, and entered in the verified ledger. Far EAA8 paths and
+  wider configured-start trajectory equality remain separate caveats.
 
 - Tip-flow checkpoints: `docs/tipoff-flow-plan.md`. Contact geometry now drives
   the first hit instead of frame200. 340 native/controlled calls replay with
@@ -97,9 +102,8 @@ ledger.
   output mismatches. The wrapper proof fixes0942's ball-source identity10 and
   restores its previously excluded ledger range. Initial toss/jump now uses
   the ROM countdown, EC32 launch and CF38 receiver reach; see
-  `docs/gameplay-pending.md` for the current bounded CPU/gameplay census
-  (332 remaining after the correction above),
-  19 optional human instructions, and uncounted areas.
+  `docs/gameplay-pending.md` for the corrected zero-remainder bounded census
+  and the still-uncensused whole-game areas.
 
 - Camera correction/callers: the remaining **99 instruction starts** now
   pass native replay: 62,243 calls across core/init/resolver/copy/cadence,
@@ -138,9 +142,9 @@ ledger.
   Three additional native contact calls confirm coarse F02D facing; using
   the fine pass quantizer had produced facing13 and stale attachment errors.
   There are 294 durable witnesses and runtime bindings/endurance guards.
-  Idle cadence is integrated, but its **upstream defensive pose selector**
-  E39A/E3E1 is not: the unforced C runs do not naturally select state7 yet.
-  No full-game trajectory/frequency parity is claimed.
+  Idle cadence and its upstream defensive selectors `$86:E39A/$E3E1` are
+  integrated and independently replayed. This proves the selected branches,
+  not full-game state-frequency or trajectory parity.
   Evidence, precise remaining boundaries and visuals: `docs/owner-flow-plan.md`.
 
 - Held-ball states 13/18 and the latched owner pose branch are complete:
@@ -156,7 +160,9 @@ ledger.
   now guarded by two 200,000-frame matchups. With the event-driven tip flow,
   Chicago/Orlando selects/releases a special at76,883/76,910; the reverse
   matchup reaches no special in200,000 frames. Both reach states13/18 but
-  neither naturally selects state7. This supersedes earlier trajectories.
+  neither naturally selected state7 in those historical runs. The later
+  defensive-selector checkpoint supersedes the old missing-caller statement;
+  natural frequency parity is still not claimed.
   Detailed evidence, remaining boundaries and visual proof:
   `docs/owner-pose-animation-plan.md`.
 
@@ -472,8 +478,9 @@ See `tools/README.md` for capture, replay, Ghidra, and regression commands.
   selected-state traces. No full snapshot/configuration import or passing
   trajectory-equivalence claim exists. Align starting context and update order
   before interpreting later movement divergence. Per-routine replay coverage
-  is 28.05%; the independently verified30-instruction initializer and239-start
-  jump/reach parent add credit. The whole-game baseline still does not pass.
+  no single percentage is assigned to this full-WRAM experiment. The bounded
+  initializer, jump/reach, defensive and inbound families now have independent
+  replay proof, while the whole-game baseline still does not pass.
 - Camera: the additional 99 correction/caller instructions are complete.
   Upstream camera/control selector ownership and wider configured-start
   trajectories remain separate; raw camera
@@ -490,28 +497,25 @@ See `tools/README.md` for capture, replay, Ghidra, and regression commands.
   tip handoff has been removed. The
   verified clock-writer semantics do not certify all clock setup/callers.
   Human controls remain out of scope.
-- The command helpers and common queued completion now have live replay
-  proof, but generic shot/contact callers still use compatibility
-  setters; do not replace all of them blindly. Ordinary mode-15 adoption is
-  done, but inbound stays on the compatibility path: adopting its changed
-  release/hand geometry exposed a >2,400-frame dead-ball stall in endurance
-  testing. Keep that regression guard; trace the inbound continuation next.
-- Upper mode-2 states 7/13/18 have verified, adopted cadence. Natural state7
-  selection still needs the defensive `$86:E39A/$E3E1` pose callers; do not
-  invent a random idle-selection rule. Ordinary dribble/contact physics
-  still uses legacy tick-derived phases; exact rendering alone is not proof
-  that those gates are ROM-identical.
-- Latched/unlatched owner posing and the ordinary `$86:F34F-$F439` caller
-  are verified/adopted. The `$F43A` inbound continuation and defensive pose
-  callers remain distinct work; verified bodies do not certify the entire
-  dispatcher or full-game trajectories. See `docs/owner-flow-plan.md`.
+- Command helpers, common queued completion, ordinary mode-15 passes, and the
+  complete `$86:F43A-$F668` inbound continuation now have native replay and
+  runtime endurance proof. Generic shot/contact callers still contain
+  compatibility setters; replace them only behind focused witnesses.
+- Upper mode-2 states 7/13/18 and defensive `$86:E39A/$E3E1` selection have
+  verified, adopted cadence. Ordinary dribble/contact consumers still require
+  wider branch/frequency comparison; exact rendering alone is not proof that
+  every upstream gate is ROM-identical.
+- Latched/unlatched owner posing, `$86:F34F-$F439`, and the inbound continuation
+  are verified/adopted. Remaining work is configured-start trajectory parity,
+  generic caller adoption, and full match orchestration—not the obsolete 252-
+  instruction inbound table. See `docs/owner-flow-plan.md` and
+  `docs/dead-ball-inbound-closure-differential.md`.
 - Continue converting small post-tip CPU decision/animation slices from the
   recomp and Ghidra, re-verifying after each increment.
-- Expand ball physics, scoring, and CPU decisions beyond the early-gameplay
-  paths currently exercised; keep fouls scaffolded until their native branches
-  are captured and verified.
-- Add full-session execution coverage so title and menu code participate in
-  the denominator.
+- Expand complete-match orchestration: periods, timeouts, substitutions,
+  end-of-game, statistics and remaining foul/rule callers.
+- Add user-controlled offense/defense and unsupported Season, Playoffs, Load
+  Series and postgame flows to the capture denominator.
 - Use `docs/progress.md` to select larger undocumented regions only when they
   advance the active gameplay path; raw byte count alone is not priority.
 

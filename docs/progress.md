@@ -8,9 +8,9 @@ Counts address positions in the captured exec intervals. Some captures record in
 
 | metric | address positions | % of captured |
 |---|---|---|
-| executed (denominator) | 27901 | 100.0% |
-| documented by port provenance | 27901 | 100.0% |
-| verified against ground truth | 27901 | 100.0% |
+| executed (denominator) | 28643 | 100.0% |
+| documented by port provenance | 28643 | 100.0% |
+| verified against ground truth | 28643 | 100.0% |
 
 ## Per bank
 
@@ -18,13 +18,13 @@ Counts address positions in the captured exec intervals. Some captures record in
 |---|---|---|---|
 | $00 | 30 | 30 | 100.0% |
 | $80 | 7517 | 7517 | 100.0% |
-| $81 | 2589 | 2589 | 100.0% |
-| $82 | 1937 | 1937 | 100.0% |
-| $83 | 1043 | 1043 | 100.0% |
+| $81 | 2602 | 2602 | 100.0% |
+| $82 | 1988 | 1988 | 100.0% |
+| $83 | 1053 | 1053 | 100.0% |
 | $84 | 195 | 195 | 100.0% |
-| $85 | 5095 | 5095 | 100.0% |
-| $86 | 6114 | 6114 | 100.0% |
-| $87 | 3381 | 3381 | 100.0% |
+| $85 | 5345 | 5345 | 100.0% |
+| $86 | 6510 | 6510 | 100.0% |
+| $87 | 3403 | 3403 | 100.0% |
 
 ## Functions
 
