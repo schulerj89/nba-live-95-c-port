@@ -135,6 +135,9 @@ if ($Test) {
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name sprite_compositor_probe
     & (Join-Path $BuildDir 'sprite_compositor_probe.exe') $AssetPack
     if ($LASTEXITCODE -ne 0) { throw 'Sprite compositor native replay failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name animation_render_closure_probe
+    & (Join-Path $BuildDir 'animation_render_closure_probe.exe') $AssetPack
+    if ($LASTEXITCODE -ne 0) { throw 'Animation render closure failed.' }
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name jersey_number_vector_probe
     & python (Join-Path $Root 'tools\verify_jersey_number_vectors.py') --normalized `
         --vectors (Join-Path $Root 'tests\fixtures\jersey-number-witnesses.json') `

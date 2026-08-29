@@ -8578,11 +8578,19 @@ void nba_tipoff_render(const NbaTipoff *tipoff, NbaRenderer *ren) {
         uint32_t upper_tick=tipoff->actors[actor].upper_animation_tick;
         uint32_t lower_tick=tipoff->actors[actor].lower_animation_tick;
         nba_renderer_clear(&object_plane, 0u);
-        if (tipoff->actors[actor].animation_resources_valid) {
+        uint16_t draw_upper_resource = 0u;
+        uint16_t draw_lower_resource = 0u;
+        /* `$87:A52C-$A5FA` may choose a presentation direction distinct
+         * from actor +$4E for receivers/passers. Resolve the body resources
+         * through the same direction-aware boundary used by telemetry and
+         * ball-point diagnostics. Drawing cached +$2A/+$2C unconditionally
+         * mixed movement-facing torso/legs with presentation-facing head,
+         * jersey number and flip state. */
+        if (actor_animation_resources(tipoff, &tipoff->actors[actor], direction,
+                &draw_upper_resource, &draw_lower_resource)) {
             nba_player_sprite_render_resources(
                 &object_plane, tipoff->assets, team, slot, uniform_side, direction,
-                tipoff->actors[actor].upper_animation_resource_raw_2a,
-                tipoff->actors[actor].lower_animation_resource_raw_2c,
+                draw_upper_resource, draw_lower_resource,
                 screen_x[actor], screen_y[actor] - jump, 1);
         } else {
             nba_player_sprite_render_split(&object_plane, tipoff->assets, team, slot,

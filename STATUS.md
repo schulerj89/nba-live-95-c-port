@@ -55,6 +55,14 @@ OAM index and ARGB result. Predecoded panorama/player pixels are explicitly
 marked palette/color 255, so the trace exposes rather than hides remaining
 direct-color inputs. `tools/test_snes_mode1.py` locks the CLI contract.
 
+Gameplay player rendering now resolves cached action art through the same
+`$87:A52C-$A5FA` presentation-direction boundary used by telemetry. This fixes
+receiver/passer frames that could combine movement-facing torso/legs with a
+presentation-facing head, jersey number and flip. The descriptor-wide closure
+test covers 52 upper states, both sets of 39 lower states, 2,610 resource pairs
+and every direction/appearance variant; see
+`docs/gameplay-sprite-animation-closure.md`.
+
 ## Verified gameplay checkpoint
 
 Latest bounded work: `docs/gameplay-100-percent-plan.md`. A fresh headless

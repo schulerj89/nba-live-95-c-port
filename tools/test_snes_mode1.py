@@ -43,10 +43,13 @@ def main():
             # its layer census while retaining per-pixel rank, palette, and
             # complete-accounting checks below. Pin every winner so later PPU
             # changes cannot silently trade pixels while satisfying positives.
+            # Re-reviewed after `$87:A52C-$A5FA` presentation direction was
+            # applied to cached action body resources in the renderer. Two
+            # opaque player pixels correctly replace BG2 at this frame.
             assert summary["visible"]["bg1"] == 2176
-            assert summary["visible"]["bg2"] == 38780
+            assert summary["visible"]["bg2"] == 38778
             assert summary["visible"]["bg3"] == 5641
-            assert summary["visible"]["obj"] == 2496
+            assert summary["visible"]["obj"] == 2498
             assert summary["visible"]["backdrop"] == 8251
             counts = {name: 0 for name in
                       ("BACKDROP", "BG1", "BG2", "BG3", "OBJ")}

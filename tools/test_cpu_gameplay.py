@@ -75,13 +75,17 @@ EXPECTED_RGB = {
     # boundary-dead-ball parent ordering. The corrected boundary possession
     # changes the deterministic path after frame 600. These four anchors show
     # ten complete actors, the ball, both baskets/court bounds and a clear HUD.
-    1300: "3a57e7b59d53828d25510ee3ec13c7e1b278c0160353bd075e8204f20fa20a0d",
+    # Re-reviewed after the live renderer stopped bypassing the verified
+    # `$87:A52C-$A5FA` draw-direction resolver for cached action resources.
+    # Torso/legs now face the same presentation direction as head, number and
+    # flip state on receiver/passer frames; gameplay state is unchanged.
+    1300: "a010e23c83e753a6a2fb9870c16763f4528e059d34abdb24cb98ac0c8dad53c7",
     3480: "c7ab789a83e0892192a7d8db57307892c8a171ee55450cea79a42fa079007989",
     # Reviewed after the native `$85:BB5A->$85:BBAE` one-way help assignment
     # replaced the former symmetric port behavior. The exact ROM-call corpus
     # and matchup runtime probe independently protect the semantic change.
     6932: "2f5328f314fe7b6733e9da5f28bc23a69179a686c1d02380b91744ec387ad3ae",
-    6954: "31b1cc98cfcd57550cccfe8cbacca3ca244fa5f8ab2b109864b44f740aabded5",
+    6954: "0ed0cbc935433564b395ead0f9da12a7d2e517d4b9d4ef8b52ae3e886966022f",
 }
 
 

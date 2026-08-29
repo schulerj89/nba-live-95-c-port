@@ -150,22 +150,28 @@ int main(int argc, char **argv) {
     if (!nba_assets_load(&assets, argv[1])) return 3;
     const uint8_t teams[][2] = {{0,18}, {18,3}, {26,8}};
     const uint16_t seeds[] = {0x1357u, 0x4A91u, 0xBEEFu};
+    /* Re-reviewed after `$87:A52C-$A5FA` presentation direction was applied
+     * to cached action torso/leg resources. State, camera, ownership, pass,
+     * shot, score and resource-change counts are unchanged; only sampled
+     * framebuffer hashes within this combined state/render digest changed. */
     const uint64_t expected[] = {
-        0x25b4fad816f799e2ull,
-        0x64e96715c48d43c6ull,
-        0x6567509133f0142cull
+        0x7b53a130c7eb1a3dull,
+        0x18d3f0f1d213ad9dull,
+        0x55d98da897814491ull
     };
     ScenarioResult total = {0};
     int code = 0;
+    int digest_code = 0;
     for (unsigned scenario = 0; scenario < 3u; ++scenario) {
         ScenarioResult result;
         code = run_scenario(&assets, teams[scenario][0], teams[scenario][1],
                             seeds[scenario], 16000u, &result);
         if (code != 0) break;
-        if (result.digest != expected[scenario]) { code = 14; break; }
-        printf("GAMEPLAY85 scenario=%u teams=%u/%u digest=%016llx camera=%u motion=%u owner=%u pass=%u shot=%u score=%u dead_recovery=%u resources=%u renders=%u\n",
+        if (result.digest != expected[scenario]) digest_code = 14;
+        printf("GAMEPLAY85 scenario=%u teams=%u/%u digest=%016llx expected=%016llx camera=%u motion=%u owner=%u pass=%u shot=%u score=%u dead_recovery=%u resources=%u renders=%u\n",
             scenario, teams[scenario][0], teams[scenario][1],
-            (unsigned long long)result.digest, result.camera_changes,
+            (unsigned long long)result.digest,
+            (unsigned long long)expected[scenario], result.camera_changes,
             result.actor_motion_frames, result.owner_changes,
             result.pass_frames, result.shot_frames, result.score_changes,
             result.dead_recoveries, result.resource_changes,
@@ -180,6 +186,7 @@ int main(int argc, char **argv) {
         total.resource_changes += result.resource_changes;
         total.render_changes += result.render_changes;
     }
+    if (code == 0 && digest_code != 0) code = digest_code;
     nba_assets_free(&assets);
     if (code == 0 && (total.camera_changes < 1000u ||
         total.actor_motion_frames < 10000u || total.owner_changes < 10u ||
