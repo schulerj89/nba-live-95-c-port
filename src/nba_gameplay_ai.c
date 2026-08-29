@@ -1,5 +1,6 @@
 #include "nba_gameplay_ai.h"
 #include <stdlib.h>
+#include <string.h>
 
 static int16_t arithmetic_shift_right_3(int16_t value) {
     if (value >= 0) return (int16_t)(value >> 3);
@@ -290,6 +291,94 @@ bool nba_gameplay_inbound_arrived(int16_t actor_x, int16_t actor_y,
 bool nba_gameplay_inbound_pass_due(uint16_t timer, uint16_t random_word) {
     if ((int16_t)timer >= 240) return false;
     return timer < 120u || (random_word & 0x003Cu) == 0u;
+}
+
+static void defensive_pose_output_begin(
+    const NbaGameplayDefensivePoseInput *input,
+    NbaGameplayDefensivePoseOutput *output) {
+    memset(output, 0, sizeof(*output));
+    output->base_state_raw_38 = input->base_state_raw_38;
+    output->facing_raw_4e = input->facing_raw_4e;
+    output->requested_direction_raw_50 = input->requested_direction_raw_50;
+    output->selected_count_raw_1868 = input->selected_count_raw_1868;
+}
+
+/* `$86:E39A-$E3CA`: stationary close-pair pose selector. CMP/BPL tests are
+ * expressed as wrapped signed differences to retain 65816 N-flag behavior. */
+bool nba_gameplay_stationary_defensive_pose(
+    const NbaGameplayDefensivePoseInput *input,
+    NbaGameplayDefensivePoseOutput *output) {
+    if (!input || !output) return false;
+    defensive_pose_output_begin(input, output);
+    if ((input->actor_movement_raw_4c | input->paired_movement_raw_4c) != 0u ||
+        (int16_t)(uint16_t)(input->actor_pair_distance_raw_8a - 0x31u) >= 0)
+        return true;
+    output->requested_direction_raw_50 = input->actor_pair_direction_raw_86;
+    output->facing_raw_4e = input->actor_pair_direction_raw_86;
+    output->selected_count_raw_1868 =
+        (uint16_t)(input->selected_count_raw_1868 + 1u);
+    output->base_state_raw_38 = 7u;
+    output->selector_result_raw_aa = 1u;
+    return true;
+}
+
+/* `$86:E3E1-$E4A6`: choose the defensive idle/side-step pose after the
+ * defense target pass. `$87:B37C` is returned as an explicit composed child
+ * request because that animation installer has its own native proof. */
+bool nba_gameplay_defensive_pose(
+    const NbaGameplayDefensivePoseInput *input,
+    NbaGameplayDefensivePoseOutput *output) {
+    if (!input || !output) return false;
+    defensive_pose_output_begin(input, output);
+    if (input->actor_z != 0) return true; /* `$86:E3E8` */
+    bool fallback = input->free_throw_state_raw_0978 != 0u ||
+        input->live_state_raw_0936 == 0x81u ||
+        input->live_state_raw_0936 == 0x82u ||
+        (int16_t)(uint16_t)(input->paired_anchor_distance_raw_8c -
+                            input->actor_anchor_distance_raw_8c) < 0 ||
+        (input->owner_actor_raw_093e < 0 &&
+         input->receiver_actor_raw_0946 < 0) ||
+        (((uint16_t)input->context_anchor_x_raw_0a ^
+          (uint16_t)input->actor_x) & 0x8000u) == 0u;
+    if (fallback) {
+        output->base_state_raw_38 = 3u;
+        return true;
+    }
+    /* `$86:E41E` clears the selector counter before either the state-7
+     * child or the lateral-pose continuation. */
+    output->selected_count_raw_1868 = 0u;
+    if (input->control_mode == 4u) {
+        NbaGameplayDefensivePoseInput selector_input = *input;
+        selector_input.selected_count_raw_1868 = 0u;
+        NbaGameplayDefensivePoseOutput selected;
+        if (!nba_gameplay_stationary_defensive_pose(&selector_input, &selected))
+            return false;
+        if (selected.selector_result_raw_aa != 0u) {
+            *output = selected;
+            return true;
+        }
+    }
+    if ((int16_t)(uint16_t)(input->actor_movement_raw_4c - 0x180u) >= 0 ||
+        (int16_t)(uint16_t)(input->paired_movement_raw_4c - 0x180u) >= 0 ||
+        (int16_t)(uint16_t)(input->actor_pair_distance_raw_8a - 0x39u) >= 0) {
+        output->base_state_raw_38 = 3u;
+        return true;
+    }
+    output->requested_direction_raw_50 = input->actor_pair_direction_raw_86;
+    output->facing_raw_4e = input->actor_pair_direction_raw_86;
+    uint8_t velocity_direction = nba_gameplay_target_direction(
+        input->velocity_x, input->velocity_y, NULL);
+    uint8_t delta = (uint8_t)((velocity_direction -
+                               input->actor_pair_direction_raw_86) & 7u);
+    uint8_t state = delta >= 4u ? 8u : 10u;
+    uint8_t opposite = delta >= 4u ? 10u : 8u;
+    if (input->upper_state_raw_30 == opposite) {
+        output->install_both = true;
+        output->install_state = state;
+    } else {
+        output->base_state_raw_38 = state;
+    }
+    return true;
 }
 
 static bool receiver_is_in_forward_window(

@@ -979,7 +979,52 @@ static bool cpu_refresh_defense_target(NbaTipoff *tipoff, unsigned slot,
         actor->target_y = output.target_y;
     }
     if (stop_velocity) *stop_velocity = output.stop_velocity;
+
+    /* `$86:E3E1-$E4A6` follows the defensive target calculation. It owns
+     * the stationary state-7 selector and lateral state 8/10 presentation;
+     * the former planner skipped this caller and left every defender on the
+     * generic locomotion base. */
+    NbaGameplayDefensivePoseInput pose_input = {
+        .actor_z = fp_round(actor->z_fp),
+        .free_throw_state_raw_0978 = tipoff->fouls.free_throw_state_raw_0978,
+        .live_state_raw_0936 = tipoff->live_state_raw,
+        .owner_actor_raw_093e = tipoff->possession_actor,
+        .receiver_actor_raw_0946 = tipoff->pass_receiver_raw,
+        .context_anchor_x_raw_0a = context_anchor,
+        .actor_x = actor_x,
+        .control_mode = actor->control_mode,
+        .actor_movement_raw_4c = actor->movement_magnitude_raw,
+        .paired_movement_raw_4c = paired->movement_magnitude_raw,
+        .actor_pair_distance_raw_8a = actor->assignment_distance,
+        .actor_pair_direction_raw_86 = actor->assignment_direction,
+        .actor_anchor_distance_raw_8c = actor->anchor_distance_raw,
+        .paired_anchor_distance_raw_8c = paired->anchor_distance_raw,
+        .velocity_x = actor->velocity_x,
+        .velocity_y = actor->velocity_y,
+        .upper_state_raw_30 = actor->animation_state,
+        .base_state_raw_38 = actor->base_animation_state_raw_38,
+        .facing_raw_4e = actor->movement_direction,
+        .requested_direction_raw_50 = actor->requested_direction,
+        .selected_count_raw_1868 = tipoff->defensive_pose_count_raw_1868
+    };
+    NbaGameplayDefensivePoseOutput pose_output;
+    if (!nba_gameplay_defensive_pose(&pose_input, &pose_output)) return false;
+    actor->movement_direction = pose_output.facing_raw_4e;
+    actor->requested_direction = pose_output.requested_direction_raw_50;
+    tipoff->defensive_pose_count_raw_1868 =
+        pose_output.selected_count_raw_1868;
+    if (pose_output.install_both)
+        actor_animation_command(tipoff, actor, NBA_ANIMATION_INSTALL_BOTH,
+                                pose_output.install_state);
+    else
+        actor->base_animation_state_raw_38 = pose_output.base_state_raw_38;
     return true;
+}
+
+bool nba_tipoff_replay_defensive_pose(NbaTipoff *tipoff, uint8_t actor) {
+    if (!tipoff || actor >= NBA_GAMEPLAY_ACTOR_COUNT) return false;
+    bool stop_velocity = false;
+    return cpu_refresh_defense_target(tipoff, actor, &stop_velocity);
 }
 
 /* Proven passive behavior executors from `$87:9244/$87:9BD3`. Returning

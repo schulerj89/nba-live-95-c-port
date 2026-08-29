@@ -167,6 +167,7 @@ typedef struct NbaTipoff {
     NbaGameplayRng rng;
     NbaGameplayFoulState fouls;
     uint16_t team_pose_contact_count_raw[2]; /* team context +$50 */
+    uint16_t defensive_pose_count_raw_1868; /* `$86:E39A` successful selects */
     uint16_t deferred_shot_foul_phase_raw_0a02;
     uint16_t free_throw_start_tick_raw_09be;
     uint16_t free_throw_aim_x_raw_0980;
@@ -332,6 +333,7 @@ void nba_tipoff_replay_collision_order(NbaTipoff *tipoff,
                                        unsigned count);
 void nba_tipoff_replay_ball_acquisition(NbaTipoff *tipoff, uint8_t catcher);
 void nba_tipoff_replay_ball_acquisition_core(NbaTipoff *tipoff,
-                                             uint8_t catcher);
+                                              uint8_t catcher);
+bool nba_tipoff_replay_defensive_pose(NbaTipoff *tipoff, uint8_t actor);
 
 #endif

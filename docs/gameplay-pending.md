@@ -17,8 +17,8 @@ translation/adoption **and verification**, not necessarily absent C code.
 | Jump/reach startup | 86:EC32-ECF8 | 0 (77 verified) | Parent decision, caller cadence, actor motion and animation are runtime-wired |
 | Loose-ball/jump continuation | 86:ECF9-EE75 | 0 (162 verified) | Parent continuation wired; far EAA8 child remains separate/outside this range |
 | Ball initialization prefix | 86:E056-E0AB | 0 (30 verified) | Complete bounded prefix; later toss dispatcher remains separate |
-| Stationary defensive idle selector | 86:E39A-E3CA | 20 | Natural state7 selection; its animation cadence is already implemented |
-| Wider defensive pose caller | 86:E3E1-E4A6 | 79 | Integrate caller decisions before claiming native idle distribution |
+| Stationary defensive idle selector | 86:E39A-E3CA | 0 (20 verified) | Native selector replay and runtime binding complete |
+| Wider defensive pose caller | 86:E3E1-E4A6 | 0 (79 verified) | All observed exits replayed; target-pass adapter is runtime-wired |
 | Inbound owner continuation | 86:F43A-F4F1 | 89 | Replace/reverify remaining compatibility caller behavior |
 | Inbound target arrival test | 86:F4F2-F51F | 19 | Exact compensated target boundary and continuation |
 | Inbound readiness/state writes | 86:F54F-F58E | 23 | Whistle, transfer, facing and arrival bookkeeping |
@@ -27,12 +27,12 @@ translation/adoption **and verification**, not necessarily absent C code.
 | Inbound launch/orientation gate | 86:F60B-F653 | 31 | Exact basket-side gate and shared pass handoff |
 | Inbound continuation return | 86:F654-F668 | 11 | Timer reset and return/caller composition |
 | Timeout confirmation prefix | 86:844E-8467 | 9 | Connect confirmation to the complete timeout flow |
-| **CPU/gameplay subtotal for these bounded slices** | | **332** | Not a census of every unfinished routine |
+| **CPU/gameplay subtotal for these bounded slices** | | **233** | Not a census of every unfinished routine |
 | Optional human inbound steering | 86:F520-F54E | 19 | Outside current CPU-vs-CPU scope |
 
-The older **323 CPU/animation** subtotal is still valid: defensive99 +
-CPU inbound224. Including the separate human steering19 makes that neighborhood
-342. Timeout adds9, giving332 without human steering or351 including it.
+The remaining **224 CPU/animation** subtotal is the CPU inbound continuation.
+Including the separate human steering19 makes that neighborhood243. Timeout
+adds9, giving233 without human steering or252 including it.
 The corrected starting core was601; ball initialization30 and jump/reach239
 are now verified. Do not add323 again to this table.
 

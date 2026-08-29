@@ -1,0 +1,97 @@
+# Gameplay 35% verification goal
+
+Started 2026-08-29. This plan uses the existing captured-address metric so the
+target is comparable with `STATUS.md` and `tools/progress.py`. It is not a
+percentage of the whole ROM and it is not estimated completion.
+
+## Starting point and target
+
+| Metric | Captured addresses | Percent |
+|---|---:|---:|
+| Executed denominator | 27,901 | 100.00% |
+| Verified starting point | 7,826 | 28.05% |
+| Minimum 35% target | 9,766 | 35.00% |
+| Required verified gain | 1,940 | 6.95 points |
+
+Coverage credit requires all four of these: a decoded instruction census,
+native/recomp ground truth, a portable implementation or explicit host-side
+equivalent, and a production runtime-binding test. Source comments alone do
+not move the verified ledger.
+
+## Pending gameplay components
+
+The instruction counts below come from the maintained Ghidra listings. The
+coverage-gain column is the distinct captured-address gain available after
+subtracting `docs/verified-routines.json`; it is the number that affects the
+35% metric. Unobserved instruction starts remain pending even if a portable
+outcome exists.
+
+| Component/function | ROM boundary | Pending instruction starts | Available captured-address gain |
+|---|---|---:|---:|
+| Stationary defensive idle selector | `$86:E39A-$E3CA` | 20 | 20 |
+| Wider defensive pose caller | `$86:E3E1-$E4A6` | 79 | 79 |
+| CPU inbound owner continuation | `$86:F43A-$F4F1` | 89 | 89 |
+| CPU inbound arrival/readiness/timing/candidates/launch/return | `$86:F4F2-$F51F`, `$86:F54F-$F668` | 135 | 119 |
+| Appearance-record build | `$86:D85E-$DA20` | 198 | 186 |
+| Appearance upload-list build | `$86:E0B0-$E389` | 152 | 46 |
+| Body/head/jersey assignment | `$87:AF75-$B450` | 415 after existing AFA2 proof | 395 |
+| Live frame/layer selection | `$87:A47A-$A98D` | 561 after existing small proofs | 472 |
+| Projection/culling | `$87:A357-$A479` | 120 | 96 |
+| Sprite-part composition | `$80:AD92-$AEC1` | 116 after existing helper proof | 116 |
+| Player-number/jersey compositor | `$87:B05B-$B354` | uncensused for this goal | 375 |
+| Foul/event/dead-ball/free-throw dispatch | `$85:93F5-$945E`, `$87:92A5-$95E6`, `$87:9B30-$A017`, `$87:BACB-$BAF4` | must be recounted per callable boundary | 272 |
+
+The optional human inbound steering `$86:F520-$F54E` has 19 starts and remains
+outside the CPU-vs-CPU goal. SNES DMA/upload plumbing is also excluded from
+portable gameplay credit; the asset pack and PPU parity harness verify its
+host-side outcome without pretending the C port executes SNES DMA machinery.
+
+## Implementation sequence
+
+1. **Defense and CPU inbound (321-address ceiling).** Translate the two
+   defensive routines and the complete CPU-only inbound chain. Capture natural
+   and controlled branches, compare all owned words, wire the helpers into live
+   actor flow, and add an inbound endurance smoke test.
+2. **Appearance preload and assignment (627-address ceiling).** Reuse the
+   roster/asset-pack identities but compare native exit records for all ten
+   actors. Fail closed on missing records/resources. Keep upload queue bytes as
+   evidence outputs rather than emulating DMA.
+3. **Live draw selection and composition (684-address ceiling).** Compare
+   selected lower/upper/head/number resources, coordinates, flips, palette and
+   layer visibility. Add consecutive-frame and all-team runtime probes plus
+   player/ball OBJ pixel witnesses.
+4. **Threshold closure.** Recount. If the preceding distinct verified gain is
+   below 1,940, complete the player-number compositor first; use event/dead-ball
+   dispatch only if additional observed coverage is still required.
+5. **Release gate.** Run the native differential captures, all vector probes,
+   `build.ps1 -Test`, the 63,800-frame CPU endurance test, PPU pixel parity,
+   and `tools/progress.py`. Commit and push coherent checkpoints; do not claim
+   completion until verified coverage is at least 9,766/27,901.
+
+## Checkpoints
+
+| Checkpoint | Newly verified | Running verified | Evidence |
+|---|---:|---:|---|
+| Baseline | - | 7,826 (28.05%) | Recounted ledger before implementation |
+| Defensive idle/pose | 99 | 7,925 (28.40%) | 12,265 native calls, all eight observed exits, zero mismatches; 250 retained witnesses; production adapter probe; reviewed five changed CPU visual anchors |
+
+The defensive checkpoint also repaired two stale smoke assumptions exposed by
+the stronger release gate: a same-pass shot launch is identified by its actual
+launch serial/actor rather than a prior-frame velocity proxy, and a naturally
+installed inbound may validly expire after repeated collision displacement.
+The deterministic inbound completion witness continues to require the
+successful arrival/transfer path.
+
+## Regression policy
+
+- Every helper receives tamper/poison cases so a self-consistent C fixture
+  cannot pass as native evidence.
+- Every translated helper needs a runtime probe proving the production game
+  calls it with live state.
+- Inbound work must cover both teams, timeout/fallback, candidate ordering,
+  launch, and no-receiver endurance.
+- Appearance work must cover all 29 teams, all 12 roster entries, tall/short
+  body families, skin/head families, jersey number digits, flips, and missing
+  asset rejection.
+- Visual hashes may change only after reviewed frames and must remain separate
+  from native pixel-parity claims.

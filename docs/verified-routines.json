@@ -2,6 +2,22 @@
   "comment": "Routines verified against emulator ground truth. Byte ranges are 24-bit SNES bus addresses. evidence points at the capture/replay artifacts; tools/progress.py counts these bytes as verified.",
   "routines": [
     {
+      "range": "86E3E1-86E4A6",
+      "name": "nba_gameplay_defensive_pose / defensive pose caller",
+      "source": "src/nba_gameplay_ai.c + src/nba_tipoff.c",
+      "method": "native function-vector replay + runtime binding",
+      "evidence": "12,265 combined native calls replayed with zero represented-output mismatches across every observed exit; caller exits E3E8/E432/E485/E497/E49D/E4A6 include rare $E01F work-record context. tests/fixtures/defensive-pose-witnesses.json retains 250 deterministic witnesses across all eight selector/caller exits. Production cpu_refresh_defense_target binding commits facing, requested direction, selector count and base/paired animation requests; defensive_pose_runtime_probe exercises the real assignment/target adapter and airborne early return. $87:B37C installation is composed through its independently verified animation command rather than credited here.",
+      "date": "2026-08-29"
+    },
+    {
+      "range": "86E39A-86E3CA",
+      "name": "nba_gameplay_stationary_defensive_pose",
+      "source": "src/nba_gameplay_ai.c + src/nba_tipoff.c",
+      "method": "native function-vector replay + runtime binding",
+      "evidence": "1,345 native selector calls, zero represented-output mismatches at both E3C7/E3CA exits; exact wrapped CMP, movement gates, facing/request writes, $1868 increment and base state7. Thirty-two retained witnesses per selector exit run in build.ps1 -Test. Production adapter and runtime probe prove the selector result reaches live actor state.",
+      "date": "2026-08-29"
+    },
+    {
       "range": "86EC32-86EE75",
       "name": "nba_jump_reach_decide / live jump-reach parent",
       "source": "src/nba_jump_reach.c + src/nba_tipoff.c",

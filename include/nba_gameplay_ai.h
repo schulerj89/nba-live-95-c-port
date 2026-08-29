@@ -44,6 +44,49 @@ typedef struct {
     bool play_requested;
 } NbaGameplayInboundTarget;
 
+/* Portable boundary for `$86:E39A-$E3CA` and its wider
+ * `$86:E3E1-$E4A6` defensive pose caller. Values retain their native actor
+ * record meaning instead of being inferred from rendered sprites. */
+typedef struct {
+    int16_t actor_z;
+    uint16_t free_throw_state_raw_0978;
+    uint16_t live_state_raw_0936;
+    int16_t owner_actor_raw_093e;
+    int16_t receiver_actor_raw_0946;
+    int16_t context_anchor_x_raw_0a;
+    int16_t actor_x;
+    uint8_t control_mode;
+    uint16_t actor_movement_raw_4c;
+    uint16_t paired_movement_raw_4c;
+    uint16_t actor_pair_distance_raw_8a;
+    uint8_t actor_pair_direction_raw_86;
+    uint16_t actor_anchor_distance_raw_8c;
+    uint16_t paired_anchor_distance_raw_8c;
+    int16_t velocity_x, velocity_y;
+    uint8_t upper_state_raw_30;
+    uint8_t base_state_raw_38;
+    uint8_t facing_raw_4e;
+    uint8_t requested_direction_raw_50;
+    uint16_t selected_count_raw_1868;
+} NbaGameplayDefensivePoseInput;
+
+typedef struct {
+    uint8_t base_state_raw_38;
+    uint8_t facing_raw_4e;
+    uint8_t requested_direction_raw_50;
+    uint16_t selected_count_raw_1868;
+    uint8_t selector_result_raw_aa;
+    bool install_both;
+    uint8_t install_state;
+} NbaGameplayDefensivePoseOutput;
+
+bool nba_gameplay_stationary_defensive_pose(
+    const NbaGameplayDefensivePoseInput *input,
+    NbaGameplayDefensivePoseOutput *output);
+bool nba_gameplay_defensive_pose(
+    const NbaGameplayDefensivePoseInput *input,
+    NbaGameplayDefensivePoseOutput *output);
+
 /* Portable inputs consumed by the live-covered `$85:B734-$B820` tail of
  * the CPU ballhandler's mode-11 shot decision. */
 typedef struct {

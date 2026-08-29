@@ -116,6 +116,14 @@ if ($Test) {
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name jump_runtime_probe
     & (Join-Path $BuildDir 'jump_runtime_probe.exe') $AssetPack
     if ($LASTEXITCODE -ne 0) { throw 'Jump/reach production runtime binding failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name defensive_pose_vector_probe
+    & python (Join-Path $Root 'tools\verify_defensive_pose_vectors.py') --normalized `
+        --vectors (Join-Path $Root 'tests\fixtures\defensive-pose-witnesses.json') `
+        --probe (Join-Path $BuildDir 'defensive_pose_vector_probe.exe')
+    if ($LASTEXITCODE -ne 0) { throw 'Defensive idle/pose native replay failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name defensive_pose_runtime_probe
+    & (Join-Path $BuildDir 'defensive_pose_runtime_probe.exe') $AssetPack
+    if ($LASTEXITCODE -ne 0) { throw 'Defensive idle/pose runtime binding failed.' }
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name camera_handoff_probe
     & python (Join-Path $Root 'tools\verify_camera_handoff.py') --require-census `
         --vectors (Join-Path $Root 'tests\fixtures\camera-handoff-witnesses.json') `
