@@ -1,0 +1,30 @@
+{
+  "rom_sha256": "2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870",
+  "timeout_path": {"pc": "86:8300-849D", "sha256": "3a739fbae52605633f3dc427365b5506db340697873802dac607bdd4ef2359ed"},
+  "resume_continuation": {"pc": "86:849D-857B", "sha256": "7ca4463eec3938574d645665afc302f71a813d5ea745ae34f1ed80ea7128eac7"},
+  "critical_bytes": {
+    "8300": "22668c87", "8338": "ad3609", "833e": "a98000",
+    "844e": "ad8149", "8453": "add208", "845e": "f005",
+    "8460": "ce9547", "8465": "ce1547", "8468": "a2c005",
+    "847a": "a90010", "8496": "8005", "849d": "221bcf80",
+    "8546": "c90400", "854b": "221bcf80", "856f": "af2b497e",
+    "8575": "ad8849", "857b": "6b"
+  },
+  "menu": {
+    "selection_word": "4981",
+    "availability_bytes": "4983-4987",
+    "navigation_rejection": ["83EC-8408", "841E-843D"],
+    "timeout_index": 0,
+    "resume_index": 4
+  },
+  "controlled_expectations": [
+    {"side_08d2": 0, "left_4715_before": 2, "right_4795_before": 3, "left_after": 1, "right_after": 3},
+    {"side_08d2": 1, "left_4715_before": 2, "right_4795_before": 3, "left_after": 2, "right_after": 2},
+    {"side_08d2": 0, "left_4715_before": 0, "timeout_available": false, "grant_reachable_through_navigation": false},
+    {"side_08d2": 1, "right_4795_before": 0, "timeout_available": false, "grant_reachable_through_navigation": false}
+  ],
+  "preserved_while_paused": ["0928_game_clock", "092C_shot_clock", "07F6_rng"],
+  "pause_state": {"saved_from": "0936", "saved_to": "4988", "paused_value": 128, "restore_pc": "8575"},
+  "audio_fade": {"confirm_command": 9, "confirm_call": "80:9DF3", "timeout_fade_call": "80:CF1B", "resume_fade_call": "80:CF1B"},
+  "grant_fixture": "tests/fixtures/shot-state-witnesses.json:kind=fixed_grant"
+}
