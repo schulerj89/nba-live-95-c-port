@@ -35,6 +35,16 @@ def is_dead_ball(row):
     return row["match"]["live_state_raw"] >= 0x80
 
 
+def is_actor_cadence_pair(previous, current):
+    """Comparable live pair with an actual native actor dispatch."""
+    if not is_live_play(previous) or not is_live_play(current):
+        return False
+    previous_scheduler = previous.get("scheduler", {})
+    current_scheduler = current.get("scheduler", {})
+    return bool(previous_scheduler.get("actor_pass_mask_raw", 0) or
+                current_scheduler.get("actor_pass_mask_raw", 0))
+
+
 def visual_ball_carrier(row):
     """Actor whose retained OBJ point owns the visible ball this frame."""
     owner = row["ball"]["owner"]
@@ -52,7 +62,7 @@ def movement_count(rows, actor, first, last):
     first_index = max(1, first - base_frame + 1)
     stop_index = min(len(rows), last - base_frame + 1)
     for index in range(first_index, stop_index):
-        if not is_live_play(rows[index]) or not is_live_play(rows[index - 1]):
+        if not is_actor_cadence_pair(rows[index - 1], rows[index]):
             continue
         current, previous = rows[index]["actors"][actor], rows[index - 1]["actors"][actor]
         count += (current["x"], current["y"]) != (previous["x"], previous["y"])
@@ -90,8 +100,8 @@ def main():
         base_frame = rows[0]["scene_frame"]
         first_index = max(1, first - base_frame + 1)
         stop_index = min(len(rows), last - base_frame + 1)
-        live_pairs = sum(
-            is_live_play(rows[index]) and is_live_play(rows[index - 1])
+        live_pairs = sum(is_actor_cadence_pair(
+            rows[index - 1], rows[index])
             for index in range(first_index, stop_index))
         counts = [movement_count(rows, actor, first, last) for actor in range(10)]
         team_counts = (sum(counts[:5]), sum(counts[5:]))

@@ -301,7 +301,11 @@ int main(int argc, char **argv) {
     /* Re-reviewed after cached action body art adopted `$87:A52C-$A5FA`'s
      * presentation direction. All transition/motion/resource/possession
      * counters remain unchanged; sampled gameplay pixels intentionally do. */
-    static const uint64_t expected_digest = 0x8af213b829e0b36cull;
+    /* Re-reviewed after `$86:F45F-$F4F2`'s sign-biased inbound target
+     * compensation was applied to both steering and arrival. The production
+     * journey remains deterministic; its later possession path intentionally
+     * changes the sampled gameplay pixels and state digest. */
+    static const uint64_t expected_digest = 0x1d779bf404778862ull;
     if (argc != 2) return 2;
     NbaAssetPack assets = {0};
     if (!nba_assets_load(&assets, argv[1])) return 3;

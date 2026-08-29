@@ -78,7 +78,11 @@ def main():
 
     result = subprocess.run([
         args.exe, "--headless", "--rom", args.rom, "--assets", args.pack,
-        "--tipoff-only", "--frames", "1200"], text=True,
+        # Cover a sustained possession sequence, not only the opening tip.
+        # The native inbound-arrival correction changes when the first pass/
+        # shot family is selected, so 1,200 frames no longer reaches every
+        # required live source deterministically.
+        "--tipoff-only", "--frames", "5000"], text=True,
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
     if "crowd SRCN $0C/$0D and six overlapping effect voices ready" not in result.stdout:
         raise AssertionError("live gameplay mixer did not start")
