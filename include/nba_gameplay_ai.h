@@ -56,6 +56,23 @@ typedef struct {
     uint8_t direction;
 } NbaGameplayInboundMotion;
 
+/* Owned state at the CPU-only arrival half of `$86:F54F-$F58E`.  Keeping
+ * these native words together makes the attachment/transfer latches part of
+ * the gameplay contract instead of incidental side effects in tipoff.c. */
+typedef struct {
+    uint16_t dead_ball_raw_0968;
+    uint16_t attachment_raw_09f6;
+    uint16_t behavior_flags_raw_7e;
+    int16_t velocity_x_raw_0e, velocity_y_raw_10;
+    uint16_t inbound_ready_raw_09ba;
+    uint16_t whistle_raw_09b6;
+    uint16_t foul_event_raw_0964;
+    uint16_t transfer_raw_09b8;
+    int16_t receiver_actor_raw_0946;
+    uint16_t inbound_direction_raw_095c;
+    uint8_t draw_direction_raw_4e;
+} NbaGameplayInboundArrival;
+
 typedef struct {
     uint8_t current_direction;
     uint8_t control_mode;
@@ -251,6 +268,9 @@ uint8_t nba_gameplay_pass_direction(int16_t dx, int16_t dy,
 bool nba_gameplay_receiver_candidate_valid(
     uint8_t passer_actor, uint8_t candidate_actor,
     const NbaGameplayReceiverState *actors, uint8_t actor_count);
+int8_t nba_gameplay_select_inbound_receiver_cpu(
+    uint8_t inbounder, uint16_t timer, const int16_t selectors[3],
+    const NbaGameplayReceiverState *actors, uint8_t actor_count);
 bool nba_gameplay_lane_to_basket_clear(
     uint8_t subject_actor, int16_t basket_x,
     const NbaGameplayLaneActor *actors, uint8_t actor_count);
@@ -284,6 +304,7 @@ bool nba_gameplay_inbound_arrived(int16_t actor_x, int16_t actor_y,
                                   int16_t target_x, int16_t target_y);
 bool nba_gameplay_inbound_pass_due(uint16_t timer, uint16_t random_word);
 void nba_gameplay_inbound_motion_step(NbaGameplayInboundMotion *motion);
+void nba_gameplay_inbound_arrival_prepare(NbaGameplayInboundArrival *state);
 /* `$87:A52C-$A5FA`: presentation-only facing selector. It deliberately does
  * not mutate the actor's movement direction. */
 uint8_t nba_gameplay_draw_direction(const NbaGameplayDrawDirection *input);

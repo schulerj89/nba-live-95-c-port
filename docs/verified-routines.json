@@ -1352,6 +1352,30 @@
       "method": "natural native compositor-input replay + runtime binding",
       "evidence": "tests/fixtures/draw-preparation-witnesses.json plus sprite_compositor_probe;2000 exact preparation calls and5568 exhaustive packed compositions. Selected-human A67E-A69D excluded. docs/player-draw-preparation-differential.md.",
       "date": "2026-08-29"
+    },
+    {
+      "range": "86F4F2-86F51F",
+      "name": "CPU inbound signed arrival box",
+      "source": "src/nba_gameplay_ai.c + src/nba_tipoff.c",
+      "method": "natural native entry/exit differential + runtime binding",
+      "evidence": "tests/fixtures/inbound-arrival-witnesses.json; tools/verify_inbound_arrival_vectors.py. 387 arrived/no-launch calls replay all owned outputs exactly; exact [-9,+8] boundary guards; optional human F520-F54E excluded. docs/inbound-arrival-selector-differential.md.",
+      "date": "2026-08-29"
+    },
+    {
+      "range": "86F54F-86F5D0",
+      "name": "CPU inbound readiness timer and first receiver selector",
+      "source": "src/nba_gameplay_ai.c + src/nba_tipoff.c",
+      "method": "natural native entry/exit differential + runtime binding",
+      "evidence": "387 exact arrived-state calls and two natural launch calls; timer populations span native wait/random/due states. Fixed missing attachment09F6 and stale transfer09B8. Alternate selectors F5D2-F60A excluded. 63800-frame CPU endurance passes. docs/inbound-arrival-selector-differential.md.",
+      "date": "2026-08-29"
+    },
+    {
+      "range": "86F60B-86F668",
+      "name": "CPU inbound side gate launch and return",
+      "source": "src/nba_gameplay_ai.c + src/nba_tipoff.c",
+      "method": "natural native selector replay + runtime binding",
+      "evidence": "tests/fixtures/inbound-selector-witnesses.json; two genuine native F653 launches select the exact same receiver; 387 natural return calls; side and timer boundary guards; sustained both-team inbound completion. docs/inbound-arrival-selector-differential.md.",
+      "date": "2026-08-29"
     }
   ]
 }

@@ -207,6 +207,16 @@ if ($Test) {
         --vectors (Join-Path $Root 'tests\fixtures\inbound-motion-witnesses.json') `
         --probe (Join-Path $BuildDir 'inbound_motion_vector_probe.exe')
     if ($LASTEXITCODE -ne 0) { throw 'Inbound continuation ROM witness regression failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name inbound_arrival_vector_probe
+    & python (Join-Path $Root 'tools\verify_inbound_arrival_vectors.py') `
+        --vectors (Join-Path $Root 'tests\fixtures\inbound-arrival-witnesses.json') `
+        --probe (Join-Path $BuildDir 'inbound_arrival_vector_probe.exe')
+    if ($LASTEXITCODE -ne 0) { throw 'Inbound arrival ROM witness regression failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name inbound_selector_vector_probe
+    & python (Join-Path $Root 'tools\verify_inbound_selector_vectors.py') `
+        --vectors (Join-Path $Root 'tests\fixtures\inbound-selector-witnesses.json') `
+        --probe (Join-Path $BuildDir 'inbound_selector_vector_probe.exe')
+    if ($LASTEXITCODE -ne 0) { throw 'Inbound selector ROM witness regression failed.' }
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name draw_direction_vector_probe
     & python (Join-Path $Root 'tools\verify_draw_direction_vectors.py') `
         --vectors (Join-Path $Root 'tests\fixtures\draw-direction-witnesses.json') `

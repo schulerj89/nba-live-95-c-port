@@ -80,6 +80,7 @@ host-side outcome without pretending the C port executes SNES DMA machinery.
 | Sprite-part compositor | 116 | 8,668 (31.07%) | All 32 native opening resource/origin/order calls plus 5,568 team/roster/direction/side cases; fixed direction-dependent torso/number priority |
 | CPU inbound motion core | 89 | 8,757 (31.39%) | 500 natural native calls; all 111 non-arrival motion calls retained and replayed with zero mismatches; fixed duplicate integration, integer-word gates, close-range damping and negative /16 bias |
 | Player draw preparation / target-facing selector | 128 | 8,885 (31.84%) | 2,000 natural native compositor-input calls, all ten actors, 175 resource pairs, five modes and 30 movement/draw direction differences; zero mismatches; renderer now preserves presentation-facing separately from physics-facing |
+| CPU inbound arrival and natural launch selector | 100 | 8,985 (32.20%) | 387 exact arrived-state replays plus two genuine native launches; fixed missing `$09F6` attachment and stale `$09B8`; 63,800-frame CPU endurance gate passes |
 
 ### Route from checkpoint 2 to 35%
 

@@ -293,6 +293,55 @@ bool nba_gameplay_inbound_pass_due(uint16_t timer, uint16_t random_word) {
     return timer < 120u || (random_word & 0x003Cu) == 0u;
 }
 
+/* `$86:F5C7-$F648`: ordered play selectors, late fallback, then the
+ * baseline-side gate. `$85:B60B` supplies candidate validity; the fallback
+ * intentionally bypasses that call exactly as the native branch does. */
+int8_t nba_gameplay_select_inbound_receiver_cpu(
+    uint8_t inbounder, uint16_t timer, const int16_t selectors[3],
+    const NbaGameplayReceiverState *actors, uint8_t actor_count) {
+    if (!selectors || !actors || inbounder >= actor_count) return -1;
+    int candidate=-1;
+    for (unsigned i=0;i<3u;++i) {
+        int16_t proposed=selectors[i];
+        if (proposed>=0 && proposed<actor_count &&
+            nba_gameplay_receiver_candidate_valid(
+                inbounder,(uint8_t)proposed,actors,actor_count)) {
+            candidate=proposed; break;
+        }
+    }
+    if (candidate<0) {
+        if (timer>=60u) return -1;
+        candidate=(int)(inbounder/5u)*5+4;
+        if (candidate==inbounder) --candidate;
+    }
+    int16_t owner_x=actors[inbounder].x;
+    int16_t receiver_x=actors[candidate].x;
+    bool allowed=inbounder>=5u ? owner_x < -20 || receiver_x >= 0
+                               : owner_x >= 20 || receiver_x < 0;
+    return allowed ? (int8_t)candidate : -1;
+}
+
+/* `$86:F54F-$F58E`: the first arrived pass owns both ball-state words.  The
+ * old host path set `$0968` but omitted `$09F6`, leaving a visually detached
+ * inbound ball, and also retained stale `$09B8` when `$0946` was negative. */
+void nba_gameplay_inbound_arrival_prepare(NbaGameplayInboundArrival *state) {
+    if (!state) return;
+    state->dead_ball_raw_0968 = 2u;
+    state->attachment_raw_09f6 = 2u;
+    state->behavior_flags_raw_7e |= 0x0040u;
+    state->velocity_x_raw_0e = 0;
+    state->velocity_y_raw_10 = 0;
+    if (state->inbound_ready_raw_09ba == 0u) {
+        state->whistle_raw_09b6 = 0u;
+        state->foul_event_raw_0964 = 0u;
+        state->inbound_ready_raw_09ba = 1u;
+    }
+    if (state->receiver_actor_raw_0946 < 0)
+        state->transfer_raw_09b8 = 0u;
+    state->draw_direction_raw_4e =
+        (uint8_t)state->inbound_direction_raw_095c;
+}
+
 static void defensive_pose_output_begin(
     const NbaGameplayDefensivePoseInput *input,
     NbaGameplayDefensivePoseOutput *output) {
@@ -1307,6 +1356,43 @@ bool nba_gameplay_ai_self_test(void) {
         !nba_gameplay_inbound_pass_due(239u, 0u) ||
         nba_gameplay_inbound_pass_due(239u, 4u) ||
         !nba_gameplay_inbound_pass_due(119u, 0x003Cu)) return false;
+    NbaGameplayInboundArrival arrival={
+        9u,3u,6u,123,-456,0u,1u,7u,5u,-1,6u,1u};
+    nba_gameplay_inbound_arrival_prepare(&arrival);
+    if (arrival.dead_ball_raw_0968!=2u || arrival.attachment_raw_09f6!=2u ||
+        arrival.behavior_flags_raw_7e!=0x46u || arrival.velocity_x_raw_0e!=0 ||
+        arrival.velocity_y_raw_10!=0 || arrival.inbound_ready_raw_09ba!=1u ||
+        arrival.whistle_raw_09b6!=0u || arrival.foul_event_raw_0964!=0u ||
+        arrival.transfer_raw_09b8!=0u || arrival.draw_direction_raw_4e!=6u)
+        return false;
+    NbaGameplayReceiverState inbound_receivers[10]={0};
+    for (unsigned i=0;i<10u;++i) {
+        inbound_receivers[i].x=(int16_t)(-100+(int)i*25);
+        inbound_receivers[i].y=(int16_t)(i*7);
+        inbound_receivers[i].control_mode=1u;
+        inbound_receivers[i].travel_direction=8u;
+        inbound_receivers[i].travel_distance=0x40u;
+    }
+    inbound_receivers[7].x=-394;
+    int16_t inbound_selectors[3]={7,9,6};
+    if (nba_gameplay_select_inbound_receiver_cpu(
+            7u,200u,inbound_selectors,inbound_receivers,10u)!=9)
+        return false;
+    inbound_receivers[9].control_mode=7u;
+    if (nba_gameplay_select_inbound_receiver_cpu(
+            7u,200u,inbound_selectors,inbound_receivers,10u)!=6)
+        return false;
+    inbound_receivers[6].control_mode=7u;
+    if (nba_gameplay_select_inbound_receiver_cpu(
+            7u,60u,inbound_selectors,inbound_receivers,10u)!=-1 ||
+        nba_gameplay_select_inbound_receiver_cpu(
+            7u,59u,inbound_selectors,inbound_receivers,10u)!=9)
+        return false;
+    inbound_receivers[7].x=0;
+    inbound_receivers[9].x=-1;
+    if (nba_gameplay_select_inbound_receiver_cpu(
+            7u,59u,inbound_selectors,inbound_receivers,10u)!=-1)
+        return false;
     static const struct { int16_t x, y; uint8_t direction; uint16_t distance; } cases[] = {
         {0,0,8,0},{10,0,2,10},{0,10,0,10},{-10,-10,5,12},
         {10,20,1,22},{10,21,0,23},{10,11,1,12}

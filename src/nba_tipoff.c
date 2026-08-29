@@ -345,22 +345,6 @@ static int cpu_select_rom_receiver(const NbaTipoff *tipoff,
         NBA_GAMEPLAY_ACTOR_COUNT, tipoff->offense_side != 0u);
 }
 
-static bool cpu_inbound_candidate_valid(const NbaTipoff *tipoff,
-                                        uint8_t passer_slot,
-                                        int16_t candidate) {
-    if (candidate < 0 || candidate >= NBA_GAMEPLAY_ACTOR_COUNT) return false;
-    NbaGameplayReceiverState actors[NBA_GAMEPLAY_ACTOR_COUNT];
-    for (unsigned i = 0; i < NBA_GAMEPLAY_ACTOR_COUNT; ++i) {
-        actors[i].x = fp_round(tipoff->actors[i].x_fp);
-        actors[i].y = fp_round(tipoff->actors[i].y_fp);
-        actors[i].control_mode = tipoff->actors[i].control_mode;
-        actors[i].travel_direction = tipoff->actors[i].assignment_direction;
-        actors[i].travel_distance = tipoff->actors[i].pair_distance;
-    }
-    return nba_gameplay_receiver_candidate_valid(
-        passer_slot, (uint8_t)candidate, actors, NBA_GAMEPLAY_ACTOR_COUNT);
-}
-
 static uint16_t actor_distance(int dx, int dy) {
     unsigned ax = (unsigned)(dx < 0 ? -dx : dx);
     unsigned ay = (unsigned)(dy < 0 ? -dy : dy);
@@ -6222,15 +6206,17 @@ static void cpu_schedule_actor_behaviors(NbaTipoff *tipoff,
 
 static int cpu_select_inbound_receiver(const NbaTipoff *tipoff,
                                        uint8_t inbounder) {
-    for (unsigned i = 0; i < 3u; ++i) {
-        int16_t candidate = tipoff->play_selector_raw[i];
-        if (cpu_inbound_candidate_valid(tipoff, inbounder, candidate))
-            return candidate;
+    NbaGameplayReceiverState actors[NBA_GAMEPLAY_ACTOR_COUNT];
+    for (unsigned i=0;i<NBA_GAMEPLAY_ACTOR_COUNT;++i) {
+        actors[i].x=fp_integer_word(tipoff->actors[i].x_fp);
+        actors[i].y=fp_integer_word(tipoff->actors[i].y_fp);
+        actors[i].control_mode=tipoff->actors[i].control_mode;
+        actors[i].travel_direction=tipoff->actors[i].assignment_direction;
+        actors[i].travel_distance=tipoff->actors[i].pair_distance;
     }
-    if (tipoff->inbound_timer_raw >= 60u) return -1;
-    int fallback = (int)(inbounder / 5u) * 5 + 4;
-    if (fallback == inbounder) --fallback;
-    return fallback;
+    return nba_gameplay_select_inbound_receiver_cpu(
+        inbounder,tipoff->inbound_timer_raw,tipoff->play_selector_raw,
+        actors,NBA_GAMEPLAY_ACTOR_COUNT);
 }
 
 static bool cpu_inbound_formation_override_self_test(void) {
@@ -6268,16 +6254,6 @@ static bool cpu_inbound_formation_override_self_test(void) {
     state.live_state_raw = 0x82u;
     state.inbound_target_x_raw = 0;
     return cpu_apply_inbound_formation_override(&state, 5u) == -1;
-}
-
-static bool cpu_inbound_side_gate(const NbaTipoff *tipoff,
-                                  uint8_t inbounder, uint8_t receiver) {
-    int16_t owner_x = fp_integer_word(tipoff->actors[inbounder].x_fp);
-    int16_t receiver_x = fp_integer_word(tipoff->actors[receiver].x_fp);
-    bool context_nonnegative = inbounder >= 5u;
-    if (context_nonnegative)
-        return owner_x < -20 || receiver_x >= 0;
-    return owner_x >= 20 || receiver_x < 0;
 }
 
 /* `$87:9AA6-$9BCA`: an installed inbounder whose signed `$092E` expires
@@ -6704,19 +6680,33 @@ static void cpu_update_rom_inbound(NbaTipoff *tipoff) {
 
     /* `$86:F54F-$F555`: arrival writes 2 to `$0968` and the currently
      * unrepresented `$09F6` before freezing the inbounder. */
-    tipoff->dead_ball_raw_0968 = 2u;
-    actor->behavior_flags_raw |= 0x0040u;
-    actor->velocity_x = actor->velocity_y = 0;
+    NbaGameplayInboundArrival arrival = {
+        .dead_ball_raw_0968 = tipoff->dead_ball_raw_0968,
+        .attachment_raw_09f6 = tipoff->attached_ball_state_raw_09f6,
+        .behavior_flags_raw_7e = actor->behavior_flags_raw,
+        .velocity_x_raw_0e = actor->velocity_x,
+        .velocity_y_raw_10 = actor->velocity_y,
+        .inbound_ready_raw_09ba = tipoff->inbound_ready_raw,
+        .whistle_raw_09b6 = tipoff->fouls.whistle_active_raw_09b6,
+        .foul_event_raw_0964 = tipoff->fouls.foul_event_raw_0964,
+        .transfer_raw_09b8 = tipoff->inbound_transfer_raw,
+        .receiver_actor_raw_0946 = tipoff->receiver_actor == 0xFFu ?
+                                  -1 : (int16_t)tipoff->receiver_actor,
+        .inbound_direction_raw_095c = tipoff->inbound_direction_raw,
+        .draw_direction_raw_4e = actor->direction,
+    };
+    nba_gameplay_inbound_arrival_prepare(&arrival);
+    tipoff->dead_ball_raw_0968 = arrival.dead_ball_raw_0968;
+    tipoff->attached_ball_state_raw_09f6 = arrival.attachment_raw_09f6;
+    actor->behavior_flags_raw = arrival.behavior_flags_raw_7e;
+    actor->velocity_x = arrival.velocity_x_raw_0e;
+    actor->velocity_y = arrival.velocity_y_raw_10;
+    tipoff->inbound_ready_raw = arrival.inbound_ready_raw_09ba;
+    tipoff->fouls.whistle_active_raw_09b6 = arrival.whistle_raw_09b6;
+    tipoff->fouls.foul_event_raw_0964 = arrival.foul_event_raw_0964;
+    tipoff->inbound_transfer_raw = arrival.transfer_raw_09b8;
     actor->movement_magnitude_raw = 0u;
-    actor->direction = (uint8_t)tipoff->inbound_direction_raw;
-    actor->requested_direction = actor->direction;
-    if (tipoff->inbound_ready_raw == 0u) {
-        /* `$86:F56E-$F577`: arrival is the exact whistle/event-latch
-         * release point, immediately before `$09BA` becomes one. */
-        tipoff->fouls.whistle_active_raw_09b6 = 0u;
-        tipoff->fouls.foul_event_raw_0964 = 0u;
-        tipoff->inbound_ready_raw = 1u;
-    }
+    actor->direction = arrival.draw_direction_raw_4e;
     /* `$86:F58F`: signed actor +$16, not actor Z, gates the CPU selector.
      * A human-controlled inbounder waits for controller input here. */
     if (actor->controller_assignment_raw >= 0) return;
@@ -6726,10 +6716,6 @@ static void cpu_update_rom_inbound(NbaTipoff *tipoff) {
     if (!nba_gameplay_inbound_pass_due(
             tipoff->inbound_timer_raw, random)) return;
     int candidate = cpu_select_inbound_receiver(tipoff, inbounder);
-    if (candidate >= 0 && candidate < NBA_GAMEPLAY_ACTOR_COUNT &&
-        !cpu_inbound_side_gate(
-            tipoff, inbounder, (uint8_t)candidate))
-        candidate = -1;
     if (candidate < 0 || candidate >= NBA_GAMEPLAY_ACTOR_COUNT) return;
     actor->reaction_threshold = 1u; /* `$86:F60B-$F610` */
     if (nba_tipoff_begin_rom_pass(
