@@ -6916,15 +6916,6 @@ static bool cpu_free_throw_move_actor(NbaTipoffActor *actor,
     return false;
 }
 
-static uint8_t cpu_free_throw_threshold(uint8_t rating) {
-    static const uint8_t thresholds[8] = {
-        130u, 145u, 160u, 185u, 200u, 215u, 230u, 245u
-    };
-    unsigned index = rating > 0x80u ? (rating - 0x80u) >> 4 : 0u;
-    if (index > 7u) index = 7u;
-    return thresholds[index];
-}
-
 static uint8_t cpu_free_throw_rating(const NbaTipoff *tipoff,
                                      uint8_t shooter) {
     uint8_t rating = 0x80u;
@@ -6943,7 +6934,7 @@ static bool cpu_free_throw_launch_vector(uint8_t rating, uint8_t roll,
         {{512, 0, 800}, {608, 0, 800}, {576, 0, 848}, {608, 0, 800}},
         {{512, 0, 800}, {512, 0, 800}, {544, 0, 864}, {512, 0, 880}}
     };
-    bool missed = roll >= cpu_free_throw_threshold(rating);
+    bool missed = roll >= nba_gameplay_free_throw_threshold(rating);
     unsigned table_half = half != 0u;
     unsigned table_choice = choice & 3u;
     *vx = missed ? miss[table_half][table_choice][0] : 512;
@@ -7024,7 +7015,33 @@ static bool cpu_update_free_throw_scene(NbaTipoff *tipoff) {
                 (uint16_t)tipoff->simulation_tick;
             tipoff->shot_origin_x = fp_round(tipoff->actors[shooter].x_fp);
             tipoff->shot_origin_y = fp_round(tipoff->actors[shooter].y_fp);
-            *state = 3u; /* `$85:9530` consumes transient state 2. */
+            tipoff->free_throw_upload_raw_180b = 0xA046u;
+            tipoff->free_throw_upload_raw_180c = 0x87A0u;
+            /* `$87:9D6C` publishes transient state two, then `$85:9530`
+             * consumes it in the same native actor pass. The retained CPU
+             * path selects commentary word $1B; the wider roster-dependent
+             * $1F/$23 selector remains outside this completion slice. */
+            NbaGameplayFreeThrowCompletion completion = {
+                2u, tipoff->fouls.free_throw_sequence_raw_097a,
+                tipoff->fouls.whistle_timer_raw_08de,
+                tipoff->fouls.whistle_state_raw_08e6,
+                tipoff->fouls.whistle_state_mirror_raw_08e8,
+                tipoff->free_throw_upload_raw_180b,
+                tipoff->free_throw_upload_raw_180c, 0u, 0, 0, 0, 0, 0
+            };
+            bool clock_changed = tipoff->match_clock_raw_0928 !=
+                                 tipoff->free_throw_clock_mirror_raw_493f;
+            (void)nba_gameplay_free_throw_presentation_gate(
+                &completion, clock_changed, 0x001Bu);
+            if (clock_changed)
+                tipoff->free_throw_clock_mirror_raw_493f =
+                    tipoff->match_clock_raw_0928;
+            *state = completion.state_raw_0978;
+            tipoff->fouls.whistle_timer_raw_08de =
+                completion.whistle_timer_raw_08de;
+            tipoff->fouls.whistle_state_raw_08e6 = completion.audio_raw_08e6;
+            tipoff->fouls.whistle_state_mirror_raw_08e8 =
+                completion.audio_mirror_raw_08e8;
         }
         return true;
     }
@@ -7035,22 +7052,14 @@ static bool cpu_update_free_throw_scene(NbaTipoff *tipoff) {
                                       tipoff->free_throw_start_tick_raw_09be);
         if (elapsed < 120u) return true;
         actor_set_upper_animation(actor, 12u);
-        if (elapsed < 360u &&
-            (nba_gameplay_rng_next(&tipoff->rng) & 0x0B2Au) != 0x0B2Au)
-            return true;
-        uint8_t threshold = cpu_free_throw_threshold(
-            cpu_free_throw_rating(tipoff, shooter));
-        uint8_t roll = (uint8_t)nba_gameplay_rng_next(&tipoff->rng);
-        if (roll < threshold) {
-            tipoff->free_throw_aim_y_raw_0982 = 29u;
-            tipoff->free_throw_aim_x_raw_0980 = 16u;
-        } else {
-            tipoff->free_throw_aim_y_raw_0982 =
-                (uint16_t)((tipoff->rng.state & 31u) + 12u);
-            tipoff->free_throw_aim_x_raw_0980 =
-                (uint16_t)((nba_gameplay_rng_next(&tipoff->rng) & 31u) + 12u);
-        }
-        *state = 9u;
+        NbaGameplayFreeThrowCompletion completion = {0};
+        completion.state_raw_0978 = 3u;
+        if (!nba_gameplay_free_throw_cpu_aim_step(
+                &completion, &tipoff->rng, elapsed,
+                cpu_free_throw_rating(tipoff, shooter),
+                &tipoff->free_throw_aim_x_raw_0980,
+                &tipoff->free_throw_aim_y_raw_0982)) return true;
+        *state = completion.state_raw_0978;
         tipoff->ball_activity_raw = 1u;
         actor_set_animation(actor, 22u, 22u);
         actor->behavior_flags_raw |= 4u;
@@ -7065,9 +7074,20 @@ static bool cpu_update_free_throw_scene(NbaTipoff *tipoff) {
             return true;
         }
         cpu_release_free_throw(tipoff, shooter);
-        if (tipoff->fouls.free_throw_sequence_raw_097a != 0u)
-            --tipoff->fouls.free_throw_sequence_raw_097a;
-        *state = 10u;
+        NbaGameplayFreeThrowCompletion completion = {
+            9u, tipoff->fouls.free_throw_sequence_raw_097a,
+            tipoff->fouls.whistle_timer_raw_08de,
+            tipoff->fouls.whistle_state_raw_08e6,
+            tipoff->fouls.whistle_state_mirror_raw_08e8,
+            tipoff->free_throw_upload_raw_180b,
+            tipoff->free_throw_upload_raw_180c, 0u, 0, 0, 0, 0, 0
+        };
+        (void)nba_gameplay_free_throw_release_complete(&completion);
+        *state = completion.state_raw_0978;
+        tipoff->fouls.free_throw_sequence_raw_097a =
+            completion.attempts_raw_097a;
+        tipoff->free_throw_upload_raw_180b = completion.upload_raw_180b;
+        tipoff->free_throw_upload_raw_180c = completion.upload_raw_180c;
         return true;
     }
     if (*state == 10u) {
@@ -7079,32 +7099,56 @@ static bool cpu_update_free_throw_scene(NbaTipoff *tipoff) {
              result == NBA_GAMEPLAY_RIM_MISS)) {
             tipoff->shot_result_resolved = true;
         }
+        NbaGameplayFreeThrowCompletion completion = {0};
+        completion.state_raw_0978 = 10u;
+        completion.attempts_raw_097a =
+            tipoff->fouls.free_throw_sequence_raw_097a;
+        completion.ball_x_raw_3eef = fp_integer_word(tipoff->ball.x_fp);
+        completion.ball_y_raw_3ef3 = fp_integer_word(tipoff->ball.y_fp);
+        completion.ball_z_raw_3ef7 =
+            (uint16_t)fp_integer_word(tipoff->ball.z_fp);
+        completion.ball_vx_raw_3ef9 = tipoff->ball.velocity_x;
+        completion.ball_vy_raw_3efb = tipoff->ball.velocity_y;
+        completion.ball_vz_raw_3efd = tipoff->ball.velocity_z;
         if (tipoff->fouls.free_throw_sequence_raw_097a != 0u) {
-            if (tipoff->rim_raw_097c == 0u && tipoff->shot_value_raw != 0u)
-                return true;
-            if (shooter >= NBA_GAMEPLAY_ACTOR_COUNT ||
-                fp_integer_word(tipoff->ball.z_fp) >= 8) return true;
-            tipoff->ball.x_fp = tipoff->actors[shooter].x_fp;
-            tipoff->ball.y_fp = tipoff->actors[shooter].y_fp;
-            tipoff->ball.z_fp = 32 * 256;
-            tipoff->ball.velocity_x = tipoff->ball.velocity_y = 0;
-            tipoff->ball.velocity_z = 0;
+            if (!nba_gameplay_free_throw_resolution_step(
+                &completion, true, tipoff->ball.owner_actor < 0,
+                tipoff->shot_value_raw, tipoff->rim_raw_097c,
+                tipoff->free_throw_resolution_raw_0972,
+                fp_integer_word(tipoff->actors[shooter].x_fp),
+                fp_integer_word(tipoff->actors[shooter].y_fp))) return true;
+            *state = completion.state_raw_0978;
+            /* `$3EEF/$3EF3/$3EF7/$3EF9/$3EFB/$3EFD` are the gameplay-ball
+             * integer position and velocity words. Preserve their fractional
+             * bytes while applying the native between-attempt placement. */
+            tipoff->ball.x_fp = fp_replace_integer_word(
+                tipoff->ball.x_fp, completion.ball_x_raw_3eef);
+            tipoff->ball.y_fp = fp_replace_integer_word(
+                tipoff->ball.y_fp, completion.ball_y_raw_3ef3);
+            tipoff->ball.z_fp = fp_replace_integer_word(
+                tipoff->ball.z_fp, (int16_t)completion.ball_z_raw_3ef7);
+            tipoff->ball.velocity_x = completion.ball_vx_raw_3ef9;
+            tipoff->ball.velocity_y = completion.ball_vy_raw_3efb;
+            tipoff->ball.velocity_z = completion.ball_vz_raw_3efd;
             tipoff->ball.owner_actor = -1;
             tipoff->ball.state = NBA_BALL_LOOSE;
-            *state = 11u;
             return true;
         }
-        if (tipoff->ball.owner_actor < 0 && tipoff->ball.velocity_z < 0 &&
-            (fp_integer_word(tipoff->ball.z_fp) < 24 ||
-             tipoff->rim_raw_097c != 0u ||
-             tipoff->free_throw_resolution_raw_0972 != 0u ||
-             tipoff->shot_value_raw == 0u))
-            *state = 0u;
+        (void)nba_gameplay_free_throw_resolution_step(
+            &completion, true, tipoff->ball.owner_actor < 0,
+            tipoff->shot_value_raw, tipoff->rim_raw_097c,
+            tipoff->free_throw_resolution_raw_0972,
+            fp_integer_word(tipoff->actors[shooter].x_fp),
+            fp_integer_word(tipoff->actors[shooter].y_fp));
+        *state = completion.state_raw_0978;
         return true;
     }
     if (*state >= 11u) {
-        ++*state;
-        if (*state >= 25u) *state = 1u;
+        NbaGameplayFreeThrowCompletion completion = {0};
+        completion.state_raw_0978 = *state;
+        (void)nba_gameplay_free_throw_resolution_step(
+            &completion, true, true, 0u, 0u, 0u, 0, 0);
+        *state = completion.state_raw_0978;
         return true;
     }
     return true;
@@ -7143,8 +7187,8 @@ static bool cpu_free_throw_scene_self_test(void) {
             target[i].y != expected_right[i].y ||
             target[i].direction != expected_right[i].direction)
             return false;
-    if (cpu_free_throw_threshold(0x80u) != 130u ||
-        cpu_free_throw_threshold(0xFFu) != 245u) return false;
+    if (nba_gameplay_free_throw_threshold(0x80u) != 130u ||
+        nba_gameplay_free_throw_threshold(0xFFu) != 245u) return false;
     int16_t vx, vy, vz;
     if (cpu_free_throw_launch_vector(
             0xFFu, 0u, 3u, 1u, false, &vx, &vy, &vz) ||

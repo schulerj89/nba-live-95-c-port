@@ -346,6 +346,11 @@ if ($Test) {
         --vectors (Join-Path $Root 'tests\fixtures\foul-consume-witnesses.json') `
         --probe (Join-Path $BuildDir 'foul_consume_vector_probe.exe')
     if ($LASTEXITCODE -ne 0) { throw 'Pending-foul consumer ROM witness regression failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name free_throw_completion_vector_probe
+    & python (Join-Path $Root 'tools\verify_free_throw_completion_vectors.py') `
+        --vectors (Join-Path $Root 'tests\fixtures\free-throw-completion-witnesses.json') `
+        --probe (Join-Path $BuildDir 'free_throw_completion_vector_probe.exe')
+    if ($LASTEXITCODE -ne 0) { throw 'CPU free-throw completion ROM witness regression failed.' }
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name draw_direction_vector_probe
     & python (Join-Path $Root 'tools\verify_draw_direction_vectors.py') `
         --vectors (Join-Path $Root 'tests\fixtures\draw-direction-witnesses.json') `

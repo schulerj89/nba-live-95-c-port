@@ -20,6 +20,7 @@ src/nba_shot_launch.c
 src/nba_shot_state.c
 src/nba_gameplay_effect.c
 src/nba_gameplay_foul.c
+src/nba_gameplay_free_throw.c
 src/nba_font.c
 src/nba_renderer.c
 src/nba_snes_ppu.c

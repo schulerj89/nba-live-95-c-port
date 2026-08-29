@@ -1824,6 +1824,14 @@
       "method": "fresh Ghidra closure + raw table/resource replays + deterministic live animation census",
       "evidence": "All 195 captured Bank $84 positions are now classified: 50 gameplay/controller helpers including $84:BF75-$C014, 9 animation-dispatch positions and 136 roster/graphics helpers including $84:E2AC-$E432. Fresh Ghidra decodes 325 starts and 17 static targets; no recomp discovery is assumed for this bank. The asset pack retains raw table bytes, while typed helpers preserve selected actor/resource/attachment output. Exact active-appearance, defensive-pose, jersey-number, all-team animation and sprite-compositor replays remain primary; gameplay100_closure_probe records 12,985 live upper-resource changes across a deterministic 6,000-frame CPU run and hashes periodic asset-pack render output.",
       "date": "2026-08-29"
+    },
+    {
+      "range": "879CBF-87A017;87A15C-87A2FD;859530-859597",
+      "name": "CPU free-throw setup aim release between-attempt and final resolution",
+      "source": "src/nba_gameplay_free_throw.c + src/nba_tipoff.c",
+      "method": "controlled genuine-entry Mesen sequences + refreshed headless Ghidra + normalized typed replay",
+      "evidence": "tests/fixtures/free-throw-completion-witnesses.json and tools/verify_free_throw_completion_vectors.py. The v5 native sequence covers two shots, first-attempt make/score, states 11..24, and final miss/live rebound; v6 covers one-shot final make, score increment, inbound $0952=5, and state clear. Eight durable cases compare CPU states 1/2/3/9/10, RNG, timers, audio/upload words, resolution predicates and cadence with zero mismatches. Human states 4/5, presentation artwork, and alternate $1F/$23 commentary selection are excluded; see docs/free-throw-completion-differential.md.",
+      "date": "2026-08-29"
     }
   ]
 }

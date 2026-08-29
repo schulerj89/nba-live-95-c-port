@@ -11,6 +11,7 @@
 #include "nba_gameplay_ball.h"
 #include "nba_gameplay_effect.h"
 #include "nba_gameplay_foul.h"
+#include "nba_gameplay_free_throw.h"
 #include "nba_shot_launch.h"
 #include "nba_shot_state.h"
 #include "nba_tipoff_flow.h"
@@ -177,6 +178,9 @@ typedef struct NbaTipoff {
     uint16_t free_throw_aim_y_raw_0982;
     uint16_t free_throw_resolution_raw_0972;
     uint16_t free_throw_flight_timer_raw_0930;
+    uint16_t free_throw_clock_mirror_raw_493f;
+    uint16_t free_throw_upload_raw_180b;
+    uint16_t free_throw_upload_raw_180c;
     NbaGameplayTeamContext team_context[2]; /* `$46EB/$476B` +$30/+32/+39 */
     /* `$85:B83E-$B85D` scans the five $47EB+$40n controller records when
      * team context +$3B requests the alternate mode-11 path. */

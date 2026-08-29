@@ -431,7 +431,14 @@ public class DumpCpuGameplay extends GhidraScript {
                 addEntryPoint(toAddr(0x9f76)); disassemble(toAddr(0x9f76));
                 addEntryPoint(toAddr(0x9ff3)); disassemble(toAddr(0x9ff3));
                 addEntryPoint(toAddr(0xa017)); disassemble(toAddr(0xa017));
+                addEntryPoint(toAddr(0xa15c)); disassemble(toAddr(0xa15c));
                 for (long address = 0x9cbf; address <= 0xa017; ++address) {
+                    Instruction instruction = listing.getInstructionAt(toAddr(address));
+                    if (instruction != null)
+                        out.printf("$87:%04X  %s%n", address, instruction.toString());
+                }
+                out.println("\n--- Complete free-throw lane target/arrival helper ---");
+                for (long address = 0xa15c; address <= 0xa360; ++address) {
                     Instruction instruction = listing.getInstructionAt(toAddr(address));
                     if (instruction != null)
                         out.printf("$87:%04X  %s%n", address, instruction.toString());
