@@ -31,9 +31,32 @@ typedef enum {
     NBA_MATCH_FINAL_CONFIRMED
 } NbaMatchFinalMarker;
 
+/* `$86:8300-$857B`: only TIMEOUT (index zero) and RESUME (index four) are
+ * named by current native evidence. Indices one through three stay absent. */
+typedef enum {
+    NBA_MATCH_PAUSE_INACTIVE = 0,
+    NBA_MATCH_PAUSE_MENU,
+    NBA_MATCH_PAUSE_TIMEOUT_TRANSITION,
+    NBA_MATCH_PAUSE_MENU_AFTER_TIMEOUT,
+    NBA_MATCH_PAUSE_RESUME_TRANSITION
+} NbaMatchPauseState;
+
+typedef enum {
+    NBA_MATCH_PAUSE_SELECT_TIMEOUT = 0,
+    NBA_MATCH_PAUSE_SELECT_RESUME = 4
+} NbaMatchPauseSelection;
+
+typedef struct {
+    NbaMatchPauseState state;
+    NbaMatchPauseSelection selection;
+    uint8_t selected_side; /* native `$08D2`: zero left, nonzero right */
+    uint16_t saved_live_state_raw_4988;
+    uint16_t transition_ticks_remaining;
+} NbaMatchPauseFlow;
+
 /* Persistent match-owned state. `$0926`, `$4715/$4795`, the selected five
  * roster slots, and lifecycle phase outlive an individual court presentation.
- * Timeout-menu and substitution orchestration remain separate slices. */
+ * Timeout-menu orchestration is the bounded TIMEOUT/RESUME slice only. */
 typedef struct {
     uint16_t period_raw_0926;
     uint16_t timeouts_remaining[NBA_MATCH_TEAM_COUNT];
@@ -41,6 +64,7 @@ typedef struct {
     NbaMatchFlowState flow_state;
     NbaMatchFinalMarker final_marker;
     uint16_t presentation_ticks_remaining;
+    NbaMatchPauseFlow pause;
 } NbaMatchLifecycle;
 
 typedef struct {

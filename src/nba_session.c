@@ -44,6 +44,9 @@ void nba_session_init(NbaSession *session) {
     session->match.period_raw_0926 = 0u;
     session->match.flow_state = NBA_MATCH_FLOW_LIVE;
     session->match.final_marker = NBA_MATCH_FINAL_ACTIVE;
+    session->match.pause.state = NBA_MATCH_PAUSE_INACTIVE;
+    session->match.pause.selection = NBA_MATCH_PAUSE_SELECT_TIMEOUT;
+    session->match.pause.selected_side = session->player_one_side;
     for (unsigned side = 0; side < NBA_MATCH_TEAM_COUNT; ++side) {
         session->match.timeouts_remaining[side] = NBA_MATCH_INITIAL_TIMEOUTS;
         static const uint8_t initial_lineup[NBA_MATCH_LINEUP_SIZE] = {

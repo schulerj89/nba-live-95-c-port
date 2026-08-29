@@ -52,3 +52,22 @@ production behavior is assigned.
 Run `python tools/verify_timeout_resume_evidence.py` to check the ROM and the
 existing native grant witness. Run `tools/capture_timeout_resume.ps1` only when
 investigating the outstanding automated pause-entry issue.
+
+## Production binding
+
+`NbaMatchPauseFlow` is the typed host equivalent of the bounded dispatcher.
+During live gameplay, Start saves `live_state_raw`, installs `$0080`, and opens
+only the two proven entries. Up/Down switches TIMEOUT and RESUME, and A
+confirms. The separate native Start-button branch is not implemented because
+its continuation lies beyond the bounded evidence. Timeout availability is
+checked before the decrement; a zero count forces RESUME. Timeout confirmation
+copies the selected side into the `$4933/$4935` mirrors, decrements only that
+side, and calls the exact fixed stamina grant.
+
+All pause states return before the ordinary gameplay pass, freezing the game
+and shot clocks, RNG, actors, ball, camera, event producers, and fatigue. Both
+confirmed transition paths use the native 60-tick wait. Their uncaptured fade
+and court-rebuild visuals are represented by a clearly labeled host overlay,
+not claimed as native graphics. The final resume tick restores the saved live
+state. `timeout_resume_runtime_probe.c` protects both sides, zero rejection,
+grant wrap/clamp boundaries, complete state freeze, gameplay gates, and resume.

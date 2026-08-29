@@ -3,6 +3,7 @@
 #include "nba_shot_action.h"
 #include "nba_owner_flow.h"
 #include "nba_snes_ppu.h"
+#include "nba_font.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -7956,6 +7957,92 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
  * is exact; 120 host ticks are deliberately a typed presentation placeholder
  * until those children have independent native captures. */
 #define NBA_MATCH_PRESENTATION_PLACEHOLDER_TICKS 120u
+/* Both confirmed timeout and resume paths pass X=$003C to `$80:86BF` after
+ * `$80:CF1B`. The fade/rebuild children remain an explicit placeholder. */
+#define NBA_MATCH_PAUSE_TRANSITION_TICKS 60u
+
+bool nba_tipoff_pause_active(const NbaTipoff *tipoff) {
+    return tipoff && tipoff->session &&
+           tipoff->session->match.pause.state != NBA_MATCH_PAUSE_INACTIVE;
+}
+
+bool nba_tipoff_pause_can_enter(const NbaTipoff *tipoff) {
+    if (!tipoff || !tipoff->session || !tipoff->is_initialized) return false;
+    const NbaMatchLifecycle *match = &tipoff->session->match;
+    return match->pause.state == NBA_MATCH_PAUSE_INACTIVE &&
+           match->flow_state == NBA_MATCH_FLOW_LIVE &&
+           match->final_marker == NBA_MATCH_FINAL_ACTIVE &&
+           tipoff->phase == NBA_TIPOFF_LIVE &&
+           tipoff->live_state_raw != 0x0080u;
+}
+
+static void match_pause_enter(NbaTipoff *tipoff) {
+    NbaMatchPauseFlow *pause = &tipoff->session->match.pause;
+    pause->saved_live_state_raw_4988 = tipoff->live_state_raw;
+    pause->selected_side = tipoff->session->player_one_side ? 1u : 0u;
+    pause->selection = tipoff->session->match.timeouts_remaining[
+        pause->selected_side] ? NBA_MATCH_PAUSE_SELECT_TIMEOUT :
+                               NBA_MATCH_PAUSE_SELECT_RESUME;
+    pause->transition_ticks_remaining = 0u;
+    pause->state = NBA_MATCH_PAUSE_MENU;
+    tipoff->live_state_raw = 0x0080u;
+}
+
+static void match_pause_begin_resume(NbaTipoff *tipoff) {
+    NbaMatchPauseFlow *pause = &tipoff->session->match.pause;
+    pause->state = NBA_MATCH_PAUSE_RESUME_TRANSITION;
+    pause->transition_ticks_remaining = NBA_MATCH_PAUSE_TRANSITION_TICKS;
+}
+
+static void match_pause_confirm_timeout(NbaTipoff *tipoff) {
+    NbaMatchPauseFlow *pause = &tipoff->session->match.pause;
+    uint8_t side = pause->selected_side ? 1u : 0u;
+    /* `$86:83EC/$841E` skip disabled index zero. `$844E` itself does not
+     * reject zero, so enforce availability before reaching its decrement. */
+    if (tipoff->session->match.timeouts_remaining[side] == 0u) {
+        pause->selection = NBA_MATCH_PAUSE_SELECT_RESUME;
+        return;
+    }
+    tipoff->context_raw_4933 = side;
+    tipoff->context_raw_4935 = side;
+    --tipoff->session->match.timeouts_remaining[side];
+    nba_shot_stamina_fixed_grant(&tipoff->fatigue);
+    pause->state = NBA_MATCH_PAUSE_TIMEOUT_TRANSITION;
+    pause->transition_ticks_remaining = NBA_MATCH_PAUSE_TRANSITION_TICKS;
+}
+
+static void match_pause_step(NbaTipoff *tipoff, const NbaInput *input) {
+    NbaMatchPauseFlow *pause = &tipoff->session->match.pause;
+    if (pause->state == NBA_MATCH_PAUSE_TIMEOUT_TRANSITION ||
+        pause->state == NBA_MATCH_PAUSE_RESUME_TRANSITION) {
+        if (pause->transition_ticks_remaining > 0u)
+            --pause->transition_ticks_remaining;
+        if (pause->transition_ticks_remaining != 0u) return;
+        if (pause->state == NBA_MATCH_PAUSE_TIMEOUT_TRANSITION) {
+            pause->state = NBA_MATCH_PAUSE_MENU_AFTER_TIMEOUT;
+            pause->selection = NBA_MATCH_PAUSE_SELECT_RESUME;
+            return;
+        }
+        tipoff->live_state_raw = pause->saved_live_state_raw_4988;
+        pause->state = NBA_MATCH_PAUSE_INACTIVE;
+        pause->transition_ticks_remaining = 0u;
+        return;
+    }
+    if (!input) return;
+    uint8_t side = pause->selected_side ? 1u : 0u;
+    if (input->pressed & (NBA_BTN_UP | NBA_BTN_DOWN)) {
+        pause->selection = pause->selection == NBA_MATCH_PAUSE_SELECT_TIMEOUT ?
+            NBA_MATCH_PAUSE_SELECT_RESUME : NBA_MATCH_PAUSE_SELECT_TIMEOUT;
+        if (pause->selection == NBA_MATCH_PAUSE_SELECT_TIMEOUT &&
+            tipoff->session->match.timeouts_remaining[side] == 0u)
+            pause->selection = NBA_MATCH_PAUSE_SELECT_RESUME;
+    }
+    if (!(input->pressed & NBA_BTN_A)) return;
+    if (pause->selection == NBA_MATCH_PAUSE_SELECT_TIMEOUT)
+        match_pause_confirm_timeout(tipoff);
+    else
+        match_pause_begin_resume(tipoff);
+}
 
 bool nba_tipoff_match_horn_transition_ready(const NbaTipoff *tipoff) {
     if (!tipoff) return false;
@@ -8117,6 +8204,18 @@ bool nba_tipoff_step_match_lifecycle(NbaTipoff *tipoff) {
 
 void nba_tipoff_update(NbaTipoff *tipoff, const NbaInput *input) {
     if (!tipoff || !tipoff->is_initialized) return;
+    /* `$86:8338-$8341` changes live state before the pause loop. The entire
+     * typed pause flow returns before any clock, RNG, actor, ball, camera,
+     * audio-event, fatigue or lifecycle writer below can execute. */
+    if (nba_tipoff_pause_active(tipoff)) {
+        match_pause_step(tipoff, input);
+        return;
+    }
+    if (input && (input->pressed & NBA_BTN_START) &&
+        nba_tipoff_pause_can_enter(tipoff)) {
+        match_pause_enter(tipoff);
+        return;
+    }
     /* Period presentation is a hard gameplay boundary.  Its child visuals
      * are still pending, but neither actor physics nor clocks may leak across
      * it. */
@@ -8874,6 +8973,38 @@ void nba_tipoff_render(const NbaTipoff *tipoff, NbaRenderer *ren) {
             uint32_t g = ((c >> 8) & 255u) * brightness / 15u;
             uint32_t b = (c & 255u) * brightness / 15u;
             ren->pixels[i] = 0xFF000000u | (r << 16) | (g << 8) | b;
+        }
+    }
+    if (nba_tipoff_pause_active(tipoff)) {
+        /* Host placeholder only: native menu/fade bitmaps below `$80:CF1B`
+         * are not captured. Keep presentation separate from pause behavior. */
+        const NbaMatchPauseFlow *pause = &tipoff->session->match.pause;
+        nba_renderer_draw_rect(ren, 52, 66, 152, 88, 0xFF081018u);
+        nba_renderer_draw_rect(ren, 52, 66, 152, 2, 0xFFFFD760u);
+        nba_font_render_text_centered(ren->pixels, NBA_SNES_WIDTH, 74,
+            "PAUSED", 0xFFFFFFFFu, 0xFF081018u, 1);
+        if (pause->state == NBA_MATCH_PAUSE_TIMEOUT_TRANSITION ||
+            pause->state == NBA_MATCH_PAUSE_RESUME_TRANSITION) {
+            nba_font_render_text_centered(ren->pixels, NBA_SNES_WIDTH, 102,
+                pause->state == NBA_MATCH_PAUSE_TIMEOUT_TRANSITION ?
+                    "TIMEOUT" : "RESUMING",
+                0xFFFFD760u, 0xFF081018u, 1);
+        } else {
+            char timeout[40];
+            uint8_t side = pause->selected_side ? 1u : 0u;
+            snprintf(timeout, sizeof(timeout), "%c TIMEOUT  %u",
+                pause->selection == NBA_MATCH_PAUSE_SELECT_TIMEOUT ? '>' : ' ',
+                tipoff->session->match.timeouts_remaining[side]);
+            nba_font_render_text(ren->pixels, NBA_SNES_WIDTH, 68, 94, timeout,
+                pause->selection == NBA_MATCH_PAUSE_SELECT_TIMEOUT ?
+                    0xFFFFD760u : 0xFFFFFFFFu, 0xFF081018u, 1);
+            nba_font_render_text(ren->pixels, NBA_SNES_WIDTH, 68, 108,
+                pause->selection == NBA_MATCH_PAUSE_SELECT_RESUME ?
+                    "> RESUME" : "  RESUME",
+                pause->selection == NBA_MATCH_PAUSE_SELECT_RESUME ?
+                    0xFFFFD760u : 0xFFFFFFFFu, 0xFF081018u, 1);
+            nba_font_render_text_centered(ren->pixels, NBA_SNES_WIDTH, 134,
+                "UP/DOWN  A SELECT", 0xFF9EF7A9u, 0xFF081018u, 1);
         }
     }
 }

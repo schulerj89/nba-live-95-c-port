@@ -316,6 +316,9 @@ typedef struct NbaTipoff {
 bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
                      NbaSession *session);
 void nba_tipoff_update(NbaTipoff *tipoff, const NbaInput *input);
+/* `$86:8300-$857B` bounded TIMEOUT/RESUME dispatcher. */
+bool nba_tipoff_pause_active(const NbaTipoff *tipoff);
+bool nba_tipoff_pause_can_enter(const NbaTipoff *tipoff);
 /* `$86:97CD-$97F2 -> $87:8EB2-$8ECF -> $87:95E9-$979D`.
  * Returns true while the normal gameplay pass is frozen. */
 bool nba_tipoff_step_match_lifecycle(NbaTipoff *tipoff);

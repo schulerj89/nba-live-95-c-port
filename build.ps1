@@ -212,6 +212,9 @@ if ($Test) {
     & (Join-Path $BuildDir 'match_lifecycle_expiry_probe.exe') `
         (Join-Path $Root 'tests\fixtures\match-lifecycle-expiry-witnesses.json')
     if ($LASTEXITCODE -ne 0) { throw 'Match lifecycle expiry native replay failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name timeout_resume_runtime_probe
+    & (Join-Path $BuildDir 'timeout_resume_runtime_probe.exe')
+    if ($LASTEXITCODE -ne 0) { throw 'Timeout/resume runtime binding failed.' }
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name complete_shot_vector_probe
     & python (Join-Path $Root 'tools\verify_complete_shot_vectors.py') `
         --normalized --vectors (Join-Path $Root 'tests\fixtures\complete-shot-witnesses.json') `
