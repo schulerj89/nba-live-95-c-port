@@ -77,6 +77,7 @@ host-side outcome without pretending the C port executes SNES DMA machinery.
 | Active appearance/matchup records | 186 | 8,111 (29.07%) | Exact ten-actor native output; all 348 ROM roster records byte-compared with pack; 29-team runtime sweep; corrected roster-slot/matchup-selector bug |
 | Jersey-number compositor/BCD selector | 391 | 8,502 (30.47%) | Exact 1,920-byte native ten-player output; all numbers 0-99, both sides and six visible views; corrected visiting-side mask bug |
 | Player projection/culling core | 50 | 8,552 (30.65%) | Native signed-coordinate witnesses, exact CPU/human visibility boundaries, retained OAM cadence and 16,000-update runtime binding |
+| Sprite-part compositor | 116 | 8,668 (31.07%) | All 32 native opening resource/origin/order calls plus 5,568 team/roster/direction/side cases; fixed direction-dependent torso/number priority |
 
 ### Route from checkpoint 2 to 35%
 

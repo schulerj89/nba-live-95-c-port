@@ -527,6 +527,56 @@ bool nba_player_compose_jersey_number(const NbaAssetPack *assets,
     return true;
 }
 
+bool nba_player_compose_sprite_parts(const NbaAssetPack *assets,
+                                    uint8_t team, uint8_t roster_slot,
+                                    uint8_t side, uint8_t direction,
+                                    uint16_t upper_resource,
+                                    uint16_t lower_resource,
+                                    int16_t lower_x, int16_t lower_y,
+                                    NbaPlayerSpriteComposition *composition) {
+    if (!composition || direction >= 8u) return false;
+    NbaPlayerSpriteDiagnostics d;
+    if (!nba_player_sprite_diagnose_resources(assets, team, roster_slot, side,
+            direction, upper_resource, lower_resource, &d)) return false;
+    bool body_flip = direction < 3u;
+    int16_t upper_x = (int16_t)(lower_x +
+        (body_flip ? -d.upper_attach_x : d.upper_attach_x));
+    int16_t upper_y = (int16_t)(lower_y + d.upper_attach_y);
+    NbaPlayerSpriteComposition next = {0};
+#define ADD_PART(part_kind, part_resource, part_x, part_y, part_flip) do { \
+    NbaPlayerSpritePart *part = &next.parts[next.count++]; \
+    part->kind = (part_kind); part->resource = (part_resource); \
+    part->x = (part_x); part->y = (part_y); part->flip = (part_flip); \
+} while (0)
+    ADD_PART(NBA_PLAYER_SPRITE_HEAD, d.head_resource,
+        (int16_t)(upper_x + (body_flip ? -d.head_attach_x : d.head_attach_x)),
+        (int16_t)(upper_y + d.head_attach_y), body_flip);
+    /* `$80:AE42-$80:AE86`: the oblique/front views 2..4 queue the jersey
+     * overlay before the torso. Views 0,6,7 queue it after the torso. This
+     * changes overlap priority and cannot be represented by one fixed host
+     * painter order. Directions 1/5 have no number resource. */
+    bool number_before_upper = direction >= 2u && direction <= 4u;
+    if (d.number_composed && number_before_upper)
+        ADD_PART(NBA_PLAYER_SPRITE_NUMBER, d.number_resource,
+            (int16_t)(upper_x +
+                (body_flip ? -d.number_attach_x : d.number_attach_x)),
+            (int16_t)(upper_y + d.number_attach_y),
+            d.number_resource == 0x0591u);
+    ADD_PART(NBA_PLAYER_SPRITE_UPPER, upper_resource,
+        upper_x, upper_y, body_flip);
+    if (d.number_composed && !number_before_upper)
+        ADD_PART(NBA_PLAYER_SPRITE_NUMBER, d.number_resource,
+            (int16_t)(upper_x +
+                (body_flip ? -d.number_attach_x : d.number_attach_x)),
+            (int16_t)(upper_y + d.number_attach_y),
+            d.number_resource == 0x0591u);
+    ADD_PART(NBA_PLAYER_SPRITE_LOWER, lower_resource,
+        lower_x, lower_y, body_flip);
+#undef ADD_PART
+    *composition = next;
+    return true;
+}
+
 static bool draw_player_resources_at(NbaRenderer *ren,
                                      const NbaAssetPack *assets,
                                      const PlayerLabRecord *player,
@@ -535,46 +585,33 @@ static bool draw_player_resources_at(NbaRenderer *ren,
                                      uint16_t upper_resource,
                                      uint16_t lower_resource,
                                      int lower_x, int lower_y, int scale) {
-    const uint8_t *bank = animation_bank84(assets, NULL);
-    if (!bank) return false;
     const uint8_t *palette = player_palette(assets, team, side,
                                             player->palette_variant);
     if (!palette) return false;
-    uint16_t head_resource = (uint16_t)(player->head_resource_base +
-        read_u16(bank + 0x436eu + (direction & 7u) * 2u));
-    bool flip = (direction & 7u) < 3u;
-
-    int lower_attach_x = animation_attachment(assets, lower_resource, false);
-    int upper_x = lower_x + (flip ? -lower_attach_x : lower_attach_x) * scale;
-    int upper_y = lower_y + animation_attachment(assets, lower_resource, true) * scale;
-    int upper_attach_x = animation_attachment(assets, upper_resource, false);
-    int head_x = upper_x + (flip ? -upper_attach_x : upper_attach_x) * scale;
-    int head_y = upper_y + animation_attachment(assets, upper_resource, true) * scale;
-    draw_animation_resource(ren, assets, lower_resource, palette, lower_x, lower_y,
-                            flip, NULL, scale);
-    draw_animation_resource(ren, assets, upper_resource, palette, upper_x, upper_y,
-                            flip, NULL, scale);
+    NbaPlayerSpriteComposition composition;
+    if (!nba_player_compose_sprite_parts(assets, team, player->slot, side,
+            direction, upper_resource, lower_resource,
+            (int16_t)lower_x, (int16_t)lower_y, &composition)) return false;
     uint8_t number_tile[32];
-    if (number_allowed_for_upper(assets, upper_resource) &&
-        nba_player_compose_jersey_number(
-            assets, player->jersey, direction, side, number_tile)) {
-        static const uint16_t number_resources[8] = {
-            0x0593, 0xffff, 0x0591, 0x0592, 0x0593, 0xffff, 0x0591, 0x0592
-        };
-        int number_attach_x = number_attachment(assets, upper_resource, false);
-        int number_x = upper_x + (flip ? -number_attach_x : number_attach_x) * scale;
-        int number_y = upper_y + number_attachment(assets, upper_resource, true) * scale;
-        uint8_t number_palette[32];
-        if (!jersey_palette(assets, team, side, number_palette)) return false;
-        uint16_t number_resource = number_resources[direction & 7u];
-        /* $80:AE78-$80:AE86 applies X flip only to overlay $0591. The
-           direction-specific number resources must not inherit the body flip. */
-        bool number_flip = number_resource == 0x0591u;
-        draw_animation_resource(ren, assets, number_resource, number_palette,
-                                number_x, number_y, number_flip, number_tile, scale);
+    bool have_number = nba_player_compose_jersey_number(
+        assets, player->jersey, direction, side, number_tile);
+    uint8_t number_palette[32];
+    if (have_number && !jersey_palette(assets, team, side, number_palette))
+        return false;
+    /* Low native OAM indices win. The direct framebuffer therefore renders
+     * the `$80:B348` submission list in reverse. This also preserves the
+     * direction-dependent torso/number priority selected by `$80:AE42`. */
+    for (unsigned index = composition.count; index-- > 0;) {
+        const NbaPlayerSpritePart *part = &composition.parts[index];
+        const uint8_t *part_palette = part->kind == NBA_PLAYER_SPRITE_NUMBER
+            ? number_palette : palette;
+        const uint8_t *override = part->kind == NBA_PLAYER_SPRITE_NUMBER
+            ? number_tile : NULL;
+        int draw_x = lower_x + (part->x - lower_x) * scale;
+        int draw_y = lower_y + (part->y - lower_y) * scale;
+        draw_animation_resource(ren, assets, part->resource, part_palette,
+            draw_x, draw_y, part->flip, override, scale);
     }
-    draw_animation_resource(ren, assets, head_resource, palette, head_x, head_y,
-                            flip, NULL, scale);
     return true;
 }
 

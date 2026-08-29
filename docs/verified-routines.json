@@ -2,6 +2,14 @@
   "comment": "Routines verified against emulator ground truth. Byte ranges are 24-bit SNES bus addresses. evidence points at the capture/replay artifacts; tools/progress.py counts these bytes as verified.",
   "routines": [
     {
+      "range": "80AD92-80AEC1",
+      "name": "nba_player_compose_sprite_parts / gameplay player compositor",
+      "source": "src/nba_player_lab.c",
+      "method": "native sprite-queue output replay + exhaustive asset/runtime cases",
+      "evidence": "sprite_compositor_probe replays the first complete native eight-player AD92->B348 submission: all 32 head/number/upper/lower resource IDs, attachment origins and direction-dependent queue positions match. It then checks 5,568 team/roster/direction/uniform-side combinations and atomic rejection. This exposed and fixed the old one-order renderer: directions2-4 queue the number ahead of the torso, while0/6/7 queue it behind. The production renderer consumes this same reusable composition and the 63,800-frame CPU suite rejects missing layers/resources.",
+      "date": "2026-08-29"
+    },
+    {
       "range": "87A3BB-87A43B",
       "name": "nba_court_project_actor / nba_court_actor_visible",
       "source": "src/nba_court_presentation.c + src/nba_tipoff.c",

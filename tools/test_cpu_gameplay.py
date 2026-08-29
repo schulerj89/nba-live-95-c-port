@@ -43,17 +43,20 @@ EXPECTED_RGB = {
     # assignments intentionally alter the CPU trajectory.  All five anchors
     # retain ten complete players, a visible ball, court/goal bounds and an
     # unobstructed HUD; the visitor number-overlay mask is also side-correct.
-    600: "62e828f57e22392beca5714693394682a7ff391363e872712f6ed616652fdc6d",
+    # Re-reviewed after `$80:AD92-$AEC1` adopted the native direction-specific
+    # torso/number submission order. State and trajectory are unchanged; only
+    # the ROM-correct overlap priority of those two player layers differs.
+    600: "34ef6adfe654c5ec8202db8c250fd17a86a6f5ff5270af5b8b38db63d7799c2d",
     # Re-reviewed after the live renderer adopted `$87:AFA2-$B053`'s tall
     # lower-body selector and the asset pack gained every dynamically chosen
     # `$87:AC76-$AC95` base+$28 torso resource. All five anchors show ten
     # complete, correctly colored player uniforms; the altered body resources
     # also correct native ball attachment points, so later CPU paths diverge
     # from the retired incomplete-resource trajectory by design.
-    1300: "8c61fd04bef47aa2e05e0ac9d520d22f453e4fc3736bdb80a90f7da61320cf6a",
-    3480: "9de9d952c61d2e8346c4a9d7c7b5eefe395f9e7f0fbb728b4a0cd000c70ee54c",
-    6932: "61133432c212e183aa2e419db8265b0c2927faf828e37b4b26101934d22fa887",
-    6954: "3097dae2dd0364d477f65da545ec5a6fe392350c4d4a2b83efa01ab100bc3d03",
+    1300: "943a6fc35ebb67314728fb559cf5ade1575b3aff53766f472a932de8da88d572",
+    3480: "97a78aa1fce4e22989cd1a004a0b695faa741dc0ff6c7d51cddd9dfd9d545ff2",
+    6932: "40f99aa98686eebb4b84fd860edbbd7b12b10c468cde5851c80706360aef1000",
+    6954: "8c7d0ebc512e8dca9e94fac0eadd019596042fb567671562ce87b914b789bbbe",
 }
 
 

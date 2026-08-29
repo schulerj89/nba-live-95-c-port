@@ -75,6 +75,35 @@ typedef struct {
     bool player_palette_valid, number_palette_valid;
     bool number_allowed, number_composed;
 } NbaPlayerSpriteDiagnostics;
+
+typedef enum {
+    NBA_PLAYER_SPRITE_HEAD = 0,
+    NBA_PLAYER_SPRITE_NUMBER,
+    NBA_PLAYER_SPRITE_UPPER,
+    NBA_PLAYER_SPRITE_LOWER
+} NbaPlayerSpritePartKind;
+
+typedef struct {
+    NbaPlayerSpritePartKind kind;
+    uint16_t resource;
+    int16_t x, y;
+    bool flip;
+} NbaPlayerSpritePart;
+
+typedef struct {
+    NbaPlayerSpritePart parts[4]; /* native `$80:B348` submission order */
+    uint8_t count;
+} NbaPlayerSpriteComposition;
+
+/* Portable observable output of `$80:AD92-$AEC1`: resolve the four player
+ * layers and their attachment origins in native sprite-queue order. */
+bool nba_player_compose_sprite_parts(const NbaAssetPack *assets,
+                                    uint8_t team, uint8_t roster_slot,
+                                    uint8_t side, uint8_t direction,
+                                    uint16_t upper_resource,
+                                    uint16_t lower_resource,
+                                    int16_t lower_x, int16_t lower_y,
+                                    NbaPlayerSpriteComposition *composition);
 /* Asset-only equivalent of the `$87:A47A` -> `$80:AD92` layer inputs.
  * It does not render or depend on Mesen pixels. Zero-part resources are
  * valid native no-op layers, so validity and opaque pixel counts are exposed

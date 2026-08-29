@@ -29,7 +29,10 @@ EXPECTED_FRAMES = {
     90: ("TIP PH:FORMATION", "39d3e6bf4d77fc58280d3e604e03063e82a621124a5d42d3c7f2a1e818b05ae8"),
     170: ("TIP PH:POSSESSION", "da83d08b002c789af5b214b02e38d8ee6d1673d87e2d3753c3bb26a0634ff43d"),
     # `$86:CF38` receiver reach now permits `$86:D365` possession at frame186.
-    220: ("TIP PH:LIVE", "9c3f1dcfeb19e1fafba5f081efbe3f6cc8437897740106a97f17fa11f8623e25"),
+    # Live frame re-reviewed after the exact direction-specific AD92 torso /
+    # number queue ordering; formation/possession anchors do not overlap the
+    # affected pixels and remain byte-identical.
+    220: ("TIP PH:LIVE", "a259bc68279154470d9091e8d6f2a4ee4d39533a785c74985672ec81fe35d46a"),
 }
 
 
