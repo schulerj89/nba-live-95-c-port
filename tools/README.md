@@ -550,6 +550,27 @@ The Ghidra wrappers under `tools/ghidra` regenerate labeled listings and
 decompilation notes. Supply their `-GhidraHome` and `-JdkHome` parameters on a
 different machine.
 
+### Full-ROM census and feature matrix
+
+The full-ROM census is a conservative recursive disassembly, not a linear
+sweep. It seeds the eight natively observed code banks from retained execution,
+the verified ledger, source provenance, recomp function entries and bank-$80
+vectors. Direct cross-bank calls may discover more banks. Unknown bytes remain
+classified as data-or-undiscovered-code rather than being counted as pending
+instructions.
+
+```powershell
+.\tools\ghidra\Run-FullRomCensus.ps1 -RomPath 'F:\Games\SNES\NBA Live 95 (USA).sfc' -GhidraHome 'C:\path\to\ghidra' -JdkHome 'C:\path\to\jdk-21'
+python tools\feature_capture_matrix.py
+```
+
+The first command regenerates `docs/full-rom-instruction-census.md` and its
+JSON source. The second validates the weighted planning data in
+`docs/feature-capture-matrix.json` and regenerates its Markdown view. Do not
+substitute either percentage for the other: one measures verified starts in a
+lower-bound decoded universe; the other is an explicitly weighted feature
+estimate.
+
 `mesen_team_select_capture.lua` also accepts `NBA95_TEAM_PANEL_ANIM=1`. It
 captures the settled gold-plate frames plus OAM/CGRAM and short executed-address
 traces. `Run-TeamSelectAnalysis.ps1` dumps the corresponding `$82:8933-$8967`

@@ -500,6 +500,10 @@ if ($Test) {
     if ($LASTEXITCODE -ne 0) {
         throw "Intro sequence regression tests failed with exit code $LASTEXITCODE"
     }
+    & python (Join-Path $Root "tools\test_project_census.py")
+    if ($LASTEXITCODE -ne 0) {
+        throw "Project census regression tests failed with exit code $LASTEXITCODE"
+    }
 }
 
 if ($Headless -or $DumpFrame) {

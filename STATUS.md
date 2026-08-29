@@ -28,6 +28,11 @@ captures. This is an address-coverage metric, **not an instruction census or
 percentage of the whole game completed**. Disassembled instruction counts
 for a requested slice are reported separately.
 
+The ROM-wide lower-bound code inventory is generated at
+`docs/full-rom-instruction-census.md`. Whole-game engineering status is tracked
+separately in `docs/feature-capture-matrix.md`; its weighted percentage is an
+explicit planning estimate, not native instruction coverage.
+
 Court presentation assets now use pack v31. Asset 282 stores the native BG1
 basket map/4bpp CHR/CGRAM, asset 283 stores the 28 animated BG2 fan tiles
 seen at `$5280-$55FF`, and asset 284 stores per-team indexed gameplay

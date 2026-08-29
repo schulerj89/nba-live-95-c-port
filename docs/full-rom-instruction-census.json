@@ -1,0 +1,446 @@
+{
+  "schema": 1,
+  "method": "recursive Ghidra seeds; no linear sweep; unknown bytes may be data or code",
+  "totals": {
+    "rom_bytes": 1572864,
+    "decoded_starts": 58610,
+    "decoded_bytes": 142268,
+    "observed_starts": 26693,
+    "verified_starts": 26693,
+    "undecoded_bytes": 1430596
+  },
+  "banks": [
+    {
+      "bank": "80",
+      "rom_bytes": 32768,
+      "decoded_starts": 9293,
+      "decoded_bytes": 20522,
+      "observed_starts": 5658,
+      "verified_starts": 5658,
+      "undecoded_bytes": 12246
+    },
+    {
+      "bank": "81",
+      "rom_bytes": 32768,
+      "decoded_starts": 6377,
+      "decoded_bytes": 15405,
+      "observed_starts": 2592,
+      "verified_starts": 2592,
+      "undecoded_bytes": 17363
+    },
+    {
+      "bank": "82",
+      "rom_bytes": 32768,
+      "decoded_starts": 5021,
+      "decoded_bytes": 13254,
+      "observed_starts": 1988,
+      "verified_starts": 1988,
+      "undecoded_bytes": 19514
+    },
+    {
+      "bank": "83",
+      "rom_bytes": 32768,
+      "decoded_starts": 5420,
+      "decoded_bytes": 14044,
+      "observed_starts": 1052,
+      "verified_starts": 1052,
+      "undecoded_bytes": 18724
+    },
+    {
+      "bank": "84",
+      "rom_bytes": 32768,
+      "decoded_starts": 6044,
+      "decoded_bytes": 14718,
+      "observed_starts": 166,
+      "verified_starts": 166,
+      "undecoded_bytes": 18050
+    },
+    {
+      "bank": "85",
+      "rom_bytes": 32768,
+      "decoded_starts": 7335,
+      "decoded_bytes": 17077,
+      "observed_starts": 5337,
+      "verified_starts": 5337,
+      "undecoded_bytes": 15691
+    },
+    {
+      "bank": "86",
+      "rom_bytes": 32768,
+      "decoded_starts": 11901,
+      "decoded_bytes": 29026,
+      "observed_starts": 6508,
+      "verified_starts": 6508,
+      "undecoded_bytes": 3742
+    },
+    {
+      "bank": "87",
+      "rom_bytes": 32768,
+      "decoded_starts": 7219,
+      "decoded_bytes": 18222,
+      "observed_starts": 3392,
+      "verified_starts": 3392,
+      "undecoded_bytes": 14546
+    },
+    {
+      "bank": "88",
+      "rom_bytes": 32768,
+      "decoded_starts": 0,
+      "decoded_bytes": 0,
+      "observed_starts": 0,
+      "verified_starts": 0,
+      "undecoded_bytes": 32768
+    },
+    {
+      "bank": "89",
+      "rom_bytes": 32768,
+      "decoded_starts": 0,
+      "decoded_bytes": 0,
+      "observed_starts": 0,
+      "verified_starts": 0,
+      "undecoded_bytes": 32768
+    },
+    {
+      "bank": "8A",
+      "rom_bytes": 32768,
+      "decoded_starts": 0,
+      "decoded_bytes": 0,
+      "observed_starts": 0,
+      "verified_starts": 0,
+      "undecoded_bytes": 32768
+    },
+    {
+      "bank": "8B",
+      "rom_bytes": 32768,
+      "decoded_starts": 0,
+      "decoded_bytes": 0,
+      "observed_starts": 0,
+      "verified_starts": 0,
+      "undecoded_bytes": 32768
+    },
+    {
+      "bank": "8C",
+      "rom_bytes": 32768,
+      "decoded_starts": 0,
+      "decoded_bytes": 0,
+      "observed_starts": 0,
+      "verified_starts": 0,
+      "undecoded_bytes": 32768
+    },
+    {
+      "bank": "8D",
+      "rom_bytes": 32768,
+      "decoded_starts": 0,
+      "decoded_bytes": 0,
+      "observed_starts": 0,
+      "verified_starts": 0,
+      "undecoded_bytes": 32768
+    },
+    {
+      "bank": "8E",
+      "rom_bytes": 32768,
+      "decoded_starts": 0,
+      "decoded_bytes": 0,
+      "observed_starts": 0,
+      "verified_starts": 0,
+      "undecoded_bytes": 32768
+    },
+    {
+      "bank": "8F",
+      "rom_bytes": 32768,
+      "decoded_starts": 0,
+      "decoded_bytes": 0,
+      "observed_starts": 0,
+      "verified_starts": 0,
+      "undecoded_bytes": 32768
+    },
+    {
+      "bank": "90",
+      "rom_bytes": 32768,
+      "decoded_starts": 0,
+      "decoded_bytes": 0,
+      "observed_starts": 0,
+      "verified_starts": 0,
+      "undecoded_bytes": 32768
+    },
+    {
+      "bank": "91",
+      "rom_bytes": 32768,
+      "decoded_starts": 0,
+      "decoded_bytes": 0,
+      "observed_starts": 0,
+      "verified_starts": 0,
+      "undecoded_bytes": 32768
+    },
+    {
+      "bank": "92",
+      "rom_bytes": 32768,
+      "decoded_starts": 0,
+      "decoded_bytes": 0,
+      "observed_starts": 0,
+      "verified_starts": 0,
+      "undecoded_bytes": 32768
+    },
+    {
+      "bank": "93",
+      "rom_bytes": 32768,
+      "decoded_starts": 0,
+      "decoded_bytes": 0,
+      "observed_starts": 0,
+      "verified_starts": 0,
+      "undecoded_bytes": 32768
+    },
+    {
+      "bank": "94",
+      "rom_bytes": 32768,
+      "decoded_starts": 0,
+      "decoded_bytes": 0,
+      "observed_starts": 0,
+      "verified_starts": 0,
+      "undecoded_bytes": 32768
+    },
+    {
+      "bank": "95",
+      "rom_bytes": 32768,
+      "decoded_starts": 0,
+      "decoded_bytes": 0,
+      "observed_starts": 0,
+      "verified_starts": 0,
+      "undecoded_bytes": 32768
+    },
+    {
+      "bank": "96",
+      "rom_bytes": 32768,
+      "decoded_starts": 0,
+      "decoded_bytes": 0,
+      "observed_starts": 0,
+      "verified_starts": 0,
+      "undecoded_bytes": 32768
+    },
+    {
+      "bank": "97",
+      "rom_bytes": 32768,
+      "decoded_starts": 0,
+      "decoded_bytes": 0,
+      "observed_starts": 0,
+      "verified_starts": 0,
+      "undecoded_bytes": 32768
+    },
+    {
+      "bank": "98",
+      "rom_bytes": 32768,
+      "decoded_starts": 0,
+      "decoded_bytes": 0,
+      "observed_starts": 0,
+      "verified_starts": 0,
+      "undecoded_bytes": 32768
+    },
+    {
+      "bank": "99",
+      "rom_bytes": 32768,
+      "decoded_starts": 0,
+      "decoded_bytes": 0,
+      "observed_starts": 0,
+      "verified_starts": 0,
+      "undecoded_bytes": 32768
+    },
+    {
+      "bank": "9A",
+      "rom_bytes": 32768,
+      "decoded_starts": 0,
+      "decoded_bytes": 0,
+      "observed_starts": 0,
+      "verified_starts": 0,
+      "undecoded_bytes": 32768
+    },
+    {
+      "bank": "9B",
+      "rom_bytes": 32768,
+      "decoded_starts": 0,
+      "decoded_bytes": 0,
+      "observed_starts": 0,
+      "verified_starts": 0,
+      "undecoded_bytes": 32768
+    },
+    {
+      "bank": "9C",
+      "rom_bytes": 32768,
+      "decoded_starts": 0,
+      "decoded_bytes": 0,
+      "observed_starts": 0,
+      "verified_starts": 0,
+      "undecoded_bytes": 32768
+    },
+    {
+      "bank": "9D",
+      "rom_bytes": 32768,
+      "decoded_starts": 0,
+      "decoded_bytes": 0,
+      "observed_starts": 0,
+      "verified_starts": 0,
+      "undecoded_bytes": 32768
+    },
+    {
+      "bank": "9E",
+      "rom_bytes": 32768,
+      "decoded_starts": 0,
+      "decoded_bytes": 0,
+      "observed_starts": 0,
+      "verified_starts": 0,
+      "undecoded_bytes": 32768
+    },
+    {
+      "bank": "9F",
+      "rom_bytes": 32768,
+      "decoded_starts": 0,
+      "decoded_bytes": 0,
+      "observed_starts": 0,
+      "verified_starts": 0,
+      "undecoded_bytes": 32768
+    },
+    {
+      "bank": "A0",
+      "rom_bytes": 32768,
+      "decoded_starts": 0,
+      "decoded_bytes": 0,
+      "observed_starts": 0,
+      "verified_starts": 0,
+      "undecoded_bytes": 32768
+    },
+    {
+      "bank": "A1",
+      "rom_bytes": 32768,
+      "decoded_starts": 0,
+      "decoded_bytes": 0,
+      "observed_starts": 0,
+      "verified_starts": 0,
+      "undecoded_bytes": 32768
+    },
+    {
+      "bank": "A2",
+      "rom_bytes": 32768,
+      "decoded_starts": 0,
+      "decoded_bytes": 0,
+      "observed_starts": 0,
+      "verified_starts": 0,
+      "undecoded_bytes": 32768
+    },
+    {
+      "bank": "A3",
+      "rom_bytes": 32768,
+      "decoded_starts": 0,
+      "decoded_bytes": 0,
+      "observed_starts": 0,
+      "verified_starts": 0,
+      "undecoded_bytes": 32768
+    },
+    {
+      "bank": "A4",
+      "rom_bytes": 32768,
+      "decoded_starts": 0,
+      "decoded_bytes": 0,
+      "observed_starts": 0,
+      "verified_starts": 0,
+      "undecoded_bytes": 32768
+    },
+    {
+      "bank": "A5",
+      "rom_bytes": 32768,
+      "decoded_starts": 0,
+      "decoded_bytes": 0,
+      "observed_starts": 0,
+      "verified_starts": 0,
+      "undecoded_bytes": 32768
+    },
+    {
+      "bank": "A6",
+      "rom_bytes": 32768,
+      "decoded_starts": 0,
+      "decoded_bytes": 0,
+      "observed_starts": 0,
+      "verified_starts": 0,
+      "undecoded_bytes": 32768
+    },
+    {
+      "bank": "A7",
+      "rom_bytes": 32768,
+      "decoded_starts": 0,
+      "decoded_bytes": 0,
+      "observed_starts": 0,
+      "verified_starts": 0,
+      "undecoded_bytes": 32768
+    },
+    {
+      "bank": "A8",
+      "rom_bytes": 32768,
+      "decoded_starts": 0,
+      "decoded_bytes": 0,
+      "observed_starts": 0,
+      "verified_starts": 0,
+      "undecoded_bytes": 32768
+    },
+    {
+      "bank": "A9",
+      "rom_bytes": 32768,
+      "decoded_starts": 0,
+      "decoded_bytes": 0,
+      "observed_starts": 0,
+      "verified_starts": 0,
+      "undecoded_bytes": 32768
+    },
+    {
+      "bank": "AA",
+      "rom_bytes": 32768,
+      "decoded_starts": 0,
+      "decoded_bytes": 0,
+      "observed_starts": 0,
+      "verified_starts": 0,
+      "undecoded_bytes": 32768
+    },
+    {
+      "bank": "AB",
+      "rom_bytes": 32768,
+      "decoded_starts": 0,
+      "decoded_bytes": 0,
+      "observed_starts": 0,
+      "verified_starts": 0,
+      "undecoded_bytes": 32768
+    },
+    {
+      "bank": "AC",
+      "rom_bytes": 32768,
+      "decoded_starts": 0,
+      "decoded_bytes": 0,
+      "observed_starts": 0,
+      "verified_starts": 0,
+      "undecoded_bytes": 32768
+    },
+    {
+      "bank": "AD",
+      "rom_bytes": 32768,
+      "decoded_starts": 0,
+      "decoded_bytes": 0,
+      "observed_starts": 0,
+      "verified_starts": 0,
+      "undecoded_bytes": 32768
+    },
+    {
+      "bank": "AE",
+      "rom_bytes": 32768,
+      "decoded_starts": 0,
+      "decoded_bytes": 0,
+      "observed_starts": 0,
+      "verified_starts": 0,
+      "undecoded_bytes": 32768
+    },
+    {
+      "bank": "AF",
+      "rom_bytes": 32768,
+      "decoded_starts": 0,
+      "decoded_bytes": 0,
+      "observed_starts": 0,
+      "verified_starts": 0,
+      "undecoded_bytes": 32768
+    }
+  ]
+}
