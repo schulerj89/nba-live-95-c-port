@@ -480,6 +480,11 @@ if ($Test) {
     if ($LASTEXITCODE -ne 0) {
         throw "Gameplay audio regression tests failed with exit code $LASTEXITCODE"
     }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name gameplay_audio_variant_probe
+    & (Join-Path $BuildDir 'gameplay_audio_variant_probe.exe') $AssetPack
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Gameplay audio command/RNG/DSP vectors failed.'
+    }
     & python (Join-Path $Root "tools\test_gameplay_debugger.py") `
         --pack $AssetPack --exe $ConsoleExePath --rom $RomPath
     if ($LASTEXITCODE -ne 0) {

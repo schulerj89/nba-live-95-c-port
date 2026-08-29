@@ -63,6 +63,30 @@ typedef struct {
 #endif
 } NbaGameplayMixer;
 
+typedef struct {
+    uint8_t command;
+    uint8_t srcn;
+    uint16_t pitch;
+    int16_t volume;
+} NbaGameplayCommand;
+
+/* `$82:F822-$F885`: low-byte values from the ROM's 16-bit command tables,
+ * consumed by `gameplay_audio_event_dispatch` (`$82:FD65-$FF08`). */
+static const uint8_t AUDIO_BOUNCE[4] = {0x23, 0x2B, 0x33, 0x23};
+static const uint8_t AUDIO_INNER_RIM[16] = {
+    0x09,0x0A,0x0B,0x11,0x12,0x13,0x19,0x1A,
+    0x1B,0x0B,0x19,0x09,0x1A,0x13,0x0A,0x1B
+};
+static const uint8_t AUDIO_MADE[4] = {0x0C, 0x14, 0x1C, 0x0C};
+static const uint8_t AUDIO_OUTER_RIM[4] = {0x08, 0x10, 0x18, 0x08};
+static const uint8_t AUDIO_CATCH[4] = {0x24, 0x2C, 0x34, 0x24};
+static const uint8_t AUDIO_CONTACT[4] = {0x0D, 0x15, 0x1D, 0x0D};
+static const uint8_t AUDIO_SHOE[4] = {0x0E, 0x1E, 0x1E, 0x0E};
+static const uint8_t AUDIO_COLLISION[8] = {
+    0x21, 0x29, 0x31, 0x22, 0x2A, 0x32, 0x21, 0x29
+};
+static const uint8_t AUDIO_LANDING[4] = {0x20, 0x28, 0x30, 0x20};
+
 static uint16_t audio_u16(const uint8_t *p) {
     return (uint16_t)(p[0] | ((uint16_t)p[1] << 8));
 }
@@ -585,6 +609,66 @@ void nba_audio_play_setup_sfx(NbaAudio *audio, const NbaAssetPack *assets,
            audio->setup_sfx_volume, (unsigned)voice_volume, peak);
 }
 
+/* Exact `$80:8930` recurrence, kept on an audio-only state word. The ROM uses
+ * the shared `$07F6` word; isolating the same recurrence preserves selection
+ * without allowing host audio scheduling to perturb reconstructed gameplay. */
+static uint16_t audio_gameplay_rng_next(uint16_t *state) {
+    uint16_t old = *state;
+    if (old == 0u) {
+        *state = 0x9146u;
+    } else {
+        *state = (uint16_t)(old << 1u);
+        if (old & 0x8000u) *state ^= 0x1D87u;
+    }
+    return *state;
+}
+
+/* Command-to-DSP vectors observed at `$80:9DF3` in the controlled Mesen
+ * sweep. The three pitch deltas are native `$32` steps, not host tuning. */
+static bool audio_gameplay_resolve(uint8_t command, NbaGameplayCommand *out) {
+    NbaGameplayCommand value = {command, 0u, 0u, 0};
+    switch (command) {
+        case 0x08: value.srcn=0x00; value.pitch=0x0556; value.volume=0x56; break;
+        case 0x10: value.srcn=0x00; value.pitch=0x0524; value.volume=0x56; break;
+        case 0x18: value.srcn=0x00; value.pitch=0x0588; value.volume=0x56; break;
+        case 0x09: value.srcn=0x01; value.pitch=0x0556; value.volume=0x28; break;
+        case 0x11: value.srcn=0x01; value.pitch=0x0524; value.volume=0x28; break;
+        case 0x19: value.srcn=0x01; value.pitch=0x0588; value.volume=0x28; break;
+        case 0x0A: value.srcn=0x02; value.pitch=0x0556; value.volume=0x1D; break;
+        case 0x12: value.srcn=0x02; value.pitch=0x0524; value.volume=0x1D; break;
+        case 0x1A: value.srcn=0x02; value.pitch=0x0588; value.volume=0x1D; break;
+        case 0x0B: value.srcn=0x03; value.pitch=0x0556; value.volume=0x2F; break;
+        case 0x13: value.srcn=0x03; value.pitch=0x0524; value.volume=0x2F; break;
+        case 0x1B: value.srcn=0x03; value.pitch=0x0588; value.volume=0x2F; break;
+        case 0x0C: value.srcn=0x04; value.pitch=0x0800; value.volume=0x1A; break;
+        case 0x14: value.srcn=0x04; value.pitch=0x07CE; value.volume=0x1A; break;
+        case 0x1C: value.srcn=0x04; value.pitch=0x0832; value.volume=0x1A; break;
+        case 0x0D: value.srcn=0x05; value.pitch=0x0556; value.volume=0x3D; break;
+        case 0x15: value.srcn=0x05; value.pitch=0x0524; value.volume=0x3D; break;
+        case 0x1D: value.srcn=0x05; value.pitch=0x0588; value.volume=0x3D; break;
+        case 0x0E: value.srcn=0x06; value.pitch=0x0659; value.volume=0x24; break;
+        case 0x1E: value.srcn=0x06; value.pitch=0x068B; value.volume=0x24; break;
+        case 0x20: value.srcn=0x07; value.pitch=0x0400; value.volume=0x39; break;
+        case 0x28: value.srcn=0x07; value.pitch=0x03CE; value.volume=0x39; break;
+        case 0x30: value.srcn=0x07; value.pitch=0x0432; value.volume=0x39; break;
+        case 0x21: value.srcn=0x08; value.pitch=0x0400; value.volume=0x21; break;
+        case 0x29: value.srcn=0x08; value.pitch=0x03CE; value.volume=0x21; break;
+        case 0x31: value.srcn=0x08; value.pitch=0x0432; value.volume=0x21; break;
+        case 0x22: value.srcn=0x09; value.pitch=0x0400; value.volume=0x21; break;
+        case 0x2A: value.srcn=0x09; value.pitch=0x03CE; value.volume=0x21; break;
+        case 0x32: value.srcn=0x09; value.pitch=0x0432; value.volume=0x21; break;
+        case 0x23: value.srcn=0x0A; value.pitch=0x0800; value.volume=0x0B; break;
+        case 0x2B: value.srcn=0x0A; value.pitch=0x07CE; value.volume=0x0B; break;
+        case 0x33: value.srcn=0x0A; value.pitch=0x0832; value.volume=0x0B; break;
+        case 0x24: value.srcn=0x0B; value.pitch=0x0659; value.volume=0x24; break;
+        case 0x2C: value.srcn=0x0B; value.pitch=0x0627; value.volume=0x24; break;
+        case 0x34: value.srcn=0x0B; value.pitch=0x068B; value.volume=0x24; break;
+        default: return false;
+    }
+    *out = value;
+    return true;
+}
+
 static void audio_gameplay_command(NbaAudio *audio, uint8_t command,
                                    uint8_t srcn, uint16_t pitch,
                                    int16_t volume) {
@@ -601,10 +685,25 @@ static void audio_gameplay_command(NbaAudio *audio, uint8_t command,
 #endif
     audio->last_gameplay_command = command;
     audio->last_gameplay_srcn = srcn;
+    audio->last_gameplay_pitch = pitch;
+    audio->last_gameplay_volume = volume;
     ++audio->gameplay_event_count;
     printf("[GAMEPLAY AUDIO] $80:9DF3 command=$%02X SRCN=$%02X "
-           "pitch=$%04X voice=%u event=%u.\n", command, srcn, pitch,
-           voice, audio->gameplay_event_count);
+           "pitch=$%04X VOL=$%02X voice=%u event=%u.\n", command, srcn,
+           pitch, (unsigned)(uint16_t)volume, voice,
+           audio->gameplay_event_count);
+}
+
+static void audio_gameplay_random_family(NbaAudio *audio,
+                                         const uint8_t *table,
+                                         uint16_t mask) {
+    NbaGameplayCommand resolved;
+    uint16_t choice = audio_gameplay_rng_next(
+        &audio->gameplay_audio_rng_state) & mask;
+    if (audio_gameplay_resolve(table[choice], &resolved)) {
+        audio_gameplay_command(audio, resolved.command, resolved.srcn,
+                               resolved.pitch, resolved.volume);
+    }
 }
 
 bool nba_audio_start_gameplay(NbaAudio *audio, const NbaAssetPack *assets) {
@@ -625,7 +724,10 @@ bool nba_audio_start_gameplay(NbaAudio *audio, const NbaAssetPack *assets) {
     audio->status = NBA_AUDIO_STATUS_READY;
     audio->last_gameplay_command = 0xFFu;
     audio->last_gameplay_srcn = 0xFFu;
+    audio->last_gameplay_pitch = 0u;
+    audio->last_gameplay_volume = 0;
     audio->gameplay_event_count = 0u;
+    audio->gameplay_audio_rng_state = 0x9146u;
     audio->gameplay_latched_13e7 = 0u;
     audio->gameplay_latched_13e9 = 0u;
 #if defined(_WIN32)
@@ -660,23 +762,27 @@ void nba_audio_dispatch_gameplay_events(NbaAudio *audio,
     event_bits_raw_13e7 = fresh_13e7;
     crowd_bits_raw_13e9 = fresh_13e9;
     if (event_bits_raw_13e7 & 0x0001u)
-        audio_gameplay_command(audio, 0x23u, 0x0Au, 0x0800u, 42);
+        audio_gameplay_random_family(audio, AUDIO_BOUNCE, 0x0003u);
     if (event_bits_raw_13e7 & 0x0002u)
-        audio_gameplay_command(audio, 0x10u, 0x01u, 0x078Du, 40);
+        audio_gameplay_random_family(audio, AUDIO_INNER_RIM, 0x000Fu);
     if (event_bits_raw_13e7 & 0x0004u)
-        audio_gameplay_command(audio, 0x0Cu, 0x04u, 0x0800u, 46);
+        audio_gameplay_random_family(audio, AUDIO_MADE, 0x0003u);
     if (event_bits_raw_13e7 & 0x0008u)
-        audio_gameplay_command(audio, 0x08u, 0x00u, 0x078Du, 42);
+        audio_gameplay_random_family(audio, AUDIO_OUTER_RIM, 0x0003u);
     if (event_bits_raw_13e7 & 0x0010u)
-        audio_gameplay_command(audio, 0x24u, 0x0Bu, 0x0659u, 36);
+        audio_gameplay_random_family(audio, AUDIO_CATCH, 0x0003u);
     if (event_bits_raw_13e7 & 0x0020u)
-        audio_gameplay_command(audio, 0x0Du, 0x05u, 0x0556u, 36);
+        audio_gameplay_random_family(audio, AUDIO_CONTACT, 0x0003u);
     if (event_bits_raw_13e7 & 0x0040u)
-        audio_gameplay_command(audio, 0x0Eu, 0x06u, 0x0659u, 36);
+        audio_gameplay_random_family(audio, AUDIO_SHOE, 0x0003u);
     if (event_bits_raw_13e7 & 0x0080u)
-        audio_gameplay_command(audio, 0x17u, 0x07u, 0x0659u, 42);
+        audio_gameplay_random_family(audio, AUDIO_COLLISION, 0x0007u);
     if (event_bits_raw_13e7 & 0x0100u)
-        audio_gameplay_command(audio, 0x20u, 0x08u, 0x0800u, 42);
+        audio_gameplay_random_family(audio, AUDIO_LANDING, 0x0003u);
+    /* Both bits 7 and 9 intentionally use `$82:F872`; bit 9 was omitted by
+     * the first port pass and is independently consumed by the ROM. */
+    if (event_bits_raw_13e7 & 0x0200u)
+        audio_gameplay_random_family(audio, AUDIO_COLLISION, 0x0007u);
     if (event_bits_raw_13e7 & 0x0400u)
         audio_gameplay_command(audio, 0x40u, 0x10u, 0x0556u, 40);
     if (event_bits_raw_13e7 & 0x0800u)

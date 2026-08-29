@@ -19,6 +19,9 @@ local global_frame = 0
 local gameplay_frame = -1
 local previous_voice = {}
 local gameplay_spc_dumped = false
+local variant_probe = os.getenv("NBA95_AUDIO_VARIANT_PROBE") == "1"
+local variant_log = variant_probe and
+    assert(io.open(out .. "/gameplay_audio_variant_injections.txt", "wb")) or nil
 
 local function word(address)
     local lo = emu.read(address, emu.memType.snesWorkRam, false) or 0
@@ -29,6 +32,55 @@ end
 local function signed_word(address)
     local value = word(address)
     return value >= 0x8000 and value - 0x10000 or value
+end
+
+local function write_word(address, value)
+    emu.write(address, value & 0xff, emu.memType.snesWorkRam)
+    emu.write(address + 1, (value >> 8) & 0xff, emu.memType.snesWorkRam)
+end
+
+-- Controlled evidence mode for every `$13E7` randomized command family.
+-- `$80:8930` is the `$07F6` LFSR. These seeds force each masked result once;
+-- the runtime never reads this file and normal passive captures are unchanged.
+if variant_probe then
+    local probes = {}
+    local seeds3 = {0x0002,0x8001,0x0001,0x8000}
+    local seeds15 = {0x0008,0x8003,0x0001,0x8002,0x0002,0x8001,0x0003,0x8000,
+                     0x0004,0x8007,0x0005,0x8006,0x0006,0x8005,0x0007,0x8004}
+    local seeds7 = {0x0004,0x8003,0x0001,0x8002,0x0002,0x8001,0x0003,0x8000}
+    local families = {
+        {name="bounce", bit=0x0001, seeds=seeds3},
+        {name="inner_rim", bit=0x0002, seeds=seeds15},
+        {name="made_basket", bit=0x0004, seeds=seeds3},
+        {name="outer_rim", bit=0x0008, seeds=seeds3},
+        {name="catch", bit=0x0010, seeds=seeds3},
+        {name="contact", bit=0x0020, seeds=seeds3},
+        {name="shoe", bit=0x0040, seeds=seeds3},
+        {name="collision_a", bit=0x0080, seeds=seeds7},
+        {name="landing", bit=0x0100, seeds=seeds3},
+        {name="collision_b", bit=0x0200, seeds=seeds7},
+    }
+    for _, family in ipairs(families) do
+        for index = 0, #family.seeds - 1 do
+            probes[#probes + 1] = {
+                name=family.name, bit=family.bit, index=index,
+                seed=family.seeds[index + 1]
+            }
+        end
+    end
+    local last_probe = -1
+    emu.addMemoryCallback(function()
+        if gameplay_frame < 20 then return end
+        local index = math.floor((gameplay_frame - 20) / 24)
+        if index < 0 or index >= #probes or index == last_probe then return end
+        last_probe = index
+        local probe = probes[index + 1]
+        write_word(0x13e7, probe.bit)
+        write_word(0x07f6, probe.seed)
+        variant_log:write(string.format("%d family=%s index=%d seed=%04X\n",
+            gameplay_frame, probe.name, probe.index, probe.seed))
+    end, emu.callbackType.exec, 0x82FD65, 0x82FD65,
+        emu.cpuType.snes, emu.memType.snesMemory)
 end
 
 local function dump_memory(name, memory_type, size)
@@ -123,4 +175,5 @@ end, emu.eventType.endFrame)
 ports:setvbuf("no")
 voices:setvbuf("no")
 commands:setvbuf("no")
+if variant_log then variant_log:setvbuf("no") end
 dofile(driver)

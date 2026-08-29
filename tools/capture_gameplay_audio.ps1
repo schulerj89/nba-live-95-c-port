@@ -2,7 +2,8 @@ param(
     [Parameter(Mandatory=$true)][string]$OutputDir,
     [int]$Frames=5000,
     [string]$RomPath='F:/Games/SNES/NBA Live 95 (USA).sfc',
-    [string]$MesenPath=''
+    [string]$MesenPath='',
+    [switch]$VariantProbe
 )
 $ErrorActionPreference='Stop'
 if(-not $MesenPath){$MesenPath=(Get-Command Mesen.exe -ErrorAction Stop).Source}
@@ -12,6 +13,7 @@ $env:NBA95_TIPOFF_FRAMES="$Frames"
 $env:NBA95_CPU_VS_CPU='1'
 $env:NBA95_SCREENSHOT_FROM='999999'
 $env:NBA95_SCREENSHOT_TO='999999'
+$env:NBA95_AUDIO_VARIANT_PROBE=if($VariantProbe.IsPresent){'1'}else{'0'}
 $env:NBA95_TIPOFF_DRIVER=(Resolve-Path "$PSScriptRoot/mesen_tipoff_capture.lua").Path
 $script=(Resolve-Path "$PSScriptRoot/mesen_gameplay_audio_trace.lua").Path
 $process=Start-Process -FilePath $MesenPath -ArgumentList @(

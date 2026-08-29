@@ -22,23 +22,31 @@ effects use the other voices.
 | Native producer | Event | `$82` command selection | Observed DSP result |
 | --- | --- | --- | --- |
 | `$85:A43A-$A44B`, `$85:A582-$A588` | ball/floor bounce | `$13E7.0` -> `$23/$2B/$33/$23` | SRCN `$0A`, pitch variants `$0800/$07CE/$0832` |
-| `$85:9EBE-$9EC4`, `$85:9FC5-$9FCB` | inner rim response | `$13E7.1` -> 16-entry table at `$82:F82A` | resident gameplay effect family; exact variant depends on RNG |
+| `$85:9EBE-$9EC4`, `$85:9FC5-$9FCB` | inner rim response | `$13E7.1` -> `$09/$0A/$0B/$11/$12/$13/$19/$1A/$1B/$0B/$19/$09/$1A/$13/$0A/$1B` | SRCN `$01/$02/$03`, pitch `$0556/$0524/$0588`, native per-source volume |
 | `$85:A33C-$A342` | made basket | `$13E7.2` -> `$0C/$14/$1C/$0C` | captured `$0C`: SRCN `$04`, pitch `$0800` |
-| `$85:9B8C-$9B9E` | outer rim contact | `$13E7.3` -> `$08/$10/$18/$08` | resident rim effect family |
+| `$85:9B8C-$9B9E` | outer rim contact | `$13E7.3` -> `$08/$10/$18/$08` | SRCN `$00`, pitch `$0556/$0524/$0588`, VOL `$56` |
 | `$86:D34A-$D350` | ball acquisition/catch | `$13E7.4` -> `$24/$2C/$34/$24` | SRCN `$0B`, pitch `$0659/$0627/$068B` |
 | `$86:986D-$994B` | close ball/player presentation contact | `$13E7.5` -> `$0D/$15/$1D/$0D` | captured `$0D`: SRCN `$05`, pitch `$0556` |
 | `$85:98EC-$9903` | player direction-change cue | `$13E7.6` -> `$0E/$1E/$1E/$0E` | SRCN `$06`, pitch `$0659/$068B`; shoe/floor cue family |
-| `$86:C0B3/$C110/$C9C3/$CA4A` | player collision/knockdown | `$13E7.7` -> eight-entry table at `$82:F872` | player-contact effect family |
-| `$86:C6CC-$C6D2` | knockdown landing/continuation | `$13E7.8` -> `$20/$28/$30/$20` | player/body-floor effect family |
+| `$86:C0B3/$C110/$C9C3/$CA4A` | player collision/knockdown | `$13E7.7` and independently `$13E7.9` -> `$21/$29/$31/$22/$2A/$32/$21/$29` | SRCN `$08/$09`, pitch `$0400/$03CE/$0432`, VOL `$21` |
+| `$86:C6CC-$C6D2` | knockdown landing/continuation | `$13E7.8` -> `$20/$28/$30/$20` | SRCN `$07`, pitch `$0400/$03CE/$0432`, VOL `$39` |
 | `$85:EE56-$EE90` | final-five-second shot-clock ticks | `$13E7.10` -> `$40` | clock warning cue |
 | `$87:9A03-$9A72` | expired shot clock while ball resolves | `$13E7.11` -> `$41` | shot-clock horn/buzzer cue |
 | `$85:A2C3/$A302` | three-point scoring presentation | `$13E7.12` -> `$43` | three-point presentation cue |
 | `$85:9413-$941F` | foul whistle | `$13E7.13` -> `$44` | SRCN `$12`, pitch `$0556`, VOL `$14/$14`, ADSR `$8E/$A0` |
 | score/tip/foul side events | crowd reaction/stinger | `$13E9` -> `$38/$39/$3A-$3C/$2F` via `$80:9F0F` | captured `$39`: SRCN `$14`, pitch `$0556`; voices 6/7 retain the crowd bed |
 
-The inner-rim and collision rows deliberately retain family labels until a
-targeted native capture exercises every RNG variant. The table does not assign
-plausible names to unheard variants.
+Every randomized row above is selected by one `$80:8930` LFSR advance followed
+by the dispatcher mask (`3`, `7`, or `15`). The C port runs that exact
+recurrence in an audio-only state word: selection remains native while audio
+cannot disturb CPU, ball, or AI state. A controlled 60-case Mesen sweep proved
+all table indices, both collision bits, and the command-to-DSP vectors.
+
+The remaining family vectors are: made basket SRCN `$04`, pitches
+`$0800/$07CE/$0832`, VOL `$1A`; catch SRCN `$0B`, pitches
+`$0659/$0627/$068B`, VOL `$24`; contact SRCN `$05`, pitches
+`$0556/$0524/$0588`, VOL `$3D`; shoe SRCN `$06`, pitches `$0659/$068B`,
+VOL `$24`; and bounce SRCN `$0A`, pitches `$0800/$07CE/$0832`, VOL `$0B`.
 
 ## Gameplay bank and ROM assets
 
@@ -52,9 +60,11 @@ the live gameplay SPC directory found these sources in the ROM:
 
 | SRCN | Gameplay role observed | ROM BRR start |
 | --- | --- | --- |
+| `$00-$03` | outer/inner rim variants | byte-matched members of asset 285 |
 | `$04` | made-basket effect | `$A9:9BCA` (file `$149BCA`) |
 | `$05` | close ball/player contact | `$A6:9904` (file `$131904`) |
 | `$06` | direction-change/shoe cue | `$A6:D10C` (file `$13510C`) |
+| `$07-$09` | landing and two collision bodies | byte-matched members of asset 285 |
 | `$0A` | ball bounce family | `$A6:8040` (file `$130040`) |
 | `$0B` | catch/acquisition family | `$AA:8FF0` (file `$150FF0`) |
 | `$0C/$0D` | continuously sequenced crowd beds | `$A1:D20B/$A1:8040` |
@@ -69,16 +79,17 @@ become shipped art or audio assets. `nba_audio_start_gameplay` validates the
 bank, keys the two crowd loops, and starts the `waveOut` stream;
 `nba_audio_dispatch_gameplay_events` mirrors the native command families.
 
-`tools/test_gameplay_audio.py` locks the complete bank digest, source bounds,
-crowd loop points, mixer startup, and a natural 1,200-frame command sequence
-that includes catch, crowd, rim, made-basket, and bounce events.
+`tools/test_gameplay_audio.py` locks the ROM command-table bytes, complete bank
+digest, source bounds, crowd loop points, mixer startup, and a natural
+1,200-frame command sequence. `gameplay_audio_variant_probe` locks 60 forced
+table/RNG/source/pitch/volume vectors, including `$13E7.7` and `$13E7.9`.
 
 ## Reproduction
 
 ```powershell
 .\tools\capture_gameplay_audio.ps1 `
   -OutputDir .analysis\gameplay-audio `
-  -Frames 1500
+  -Frames 1500 -VariantProbe
 ```
 
 The passive observer records:

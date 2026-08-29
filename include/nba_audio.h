@@ -24,7 +24,10 @@ typedef struct {
     uint8_t last_setup_sfx_srcn;
     uint8_t last_gameplay_command;
     uint8_t last_gameplay_srcn;
+    uint16_t last_gameplay_pitch;
+    int16_t last_gameplay_volume;
     uint32_t gameplay_event_count;
+    uint16_t gameplay_audio_rng_state;
     uint16_t gameplay_latched_13e7;
     uint16_t gameplay_latched_13e9;
     uint8_t active_track;
