@@ -539,6 +539,30 @@ finish:
     }
 }
 
+/* `$86:F45F-$F4E5` followed by `$85:A82C`: compensate the inbound target
+ * with the same sign-biased /16 operation used by native velocity damping,
+ * choose an eight-way direction, then install next-pass velocity. F43A does
+ * not commit coordinates; `$85:963D` already did that before dispatch. */
+void nba_gameplay_inbound_motion_step(NbaGameplayInboundMotion *motion) {
+    if (!motion) return;
+    int16_t steering_x = wrap16((int32_t)motion->target_x -
+                                velocity_damping_div16(motion->velocity_x));
+    int16_t steering_y = wrap16((int32_t)motion->target_y -
+                                velocity_damping_div16(motion->velocity_y));
+    uint16_t distance = 0u;
+    motion->direction = nba_gameplay_target_direction(
+        wrap16((int32_t)steering_x - motion->actor_x),
+        wrap16((int32_t)steering_y - motion->actor_y), &distance);
+    /* F4DD supplies B6=8 to B3C9. Residuals inside that inclusive distance
+     * become direction 8, causing A82C's native damping path rather than a
+     * new directional acceleration. */
+    if (distance <= 8u) motion->direction = 8u;
+    nba_gameplay_velocity_step(
+        &motion->velocity_x, &motion->velocity_y, &motion->boost_timer,
+        motion->direction, motion->profile_42, motion->dispatch_dt,
+        motion->movement_blocked, motion->owner_actor_raw_093e);
+}
+
 void nba_gameplay_rng_seed(NbaGameplayRng *rng, uint16_t seed) {
     rng->state = seed;
 }

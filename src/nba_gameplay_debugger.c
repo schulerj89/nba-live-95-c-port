@@ -377,7 +377,8 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
         const NbaGameplayActorTelemetry *a = &telemetry->actors[i];
         fprintf(stream,
                 "%s{\"id\":%u,\"team\":%u,\"roster\":%u,\"control\":%u,"
-                "\"visible\":%s,\"x\":%d,\"y\":%d,\"z\":%d,\"z_fp\":%d,"
+                "\"visible\":%s,\"x\":%d,\"y\":%d,\"z\":%d,"
+                "\"x_fp\":%d,\"y_fp\":%d,\"z_fp\":%d,"
                 "\"screen_x\":%d,\"screen_y\":%d,\"vx\":%d,\"vy\":%d,"
                 "\"vz\":%d,\"direction\":%u,\"animation\":%u,"
                 "\"lower_animation\":%u,"
@@ -421,7 +422,8 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
                 "\"opaque_pixels\":[%u,%u,%u,%u],\"flags\":%u}}",
                 i ? "," : "", a->index, a->team_side, a->roster_slot,
                 a->control, a->visible ? "true" : "false", a->world_x,
-                a->world_y, a->world_z, a->world_z_fp, a->screen_x, a->screen_y,
+                a->world_y, a->world_z, a->world_x_fp, a->world_y_fp,
+                a->world_z_fp, a->screen_x, a->screen_y,
                 a->velocity_x, a->velocity_y, a->velocity_z, a->direction,
                 a->animation_state, a->lower_animation_state, a->ai_state,
                 a->ai_target_actor, a->actor_routine, a->ai_routine,

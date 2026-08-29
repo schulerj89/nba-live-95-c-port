@@ -44,6 +44,18 @@ typedef struct {
     bool play_requested;
 } NbaGameplayInboundTarget;
 
+typedef struct {
+    int16_t actor_x, actor_y;
+    int16_t target_x, target_y;
+    int16_t velocity_x, velocity_y;
+    uint16_t boost_timer;
+    uint8_t profile_42;
+    uint16_t dispatch_dt;
+    bool movement_blocked;
+    int16_t owner_actor_raw_093e;
+    uint8_t direction;
+} NbaGameplayInboundMotion;
+
 /* Portable boundary for `$86:E39A-$E3CA` and its wider
  * `$86:E3E1-$E4A6` defensive pose caller. Values retain their native actor
  * record meaning instead of being inferred from rendered sprites. */
@@ -246,6 +258,7 @@ bool nba_gameplay_inbound_target(
 bool nba_gameplay_inbound_arrived(int16_t actor_x, int16_t actor_y,
                                   int16_t target_x, int16_t target_y);
 bool nba_gameplay_inbound_pass_due(uint16_t timer, uint16_t random_word);
+void nba_gameplay_inbound_motion_step(NbaGameplayInboundMotion *motion);
 void nba_gameplay_velocity_step(int16_t *velocity_x, int16_t *velocity_y,
                                 uint16_t *boost_timer, uint8_t direction,
                                 uint8_t profile_42, uint16_t dispatch_dt,

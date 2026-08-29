@@ -1236,13 +1236,8 @@ static void cpu_integrate_actor_vertical(NbaTipoffActor *actor) {
     }
 }
 
-static int16_t divide_16_toward_zero(int16_t value) {
-    return value >= 0 ? (int16_t)(value / 16) :
-                        (int16_t)(-((-(int)value) / 16));
-}
-
 /* `$86:F43A-$F4E2`: mode 11 has a dedicated dead-ball steering branch.
- * Its target compensation divides signed velocity by 16 toward zero. */
+ * Its target compensation uses the ROM's negative-quotient +1 bias. */
 static bool cpu_move_inbound_actor(NbaTipoff *tipoff, unsigned slot) {
     if (tipoff->live_state_raw != 0x82u ||
         tipoff->possession_actor != (int8_t)slot ||
@@ -1255,7 +1250,7 @@ static bool cpu_move_inbound_actor(NbaTipoff *tipoff, unsigned slot) {
      * a substitute for this geometry test; a recovery carrier may inherit
      * the prior carrier's nonzero latch while still outside the box. */
     if (nba_gameplay_inbound_arrived(
-            fp_round(actor->x_fp), fp_round(actor->y_fp),
+            fp_integer_word(actor->x_fp), fp_integer_word(actor->y_fp),
             tipoff->inbound_target_x_raw, tipoff->inbound_target_y_raw)) {
         actor->velocity_x = actor->velocity_y = 0;
         actor->movement_magnitude_raw = 0u;
@@ -1265,29 +1260,37 @@ static bool cpu_move_inbound_actor(NbaTipoff *tipoff, unsigned slot) {
         actor->action_state = tipoff->cpu_play_state;
         return true;
     }
-    int16_t steering_x = (int16_t)(tipoff->inbound_target_x_raw -
-                                   divide_16_toward_zero(actor->velocity_x));
-    int16_t steering_y = (int16_t)(tipoff->inbound_target_y_raw -
-                                   divide_16_toward_zero(actor->velocity_y));
-    uint8_t direction = nba_gameplay_target_direction(
-        (int16_t)(steering_x - fp_round(actor->x_fp)),
-        (int16_t)(steering_y - fp_round(actor->y_fp)), NULL);
     uint8_t team = slot >= 5u ? tipoff->session->right_team :
                                tipoff->session->left_team;
     uint8_t profile_42 = 0x58u;
     (void)nba_player_gameplay_movement_profile(
         tipoff->assets, team, actor->roster_slot, &profile_42);
-    nba_gameplay_velocity_step(
-        &actor->velocity_x, &actor->velocity_y,
-        &actor->movement_boost_timer, direction, profile_42, 2u,
-        false, (int16_t)tipoff->possession_actor);
+    NbaGameplayInboundMotion motion = {
+        .actor_x = fp_integer_word(actor->x_fp),
+        .actor_y = fp_integer_word(actor->y_fp),
+        .target_x = tipoff->inbound_target_x_raw,
+        .target_y = tipoff->inbound_target_y_raw,
+        .velocity_x = actor->velocity_x,
+        .velocity_y = actor->velocity_y,
+        .boost_timer = actor->movement_boost_timer,
+        .profile_42 = profile_42,
+        .dispatch_dt = 2u,
+        .movement_blocked = false,
+        .owner_actor_raw_093e = (int16_t)tipoff->possession_actor
+    };
+    nba_gameplay_inbound_motion_step(&motion);
+    actor->velocity_x = motion.velocity_x;
+    actor->velocity_y = motion.velocity_y;
+    actor->movement_boost_timer = motion.boost_timer;
+    uint8_t direction = motion.direction;
     actor->movement_direction = direction;
     if (direction < 8u) actor->requested_direction = direction;
     actor->movement_magnitude_raw = actor_distance(
         actor->velocity_x, actor->velocity_y);
-    actor->x_fp += (int32_t)actor->velocity_x * 2;
-    actor->y_fp += (int32_t)actor->velocity_y * 2;
-    cpu_integrate_actor_vertical(actor);
+    /* `$85:963D` committed the prior velocity before `$86:F34F` dispatched
+     * this continuation. Native F43A writes only the next velocity; applying
+     * it here as position too creates a duplicate physics step and can skip
+     * across the signed arrival box. */
     actor->direction = actor->requested_direction;
     actor_set_animation(actor, direction >= 8u ? 0u : 11u,
                         direction >= 8u ? 0u : 3u);
@@ -6221,8 +6224,8 @@ static bool cpu_inbound_formation_override_self_test(void) {
 
 static bool cpu_inbound_side_gate(const NbaTipoff *tipoff,
                                   uint8_t inbounder, uint8_t receiver) {
-    int16_t owner_x = fp_round(tipoff->actors[inbounder].x_fp);
-    int16_t receiver_x = fp_round(tipoff->actors[receiver].x_fp);
+    int16_t owner_x = fp_integer_word(tipoff->actors[inbounder].x_fp);
+    int16_t receiver_x = fp_integer_word(tipoff->actors[receiver].x_fp);
     bool context_nonnegative = inbounder >= 5u;
     if (context_nonnegative)
         return owner_x < -20 || receiver_x >= 0;
@@ -6645,7 +6648,7 @@ static void cpu_update_rom_inbound(NbaTipoff *tipoff) {
     if (tipoff->inbound_transfer_raw != 0u &&
         actor->control_mode != 11u) return;
     if (!nba_gameplay_inbound_arrived(
-            fp_round(actor->x_fp), fp_round(actor->y_fp),
+            fp_integer_word(actor->x_fp), fp_integer_word(actor->y_fp),
             tipoff->inbound_target_x_raw, tipoff->inbound_target_y_raw)) {
         tipoff->inbound_timer_raw = 300u;
         return;
@@ -6705,10 +6708,25 @@ static bool cpu_inbound_recovery_carrier_self_test(
     state.actors[3].controller_assignment_raw = -1;
     state.actors[3].x_fp = 200 * 256;
     state.actors[3].y_fp = -22 * 256;
+    state.actors[3].z_fp = 7 * 256;
     if (!cpu_move_inbound_actor(&state, 3u) ||
-        state.actors[3].velocity_x <= 0) return false;
+        state.actors[3].velocity_x <= 0 ||
+        state.actors[3].x_fp != 200 * 256 ||
+        state.actors[3].y_fp != -22 * 256 ||
+        state.actors[3].z_fp != 7 * 256) return false;
+    /* Native F4F2 reads integer word +$04. At 237.255 the target delta is
+     * still +9 and therefore outside the [-9,+8] box; nearest-pixel rounding
+     * would incorrectly accept it as +8. */
+    state.actors[3].x_fp = 237 * 256 + 255;
+    state.actors[3].y_fp = -22 * 256;
+    state.actors[3].z_fp = 0;
+    state.inbound_timer_raw = 100u;
+    cpu_update_rom_inbound(&state);
+    if (state.inbound_ready_raw != 0u || state.inbound_timer_raw != 300u)
+        return false;
     state.actors[3].x_fp = 246 * 256;
     state.actors[3].y_fp = -22 * 256;
+    state.actors[3].z_fp = 0;
     state.actors[3].velocity_x = 100;
     state.actors[3].velocity_y = -100;
     cpu_update_rom_inbound(&state);
@@ -6720,17 +6738,13 @@ static bool cpu_inbound_recovery_carrier_self_test(
            state.actors[3].velocity_y == 0;
 }
 
-static bool cpu_try_install_inbound_contact(NbaTipoff *tipoff) {
-    if (tipoff->possession_actor >= 0 || tipoff->ball.owner_actor >= 0 ||
-        tipoff->inbound_transfer_raw != 0u) return false;
-    int contact = cpu_first_inbound_ball_contact(tipoff);
-    if (contact < 0) return false;
+static void cpu_install_inbound_carrier(NbaTipoff *tipoff, int contact,
+                                        bool first_pickup) {
     /* Initial dead-ball pickup is seeded by the `$85:A262` setup contract.
      * A post-release recovery instead reaches `$86:D353 -> BAA2`; that path
      * changes `$093E` ownership but does not reseed `$092E` or erase the
      * already-reached `$09BA` state. Reinitializing both here permits an
      * endless series of baseline A613 cancellations. */
-    bool first_pickup = tipoff->inbound_ready_raw == 0u;
     NbaTipoffActor *inbounder = &tipoff->actors[contact];
     tipoff->inbound_actor_raw = (uint16_t)contact;
     tipoff->handler_actor = (uint8_t)contact;
@@ -6747,6 +6761,15 @@ static bool cpu_try_install_inbound_contact(NbaTipoff *tipoff) {
         tipoff->inbound_ready_raw = 0u;
         tipoff->inbound_timer_raw = 300u;
     }
+}
+
+static bool cpu_try_install_inbound_contact(NbaTipoff *tipoff) {
+    if (tipoff->possession_actor >= 0 || tipoff->ball.owner_actor >= 0 ||
+        tipoff->inbound_transfer_raw != 0u) return false;
+    int contact = cpu_first_inbound_ball_contact(tipoff);
+    if (contact < 0) return false;
+    cpu_install_inbound_carrier(
+        tipoff, contact, tipoff->inbound_ready_raw == 0u);
     return true;
 }
 
@@ -6929,6 +6952,25 @@ static void cpu_update_possession(NbaTipoff *tipoff) {
 
     cpu_schedule_actor_behaviors(
         tipoff, (tipoff->rim_raw_13e7 & 0x0010u) != 0u);
+
+    /* A made basket can switch `$0936` to `$82` inside this live-ball pass,
+     * after the dispatcher chose the ordinary branch above. If the same
+     * collision sweep installs `$093E`, preserve the native separation from
+     * the ball-record owner exactly as the dedicated dead-ball branch does. */
+    if (tipoff->live_state_raw == 0x82u &&
+        tipoff->possession_actor >= 0 &&
+        tipoff->possession_actor < NBA_GAMEPLAY_ACTOR_COUNT &&
+        tipoff->inbound_transfer_raw == 0u) {
+        if (tipoff->inbound_actor_raw != (uint16_t)tipoff->possession_actor ||
+            tipoff->actors[tipoff->possession_actor].control_mode != 11u)
+            cpu_install_inbound_carrier(
+                tipoff, tipoff->possession_actor,
+                tipoff->inbound_ready_raw == 0u);
+        ball_position_at_actor(tipoff, (unsigned)tipoff->possession_actor);
+        tipoff->ball.velocity_x = tipoff->ball.velocity_y = 0;
+        tipoff->ball.velocity_z = 0;
+        tipoff->ball.owner_actor = -1;
+    }
 
     ++tipoff->possession_frame;
     ++tipoff->play_state_frame;
@@ -7734,6 +7776,8 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
         out->control = NBA_GAMEPLAY_CONTROL_CPU;
         out->world_x = live ? fp_round(state->x_fp) : formation[actor].world_x;
         out->world_y = live ? fp_round(state->y_fp) : formation[actor].world_y;
+        out->world_x_fp = live ? state->x_fp : (int32_t)out->world_x * 256;
+        out->world_y_fp = live ? state->y_fp : (int32_t)out->world_y * 256;
         out->world_z = fp_integer_word(state->z_fp);
         out->world_z_fp = live ? state->z_fp : (int32_t)out->world_z * 256;
         if(live) {

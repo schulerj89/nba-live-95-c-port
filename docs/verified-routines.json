@@ -1280,6 +1280,14 @@
       "method": "same-entry native state differential + runtime binding",
       "evidence": "tests/fixtures/ball-initialization.json and ball-initialization-poisoned.json; tools/verify_ball_init_differential.py and ball_init_runtime_probe.c. One natural and one controlled native call execute all30 instruction starts; 20 mapped words and full128KiB exit RAM agree with zero differences. Controlled case poisons all19 output words except the valid34E7 cursor before real native execution. No ROM/PC/flags/stack patching. Fresh Ghidra and bounded recomp confirm startE056: oldE054 was an operand of JMP atE053, not an instruction. Initial position/velocity, object-list bookkeeping,0910,4933/4935 and08F0 adopted in nba_tipoff_init. Valid ten-player startup cursor only; C object links are data rather than native pointers. Later quadratic toss, jump/caller schedule, human controls and whole-game trajectories remain unverified. docs/pending-gameplay-differential-plan.md.",
       "date": "2026-08-28"
+    },
+    {
+      "range": "86F43A-86F4F1",
+      "name": "CPU inbound next-pass motion core",
+      "source": "src/nba_gameplay_ai.c + src/nba_tipoff.c",
+      "method": "natural native entry/exit differential + runtime binding",
+      "evidence": "tests/fixtures/inbound-motion-witnesses.json; tools/normalize_inbound_continuation.py; tools/verify_inbound_motion_vectors.py; tools/inbound_motion_vector_probe.c. 500 natural native calls at $86:F43A with zero orphan exits; all111 non-arrival motion calls retained, covering three acceleration profiles and both signs of velocity. Exact next-pass X/Y velocity and direction agree with zero mismatches (104 nonnegative and118 negative components). Production helper is called by live CPU flow; 63,800-frame regression covers both teams, scores, installed inbound carrier, arrival/pass transfer and resumed play. Corrected duplicate host integration, signed integer-word arrival/side gates, distance<=8 damping and native negative /16 bias. Credit stops before $86:F4F2; arrival/timer/selector/launch remain pending. docs/inbound-motion-differential.md.",
+      "date": "2026-08-29"
     }
   ]
 }

@@ -78,6 +78,7 @@ host-side outcome without pretending the C port executes SNES DMA machinery.
 | Jersey-number compositor/BCD selector | 391 | 8,502 (30.47%) | Exact 1,920-byte native ten-player output; all numbers 0-99, both sides and six visible views; corrected visiting-side mask bug |
 | Player projection/culling core | 50 | 8,552 (30.65%) | Native signed-coordinate witnesses, exact CPU/human visibility boundaries, retained OAM cadence and 16,000-update runtime binding |
 | Sprite-part compositor | 116 | 8,668 (31.07%) | All 32 native opening resource/origin/order calls plus 5,568 team/roster/direction/side cases; fixed direction-dependent torso/number priority |
+| CPU inbound motion core | 89 | 8,757 (31.39%) | 500 natural native calls; all 111 non-arrival motion calls retained and replayed with zero mismatches; fixed duplicate integration, integer-word gates, close-range damping and negative /16 bias |
 
 ### Route from checkpoint 2 to 35%
 

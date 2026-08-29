@@ -46,6 +46,11 @@ EXPECTED_RGB = {
     # Re-reviewed after `$80:AD92-$AEC1` adopted the native direction-specific
     # torso/number submission order. State and trajectory are unchanged; only
     # the ROM-correct overlap priority of those two player layers differs.
+    # Re-reviewed after 500 native `$86:F43A-$F653` calls proved inbound
+    # behavior installs next-pass velocity only and reads signed integer
+    # coordinate words for arrival/side gates. The duplicate host integration
+    # and nearest-pixel gates were removed; all anchors retain ten complete
+    # players, the ball, court/goal bounds and an unobstructed HUD.
     600: "34ef6adfe654c5ec8202db8c250fd17a86a6f5ff5270af5b8b38db63d7799c2d",
     # Re-reviewed after the live renderer adopted `$87:AFA2-$B053`'s tall
     # lower-body selector and the asset pack gained every dynamically chosen
@@ -53,10 +58,14 @@ EXPECTED_RGB = {
     # complete, correctly colored player uniforms; the altered body resources
     # also correct native ball attachment points, so later CPU paths diverge
     # from the retired incomplete-resource trajectory by design.
-    1300: "943a6fc35ebb67314728fb559cf5ade1575b3aff53766f472a932de8da88d572",
-    3480: "97a78aa1fce4e22989cd1a004a0b695faa741dc0ff6c7d51cddd9dfd9d545ff2",
-    6932: "40f99aa98686eebb4b84fd860edbbd7b12b10c468cde5851c80706360aef1000",
-    6954: "8c7d0ebc512e8dca9e94fac0eadd019596042fb567671562ce87b914b789bbbe",
+    # Re-reviewed after the exact `$86:F43A-$F4F1` motion helper also adopted
+    # `$85:B3C9`'s distance<=8 damping branch and native negative /16 bias.
+    # The final five frames in `.analysis/inbound-final-review-20260829`
+    # retain ten complete players, ball, court/goal bounds and clear HUD.
+    1300: "afe9d7920e09197dc301b72af2f379e7060272668d68cc1bb708a1d2438c7ec5",
+    3480: "d48c051152b19f75a1e59b61f2a26138b19129624535338dcc4bbd688fe7537d",
+    6932: "da6f72ccc568bc5c7375ff6b08421b43c3ea9c049ef308e143aee244c27956ce",
+    6954: "177c5007a11f05ed825723deea47aef6d7eea5b8cdd100befd940a93e92f9e40",
 }
 
 
@@ -870,15 +879,41 @@ def main():
                 # `$85:9D4B` accepts integer Z < $53. Telemetry rounds
                 # the retained fraction after the shared physics tail,
                 # so 82.x may display 83.
+                free_tail = (row["ball"]["state"] in (5, 6) and
+                             74 <= row["ball"]["z"] <= 83)
+                # The corrected F43A cadence can let the same outer update
+                # continue through D353->BAA2 before telemetry is published.
+                # That native terminal state is an attached mode-11 inbound
+                # carrier, not a missing made-basket tail.
+                installed_inbound = (row["ball"]["state"] == 4 and
+                    row["ball"]["owner"] == -1 and
+                    row["possession"]["actor"] >= 0 and
+                    match["inbound_ready_raw"] == 0)
                 if match["shot_value_raw"] != 0 or \
                         match["live_state_raw"] != 0x82 or \
-                        row["ball"]["state"] not in (5, 6) or \
-                        not 74 <= row["ball"]["z"] <= 83:
+                        not (free_tail or installed_inbound):
                     raise AssertionError(f"made basket state incomplete: {row}")
                 scoring_side = 0 if delta[0] else 1
                 expected_group = (scoring_side ^ 1) * 5
-                if match["inbound_state_raw"] != expected_group or \
-                        match["inbound_actor_raw"] != expected_group + 2:
+                inbound_actor = match["inbound_actor_raw"]
+                provisional_actor = expected_group + 2
+                # `$85:A079` initially seeds actor 2/7. In the same outer
+                # native pass, `$86:D353->$85:BAA2` may already replace
+                # `$0954` with the colliding side-matched inbound carrier
+                # before the frame is observable. Accept that later native
+                # terminal state only when every ownership/mode invariant
+                # proves the replacement really occurred.
+                installed_actor = row["possession"]["actor"]
+                installed_replacement = (
+                    installed_actor == inbound_actor and
+                    expected_group <= installed_actor < expected_group + 5 and
+                    row["ball"]["owner"] == -1 and
+                    row["ball"]["state"] == 4 and
+                    match["inbound_ready_raw"] == 0 and
+                    row["actors"][installed_actor]["raw"]["control_mode"] == 11)
+                if match["inbound_state_raw"] != expected_group or not (
+                        inbound_actor == provisional_actor or
+                        installed_replacement):
                     raise AssertionError(f"$0952/$0954 inbound mapping changed: {row}")
                 score_changes.append((row["frame"], score))
                 previous_score = score
@@ -901,7 +936,11 @@ def main():
         for inbound in dead_runs:
             first = inbound[0]
             match = first["match"]
-            provisional_actor = match["inbound_actor_raw"]
+            # `$0952` is the side-group seed. `$85:A079` derives the
+            # provisional carrier as group+2, even when a later same-frame
+            # collision has already replaced observable `$0954`.
+            provisional_actor = match["inbound_state_raw"] + 2
+            observed_actor = match["inbound_actor_raw"]
             layout = match["inbound_layout_raw"]
             if layout == 0:
                 expected_target = (394, -64, 6) if provisional_actor == 2 \
@@ -927,8 +966,16 @@ def main():
             actual_target = (match["inbound_target_x_raw"],
                              match["inbound_target_y_raw"],
                              match["inbound_direction_raw"])
+            installed_at_entry = first["possession"]["actor"]
+            valid_entry_actor = observed_actor == provisional_actor or (
+                observed_actor == installed_at_entry and
+                match["inbound_state_raw"] <= observed_actor <
+                    match["inbound_state_raw"] + 5 and
+                first["ball"]["owner"] == -1 and
+                first["ball"]["state"] == 4 and
+                first["actors"][observed_actor]["raw"]["control_mode"] == 11)
             if match["inbound_timer_raw"] != 300 or provisional_actor not in (2, 7) or \
-                    actual_target != expected_target:
+                    not valid_entry_actor or actual_target != expected_target:
                 raise AssertionError(f"$85:A1E9/C37D inbound seed changed: {first}")
             installed = [row for row in inbound
                          if row["possession"]["actor"] >= 0]
@@ -967,8 +1014,13 @@ def main():
             if actor_id < 0:
                 raise AssertionError("ready inbound has no $093E carrier")
             actor = first_ready["actors"][actor_id]
-            dx = first_ready["match"]["inbound_target_x_raw"] - actor["x"]
-            dy = first_ready["match"]["inbound_target_y_raw"] - actor["y"]
+            # F4F2 reads signed integer words +$04/+$08, not the nearest-pixel
+            # coordinates used for presentation. Preserve the exact 24.8
+            # telemetry so fractional boundary cases cannot pass unnoticed.
+            dx = (first_ready["match"]["inbound_target_x_raw"] -
+                  actor["x_fp"] // 256)
+            dy = (first_ready["match"]["inbound_target_y_raw"] -
+                  actor["y_fp"] // 256)
             if not (-9 <= dx < 9 and -9 <= dy < 9):
                 raise AssertionError(f"$86:F4F2 accepted outside [-9,+8]: {(dx, dy)}")
             before_ready = [row["match"]["inbound_timer_raw"]
@@ -1025,12 +1077,24 @@ def main():
                               "team": row["possession"]["team"],
                               "veto": match["shot_inner_veto_raw"],
                               "index": match["shot_miss_index_raw"],
+                              "score": (match["score_left_raw"],
+                                        match["score_right_raw"]),
+                              "made": False,
                               "rebound": None})
             # `$86:CCFC-$D1D6` may acquire a descending miss directly from
             # shot mode 5, while floor/rim misses first become bounce mode 6.
             if state == 4 and last_state in (5, 6) and shots:
-                shots[-1]["rebound"] = (row["ball"]["owner"],
-                                        row["possession"]["team"])
+                score = (row["match"]["score_left_raw"],
+                         row["match"]["score_right_raw"])
+                # A forced-rim shot can carry `$09F8` plus a concrete
+                # `$09FA` offset and still score. Its state-4 successor is
+                # the ownerless inbound ball, not a malformed rebound.
+                if score != shots[-1]["score"] and \
+                        row["match"]["live_state_raw"] == 0x82:
+                    shots[-1]["made"] = True
+                else:
+                    shots[-1]["rebound"] = (row["ball"]["owner"],
+                                            row["possession"]["team"])
             last_state = state
         # `$09F8` can be raised after release by the forced-rim path before
         # `$86:A17D` has selected an offset. `$FF` therefore remains valid for
@@ -1045,7 +1109,7 @@ def main():
         # Do not classify a shot begun inside the final 600-frame capture
         # tail as a failed rebound; the trace ended before its resolution
         # horizon. Every miss with a complete horizon must still resolve.
-        settled_misses = [shot for shot in misses
+        settled_misses = [shot for shot in misses if not shot["made"]
                           if shot["frame"] <= rows[-1]["frame"] - 600]
         if any(shot["rebound"] is None for shot in settled_misses):
             raise AssertionError(

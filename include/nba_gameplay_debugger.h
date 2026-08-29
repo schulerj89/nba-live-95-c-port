@@ -24,6 +24,7 @@ typedef struct {
     uint8_t control;
     bool visible;
     int16_t world_x, world_y, world_z;
+    int32_t world_x_fp, world_y_fp; /* exact 24.8 coordinates for ROM integer-word gates */
     int32_t world_z_fp; /* exact 24.8 height; rounded z cannot prove landing */
     int16_t screen_x, screen_y;
     int16_t velocity_x, velocity_y, velocity_z;

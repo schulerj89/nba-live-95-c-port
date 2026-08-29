@@ -202,6 +202,11 @@ if ($Test) {
         --normalized --require-census --vectors (Join-Path $Root 'tests\fixtures\owner-flow-witnesses.json') `
         --probe (Join-Path $BuildDir 'owner_flow_vector_probe.exe') --pack $AssetPack
     if ($LASTEXITCODE -ne 0) { throw 'Owner flow/reversal/idle ROM witness regression failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name inbound_motion_vector_probe
+    & python (Join-Path $Root 'tools\verify_inbound_motion_vectors.py') `
+        --vectors (Join-Path $Root 'tests\fixtures\inbound-motion-witnesses.json') `
+        --probe (Join-Path $BuildDir 'inbound_motion_vector_probe.exe')
+    if ($LASTEXITCODE -ne 0) { throw 'Inbound continuation ROM witness regression failed.' }
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name owner_pose_runtime_probe
     & (Join-Path $BuildDir 'owner_pose_runtime_probe.exe') $AssetPack
     if ($LASTEXITCODE -ne 0) { throw 'Owner pose/natural-special runtime regression failed.' }

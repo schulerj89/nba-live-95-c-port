@@ -45,12 +45,15 @@ def main():
             # pin its stable background composition instead of requiring a
             # layer to win when the SNES priority result says it should not.
             assert summary["visible"]["bg1"] == 0
-            # Native lineup-position matchups alter the deterministic player
-            # placement at frame 1000 and therefore OBJ occlusion of BG2.
-            assert summary["visible"]["bg2"] == 45330
+            # Re-reviewed after native inbound motion and complete tall-body
+            # resources changed deterministic actor placement. Frame 1000
+            # visibly retains all ten players, ball, court and clear HUD;
+            # pin every winner count so BG/OBJ coverage cannot trade off
+            # unnoticed while still satisfying only-positive smoke checks.
+            assert summary["visible"]["bg2"] == 46999
             assert summary["visible"]["bg3"] == 5641
-            assert summary["visible"]["obj"] > 0
-            assert summary["visible"]["backdrop"] > 0
+            assert summary["visible"]["obj"] == 1716
+            assert summary["visible"]["backdrop"] == 2988
             counts = {name: 0 for name in
                       ("BACKDROP", "BG1", "BG2", "BG3", "OBJ")}
             indexed = direct = rows = 0
