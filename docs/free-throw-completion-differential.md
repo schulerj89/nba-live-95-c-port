@@ -1,9 +1,16 @@
-# CPU free-throw completion differential
+# Free-throw completion differential
 
-## Verified boundaries
+## Evidence boundaries
 
-- `$87:9CBF-$A017`: CPU stripe state machine. Retained states are 1, the
-  nested transient 2, 3, 9, 10, and the between-attempt 11..24 cadence.
+- `$87:9CBF-$A017`: composite stripe state machine. CPU completion witnesses retain
+  states 1, the nested transient 2, 3, 9, 10, and the between-attempt 11..24
+  cadence. A separate genuine-controller capture retains represented aim words
+  for human states 3/4/5/9. Because unrepresented setup, artwork and common-
+  launch effects and their same-call ordering are internal to this boundary,
+  its aggregate ledger row grants no address credit.
+- `$87:A018-$A045`: controller-owned two-axis aim oscillator; see
+  `docs/human-free-throw-differential.md`. This exact subrange is independently
+  credit-eligible.
 - `$87:A15C-$A2FD`: lane target/movement helper and its carry-ready return.
   `$A2FE-$A356` is table data; `$A357-$A360` begins the following presentation
   routine and is not claimed as lane-helper code.
@@ -36,6 +43,13 @@ two-shot and one-shot releases, between-attempt ball setup, state 24 wrap,
 final make/inbound-ready acknowledgement, and final miss/live-rebound
 acknowledgement.
 
+The separate canonical human-input capture is
+`.analysis/human-free-throw-native-20260829-v4`: 1,556 native vectors with
+first-press delay 60, zero orphan exits, and zero shared-exit callbacks. Its
+vector-corpus SHA-256 is
+`a1c252ab961d6e72d4159553706a16176dd151ba4f26e5343d39e4808486dabd`.
+Seven durable human witnesses include a distinct cursor wrap.
+
 ## Adopted C behavior
 
 - CPU aim uses the exact delay mask, rating thresholds, RNG consumption, and
@@ -51,7 +65,12 @@ acknowledgement.
 
 ## Deliberate exclusions
 
-Human aiming states 4/5 and their controller/aim artwork are separate. The
-alternate roster-dependent commentary selection producing `$1F/$23` is also
-separate; the retained CPU witnesses select `$1B`. The C final-flight gate
-uses the typed gameplay-ball mapping for native `$3EEF-$3EFD`.
+Human aiming states 3/4/5 and the oscillator are implemented and independently
+locked by seven witnesses in `docs/human-free-throw-differential.md`. Their aim
+artwork words `$0988-$098E`, global player assignment, and a complete playable
+human-control path remain separate; the ordinary runtime adapter remains
+dormant. Complete common-launch effects and same-call ordering remain excluded.
+The alternate roster-dependent commentary
+selection producing `$1F/$23` is also excluded; the retained CPU witnesses
+select `$1B`. The C final-flight gate uses the typed gameplay-ball mapping for
+native `$3EEF-$3EFD`.

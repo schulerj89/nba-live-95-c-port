@@ -3,6 +3,10 @@
 #include "nba_tipoff.h"
 #include "nba_player_lab.h"
 
+static int16_t integer_word(int32_t value) {
+    return (int16_t)(value >= 0 ? value / 256 : -((-value + 255) / 256));
+}
+
 /* Production-sequence guard for `$86:E545-$E592` followed by the next
  * `$87:AD5B-$AEC2` cadence and `$87:B649/$B66A` attachment. This is an
  * unforced CPU game: it observes natural bases 9/11 without injecting state. */
@@ -40,17 +44,29 @@ int main(int argc, char **argv) {
                         &pack, actor->upper_animation_resource_raw_2a,
                         actor->lower_animation_resource_raw_2c, mirror,
                         &x, &y, &z)) return 6;
-                int32_t actual_x = game.ball.x_fp - actor->x_fp;
-                int32_t actual_y = game.ball.y_fp - actor->y_fp;
-                if (actual_x != (int32_t)x * 256 ||
-                    actual_y != (int32_t)y * 256) {
+                /* B649/B66A write integer words, not the actor's fractions.
+                 * The 324 native cases in ball-driver-owned-dispatch.json
+                 * separately prove retained ball fractions (and the low
+                 * owned driver's two A4F2 substeps). Adjacent game frames
+                 * cannot isolate those writes from the rest of that pass. */
+                int16_t actual_x = (int16_t)(integer_word(game.ball.x_fp) -
+                                             integer_word(actor->x_fp));
+                int16_t actual_y = (int16_t)(integer_word(game.ball.y_fp) -
+                                             integer_word(actor->y_fp));
+                if (actual_x != x || actual_y != y) {
                     fprintf(stderr,
                         "dynamic dribble attachment mismatch frame=%u actor=%d "
-                        "base=%u resources=%04x/%04x actual=%ld/%ld expected=%d/%d\n",
+                        "base=%u resources=%04x/%04x integer_delta=%d/%d "
+                        "expected=%d/%d ball_fraction=%02x/%02x "
+                        "actor_fraction=%02x/%02x\n",
                         frame, owner, base,
                         actor->upper_animation_resource_raw_2a,
                         actor->lower_animation_resource_raw_2c,
-                        (long)actual_x, (long)actual_y, x * 256, y * 256);
+                        actual_x, actual_y, x, y,
+                        (unsigned)((uint32_t)game.ball.x_fp & 255u),
+                        (unsigned)((uint32_t)game.ball.y_fp & 255u),
+                        (unsigned)((uint32_t)actor->x_fp & 255u),
+                        (unsigned)((uint32_t)actor->y_fp & 255u));
                     return 7;
                 }
 

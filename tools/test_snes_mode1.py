@@ -46,10 +46,14 @@ def main():
             # Re-reviewed after `$87:A52C-$A5FA` presentation direction was
             # applied to cached action body resources in the renderer. Two
             # opaque player pixels correctly replace BG2 at this frame.
+            # Re-reviewed in build/mode1-native-edges.bmp after native ball
+            # dispatch/fractions and actor-edge semantics changed the CPU
+            # trajectory. Court/HUD/backdrop remain unchanged; 75 more OBJ
+            # pixels replace BG2. This is a C regression, not ROM pixel parity.
             assert summary["visible"]["bg1"] == 2176
-            assert summary["visible"]["bg2"] == 38778
+            assert summary["visible"]["bg2"] == 38703
             assert summary["visible"]["bg3"] == 5641
-            assert summary["visible"]["obj"] == 2498
+            assert summary["visible"]["obj"] == 2573
             assert summary["visible"]["backdrop"] == 8251
             counts = {name: 0 for name in
                       ("BACKDROP", "BG1", "BG2", "BG3", "OBJ")}

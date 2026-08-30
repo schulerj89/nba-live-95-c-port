@@ -301,11 +301,12 @@ int main(int argc, char **argv) {
     /* Re-reviewed after cached action body art adopted `$87:A52C-$A5FA`'s
      * presentation direction. All transition/motion/resource/possession
      * counters remain unchanged; sampled gameplay pixels intentionally do. */
-    /* Re-reviewed after `$86:F45F-$F4F2`'s sign-biased inbound target
-     * compensation was applied to both steering and arrival. The production
-     * journey remains deterministic; its later possession path intentionally
-     * changes the sampled gameplay pixels and state digest. */
-    static const uint64_t expected_digest = 0x1d779bf404778862ull;
+    /* C-only digest re-reviewed 2026-08-29 after native ownership/substeps,
+     * actor edges, OOB and dynamic formation fixes. Both journey runs match:
+     * eight scene transitions, 65 render changes, 2,910 motion frames,
+     * 13,122 resource changes and 72 possession changes. This is repeatable
+     * integration coverage, not evidence of whole-frame ROM equivalence. */
+    static const uint64_t expected_digest = 0x773c1df2a9820701ull;
     if (argc != 2) return 2;
     NbaAssetPack assets = {0};
     if (!nba_assets_load(&assets, argv[1])) return 3;

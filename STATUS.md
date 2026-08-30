@@ -7,10 +7,12 @@ Use Git history for older checkpoints and run
 ## Current state
 
 The playable path runs from the Nintendo license through Player Setup,
-starting-lineup cards, tip-off, and early CPU-vs-CPU gameplay. The port has
+starting-lineup cards, tip-off, and CPU-vs-CPU gameplay. The port has
 court/camera movement, ten-player composition, possession, passing, shooting,
-bounces, and initial foul scaffolding. User-controlled gameplay is not in
-scope yet.
+bounces, fouls, and free throws. A native-backed human free-throw aim helper
+and scene adapter now exist, but the adapter is dormant: global player
+assignment, mode-11 human context, and ordinary playable human offense or
+defense are still missing.
 
 Current measured coverage:
 
@@ -18,9 +20,12 @@ Current measured coverage:
 |---|---:|---:|
 | observed executed code | 28,643 | 100.0% |
 | documented by ROM-address provenance | 28,643 | 100.0% |
-| verified against ROM/recomp/Ghidra ground truth | 28,643 | 100.0% |
+| inside evidence-eligible verified boundaries | 11,529 | 40.25% |
 
-These values are generated, not estimated. The detailed per-bank report is
+These values are generated, not estimated. The former 28,643/28,643 verified
+headline was invalid: broad whole-bank and `host equivalent` ledger rows had
+silently granted address credit beyond their bounded evidence. Those rows now
+remain documented but set `coverage_credit=false`. The detailed report is
 `docs/progress.md`; the authoritative verified list and evidence paths are in
 `docs/verified-routines.json`.
 The exec interval files mix instruction-start captures and older gap-coalesced
@@ -29,7 +34,9 @@ percentage of the whole game completed**. Disassembled instruction counts
 for a requested slice are reported separately.
 
 The ROM-wide lower-bound code inventory is generated at
-`docs/full-rom-instruction-census.md`. Whole-game engineering status is tracked
+`docs/full-rom-instruction-census.md`: 11,526 of 60,346 conservatively decoded
+instruction starts are both observed and evidence-eligible (19.10%). Whole-
+game engineering status is tracked
 separately in `docs/feature-capture-matrix.md`; its weighted percentage is an
 explicit planning estimate, not native instruction coverage.
 
@@ -70,36 +77,48 @@ The permanent 20,000-frame unforced probe observes natural reversals and exact
 cached-resource X/Y attachment, and the sustained CPU regression no longer
 excludes those bases. See `docs/dynamic-dribble-attachment.md`.
 
-## Verified gameplay checkpoint
+## Evidence-audited gameplay checkpoint
 
-Latest bounded work: `docs/gameplay-100-percent-plan.md`. A fresh headless
-Ghidra closure classified the final 4,064 retained positions across Banks
-`$00/$80-$84`; recomp cross-checks were used for Banks `$00/$80-$82` and the
-indirect/table-owned Banks `$83/$84` remain Ghidra/native-grounded. The exact
-closure gate originally reported 27,901 executed and verified positions. The
-gameplay-audio variant sweeps subsequently expanded the retained local capture
-union by 742 positions; the current recount reports **28,643 executed, 28,643
-verified and zero pending**. `tools/progress.py` independently reports all
-28,643 positions documented.
+The former closure document is retained as historical context at
+`docs/gameplay-100-percent-plan.md`, but its whole-bank address-credit
+conclusion is superseded by the strict evidence audit. The retained local
+capture union contains 28,643 address positions: all are documented by source
+provenance, while 11,529 are inside precise evidence-eligible ledger
+boundaries. Documentation and Ghidra classification do not by themselves
+establish behavioral parity.
 
-The permanent `gameplay100_closure_probe` traverses Rules and Options with
-real commits and all four page transitions, Team Select, Player Setup,
+The rebuilt `gameplay100_closure_probe` traverses Rules and Options with real
+commits and all four page transitions, Team Select, Player Setup,
 matchup/ratings, ten lineup cards, physical tip possession and 6,000 CPU
-frames. Two identical runs are pinned to digest `39974258c482a822` with eight
-handoffs, 65 render changes, 2,910 actor-motion frames, 12,985 animation-
-resource changes and 64 possession changes. The complete release suite also
-retains the 48,000-frame three-matchup state/render digest and the 63,800-frame
-dead-ball endurance test.
+frames. Its reviewed C-only digest is `773c1df2a9820701`, with eight handoffs,
+65 render changes, 2,910 actor-motion frames, 13,122 animation-resource
+changes and 72 possession changes. The independent 48,000-frame three-matchup
+state/render endurance retains scoring, possession changes and dead-ball
+recoveries in every matchup. The canonical 63,800-frame tip-flow probe now
+passes through period 5 with 39,594 post-restart live frames. Four controlled
+native cancellation cases and a full-production-update sentinel make the
+rare recovery branch mandatory without depending on accidental natural
+coverage. The period, live-frame and maximum-stall guards remain unchanged.
 
-There are 227 verified ledger entries. The 100% figure is exact coverage of
-the retained execution captures, not a claim about unobserved ROM branches,
-unsupported modes, user-controlled gameplay or whole-game feature completion.
+The new native edge-contract checkpoint is documented in
+`docs/native-edge-parity.md` and `docs/inbound-cancel-recovery-differential.md`:
+56 actor-edge calls, 46 OOB calls, 40 inbound-side cases, 96 formation calls
+plus ten separate inbound-override calls,
+and 323 complete 31-field owned-ball projections plus one explicitly partial
+event-timing case. These fix signed ownership dispatch, low-owned substeps,
+ball-history writes, raw arrival/source words, actor edge/fraction/timer rules,
+and halftime context anchors. They do not establish whole-frame parity.
+
+There are 233 ledger entries, of which 207 are eligible for address coverage.
+The other 26 do not receive address coverage. No current metric is a whole-
+game parity percentage.
 The most important bounded slices and caveats remain below:
 
 Older "remaining" counts in those slice notes describe that slice's
 then-current disassembly census or unobserved branches. They are preserved as
-technical caveats and are not part of the current zero-pending captured-address
-ledger.
+technical caveats, not a current whole-game or captured-address zero-pending
+claim. The exact current eleven-column gap table is in
+`docs/parity-gap-report.md`.
 
 - Ball initialization prefix: `docs/pending-gameplay-differential-plan.md`.
   Corrected native start E056 (E054 was a JMP operand),30 instructions.
@@ -454,9 +473,10 @@ the real mode-12 dispatcher. The final 63,800-frame trace sustains scoring
 (74-70); its longest dead-ball stretch is 1,552 frames, below the unchanged
 2,400-frame guard. A movement-only analyzer was insufficient to catch the
 earlier stranded-ball diagnostic run; retain the full strategy/scoring test.
-Final `build.ps1 -Test` passes every suite, including all 118 new ROM
-witnesses, 63,800 CPU frames, 2,194 exact-pass frame checks, 112 automatic
-action unlocks, and inspected screenshot anchors 600/1300/3480/6932/6954.
+The targeted native witnesses and long gameplay probes remain important
+regressions, but they do not erase failures elsewhere in the canonical suite;
+current test results are recorded below rather than summarized as a blanket
+pass.
 
 Fresh Ghidra: `.analysis/shot-branches-ghidra-20260827/shot_action_bank86.txt`.
 Capture/replay commands and provenance are in `tools/README.md`. Final-build
@@ -487,20 +507,74 @@ verified.
 
 See `tools/README.md` for capture, replay, Ghidra, and regression commands.
 
+## Current verification results
+
+Rebuilt on 2026-08-29 from the working tree with the canonical US ROM and
+ROM-derived pack. These are test outcomes, not parity percentages:
+
+| check | result | evidence / caveat |
+|---|---|---|
+| Human free-throw v4 normalization and typed replay | PASS | 1,556 native calls reduce to seven durable witnesses; 7/7 replay with zero represented-word mismatches |
+| Human free-throw scene initialization/self-test | PASS | Headless Tipoff initialization exercises assignment-zero `3 -> 4 -> 5 -> 9`, including human selection before the CPU 120-tick gate |
+| Strict differential harness unit tests | PASS | 12 tests; the real 449-word native/C runs still correctly report `INITIAL_STATE_MISMATCH` |
+| Native actor/OOB/side/formation replays | PASS | 56 actor edge cases plus 1,490 retained calls; 46 new + 10 retained OOB calls; 40 side-gate, 96 formation and ten supplemental inbound-override cases |
+| Owned-ball driver projection | PASS / PARTIAL | 323 complete 31-field native projections + one partial event case; 431 complete + one partial replays, 108 snapshot negative controls; no unexpected mismatches |
+| Native verifier integrity | PASS | 15 adversarial tests, also under `python -O`; empty fixtures and missing output words can no longer false-PASS |
+| Project coverage/census artifact regression | PASS | Four fresh Ghidra passes; split-range opt-out policy; LF-normalized source/policy hashes and generated report freshness; 55.50% planning matrix unchanged |
+| Gameplay debugger and CPU gameplay regression | PASS | Fresh 63,800 frames; 3,265 exact pass-frame checks, 156 action unlocks, 75 shot selectors, 27 made-run updates, 49 completed inbounds and all five reviewed RGB goldens |
+| Multi-team gameplay endurance | PASS | Three scenarios, 48,000 frames total; reviewed digests and unchanged semantic activity guards |
+| Gameplay closure journey | PASS | Digest `773c1df2a9820701`, eight scene handoffs and 6,000 CPU gameplay frames, repeated deterministically |
+| Mode-1 source/pixel regression | PASS | Inspected frame-1000 BG2/OBJ `38,703/2,573`; independent compositor checks retained |
+| `build.ps1 -Test` | PASS | Final canonical run exited 0, including native replays, integrity checks, frontend/audio, endurance, fresh CPU trace, intro and census checks |
+| `court_runtime_probe` | PASS | 16,000 caller frames; 812 indexed viewports across 29 courts and four period scenarios |
+| `tip_flow_endurance_probe` | PASS | 63,800 frames, raw period 5, 39,594 post-restart live frames; mandatory four native cancellation projections plus full-update recovery binding |
+| Desktop build and shortcut | PASS | Rebuilt `build/nba95_port.exe`; existing desktop shortcut verified against this repository, canonical US ROM and ROM-derived pack |
+
+Canonical release command:
+`./build.ps1 -Test -RomPath 'F:\Games\SNES\NBA Live 95 (USA).sfc'`.
+The local transcript is `build/regression-release-final.log`. Fresh strict
+native/C evidence is in `.analysis/differential-release-final-cpu/run.json`
+and `report.json`; those reports retain the failing baseline without masking.
+
+Testing changed in this checkpoint in four material ways:
+
+- Native routine fixtures now check complete declared output shapes and
+  provenance; adversarial tests reject empty/truncated/malformed evidence.
+  Seven additional integrity mutations protect the formation-override fixture.
+- The strict comparison samples 449 raw words at actual native actor-sweep
+  boundaries, reports the first baseline mismatch, and never fits frame offsets
+  or treats a C-only hash as native equivalence.
+- Runtime tests model the native camera wait latch and formation override.
+  Rare cancellation is mandatory through deterministic native projections and
+  a production-update binding, without weakening period/live/stall thresholds.
+- The 63,800-frame CPU test exposed a real late made-basket pickup bypass at
+  frame 58,614. The shared contact path was corrected, its ownership assertion
+  retained, and seven geometry-plus-gate startup checks added. Reviewed RGB
+  and state/render goldens remain separately labeled C-only regressions.
+
+The owned-ball event exception remains partial, and the strict configured-
+start test remains red. Passing regression tests do not override either gap.
+
 ## Active gaps and next work
 
-- Strict differential validation has started: `docs/differential-testing.md`.
-  Fresh native/C captures compare 442 raw words at baseline and actual actor-
-  sweep boundaries. Default native CPU-versus-human preserves the requested
-  setup and currently reports81 baseline differences (previously82), including
-  the known controller mismatch with the CPU-only port. First sweep cadence
-  also differs. Full WRAM does not yet repeat across runs, despite matching
-  selected-state traces. No full snapshot/configuration import or passing
+- Strict differential validation is still red: `docs/differential-testing.md`.
+  Fresh native/C captures compare 449 raw words at baseline and actual actor-
+  sweep boundaries. CPU-only reports 62 baseline differences; the default
+  native one-human setup reports 63, including the known controller mismatch
+  with the CPU-only port. Both have zero matching checkpoints, and the first
+  actor sweep occurs at native relative frame 25 versus C frame 2. No full
+  snapshot/configuration import or passing
   trajectory-equivalence claim exists. Align starting context and update order
   before interpreting later movement divergence. Per-routine replay coverage
   no single percentage is assigned to this full-WRAM experiment. The bounded
   initializer, jump/reach, defensive and inbound families now have independent
   replay proof, while the whole-game baseline still does not pass.
+- Ball/actor integration: the new exact edge and 31-field owned-ball fixtures
+  leave the call181 interrupt/event timing unresolved. `$85:9D65-$9D79` rim
+  context selection still needs live-anchor adoption and native witnesses;
+  common-prefix scheduling in special actor modes and `$85:98F4-$9905`
+  shared RNG/event effects remain excluded. Finishing formation anchors does
+  not close those other halftime/caller paths.
 - Camera: the additional 99 correction/caller instructions are complete.
   Upstream camera/control selector ownership and wider configured-start
   trajectories remain separate; raw camera
@@ -514,11 +588,15 @@ See `tools/README.md` for capture, replay, Ghidra, and regression commands.
   grants, period increment, anchor reset, OT/final decision, and explicit
   Exhibition postgame routing. Controlled presentation lengths replace the
   old 120-tick scaffold. Exact break/final raster composition, substitutions,
-  persistence modes, and wider natural-shot distribution remain. Human
-  controls remain out of scope.
-- Command helpers, common queued completion, ordinary mode-15 passes, and the
-  complete `$86:F43A-$F668` inbound continuation now have native replay and
-  runtime endurance proof. Generic shot/contact callers still contain
+  persistence modes, and wider natural-shot distribution remain. The bounded
+  human free-throw aim path is implemented and locked by seven durable native
+  witnesses, including a distinct cursor wrap. The ordinary runtime adapter
+  remains dormant, and common-launch effects and same-call ordering remain
+  excluded; complete human controls are not implemented.
+- Command helpers, common queued completion, ordinary mode-15 passes, and
+  selected `$86:F43A-$F668` inbound continuations have native replay and
+  runtime endurance proof. This is bounded output/branch evidence, not every
+  human or rare caller path. Generic shot/contact callers still contain
   compatibility setters; replace them only behind focused witnesses.
 - Upper mode-2 states 7/13/18 and defensive `$86:E39A/$E3E1` selection have
   verified, adopted cadence. Ordinary dribble/contact consumers still require

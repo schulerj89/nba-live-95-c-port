@@ -2,7 +2,20 @@
 
 An in-progress native C99 port of the US SNES release of NBA Live '95. The
 current playable path covers the Nintendo license, NBA legal screen, EA SPORTS
-intro, animated title, Game Setup, Exhibition Team Select, and Player Setup.
+intro, animated title, Game Setup, Exhibition Team Select, Player Setup,
+introductions, tip-off, and CPU-vs-CPU gameplay. The gameplay port is
+substantial but not at whole-game parity: ordinary human offense/defense and a
+matching native/C launch context remain open. A bounded human free-throw aim
+sequence is implemented in the scene adapter, but remains dormant until the
+missing Player Setup ownership/context pipeline exists; it is not a complete
+human-control path.
+
+The current [parity gap report](docs/parity-gap-report.md) separates native
+evidence from C-only regressions. The latest
+[edge-contract checkpoint](docs/native-edge-parity.md) corrects ball ownership
+and substeps, actor boundaries, inbound/OOB rules and halftime formation
+anchors; the strict full-game differential still fails its initial-state
+comparison. See [STATUS.md](STATUS.md) for verified scopes and remaining gaps.
 
 Graphics and audio come from a user-supplied ROM-derived asset pack. The title,
 Game Setup, and Player Introduction music use the original SPC700/S-DSP state
@@ -106,6 +119,10 @@ Setup; Left/Right assigns Player 1 to the visitor/home side.
 baselines; `python tools/progress.py --write docs/progress.md` regenerates
 the live numbers from Mesen exec coverage, `src/` provenance comments, the
 verified-routine ledger, and the recomp function set.
+
+[`docs/parity-gap-report.md`](docs/parity-gap-report.md) is the current honest
+gap inventory. [`docs/human-free-throw-differential.md`](docs/human-free-throw-differential.md)
+documents the latest native-input gameplay slice and its explicit exclusions.
 
 ## Technical notes
 

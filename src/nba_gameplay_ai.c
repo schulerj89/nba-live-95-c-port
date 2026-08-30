@@ -297,20 +297,6 @@ static void inbound_compensated_target(
                          velocity_damping_div16(velocity_y));
 }
 
-/* `$86:F45F-$F4F2`: F43A replaces the raw target scratch with target minus
- * the sign-biased velocity/16 compensation before both steering and the
- * `[-9,+8]` arrival comparisons. This is observable at boundary targets
- * beyond the ordinary actor clamp (for example raw X=403 with actor X=394). */
-bool nba_gameplay_inbound_arrived_motion(
-        int16_t actor_x, int16_t actor_y, int16_t target_x, int16_t target_y,
-        int16_t velocity_x, int16_t velocity_y) {
-    int16_t steering_x, steering_y;
-    inbound_compensated_target(target_x, target_y, velocity_x, velocity_y,
-                               &steering_x, &steering_y);
-    return nba_gameplay_inbound_arrived(
-        actor_x, actor_y, steering_x, steering_y);
-}
-
 /* `$86:F59F-$F5BB`: 240+ waits, 120..239 is RNG-gated, below 120 is due. */
 bool nba_gameplay_inbound_pass_due(uint16_t timer, uint16_t random_word) {
     if ((int16_t)timer >= 240) return false;
@@ -321,7 +307,8 @@ bool nba_gameplay_inbound_pass_due(uint16_t timer, uint16_t random_word) {
  * baseline-side gate. `$85:B60B` supplies candidate validity; the fallback
  * intentionally bypasses that call exactly as the native branch does. */
 int8_t nba_gameplay_select_inbound_receiver_cpu(
-    uint8_t inbounder, uint16_t timer, const int16_t selectors[3],
+    uint8_t inbounder, uint16_t timer, int16_t context_anchor_x,
+    const int16_t selectors[3],
     const NbaGameplayReceiverState *actors, uint8_t actor_count) {
     if (!selectors || !actors || inbounder >= actor_count) return -1;
     int candidate=-1;
@@ -340,9 +327,16 @@ int8_t nba_gameplay_select_inbound_receiver_cpu(
     }
     int16_t owner_x=actors[inbounder].x;
     int16_t receiver_x=actors[candidate].x;
-    bool allowed=inbounder>=5u ? owner_x < -20 || receiver_x >= 0
-                               : owner_x >= 20 || receiver_x < 0;
-    return allowed ? (int8_t)candidate : -1;
+    return nba_gameplay_inbound_side_allows(
+        context_anchor_x, owner_x, receiver_x) ? (int8_t)candidate : -1;
+}
+
+/* `$86:F61F-$F647` reads the active context's +$0A sign. Team slots do not
+ * encode basket direction: halftime reverses the two context anchors. */
+bool nba_gameplay_inbound_side_allows(int16_t context_anchor_x,
+                                     int16_t owner_x, int16_t receiver_x) {
+    return context_anchor_x >= 0 ? owner_x < -20 || receiver_x >= 0
+                                 : owner_x >= 20 || receiver_x < 0;
 }
 
 /* `$86:F54F-$F58E`: the first arrived pass owns both ball-state words.  The
@@ -1401,10 +1395,10 @@ bool nba_gameplay_ai_self_test(void) {
         !nba_gameplay_inbound_arrived(0, 0, -9, -9) ||
         nba_gameplay_inbound_arrived(0, 0, 9, 0) ||
         nba_gameplay_inbound_arrived(0, 0, -10, 0)) return false;
-    if (!nba_gameplay_inbound_arrived_motion(
-            394, -219, 403, -224, 95, 0) ||
-        nba_gameplay_inbound_arrived_motion(
-            394, -219, 403, -224, 0, 0)) return false;
+    /* `$86:F4E6-$F4F0` restores the raw target before `$86:F4F2`.
+     * A raw +9 X delta stays outside the box even when the temporary
+     * steering compensation would make that delta +8. */
+    if (nba_gameplay_inbound_arrived(394, -219, 403, -224)) return false;
     if (nba_gameplay_inbound_pass_due(240u, 0u) ||
         !nba_gameplay_inbound_pass_due(239u, 0u) ||
         nba_gameplay_inbound_pass_due(239u, 4u) ||
@@ -1429,23 +1423,29 @@ bool nba_gameplay_ai_self_test(void) {
     inbound_receivers[7].x=-394;
     int16_t inbound_selectors[3]={7,9,6};
     if (nba_gameplay_select_inbound_receiver_cpu(
-            7u,200u,inbound_selectors,inbound_receivers,10u)!=9)
+            7u,200u,336,inbound_selectors,inbound_receivers,10u)!=9)
         return false;
     inbound_receivers[9].control_mode=7u;
     if (nba_gameplay_select_inbound_receiver_cpu(
-            7u,200u,inbound_selectors,inbound_receivers,10u)!=6)
+            7u,200u,336,inbound_selectors,inbound_receivers,10u)!=6)
         return false;
     inbound_receivers[6].control_mode=7u;
     if (nba_gameplay_select_inbound_receiver_cpu(
-            7u,60u,inbound_selectors,inbound_receivers,10u)!=-1 ||
+            7u,60u,336,inbound_selectors,inbound_receivers,10u)!=-1 ||
         nba_gameplay_select_inbound_receiver_cpu(
-            7u,59u,inbound_selectors,inbound_receivers,10u)!=9)
+            7u,59u,336,inbound_selectors,inbound_receivers,10u)!=9)
         return false;
     inbound_receivers[7].x=0;
     inbound_receivers[9].x=-1;
     if (nba_gameplay_select_inbound_receiver_cpu(
-            7u,59u,inbound_selectors,inbound_receivers,10u)!=-1)
+            7u,59u,336,inbound_selectors,inbound_receivers,10u)!=-1)
         return false;
+    if (!nba_gameplay_inbound_side_allows(336, -385, 298) ||
+        nba_gameplay_inbound_side_allows(-336, -385, 298) ||
+        !nba_gameplay_inbound_side_allows(-336, 20, 0) ||
+        nba_gameplay_inbound_side_allows(-336, 19, 0) ||
+        !nba_gameplay_inbound_side_allows(336, -21, -1) ||
+        nba_gameplay_inbound_side_allows(336, -20, -1)) return false;
     static const struct { int16_t x, y; uint8_t direction; uint16_t distance; } cases[] = {
         {0,0,8,0},{10,0,2,10},{0,10,0,10},{-10,-10,5,12},
         {10,20,1,22},{10,21,0,23},{10,11,1,12}
@@ -1589,12 +1589,12 @@ static void actor_commit_axis(uint16_t *fraction, int16_t *integer,
     *integer = (int16_t)(raw >> 16);
 }
 
-/* `$85:96B5-$9961`: common actor Z/planar fixed-point integration and
+/* `$85:96B5-$9A13`: common actor Z/planar fixed-point integration and
  * movement-vector commit. The animation landing callbacks at `$85:9741`
  * remain with the mode executors; this function owns the arithmetic shared
- * by every ordinary actor pass. `$85:98F4` may very rarely suppress a facing
- * write after consuming `$80:8930`; the caller supplies that already-resolved
- * branch so the physics helper itself consumes no RNG out of order. */
+ * by every ordinary actor pass. `$85:98F4` may additionally consume RNG and
+ * set event `$13E7` bit $40; it never suppresses the later facing write.
+ * That caller-owned event/RNG side effect is outside this pure helper. */
 void nba_gameplay_actor_commit(NbaGameplayActorCommit *actor,
                                uint16_t dispatch_dt,
                                bool update_ground_facing) {
@@ -1616,34 +1616,62 @@ void nba_gameplay_actor_commit(NbaGameplayActorCommit *actor,
     actor->previous_y_fraction_raw_98 = actor->y_fraction;
     actor->previous_y_raw_9a = actor->y;
     actor->planar_scratch_raw_a0 = 0u;
-    actor_commit_axis(&actor->x_fraction, &actor->x,
-                      actor->velocity_x, dispatch_dt);
-    if (actor->x >= 0x018A) {
-        actor->x = 0x018A;
-        actor->x_fraction = 0u;
-        actor->velocity_x = 0;
-    } else if (actor->x < -0x018A) {
-        actor->x = -0x018A;
-        actor->x_fraction = 0u;
-        actor->velocity_x = 0;
+    /* `$85:97BC/$9810` skips a stationary axis, including its rectangle
+     * check. Edge islands only replace the INTEGER word. Mode 8 still hits
+     * the coordinate cap, but preserves its velocity and reaction timer. */
+    if (actor->velocity_x != 0) {
+        actor_commit_axis(&actor->x_fraction, &actor->x,
+                          actor->velocity_x, dispatch_dt);
+        bool positive_edge = actor->x >= 0x018A;
+        bool negative_edge = actor->x <= -0x018A;
+        if (positive_edge || negative_edge) {
+            actor->x = positive_edge ? 0x018A : -0x018A;
+            actor->planar_scratch_raw_a0 = positive_edge ? 7u : 3u;
+            if (actor->control_mode_raw_5e != 8u) {
+                actor->reaction_timer_raw_60 = 0u;
+                if ((positive_edge && actor->velocity_x > 0) ||
+                    (negative_edge && actor->velocity_x < 0))
+                    actor->velocity_x = 0;
+            }
+        }
     }
-    actor_commit_axis(&actor->y_fraction, &actor->y,
-                      actor->velocity_y, dispatch_dt);
-    if (actor->y >= 0x00E0) {
-        actor->y = 0x00E0;
-        actor->y_fraction = 0u;
-        actor->velocity_y = 0;
-    } else if (actor->y < -0x00E0) {
-        actor->y = -0x00E0;
-        actor->y_fraction = 0u;
-        actor->velocity_y = 0;
+    if (actor->velocity_y != 0) {
+        actor_commit_axis(&actor->y_fraction, &actor->y,
+                          actor->velocity_y, dispatch_dt);
+        bool positive_edge = actor->y >= 0x00E0;
+        bool negative_edge = actor->y <= -0x00E0;
+        if (positive_edge || negative_edge) {
+            /* Byte tables `$85:9A14/$9A1C` combine the X edge with Y. */
+            static const uint8_t positive_codes[8] = {5,0,0,4,0,0,0,6};
+            static const uint8_t negative_codes[8] = {1,0,0,2,0,0,0,8};
+            actor->y = positive_edge ? 0x00E0 : -0x00E0;
+            actor->planar_scratch_raw_a0 = positive_edge ?
+                positive_codes[actor->planar_scratch_raw_a0] :
+                negative_codes[actor->planar_scratch_raw_a0];
+            if (actor->control_mode_raw_5e != 8u) {
+                actor->reaction_timer_raw_60 = 0u;
+                if ((positive_edge && actor->velocity_y > 0) ||
+                    (negative_edge && actor->velocity_y < 0))
+                    actor->velocity_y = 0;
+            }
+        }
+    }
+    /* `$85:9864-$988D` always applies the isometric diagonal after both
+     * axes, even when stationary. It preserves fractions, velocity, timer
+     * and the rectangle-only edge code already committed to +$A0. */
+    if (actor->y < 0) {
+        int16_t minimum_x = (int16_t)(-556 - actor->y);
+        if (actor->x <= minimum_x) actor->x = minimum_x;
+    } else {
+        int16_t maximum_x = (int16_t)(561 - actor->y);
+        if (actor->x > maximum_x) actor->x = maximum_x;
     }
 
     uint16_t distance = 0u;
     uint8_t direction = nba_gameplay_target_direction(
         actor->velocity_x, actor->velocity_y, &distance);
     actor->movement_distance_raw_4c = distance;
-    actor->speed_raw_4a = (uint16_t)(distance << 1);
+    actor->speed_raw_4a = (uint16_t)(distance * dispatch_dt);
     if (direction != 8u)
         actor->velocity_direction_raw_a2 = direction;
     if (actor->z_fraction == 0u && actor->z == 0 &&

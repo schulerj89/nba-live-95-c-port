@@ -21,7 +21,34 @@ typedef struct {
     int16_t ball_vz_raw_3efd;
 } NbaGameplayFreeThrowCompletion;
 
+/* `$87:9E39-$9F11` and `$87:A018-$A045`: controller-owned two-press
+ * free-throw aim.  The first B/Y press locks one axis, releasing the button
+ * advances state 4 to state 5, and the second press commits state 9. */
+typedef struct {
+    uint16_t state_raw_0978;
+    uint16_t aim_x_raw_0980;
+    uint16_t aim_y_raw_0982;
+    uint16_t accumulator_raw_0984;
+    uint16_t step_raw_0986;
+    int16_t controller_assignment_raw_16;
+    uint16_t human_context_raw_3b;
+    bool shoot_held;
+} NbaGameplayHumanFreeThrowAim;
+
+typedef enum {
+    NBA_HUMAN_FREE_THROW_WAIT,
+    NBA_HUMAN_FREE_THROW_FIRST_LOCK,
+    NBA_HUMAN_FREE_THROW_RELEASED_FIRST,
+    NBA_HUMAN_FREE_THROW_LAUNCH,
+    NBA_HUMAN_FREE_THROW_CPU_FALLBACK
+} NbaGameplayHumanFreeThrowResult;
+
 uint8_t nba_gameplay_free_throw_threshold(uint8_t rating);
+uint16_t nba_gameplay_free_throw_human_aim_step(uint8_t rating);
+void nba_gameplay_free_throw_human_aim_begin(
+    NbaGameplayHumanFreeThrowAim *state, uint8_t rating);
+NbaGameplayHumanFreeThrowResult nba_gameplay_free_throw_human_aim_step_frame(
+    NbaGameplayHumanFreeThrowAim *state);
 bool nba_gameplay_free_throw_cpu_aim_step(
     NbaGameplayFreeThrowCompletion *state, NbaGameplayRng *rng,
     uint16_t elapsed, uint8_t rating, uint16_t *aim_x_raw_0980,

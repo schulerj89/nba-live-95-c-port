@@ -22,6 +22,8 @@ def main():
             values += [word(before,base+4),word(before,base+8),
                        word(before,base+0x30),word(before,base+0x86),
                        word(before,base+0x8a)]
+        # F61F reads the live DP-$9E context anchor, not the actor's team ID.
+        values.append(word(before,word(before,0x9e)+0x0a))
         calls.append({"call":r["call"],"input":values,
                       "expected":word(after,0x946)})
     Path(a.output).write_text(json.dumps({

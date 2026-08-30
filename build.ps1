@@ -83,6 +83,8 @@ if ($Test) {
     if ([string]::IsNullOrEmpty($AssetPack) -or !(Test-Path -LiteralPath $AssetPack)) {
         throw "-Test requires a generated asset pack."
     }
+    & python (Join-Path $Root 'tools\test_native_verifier_integrity.py')
+    if ($LASTEXITCODE -ne 0) { throw 'Native verifier protocol integrity failed.' }
     & python (Join-Path $Root 'tools\test_differential.py')
     if ($LASTEXITCODE -ne 0) { throw 'Strict differential harness unit tests failed.' }
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name differential_observer_probe
@@ -255,6 +257,12 @@ if ($Test) {
         --vectors (Join-Path $Root 'tests\fixtures\ball-contact-sweep-witnesses.json') `
         --probe (Join-Path $BuildDir 'player_contact_sweep_vector_probe.exe') --pack $AssetPack
     if ($LASTEXITCODE -ne 0) { throw 'Ball contact-sweep ROM replay failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name ball_driver_owned_vector_probe
+    & python (Join-Path $Root 'tools\verify_ball_driver_owned_vectors.py') `
+        --vectors (Join-Path $Root 'tests\fixtures\ball-driver-owned-dispatch.json') `
+        --probe (Join-Path $BuildDir 'ball_driver_owned_vector_probe.exe') `
+        --assets $AssetPack --rom $RomPath
+    if ($LASTEXITCODE -ne 0) { throw 'Owned ball-driver ROM replay failed.' }
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name defense_target_family_probe
     & python (Join-Path $Root 'tools\verify_defense_target_families.py') `
         --vectors (Join-Path $Root 'tests\fixtures\defense-target-family-witnesses.json') `
@@ -270,6 +278,13 @@ if ($Test) {
         --vectors (Join-Path $Root 'tests\fixtures\formation-route-witnesses.json') `
         --probe (Join-Path $BuildDir 'formation_route_vector_probe.exe') --pack $AssetPack
     if ($LASTEXITCODE -ne 0) { throw 'Formation-route ROM replay failed.' }
+    & python (Join-Path $Root 'tools\verify_formation_override_vectors.py') `
+        --vectors (Join-Path $Root 'tests\fixtures\formation-override-witnesses.json') --self-test
+    if ($LASTEXITCODE -ne 0) { throw 'Formation override fixture integrity failed.' }
+    & python (Join-Path $Root 'tools\verify_formation_override_vectors.py') `
+        --vectors (Join-Path $Root 'tests\fixtures\formation-override-witnesses.json') `
+        --probe (Join-Path $BuildDir 'formation_route_vector_probe.exe') --pack $AssetPack
+    if ($LASTEXITCODE -ne 0) { throw 'Native inbound formation override replay failed.' }
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name mode11_parent_vector_probe
     & python (Join-Path $Root 'tools\verify_mode11_parent_vectors.py') `
         --vectors (Join-Path $Root 'tests\fixtures\mode11-parent-witnesses.json') `
@@ -290,6 +305,15 @@ if ($Test) {
         --vectors (Join-Path $Root 'tests\fixtures\violation-parent-witnesses.json') `
         --probe (Join-Path $BuildDir 'violation_parent_vector_probe.exe') --pack $AssetPack
     if ($LASTEXITCODE -ne 0) { throw 'Violation parent dispatcher ROM replay failed.' }
+    & python (Join-Path $Root 'tools\verify_violation_parent_vectors.py') `
+        --vectors (Join-Path $Root 'tests\fixtures\violation-oob-witnesses.json') `
+        --probe (Join-Path $BuildDir 'violation_parent_vector_probe.exe') --pack $AssetPack
+    if ($LASTEXITCODE -ne 0) { throw 'Owned/ownerless out-of-bounds ROM replay failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name actor_commit_vector_probe
+    & python (Join-Path $Root 'tools\verify_actor_commit_vectors.py') `
+        --vectors (Join-Path $Root 'tests\fixtures\actor-commit-edge-witnesses.json') `
+        --probe (Join-Path $BuildDir 'actor_commit_vector_probe.exe')
+    if ($LASTEXITCODE -ne 0) { throw 'Native actor rectangle/diagonal edge replay failed.' }
     & python (Join-Path $Root 'tools\test_shot_assets.py') --pack $AssetPack --rom $RomPath --exe $ConsoleExePath
     if ($LASTEXITCODE -ne 0) { throw 'Shot asset ROM comparison failed.' }
     & python (Join-Path $Root 'tools\test_special_shot_integration.py') --pack $AssetPack --rom $RomPath --exe $ConsoleExePath
@@ -324,6 +348,11 @@ if ($Test) {
         --vectors (Join-Path $Root 'tests\fixtures\inbound-selector-witnesses.json') `
         --probe (Join-Path $BuildDir 'inbound_selector_vector_probe.exe')
     if ($LASTEXITCODE -ne 0) { throw 'Inbound selector ROM witness regression failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name inbound_side_gate_probe
+    & python (Join-Path $Root 'tools\verify_inbound_side_gate.py') `
+        --vectors (Join-Path $Root 'tests\fixtures\inbound-side-gate.json') `
+        --probe (Join-Path $BuildDir 'inbound_side_gate_probe.exe')
+    if ($LASTEXITCODE -ne 0) { throw 'Dynamic-anchor inbound side-gate ROM replay failed.' }
     & python (Join-Path $Root 'tools\verify_inbound_alternate.py') `
         --vectors (Join-Path $Root 'tests\fixtures\inbound-alternate-witnesses.json') `
         --probe (Join-Path $BuildDir 'inbound_selector_vector_probe.exe')
@@ -361,6 +390,12 @@ if ($Test) {
         --vectors (Join-Path $Root 'tests\fixtures\free-throw-completion-witnesses.json') `
         --probe (Join-Path $BuildDir 'free_throw_completion_vector_probe.exe')
     if ($LASTEXITCODE -ne 0) { throw 'CPU free-throw completion ROM witness regression failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name human_free_throw_vector_probe
+    & python (Join-Path $Root 'tools\verify_human_free_throw_vectors.py') `
+        --vectors (Join-Path $Root 'tests\fixtures\human-free-throw-aim-witnesses.json') `
+        --probe (Join-Path $BuildDir 'human_free_throw_vector_probe.exe') `
+        --rom $RomPath
+    if ($LASTEXITCODE -ne 0) { throw 'Human free-throw aim ROM witness regression failed.' }
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name draw_direction_vector_probe
     & python (Join-Path $Root 'tools\verify_draw_direction_vectors.py') `
         --vectors (Join-Path $Root 'tests\fixtures\draw-direction-witnesses.json') `
@@ -479,6 +514,12 @@ if ($Test) {
     & (Join-Path $BuildDir 'tip_receiver_probe.exe') $AssetPack
     if ($LASTEXITCODE -ne 0) { throw 'Tip receiver runtime binding failed.' }
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name tip_flow_endurance_probe
+    & python (Join-Path $Root 'tools\verify_inbound_cancel_recovery.py') `
+        --fixture (Join-Path $Root 'tests\fixtures\inbound-cancel-recovery.json') `
+        --header (Join-Path $Root 'tests\fixtures\inbound-cancel-recovery.h') `
+        --probe (Join-Path $BuildDir 'tip_flow_endurance_probe.exe') `
+        --assets $AssetPack --rom $RomPath
+    if ($LASTEXITCODE -ne 0) { throw 'Controlled native inbound cancellation recovery failed.' }
     & (Join-Path $BuildDir 'tip_flow_endurance_probe.exe') $AssetPack
     if ($LASTEXITCODE -ne 0) { throw 'Tip flow endurance failed.' }
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name gameplay85_endurance_probe

@@ -10,11 +10,11 @@
       "date": "2026-08-29"
     },
     {
-      "range": "87A3BB-87A43B",
+      "range": "87A3BB-87A422;87A42F-87A43B",
       "name": "nba_court_project_actor / nba_court_actor_visible",
       "source": "src/nba_court_presentation.c + src/nba_tipoff.c",
       "method": "native coordinate witnesses + exact boundary/runtime cadence tests",
-      "evidence": "court_runtime_probe replays native signed projection outputs including negative non-multiples of four, checks every half-open CPU/human visibility edge and the high-jump fallback, then exercises the production binding for 16,000 updates and 812 viewports across all 29 courts. test_cpu_gameplay.py compares every retained player origin from frames 180-620 and rejects the former A-B-A shake; the native trace and corrected C both report zero reversals. Five high-jump instruction starts inside this range remain unobserved and therefore add no progress credit.",
+      "evidence": "court_runtime_probe replays native signed projection outputs including negative non-multiples of four, checks every half-open CPU/human visibility edge and the high-jump fallback, then exercises the production binding for 16,000 updates and 812 viewports across all 29 courts. test_cpu_gameplay.py compares every retained player origin from frames 180-620 and rejects the former A-B-A shake; the native trace and corrected C both report zero reversals. Five unobserved high-jump instructions at $87:A423/$A426/$A427/$A42A/$A42D, including their operand bytes through $A42E, are excluded from coverage credit.",
       "date": "2026-08-29"
     },
     {
@@ -350,16 +350,36 @@
       "name": "nba_gameplay_actor_commit (planar integration)",
       "source": "src/nba_gameplay_ai.c",
       "method": "function-vectors",
-      "evidence": ".analysis/func-vectors-actor-commit-live-20260826 (990 delayed live-game calls, 0 mismatches, 0 orphan exits; prior/current split X/Y positions, velocities and scratch word compared; edge predicates checked by integration regression)",
-      "date": "2026-08-26"
+      "evidence": ".analysis/func-vectors-actor-commit-live-20260826: 990 delayed live-game calls, zero mismatches for prior/current split X/Y positions, velocities and scratch word. The older 990 live plus 500 base calls contain no rectangle-edge candidates or stationary outside actors and do not prove edge behavior. tests/fixtures/actor-commit-edge-witnesses.json adds 56 genuine controlled native calls, zero mismatches including full fractions, A0 and timer60. The separately listed edge islands receive only their observed instruction credit. docs/native-edge-parity.md.",
+      "date": "2026-08-29"
     },
     {
-      "range": "859893-859961",
+      "range": "859893-8598F3;859906-859961",
       "name": "nba_gameplay_actor_commit (movement vector commit)",
       "source": "src/nba_gameplay_ai.c",
       "method": "function-vectors",
-      "evidence": ".analysis/func-vectors-actor-commit-live-20260826 (990 delayed live-game calls, 0 mismatches, 0 orphan exits; 979 grounded/common and 11 alternate exits; distance, doubled speed, facing and velocity direction compared)",
-      "date": "2026-08-26"
+      "evidence": ".analysis/func-vectors-actor-commit-live-20260826: 990 delayed live-game calls, zero represented-output mismatches, 979 grounded/common and 11 alternate exits; distance, doubled speed, facing and velocity direction compared. The caller-owned RNG/event producer at 98F4-9905 is outside the pure helper and is explicitly removed from this row's credit; passing facing outputs does not verify its RNG consumption or event bit40. docs/native-edge-parity.md.",
+      "date": "2026-08-29"
+    },
+    {
+      "range": "859962-859983;859987-8599DC;8599E0-859A13",
+      "name": "nba_gameplay_actor_commit rectangle edge response islands",
+      "source": "src/nba_gameplay_ai.c + src/nba_tipoff.c",
+      "method": "controlled genuine native entry/exit differential + per-call executed PCs + byte-backed Ghidra + recomp",
+      "evidence": "tests/fixtures/actor-commit-edge-witnesses.json: 56 controlled 96B5 entries, zero mismatches across 19 outputs; 32 exits990F and24 exits9961. The per-call PC union has224 starts in the enclosing routine, but only66 edge starts /172 operand-inclusive bytes are added here. Zero-velocity JMPs9984-9986 and99DD-99DF were not executed and receive no credit. Cases cover stationary outside axes, both signed boundaries, inward/outward motion, exact negative-edge equality, modes11/8, fraction retention, timer60, A0 and diagonal corners. The prior990 live and500 base vectors still pass. Control begins after963D; prefix flags/three-second rules, landing callbacks, 98F4 RNG/event production and special-mode integration compatibility guards remain outside this proof. tools/capture_actor_commit_edges.ps1, tools/mesen_actor_commit_edges.lua, tools/normalize_actor_commit_edges.py, tools/actor_commit_vector_probe.c, tools/verify_actor_commit_vectors.py; docs/native-edge-parity.md.",
+      "provenance": {
+        "rom_sha256": "2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870",
+        "raw_vectors": ".analysis/actor-commit-edges-native-20260829-v3/actor_commit_edges.vectors.jsonl",
+        "raw_vectors_sha256": "2b89d947ef0351d4d4beaf0a8b8a14f0ff6798affdb81a58ff75a44cfa052a83",
+        "executed_pcs": ".analysis/actor-commit-edges-native-20260829-v3/actor-commit-edge-pcs.jsonl",
+        "executed_pcs_sha256": "588b25fe1ae16a838131215b2e8fde44c116f1b38ec138c384eaf13ed7c0da1d",
+        "ghidra": ".analysis/actor-commit-clamp-audit-20260829/actor_commit_clamp_bank85.txt",
+        "ghidra_sha256": "8831b090a52b5bf52e46fd1da851b380416bd9674d29b65303890d7e710a27e7",
+        "recomp": "../NBA-Live-95-Recomp/.analysis/recomp_gameplay_extract/generated/bank85_v2.c",
+        "recomp_function": "bank_85_963D_M0X0",
+        "recomp_sha256": "b2029d7358141ff37132b8370548b0dcaffb73aa78248f5dc2f8f7ac92fbc793"
+      },
+      "date": "2026-08-29"
     },
     {
       "range": "86A6B3-86A78F",
@@ -384,6 +404,33 @@
       "method": "function-vectors",
       "evidence": ".analysis/func-vectors-defense-refresh-20260826 (26 live calls, 0 mismatches; 24 complete $85:C0F5 exits and 2 exhausted-assignment $85:C051 exits; cadence/rebuild globals plus ten actors' modes, saved modes, timers, boosts, assignments, pair directions/distances, anchor distances, focal distances and roles compared)",
       "date": "2026-08-26"
+    },
+    {
+      "range": "859A37-859A69",
+      "name": "owned ball resource and mode dispatch wrapper",
+      "source": "src/nba_tipoff.c",
+      "method": "natural native wrapper/core replay + independent host-cache binding checks + Ghidra/recomp",
+      "evidence": "tests/fixtures/ball-driver-owned-dispatch.json retains108 exact high-resource calls:66 integer-XYZ projection and42 mode15 preservation calls;216 lower-resource calls also exercise the branch into9A6A. Only the21 wrapper instruction starts /51 bytes are credited here, not either child or the whole ball core. The high-resource rows are replayed with216 deliberately different host labels/owners/handlers, proving093E and actor+2A choose the path and the B649/B66A integer-position composers preserve fractions, velocities, latches and controllers. Mode17's comparison executes but its taken preserve branch has no native witness in this corpus. Negative093E host-cache normalization is an integration assertion, not a native host-label write. tools/normalize_ball_driver_owned_vectors.py, tools/ball_driver_owned_vector_probe.c, tools/verify_ball_driver_owned_vectors.py; provenance and partial-call caveat are in the adjacent non-credit aggregate and docs/native-edge-parity.md.",
+      "date": "2026-08-29"
+    },
+    {
+      "range": "859A24-85A7C7",
+      "coverage_credit": false,
+      "name": "owned ball driver orchestration partial differential corpus",
+      "source": "src/nba_tipoff.c + src/nba_gameplay_ball.c",
+      "method": "natural native capture normalized to9A37 + scoped low-owned replay; aggregate documentation only",
+      "evidence": "tests/fixtures/ball-driver-owned-dispatch.json:324 retained native cases from500 raw9A24->A7C7 calls;323 complete 31-word projections and1 explicitly partial case, with zero unexpected mismatches. Branches are66 project,42 preserve,85 low-reset and131 low-fall. The expanded projection checks0922 (old ball X at B654, owner X at A5C7) and0924 (pre-substep Z at A59D);108 of216 high-wrapper binding replays poison old history inputs to distinguish replacement from preservation. The 094A prefix increment alone is normalized to the9A37 input boundary. Low-owned scope is captured Z<73 and live state0/82, with two native A4F2 substeps and the owned rim-latch tail; no owned-rim classifier or complete scripted/free-throw coverage is claimed. Native call181 spans frames4241->4242 and has raw13E7=0 versus isolated producer1: its raw oracle is retained, the one field is excluded from exact comparison, and possible interrupt audio consumption is only an inference without a captured write PC. Separate producer assertion does not upgrade the partial case. This aggregate grants no coverage and does not widen the older ownerless/attached subrange entries. tools/normalize_ball_driver_owned_vectors.py, tools/ball_driver_owned_vector_probe.c, tools/verify_ball_driver_owned_vectors.py; docs/native-edge-parity.md.",
+      "provenance": {
+        "rom_sha256": "2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870",
+        "raw_vectors": ".analysis/func-vectors-ball-driver-20260826/ball_driver.vectors.jsonl",
+        "raw_vectors_sha256": "7a845ec070471070176882e51071909a7a9f6f5de06350cda21749a1ef66e79f",
+        "ghidra": ".analysis/cpu_gameplay_ghidra/cpu_gameplay_bank85_listing.txt",
+        "ghidra_sha256": "9681b138a10545554ec089464839141092863d49c57939ba5e7ae497e45b2acb",
+        "recomp": "../NBA-Live-95-Recomp/.analysis/recomp_gameplay_extract/generated/bank85_v2.c",
+        "recomp_function": "bank_85_9A24_M0X0",
+        "recomp_sha256": "b2029d7358141ff37132b8370548b0dcaffb73aa78248f5dc2f8f7ac92fbc793"
+      },
+      "date": "2026-08-29"
     },
     {
       "range": "859A6A-85A4F1",
@@ -419,10 +466,11 @@
     },
     {
       "range": "85C37D-85C5C0",
+      "coverage_credit": false,
       "name": "nba_gameplay_inbound_target",
       "source": "src/nba_gameplay_ai.c + src/nba_tipoff.c",
       "method": "function-vectors",
-      "evidence": ".analysis/func-vectors-inbound_target-20260825 (1 live layout-5 call, 0 mismatches; all layout branches and bounds retained by production self-test)",
+      "evidence": ".analysis/func-vectors-inbound_target-20260825 contains one live layout-5 call with zero represented-output mismatches. Other layouts are C-only self-tests rather than ROM differential evidence, so this branch-family row grants no address coverage until each native layout is bounded.",
       "date": "2026-08-26"
     },
     {
@@ -514,7 +562,7 @@
       "date": "2026-08-26"
     },
     {
-      "range": "86CCCD-86D3C5",
+      "range": "86CCCD-86D349;86D353-86D3C5",
       "name": "nba_tipoff_replay_collision_order (ball contact core)",
       "source": "src/nba_tipoff.c + src/nba_gameplay_ball.c",
       "method": "function-vectors",
@@ -810,7 +858,7 @@
       "date": "2026-08-26"
     },
     {
-      "range": "87AEC3-87AF74",
+      "range": "87AEC3-87AF33;87AF4E-87AF74",
       "name": "nba_player_resolve_pose (immediate non-advancing action pose)",
       "source": "src/nba_player_lab.c",
       "method": "function-vectors",
@@ -842,11 +890,11 @@
       "date": "2026-08-27"
     },
     {
-      "range": "86B8CA-86B950",
+      "range": "86B8CA-86B92D",
       "name": "nba_shot_action_gate (facing and release routing)",
       "source": "src/nba_shot_action.c",
       "method": "function-vectors",
-      "evidence": ".analysis/func-vectors-shot-action-20260827 and .analysis/func-vectors-shot-delay-20260827; 42-call shot-action capture: 24 gate calls, 5 facing corrections, 22 waits and 2 releases. Compared facing plus chosen pre-launch exit; verified no channel/state or RNG changes. CPU branch exercised; human-button/free-throw branches not exhaustively exercised. Runtime gate adopted, external launch excluded. Durable witnesses: tests/fixtures/shot-action-witnesses.json; verifier: tools/verify_shot_action_vectors.py; Ghidra: tools/ghidra/DumpShotAction.java.",
+      "evidence": ".analysis/func-vectors-shot-action-20260827 and .analysis/func-vectors-shot-delay-20260827; 42-call shot-action capture: 24 gate calls, 5 facing corrections, 22 waits and 2 releases. Compared facing plus chosen pre-launch exit; verified no channel/state or RNG changes. CPU branch exercised; the unexhausted human-button/free-throw instructions $86:B92E-$B94F and the final branch operand at $B950 are excluded from this credited range. Runtime gate adopted, external launch excluded. Durable witnesses: tests/fixtures/shot-action-witnesses.json; verifier: tools/verify_shot_action_vectors.py; Ghidra: tools/ghidra/DumpShotAction.java.",
       "date": "2026-08-27"
     },
     {
@@ -1373,8 +1421,18 @@
       "range": "86F60B-86F668",
       "name": "CPU inbound side gate launch and return",
       "source": "src/nba_gameplay_ai.c + src/nba_tipoff.c",
-      "method": "natural native selector replay + runtime binding",
-      "evidence": "tests/fixtures/inbound-selector-witnesses.json; two genuine native F653 launches select the exact same receiver; 387 natural return calls; side and timer boundary guards; sustained both-team inbound completion. docs/inbound-arrival-selector-differential.md.",
+      "method": "natural selector replay + controlled native dynamic-anchor gate differential + runtime binding",
+      "evidence": "Existing tests/fixtures/inbound-selector-witnesses.json retains two genuine native F653 launches; tests/fixtures/inbound-arrival-witnesses.json separately retains387 natural no-launch returns. Added tests/fixtures/inbound-side-gate.json:40 controlled genuine F61F entries ending at the actual F648 allow /F653 reject branch boundary,24 allow and16 reject, zero mismatches. Both actor groups, context anchor+/-336, ownerX -21/-20/-19/19/20 and receiverX -1/0 prove the gate reads dynamic context+0A through DP9E, not immutable team orientation. The controls restore changed WRAM after the boundary and never patch CPU/ROM/RNG. This augments the existing range; it is not40 new launch or whole-parent witnesses. tools/capture_inbound_side_gate.ps1, tools/mesen_inbound_side_gate.lua, tools/normalize_inbound_side_gate.py, tools/inbound_side_gate_probe.c, tools/verify_inbound_side_gate.py, tools/regenerate_inbound_side_reference.py; docs/inbound-arrival-selector-differential.md and docs/native-edge-parity.md.",
+      "provenance": {
+        "rom_sha256": "2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870",
+        "raw_vectors": ".analysis/inbound-side-gate-native-20260829/inbound-side-gate.jsonl",
+        "raw_vectors_sha256": "798c95a5161b5d6312364ef8f455a81005c943ce6d5c43d8952ab69ef5d1e445",
+        "ghidra": ".analysis/cpu_gameplay_ghidra/cpu_gameplay_bank86_listing.txt",
+        "ghidra_sha256": "4c78e79a137d721bb08f9e7737a3a61e32b096684268d3d14ef0f7039714d99b",
+        "recomp": ".analysis/inbound-side-gate-reference-20260829/bank86.c",
+        "recomp_function": "InboundSideGate_M0X0",
+        "recomp_sha256": "27546eaea56e892ed4c9bee2c4563453cf98c5bff0bc5660b6212b72d3d0041d"
+      },
       "date": "2026-08-29"
     },
     {
@@ -1402,15 +1460,15 @@
       "date": "2026-08-29"
     },
     {
-      "range": "87A357-87A479",
+      "range": "87A357-87A422;87A42F-87A479",
       "name": "gameplay presentation prelude projection culling and ball setup",
       "source": "src/nba_court_presentation.c + src/nba_tipoff.c",
       "method": "native projection witnesses + whole draw census + production Mode-1 binding",
-      "evidence": "Exact signed projection/culling boundaries and high-jump fallback; 200 whole natural draw passes; 16000 production updates and 812 viewports over all29 courts. Player origins, ball origin, effect queues, visibility and native OAM priority are asserted. Adjacent human indicator A846 remains separate. docs/player-draw-preparation-differential.md.",
+      "evidence": "Exact signed projection/culling boundaries and high-jump fallback; 200 whole natural draw passes; 16000 production updates and 812 viewports over all29 courts. Player origins, ball origin, effect queues, visibility and native OAM priority are asserted. The five natively unobserved high-jump instructions $87:A423-$A42E are excluded here as well as from the nested projection row. Adjacent human indicator A846 remains separate. docs/player-draw-preparation-differential.md.",
       "date": "2026-08-29"
     },
     {
-      "range": "86E0B0-86E389",
+      "range": "86E0B0-86E24B",
       "name": "gameplay appearance resource-list and table initialization",
       "source": "src/nba_player_lab.c + src/nba_tipoff.c",
       "method": "natural native load calls + represented-state replay + exhaustive pack/runtime binding",
@@ -1622,7 +1680,17 @@
       "name": "dead-ball formation target, override and steering route",
       "source": "src/nba_tipoff.c + asset-pack formation graph",
       "method": "natural and controlled native real-entry differential + nested child trace + runtime binding",
-      "evidence": "400 natural calls and five 40-call boundary-controlled families compare target X/Y, flags, velocity and boost for all ten actors with zero mismatches. The nested trace proves each AD6B invocation's B3AA/B402 child and exposed a wrong C role<3 restriction: every opposite-X actor uses B3AA unless the activity edge route owns roles 3/4. Controlled calls cover AD77 owner/dead-ball return, live inbound-carrier skip, AE1F special actor, activity edge steering and AE97-AEBB DP-$5C short-timer override. The 64-case permanent fixture retains both exits and all controlled sources; controls mutate documented WRAM inputs only, never PC, stack, ROM or RNG. Runtime modes 1/3/5 and owner flow use the same route and velocity child.",
+      "evidence": "400 natural calls and five40-call controlled families compare target X/Y, flags, velocity and boost for all ten actors with zero mismatches. The nested trace proves AD6B's B3AA/B402 child and exposed a wrong role<3 restriction. The original64 permanent witnesses retain AD77 owner/dead-ball return, inbound-carrier skip, AE1F special actor, activity edge and AE97-AEBB timer override. Added32 genuine controlled anchor calls in tests/fixtures/formation-route-witnesses.json v2: actor slots2/7, live context anchors+/-336, mirror0/1, ordinary plays0/8/14 and special9A2=actor. All96 cases compare61 outputs with zero mismatches (88AF5B/8AD77 exits). Native ADF5-AE1A ordinary sign-mirroring and AE1F-AE32 special cutter target both use context+0A; immutable actor group cannot replace the halftime-updated anchor. Separate tests/fixtures/formation-override-witnesses.json adds10 genuine calls:8 positives for AE88/AE91's literal -40,+160 target (plays6-9, both groups) and2 target-sign controls, all61 outputs matching. Its raw hashes/PC paths are retained in that fixture; no additional instruction credit is granted. This augments the existing range, not new blanket coverage. Controls restore WRAM at return without CPU/ROM/stack/RNG edits. tools/capture_formation_anchors.ps1, tools/mesen_formation_anchor_cases.lua, tools/normalize_formation_anchor_vectors.py, tools/formation_route_vector_probe.c, tools/verify_formation_route_vectors.py, tools/regenerate_formation_anchor_reference.py; docs/native-edge-parity.md.",
+      "provenance": {
+        "rom_sha256": "2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870",
+        "raw_vectors": ".analysis/formation-anchors-native-20260829-v2/formation_anchors.vectors.jsonl",
+        "raw_vectors_sha256": "a47026c71bf7e336c6774169e48bc00df7433f621295a26c2e7628eadd8c4c3c",
+        "ghidra": ".analysis/gameplay85-closure-ghidra/gameplay85_bank85_listing.txt",
+        "ghidra_sha256": "ca10221da8d8f3d730f5096078fc1434cb77983312ec406b1b753fa40dec8fc1",
+        "recomp": ".analysis/formation-anchors-reference-20260829/bank85.c",
+        "recomp_function": "FormationRoute_M0X0",
+        "recomp_sha256": "2e72c699afdac69a08bab5e761e936261a7fbb043a2742be919eb4d43db6e4f6"
+      },
       "date": "2026-08-29"
     },
     {
@@ -1638,11 +1706,22 @@
       "name": "gameplay violation and early dead-ball dispatcher",
       "source": "src/nba_tipoff.c + src/nba_gameplay_foul.c",
       "method": "boundary-controlled native parent differential + complete headless Ghidra listing + production frame binding",
-      "evidence": "Ten real-entry native calls cover unchanged state, interference, X-boundary violation, codes 5/7, defensive/charging/offensive fouls, deferred shooting-foul resolution and its wait branch. The fixture compares live/camera/owner/inbound/event/free-throw/clock/dead-ball state, both context actors, ball velocity and all ten actor modes with zero mismatches. Controls mutate documented WRAM at 92A5 only and never patch ROM, PC, stack, flags or RNG. The split production scheduler preserves 94A2's pending event and runs C37D/foul consumption only after this parent boundary, matching the ROM ordering.",
+      "evidence": "Ten existing real-entry native calls cover unchanged state, interference, X-boundary violation, codes5/7, defensive/charging/offensive fouls, deferred shooting-foul resolution and its wait. Added tests/fixtures/violation-oob-witnesses.json:46 controlled real parent calls captured92A8->94A2 after WRAM control at92A5, zero mismatches across37 outputs. Owned actors2/7 and ownerless records exercise signed X/Y thresholds, inward/outward/zero velocity, airborne/live82 guards, and two outside-X inward-motion corners that must skip Y. Owned OOB tests actor position independently of velocity but snapshots the ball position; accepted OOB clears BOTH planar velocities at93BB/93BE. This strengthens the existing parent row without widening its range or claiming46 new instruction paths. The pending94A2 event boundary and later C37D/foul consumption remain separate. No ROM/CPU/stack/flags/RNG controls. tools/capture_violation_oob_matrix.ps1, tools/mesen_violation_oob_matrix.lua, tools/normalize_violation_oob_matrix.py, tools/violation_parent_vector_probe.c, tools/verify_violation_parent_vectors.py, tools/regenerate_violation_oob_reference.py; docs/native-edge-parity.md.",
+      "provenance": {
+        "rom_sha256": "2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870",
+        "raw_vectors": ".analysis/violation-oob-native-20260829-v2/violation_oob.vectors.jsonl",
+        "raw_vectors_sha256": "ef5f37a020a7b521dd55a83baedcc9c54f1e2db8d9d7f4627b44c81a9733259c",
+        "ghidra": ".analysis/cpu_gameplay_ghidra/cpu_gameplay_bank87_listing.txt",
+        "ghidra_sha256": "96ce809070d1be59185ff7462eb4b683066a988c872a1cc449a6377154074247",
+        "recomp": ".analysis/violation-oob-reference-20260829/bank87.c",
+        "recomp_function": "ViolationOobParent_M0X0",
+        "recomp_sha256": "bd6a590b15c6e576a42c0883ad04f273753f6803876cbbdca7db9d4e55101337"
+      },
       "date": "2026-08-29"
     },
     {
       "range": "80815A-808626",
+      "coverage_credit": false,
       "name": "NMI OAM and queued VRAM frame service host equivalent",
       "source": "src/nba_snes_ppu.c + src/nba_tipoff.c + asset-pack native PPU inputs",
       "method": "native scanout differential + complete Mode-1 production binding",
@@ -1651,6 +1730,7 @@
     },
     {
       "range": "808627-808BF2",
+      "coverage_credit": false,
       "name": "PPU palette and VRAM transfer helper host equivalent",
       "source": "src/nba_snes_ppu.c + asset-pack VRAM/CGRAM/OAM snapshots",
       "method": "raw native PPU state replay + pixel-provenance regression",
@@ -1659,6 +1739,7 @@
     },
     {
       "range": "80A9B3-80AB05",
+      "coverage_credit": false,
       "name": "APU command parameter and acknowledgement transport host equivalent",
       "source": "src/nba_audio.c + src/nba_spc.c + asset-pack APU/DSP event streams",
       "method": "cycle/frame-stamped native port replay + SPC700/S-DSP synthesis",
@@ -1667,6 +1748,7 @@
     },
     {
       "range": "80CE33-80CE8D",
+      "coverage_credit": false,
       "name": "controller serial scan and edge-state publication host equivalent",
       "source": "src/nba_game.c",
       "method": "complete Ghidra branch census + production input edge probe",
@@ -1675,6 +1757,7 @@
     },
     {
       "range": "808C00-809C74",
+      "coverage_credit": false,
       "name": "tilegroup object projection and indexed draw host equivalent",
       "source": "src/nba_snes_ppu.c + src/nba_player_lab.c + ROM-derived asset pack",
       "method": "Ghidra/recomp boundary audit + raw resource/OAM probe + native Mode-1 pixel differential",
@@ -1683,6 +1766,7 @@
     },
     {
       "range": "809C75-80A7C5",
+      "coverage_credit": false,
       "name": "gameplay metasprite traversal resource projection clipping and OAM publication host equivalent",
       "source": "src/nba_player_lab.c + src/nba_snes_ppu.c",
       "method": "natural native child-boundary captures + raw resource record replay + complete production pixel provenance",
@@ -1691,6 +1775,7 @@
     },
     {
       "range": "80C5AB-80CDCC",
+      "coverage_credit": false,
       "name": "compressed ROM resource publication and transfer host equivalent",
       "source": "tools/extract_assets.py + src/nba_assets.c",
       "method": "original decompressor execution + immutable payload integrity + raw native PPU comparison",
@@ -1699,6 +1784,7 @@
     },
     {
       "range": "80CF00-80F100",
+      "coverage_credit": false,
       "name": "scene fade frame-wait resource dispatch and PPU handoff host equivalent",
       "source": "src/nba_game.c + src/nba_title_sequence.c + src/nba_setup_screen.c",
       "method": "Ghidra/recomp scene audit + native frame traces + deterministic transition hashes",
@@ -1707,6 +1793,7 @@
     },
     {
       "range": "82809A-8291FF",
+      "coverage_credit": false,
       "name": "Team Select construction input redraw confirmation and Options ownership host equivalent",
       "source": "src/nba_team_select.c + src/nba_setup_screen.c + src/nba_player_setup.c",
       "method": "fresh headless Ghidra listing + native transition/frame oracles + production end-to-end state probe",
@@ -1715,6 +1802,7 @@
     },
     {
       "range": "82A900-82ADFF",
+      "coverage_credit": false,
       "name": "post-EA title sequence instrument and BRR resource handoff host equivalent",
       "source": "src/nba_audio.c + src/nba_game.c + ROM-derived audio assets",
       "method": "Ghidra/recomp resource-list audit + stamped native APU/DSP replay",
@@ -1723,6 +1811,7 @@
     },
     {
       "range": "82F000-82F15B",
+      "coverage_credit": false,
       "name": "gameplay three-slot graphics-scratch producer host equivalent",
       "source": "src/nba_jump_reach.c + ROM-derived graphics scratch asset",
       "method": "native real-entry differential + asset integrity + production jump/reach binding",
@@ -1731,6 +1820,7 @@
     },
     {
       "range": "83C000-83EFFF",
+      "coverage_credit": false,
       "name": "gameplay collision event foul violation and whistle presentation host equivalents",
       "source": "src/nba_tipoff.c + src/nba_gameplay_foul.c + src/nba_audio.c",
       "method": "bounded native event differentials + ordered CPU endurance/runtime binding",
@@ -1739,6 +1829,7 @@
     },
     {
       "range": "83F000-83FA90",
+      "coverage_credit": false,
       "name": "matchup ratings and ten-card starting-lineup presentation host equivalent",
       "source": "src/nba_player_intro.c + src/nba_player_setup.c + ROM-derived presentation assets",
       "method": "fresh headless Ghidra listing + native asset/frame hashes + end-to-end production phase probe",
@@ -1747,6 +1838,7 @@
     },
     {
       "range": "80A7C6-80BF00",
+      "coverage_credit": false,
       "name": "indexed object OAM text and resource publication host equivalents",
       "source": "src/nba_snes_ppu.c + src/nba_renderer.c + src/nba_font.c + src/nba_audio.c + src/nba_player_lab.c",
       "method": "fresh all-capture headless Ghidra closure + Bank $80 recomp roots + native hardware-visible output differentials",
@@ -1755,6 +1847,7 @@
     },
     {
       "range": "858000-85FFFF",
+      "coverage_credit": false,
       "name": "gameplay actor camera ball play strategy event and geometry host equivalents",
       "source": "src/nba_tipoff.c + src/nba_gameplay_camera.c + src/nba_gameplay_ball.c + src/nba_gameplay_ai.c + src/nba_court_presentation.c",
       "method": "fresh all-capture headless Ghidra closure + exact native child replays + deterministic production endurance",
@@ -1763,6 +1856,7 @@
     },
     {
       "range": "868000-86FFFF",
+      "coverage_credit": false,
       "name": "gameplay input shot pass catch collision AI jump and inbound host equivalents",
       "source": "src/nba_tipoff.c + src/nba_shot_action.c + src/nba_shot_launch.c + src/nba_shot_state.c + src/nba_jump_reach.c + src/nba_owner_flow.c",
       "method": "fresh all-capture headless Ghidra closure + native branch/vector census + deterministic production endurance",
@@ -1771,6 +1865,7 @@
     },
     {
       "range": "878000-87BFFF",
+      "coverage_credit": false,
       "name": "gameplay scheduler behavior event draw animation resource and attachment host equivalents",
       "source": "src/nba_tipoff.c + src/nba_player_lab.c + src/nba_gameplay_effect.c + src/nba_gameplay_foul.c",
       "method": "fresh all-capture headless Ghidra closure + native draw/animation/event replays + deterministic production render endurance",
@@ -1779,6 +1874,7 @@
     },
     {
       "range": "008000-00FFFF",
+      "coverage_credit": false,
       "name": "native bootstrap jump and IRQ dispatch host boundary",
       "source": "src/nba_game.c + fixed-step Win32/console process loop",
       "method": "fresh captured-address Ghidra closure + portable publication boundary regression",
@@ -1787,6 +1883,7 @@
     },
     {
       "range": "808000-80FFFF",
+      "coverage_credit": false,
       "name": "complete captured Bank 80 bootstrap PPU dispatch resource controller and scene services",
       "source": "src/nba_game.c + src/nba_snes_ppu.c + src/nba_renderer.c + src/nba_assets.c + src/nba_audio.c",
       "method": "fresh all-capture Ghidra/recomp closure + hardware-visible differentials + aggregate production journey",
@@ -1795,6 +1892,7 @@
     },
     {
       "range": "818000-81FFFF",
+      "coverage_credit": false,
       "name": "complete captured Bank 81 text menu Player Setup transition Rules and HDMA services",
       "source": "src/nba_setup_screen.c + src/nba_player_setup.c + src/nba_font.c + src/nba_snes_ppu.c",
       "method": "fresh Ghidra/recomp closure + native transition traces + persistent production journey regression",
@@ -1803,6 +1901,7 @@
     },
     {
       "range": "828000-82FFFF",
+      "coverage_credit": false,
       "name": "complete captured Bank 82 Team Select EA scratch and audio resource services",
       "source": "src/nba_team_select.c + src/nba_ea_intro.c + src/nba_jump_reach.c + src/nba_audio.c + ROM-derived asset pack",
       "method": "fresh Ghidra/recomp closure + exact scene/scratch/audio oracles + aggregate production journey",
@@ -1811,6 +1910,7 @@
     },
     {
       "range": "838000-83FFFF",
+      "coverage_credit": false,
       "name": "complete captured Bank 83 presentation RNG and indirect event services",
       "source": "src/nba_player_intro.c + src/nba_tipoff.c + src/nba_gameplay_ai.c + src/nba_gameplay_foul.c",
       "method": "fresh Ghidra closure + exact RNG/event witnesses + deterministic presentation/gameplay journey",
@@ -1819,18 +1919,28 @@
     },
     {
       "range": "848000-84FFFF",
-      "name": "complete captured Bank 84 controller animation roster and graphics table helpers",
-      "source": "src/nba_player_lab.c + src/nba_tipoff.c + src/nba_gameplay_ai.c + ROM-derived Bank 84 asset tables",
-      "method": "fresh Ghidra closure + raw table/resource replays + deterministic live animation census",
-      "evidence": "All 195 captured Bank $84 positions are now classified: 50 gameplay/controller helpers including $84:BF75-$C014, 9 animation-dispatch positions and 136 roster/graphics helpers including $84:E2AC-$E432. Fresh Ghidra decodes 325 starts and 17 static targets; no recomp discovery is assumed for this bank. The asset pack retains raw table bytes, while typed helpers preserve selected actor/resource/attachment output. Exact active-appearance, defensive-pose, jersey-number, all-team animation and sprite-compositor replays remain primary; gameplay100_closure_probe records 12,985 live upper-resource changes across a deterministic 6,000-frame CPU run and hashes periodic asset-pack render output.",
+      "coverage_credit": false,
+      "name": "captured Bank 84 controller animation-dispatch and table classification aggregate",
+      "source": "src/nba_game.c + src/nba_tipoff.c + src/nba_player_lab.c + ROM-derived Bank 84 asset tables",
+      "method": "fresh Ghidra classification + separately bounded controller/animation/resource evidence",
+      "evidence": "The 195 captured Bank $84 positions are classified as 50 gameplay/controller helper positions including $84:BF75-$C014, 9 animation-dispatch positions, and 136 positions in $84:E2AC-$E432. The latter range is human-controller dispatch, not a roster/graphics resource table; it remains a human-control mapping gap and supplies no asset evidence. Asset-pack table bytes and their typed consumers retain separate offset-specific fixtures. This aggregate row is architectural inventory only and deliberately grants no address coverage.",
       "date": "2026-08-29"
     },
     {
-      "range": "879CBF-87A017;87A15C-87A2FD;859530-859597",
-      "name": "CPU free-throw setup aim release between-attempt and final resolution",
+      "range": "879CBF-87A045;87A15C-87A2FD;859530-859597",
+      "coverage_credit": false,
+      "name": "CPU and human free-throw setup aim release between-attempt and final resolution",
       "source": "src/nba_gameplay_free_throw.c + src/nba_tipoff.c",
       "method": "controlled genuine-entry Mesen sequences + refreshed headless Ghidra + normalized typed replay",
-      "evidence": "tests/fixtures/free-throw-completion-witnesses.json and tools/verify_free_throw_completion_vectors.py. The v5 native sequence covers two shots, first-attempt make/score, states 11..24, and final miss/live rebound; v6 covers one-shot final make, score increment, inbound $0952=5, and state clear. Eight durable cases compare CPU states 1/2/3/9/10, RNG, timers, audio/upload words, resolution predicates and cadence with zero mismatches. Human states 4/5, presentation artwork, and alternate $1F/$23 commentary selection are excluded; see docs/free-throw-completion-differential.md.",
+      "evidence": "tests/fixtures/free-throw-completion-witnesses.json plus tests/fixtures/human-free-throw-aim-witnesses.json and their typed verifiers. The CPU v5/v6 sequences cover two-shot and one-shot make/miss resolution, states 1/2/3/9/10/11..24, score, rebound/inbound, RNG, timers, audio/upload words and cadence. The genuine-input human v4 sequence (.analysis/human-free-throw-native-20260829-v4) contains 1,556 vectors at first-press delay 60 with zero orphan/shared exits and vector SHA-256 a1c252ab961d6e72d4159553706a16176dd151ba4f26e5343d39e4808486dabd. Seven retained calls cover represented state/aim words for states 3/4/5/9 plus a distinct cursor wrap, with no PC/stack/ROM/RNG patching. This composite row deliberately grants no address credit: aim-artwork writes $0988-$098E, setup PPU/resource calls, complete common-launch effects and same-call ordering, dormant ordinary runtime integration, global player assignment, and alternate $1F/$23 commentary selection remain outside the typed oracle. The exact oscillator has a separate credit-eligible row; see docs/free-throw-completion-differential.md and docs/human-free-throw-differential.md.",
+      "date": "2026-08-29"
+    },
+    {
+      "range": "87A018-87A045",
+      "name": "human free-throw aim oscillator",
+      "source": "src/nba_gameplay_free_throw.c + src/nba_tipoff.c",
+      "method": "genuine-entry Mesen controller sequence + focused Ghidra/recomp + typed replay",
+      "evidence": "tests/fixtures/human-free-throw-aim-witnesses.json and tools/verify_human_free_throw_vectors.py cover every represented $0980/$0984/$0986 mutation of $87:A018-$A045: 16-bit accumulator addition, repeated subtraction by 110, cursor increment and wrap at 112. Seven retained state/input calls from .analysis/human-free-throw-native-20260829-v4 replay with zero mismatches, including a distinct 109-to-2 cursor-wrap oracle; the 1,556-vector delay-60 corpus has SHA-256 a1c252ab961d6e72d4159553706a16176dd151ba4f26e5343d39e4808486dabd and zero orphan/shared exits. Aim artwork, the dormant ordinary runtime adapter, and surrounding dispatcher/common-launch effects and same-call ordering are explicitly outside this precise range.",
       "date": "2026-08-29"
     }
   ]

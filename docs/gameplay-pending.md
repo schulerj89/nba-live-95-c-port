@@ -39,16 +39,19 @@ caveats.
 | Reach-launch child | 152 decoded starts at `$86:EAA8-$EC31` in the retained listing | Near-branch calls and production launch are tested; far branch/post-return equality is incomplete |
 | Focused tip-contact alternatives | 35 of 178 gate starts absent from the focused tip fixture | Broader contact proofs exist; this is fixture exhaustiveness, not 35 missing C instructions |
 
-The known hard lower bound is therefore **14 isolated unverified starts**, plus
-an unknown subset of the 152-start reach-launch child. A larger grand total is
-not defensible until a full-ROM code/data census exists.
+Within this old focused list, the hard lower bound is **14 isolated unverified
+starts**, plus an unknown subset of the 152-start reach-launch child. It is not
+a project-wide remainder. The regenerated conservative full-ROM census is now
+available in `docs/full-rom-instruction-census.md` and reports 11,526 of 60,346
+decoded starts as both observed and evidence-eligible; undecoded bytes remain
+unknown code/data.
 
 ## Uncensused implementation areas
 
 | Component | What remains |
 |---|---|
-| Match lifecycle | Quarter initialization, period transitions, halftime, timeouts, substitutions, end-of-game and postgame |
-| Human gameplay | Complete offense, defense, shooting, passing and movement ownership; isolated human helpers do not form a playable control path |
+| Match lifecycle | Regulation/OT tables, clock expiry, selected timeout resume and Exhibition final routing exist; uninterrupted regulation, halftime, all timeout/substitution paths, tied OT, postgame and persistence still need natural end-to-end proof |
+| Human gameplay | Complete offense, defense, ordinary shooting, passing and movement ownership; human inbound steering and the native-backed free-throw aim slice do not yet form a playable control path, and the ordinary runtime free-throw adapter remains dormant |
 | Modes | Season, Playoffs and Load Series routing, persistence and screens |
 | Statistics/rules | Remaining personal-stat child, substitutions/bench promotion, rare foul/bonus/rule callers and wider made-stat branches |
 | Generic action callers | Replace remaining compatibility setters only after native caller witnesses; ordinary pass and inbound paths are already adopted |
@@ -59,8 +62,18 @@ not defensible until a full-ROM code/data census exists.
 
 ## Current coverage interpretation
 
-The live retained capture union is 28,643 address positions and all 28,643 are
-documented and represented by verified ledger boundaries. That is **100% of
-captured addresses**, not 100% of the ROM or retail feature set. The next
-measurement layer is the full-ROM census and feature/capture matrix; until
-those exist, no exact whole-game instruction percentage should be published.
+The live retained capture union is 28,643 address positions. All 28,643 have
+source provenance, but only 11,529 (40.25%) fall inside precise,
+evidence-eligible ledger boundaries. Broad whole-bank and `host equivalent`
+rows remain useful documentation and now explicitly receive no address credit.
+The conservative full-ROM census is 11,526/60,346 decoded starts (19.10%).
+Neither percentage measures retail feature completion; use
+`docs/feature-capture-matrix.md` and `docs/parity-gap-report.md` for planning.
+
+The subsequent native edge checkpoint adds 66 exactly observed actor-edge
+starts and 21 dispatch-wrapper starts, while removing unsupported older
+credit. It also strengthens existing OOB, inbound and formation scopes without
+granting a blanket new range. See `docs/native-edge-parity.md` for the 31-field
+owned-ball projection, its one partial event case, and the remaining special-
+mode, rim-context and shared-RNG gaps. A long C run is not native whole-match
+equivalence.

@@ -10,7 +10,79 @@ uint8_t nba_gameplay_free_throw_threshold(uint8_t rating) {
     return thresholds[index];
 }
 
-/* CPU-only `$87:9DA6-$9E26`. Human aiming states 4/5 are not represented. */
+/* `$87:9D42-$9D57`: rating byte +$38 controls the oscillator quantum. */
+uint16_t nba_gameplay_free_throw_human_aim_step(uint8_t rating) {
+    uint16_t delta = (uint16_t)((uint16_t)(rating - 0x80u) << 1u);
+    return (uint16_t)(0x0226u - delta);
+}
+
+void nba_gameplay_free_throw_human_aim_begin(
+        NbaGameplayHumanFreeThrowAim *state, uint8_t rating) {
+    if (!state) return;
+    state->aim_x_raw_0980 = 0u;
+    state->accumulator_raw_0984 = 0u;
+    state->step_raw_0986 = nba_gameplay_free_throw_human_aim_step(rating);
+}
+
+/* `$87:A018-$A045`: add the rating quantum, subtract 110 for every cursor
+ * step, and wrap the displayed/launch aim cursor at 112. */
+static void human_aim_oscillator_step(NbaGameplayHumanFreeThrowAim *state) {
+    state->accumulator_raw_0984 = (uint16_t)(
+        state->accumulator_raw_0984 + state->step_raw_0986);
+    while (state->accumulator_raw_0984 >= 110u) {
+        state->accumulator_raw_0984 = (uint16_t)(
+            state->accumulator_raw_0984 - 110u);
+        ++state->aim_x_raw_0980;
+        if (state->aim_x_raw_0980 >= 112u) state->aim_x_raw_0980 = 0u;
+    }
+}
+
+NbaGameplayHumanFreeThrowResult nba_gameplay_free_throw_human_aim_step_frame(
+        NbaGameplayHumanFreeThrowAim *state) {
+    if (!state) return NBA_HUMAN_FREE_THROW_WAIT;
+    if (state->state_raw_0978 == 3u) {
+        if (state->controller_assignment_raw_16 < 0 ||
+            state->human_context_raw_3b == 0u)
+            return NBA_HUMAN_FREE_THROW_CPU_FALLBACK;
+        human_aim_oscillator_step(state);
+        if (!state->shoot_held) return NBA_HUMAN_FREE_THROW_WAIT;
+        state->state_raw_0978 = 4u;
+        state->aim_y_raw_0982 = state->aim_x_raw_0980;
+        state->aim_x_raw_0980 = 0u;
+        return NBA_HUMAN_FREE_THROW_FIRST_LOCK;
+    }
+    if (state->state_raw_0978 == 4u) {
+        if (state->controller_assignment_raw_16 < 0) {
+            state->state_raw_0978 = 3u;
+            return NBA_HUMAN_FREE_THROW_CPU_FALLBACK;
+        }
+        if (state->shoot_held) return NBA_HUMAN_FREE_THROW_WAIT;
+        state->state_raw_0978 = 5u;
+        /* Native control falls through into the state-five body in this
+         * same actor call, so the second-axis oscillator advances once on
+         * the release edge. */
+        if (state->human_context_raw_3b == 0u) {
+            state->state_raw_0978 = 9u;
+            return NBA_HUMAN_FREE_THROW_LAUNCH;
+        }
+        human_aim_oscillator_step(state);
+        return NBA_HUMAN_FREE_THROW_RELEASED_FIRST;
+    }
+    if (state->state_raw_0978 == 5u) {
+        if (state->human_context_raw_3b == 0u) {
+            state->state_raw_0978 = 9u;
+            return NBA_HUMAN_FREE_THROW_LAUNCH;
+        }
+        human_aim_oscillator_step(state);
+        if (!state->shoot_held) return NBA_HUMAN_FREE_THROW_WAIT;
+        state->state_raw_0978 = 9u;
+        return NBA_HUMAN_FREE_THROW_LAUNCH;
+    }
+    return NBA_HUMAN_FREE_THROW_WAIT;
+}
+
+/* CPU branch `$87:9DA6-$9E26`; the sibling controller-owned states 3/4/5
+ * are implemented above and selected by the scene dispatcher. */
 bool nba_gameplay_free_throw_cpu_aim_step(
     NbaGameplayFreeThrowCompletion *state, NbaGameplayRng *rng,
     uint16_t elapsed, uint8_t rating, uint16_t *aim_x_raw_0980,

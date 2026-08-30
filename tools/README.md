@@ -231,6 +231,35 @@ reports success.
   `docs/verified-routines.json` ledger (verified), and the recomp's
   `bank_XX_YYYY` function set. Writes `docs/progress.md` with per-bank
   percentages and the largest undocumented executed regions.
+  `evidence_ranges.py` is the shared strict ledger parser: semicolon-separated
+  ranges are validated individually, and whole-bank or `host equivalent`
+  aggregate rows must set `coverage_credit=false` so they cannot silently
+  verify future captures.
+
+### Human free-throw aim replay
+
+`capture_human_free_throw.ps1` drives a real Exhibition gameplay boundary and
+uses `mesen_human_free_throw_control.lua` to send B through Mesen's controller
+API. It captures native dispatcher/oscillator calls without patching ROM, PC,
+stack, processor flags, or RNG. The canonical
+`.analysis/human-free-throw-native-20260829-v4` corpus uses first-press delay
+60 and contains 1,556 vectors with zero orphan exits and zero shared-exit
+callbacks. Its SHA-256 is
+`a1c252ab961d6e72d4159553706a16176dd151ba4f26e5343d39e4808486dabd`.
+Normalize the corpus and replay the seven durable state/input witnesses with:
+
+```powershell
+python tools\normalize_human_free_throw_vectors.py --vectors <capture>\human-free-throw.vectors.jsonl --capture-meta <capture>\human-free-throw.meta.json --output tests\fixtures\human-free-throw-aim-witnesses.json --rom '<path-to-rom>'
+.\tools\build_vector_probe.ps1 -Name human_free_throw_vector_probe
+python tools\verify_human_free_throw_vectors.py --vectors tests\fixtures\human-free-throw-aim-witnesses.json --probe build\human_free_throw_vector_probe.exe --rom '<path-to-rom>'
+.\tools\ghidra\Run-HumanFreeThrow.ps1 -RomPath '<path-to-rom>' -GhidraHome '<ghidra>' -JdkHome '<jdk-21>'
+```
+
+The fixture locks `3 -> 3`, first press `3 -> 4`, held `4 -> 4`, release
+fallthrough `4 -> 5`, wait `5 -> 5`, second press `5 -> 9`, and a distinct
+cursor wrap. See `docs/human-free-throw-differential.md`; the ordinary runtime
+adapter remains dormant, and complete common-launch effects/order remain
+excluded. This is not a complete human-control claim.
 
 ## Investigation utilities
 
@@ -540,9 +569,11 @@ EC32 entry, parent child-call sites and returns. `run_differential.py
 controlled WRAM inputs. `verify_jump_reach.py` replays the production helper
 and existing animation-channel API, while `test_jump_reach.py` checks durable
 native fixtures, Ghidra PC census, corrupted-oracle rejection and ROM assets.
-The normal game does not yet call this decision helper:0046 scratch producers
-and pre-tip scheduling need adoption. See `docs/jump-reach-differential.md`;
-a bounded decision match must not be reported as whole-game equivalence.
+The production caller is exercised by `jump_runtime_probe`; its current
+launch/rejection counts are integration evidence, not a complete starting-
+state match. The far EAA8 branch and full pre-tip trajectory still have the
+caveats in `docs/jump-reach-differential.md`. A bounded decision match must not
+be reported as whole-game equivalence.
 
 The remaining `mesen_*.lua`, Python render/decoder helpers, `spc_render_main.c`,
 and `spc_replay_main.c` are diagnostic tools. They are not runtime dependencies
@@ -557,8 +588,10 @@ different machine.
 
 The full-ROM census is a conservative recursive disassembly, not a linear
 sweep. It seeds the eight natively observed code banks from retained execution,
-the verified ledger, source provenance, recomp function entries and bank-$80
-vectors. Direct cross-bank calls may discover more banks. Unknown bytes remain
+evidence-eligible ledger ranges, source provenance, recomp function entries and
+SNES vectors. Direct cross-bank calls may discover more banks. A fresh prepare
+deletes prior seed/listing/call artifacts so an older seed policy cannot leak
+into the result. Unknown bytes remain
 classified as data-or-undiscovered-code rather than being counted as pending
 instructions.
 
@@ -574,6 +607,12 @@ substitute either percentage for the other: one measures verified starts in a
 lower-bound decoded universe; the other is an explicitly weighted feature
 estimate.
 
+Census provenance hashes include the ledger, census tool and evidence-range
+policy. Checked-in text uses UTF-8/LF-normalized hashes so Git's CRLF checkout
+conversion cannot make the same source appear stale; native capture, ROM and
+executable identities continue to use raw-byte hashes. The report freshness
+test still rejects actual source or content changes.
+
 `mesen_team_select_capture.lua` also accepts `NBA95_TEAM_PANEL_ANIM=1`. It
 captures the settled gold-plate frames plus OAM/CGRAM and short executed-address
 traces. `Run-TeamSelectAnalysis.ps1` dumps the corresponding `$82:8933-$8967`
@@ -582,3 +621,41 @@ palette-window routine and the separate `$87:89D5-$89E8` background divider.
 `Run-PlayerSetupAnalysis.ps1` labels and dumps the Team Select confirmation,
 shared transition interpreter, Player Setup dispatcher, object positioning and
 redraw paths, selected-panel palette animation, and vertical-scroll IRQ handler.
+
+### Native edge-contract fixtures
+
+`docs/native-edge-parity.md` records the Ghidra/recomp mappings, capture hashes,
+reproduction commands and exact exclusions for the 2026-08-29 ball, actor,
+OOB, inbound-side and formation fixes. The build replays durable native
+fixtures separately from the inspected C-only image/state digests:
+
+- `actor-commit-edge-witnesses.json`: 56 controlled native calls, 19 outputs;
+  `capture_actor_commit_edges.ps1` / `verify_actor_commit_vectors.py`.
+- `violation-oob-witnesses.json`: 46 controlled calls, including owned versus
+  free predicates and X-priority corners; `capture_violation_oob_matrix.ps1`
+  / `verify_violation_parent_vectors.py`.
+- `inbound-side-gate.json`: 40 native signed-anchor cases;
+  `capture_inbound_side_gate.ps1` / `verify_inbound_side_gate.py`.
+- `formation-route-witnesses.json`: 64 retained plus 32 new native cases;
+  `capture_formation_anchors.ps1` / `verify_formation_route_vectors.py`.
+- `formation-override-witnesses.json`: ten supplemental native calls proving
+  the conditional -40,+160 inbound teammate target and two sign rejections;
+  `capture_formation_override.ps1` / `verify_formation_override_vectors.py`.
+  Its `--self-test` checks malformed/corrupted fixture rejection separately.
+- `ball-driver-owned-dispatch.json`: 31 output words, 323 complete projections
+  plus one partial cross-frame event case; `normalize_ball_driver_owned_vectors.py`
+  / `verify_ball_driver_owned_vectors.py`. The native event oracle is not changed
+  to the isolated C producer's value.
+
+`docs/inbound-cancel-recovery-differential.md` separates four controlled native
+arrival projections from a host whole-update stale-ATTACHED/cache guard. The
+generated header must match the compressed native capture exactly:
+
+```powershell
+python tools/verify_inbound_cancel_recovery.py --fixture tests/fixtures/inbound-cancel-recovery.json --header tests/fixtures/inbound-cancel-recovery.h --probe build/tip_flow_endurance_probe.exe --assets build/nba95_assets.pak --rom '<path-to-rom>'
+build/tip_flow_endurance_probe.exe build/nba95_assets.pak
+```
+
+The deterministic recovery guard runs before the unchanged long-run period,
+live-frame and maximum-stall requirements. Capture scripts are evidence-only;
+none supplies production graphics, audio or an alternative gameplay runtime.

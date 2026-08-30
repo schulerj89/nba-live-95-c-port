@@ -1,0 +1,162 @@
+{
+  "schema": 1,
+  "rom_sha256": "2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870",
+  "native_entry": "879CBF",
+  "native_oscillator": "87A018-87A045",
+  "cases": [
+    {
+      "name": "native-call-793-3-to-3",
+      "source_call": 793,
+      "input": [
+        3,
+        4,
+        0,
+        86,
+        526,
+        0,
+        1,
+        0
+      ],
+      "expected": [
+        0,
+        3,
+        9,
+        0,
+        62,
+        526
+      ]
+    },
+    {
+      "name": "native-call-1112-3-to-4",
+      "source_call": 1112,
+      "input": [
+        3,
+        31,
+        0,
+        50,
+        526,
+        0,
+        1,
+        1
+      ],
+      "expected": [
+        1,
+        4,
+        0,
+        36,
+        26,
+        526
+      ]
+    },
+    {
+      "name": "native-call-1122-4-to-4",
+      "source_call": 1122,
+      "input": [
+        4,
+        0,
+        36,
+        26,
+        526,
+        0,
+        1,
+        1
+      ],
+      "expected": [
+        0,
+        4,
+        0,
+        36,
+        26,
+        526
+      ]
+    },
+    {
+      "name": "native-call-1143-4-to-5",
+      "source_call": 1143,
+      "input": [
+        4,
+        0,
+        36,
+        26,
+        526,
+        0,
+        1,
+        0
+      ],
+      "expected": [
+        2,
+        5,
+        5,
+        36,
+        2,
+        526
+      ]
+    },
+    {
+      "name": "native-call-1154-5-to-5",
+      "source_call": 1154,
+      "input": [
+        5,
+        5,
+        36,
+        2,
+        526,
+        0,
+        1,
+        0
+      ],
+      "expected": [
+        0,
+        5,
+        9,
+        36,
+        88,
+        526
+      ]
+    },
+    {
+      "name": "native-call-1176-5-to-9",
+      "source_call": 1176,
+      "input": [
+        5,
+        14,
+        36,
+        64,
+        526,
+        0,
+        1,
+        1
+      ],
+      "expected": [
+        3,
+        9,
+        19,
+        36,
+        40,
+        526
+      ]
+    },
+    {
+      "name": "native-call-1035-oscillator-wrap",
+      "source_call": 1035,
+      "input": [
+        3,
+        109,
+        0,
+        108,
+        526,
+        0,
+        1,
+        0
+      ],
+      "expected": [
+        0,
+        3,
+        2,
+        0,
+        84,
+        526
+      ]
+    }
+  ]
+}

@@ -5,17 +5,17 @@ the native instruction census: feature completion is a weighted engineering
 estimate, while capture/Ghidra/recomp/differential columns describe evidence
 strength. `strong` does not mean a feature is complete.
 
-**Current weighted whole-game estimate: 54.70%**
+**Current weighted whole-game estimate: 55.50%**
 
 | feature | weight | completion | native | Ghidra | recomp | differential | tests |
 |---|---:|---:|---|---|---|---|---|
 | Boot, legal, EA intro, title and credits | 7% | 95% | strong | strong | strong | partial | strong |
 | Game Setup, Rules and Options | 8% | 90% | strong | strong | partial | partial | strong |
 | Team select, player setup and introductions | 8% | 90% | strong | strong | partial | partial | strong |
-| CPU-vs-CPU gameplay core | 25% | 55% | strong | strong | strong | strong | strong |
-| Gameplay rules, fouls and free throws | 10% | 45% | partial | strong | partial | strong | partial |
+| CPU-vs-CPU gameplay core | 25% | 55% | strong | strong | strong | partial | strong |
+| Gameplay rules, fouls and free throws | 10% | 48% | partial | strong | partial | partial | partial |
 | Clock, quarters, timeout, substitutions and end game | 10% | 55% | strong | strong | partial | partial | strong |
-| Human offense, defense and inbound control | 10% | 0% | none | partial | partial | none | none |
+| Human offense, defense and inbound control | 10% | 5% | partial | partial | partial | partial | partial |
 | Court, sprites, PPU composition and camera fidelity | 7% | 70% | strong | strong | partial | partial | strong |
 | Music and in-game sound fidelity | 5% | 75% | strong | partial | partial | partial | strong |
 | Season, playoffs, schedules and persistence | 5% | 25% | partial | partial | untriaged | none | none |
@@ -43,15 +43,15 @@ Evidence: [`docs/team-select.md`](../docs/team-select.md), [`docs/player-setup.m
 
 ### CPU-vs-CPU gameplay core
 
-Close unobserved decisions, animation/ball attachment quirks and longer-possession behavior.
+Align the strict native/C launch baseline and scheduler before closing unobserved decisions and longer-possession behavior.
 
-Evidence: [`docs/gameplay-100-percent-plan.md`](../docs/gameplay-100-percent-plan.md), [`docs/differential-testing.md`](../docs/differential-testing.md), [`docs/gameplay-pending.md`](../docs/gameplay-pending.md)
+Evidence: [`docs/parity-gap-report.md`](../docs/parity-gap-report.md), [`docs/differential-testing.md`](../docs/differential-testing.md), [`docs/gameplay-pending.md`](../docs/gameplay-pending.md), [`docs/native-edge-parity.md`](../docs/native-edge-parity.md), [`docs/inbound-cancel-recovery-differential.md`](../docs/inbound-cancel-recovery-differential.md)
 
 ### Gameplay rules, fouls and free throws
 
-Complete foul consumers, penalties, free throws and edge cases.
+Complete bonus/penalty callers, natural foul-to-stripe orchestration, substitutions and rare rule edge cases.
 
-Evidence: [`docs/foul-classifier-differential.md`](../docs/foul-classifier-differential.md), [`docs/foul-consumer-differential.md`](../docs/foul-consumer-differential.md)
+Evidence: [`docs/foul-classifier-differential.md`](../docs/foul-classifier-differential.md), [`docs/foul-consumer-differential.md`](../docs/foul-consumer-differential.md), [`docs/free-throw-completion-differential.md`](../docs/free-throw-completion-differential.md), [`docs/human-free-throw-differential.md`](../docs/human-free-throw-differential.md), [`docs/native-edge-parity.md`](../docs/native-edge-parity.md)
 
 ### Clock, quarters, timeout, substitutions and end game
 
@@ -61,9 +61,9 @@ Evidence: [`STATUS.md`](../STATUS.md), [`docs/match-lifecycle.md`](../docs/match
 
 ### Human offense, defense and inbound control
 
-Capture, map and implement the complete human input paths.
+Carry real Player Setup ownership into complete movement, offense, defense, passing and ordinary shooting paths; current inbound and free-throw helpers are isolated.
 
-Evidence: [`STATUS.md`](../STATUS.md)
+Evidence: [`STATUS.md`](../STATUS.md), [`docs/human-free-throw-differential.md`](../docs/human-free-throw-differential.md), [`docs/gameplay-pending.md`](../docs/gameplay-pending.md)
 
 ### Court, sprites, PPU composition and camera fidelity
 

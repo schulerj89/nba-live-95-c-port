@@ -44,8 +44,8 @@ Outputs:
 
 ## Exact contract and boundaries
 
-`tools/differential_fields.def` is the shared C/Python schema: **442 unsigned
-16-bit words**, comprising 42 global/ball words and 40 words for each of ten
+`tools/differential_fields.def` is the shared C/Python schema: **449 unsigned
+16-bit words**, comprising 49 global/ball words and 40 words for each of ten
 actors. All required keys must exist. No common-key intersection, sentinel
 filtering, coordinate rounding, frame-offset search, or state repair is used.
 The C camera no-team byte `FF` is explicitly represented as native word `FFFF`;
@@ -64,6 +64,7 @@ are errors; we do not fabricate begin/end events from even-numbered frames.
 
 Compared fields include RNG; camera coordinates/mode; game and shot clocks;
 ownership, receiver and pass state; tip/live/inbound state; play dispatch words;
+free-throw state, attempts, aim axes, accumulator, rating step and start tick;
 ball coordinates/velocity; all ten actors' coordinates/velocity, controller,
 status, animation resources/phases/locks, facing, modes, assignments and selected
 timers. The schema names every included address.
@@ -74,7 +75,7 @@ C cannot represent causes a mismatch, not a tolerance-based pass.
 
 The actor `+$60` word is deliberately NOT mapped yet: its C
 representations are split across mode-dependent timers. Scores, full team
-contexts, roster statistics, all clocks/fouls, controller latches, full
+contexts, roster statistics, the remaining clock/foul state, controller latches, full
 camera state, renderer/PPU/APU state and other RAM are not fully represented.
 An equal projection must never be called whole-game equivalence.
 
@@ -138,27 +139,35 @@ The runner deliberately cannot produce an overall equivalence PASS in phase 1.
 The standalone comparator is a trace-analysis utility, not a source-authenticity
 certificate. Use the fresh runner and retain its hashes for ROM evidence.
 
-Fresh CPU-only run `.analysis/differential-20260828-v6`: 25 checkpoints on each
-side, 442 words per checkpoint, **81 differences at baseline** and zero matching
-checkpoints. All ten native controllers stayed `FFFF` in the captured rows.
-Examples: RNG native `0000` vs C `D5E1`; shot clock `05A0` vs `0000`; ball Z
-velocity `0258` vs `0000`. The first native sweep was at relative video frame25,
-while the first C sweep was at206. The harness discloses that instead of shifting
-one trace by181 frames. These are initialization/ordering investigation leads,
-not newly certified CPU bugs.
+Fresh 25-sweep CPU-only run
+`.analysis/differential-release-final-cpu`: 51 trace rows on each side,
+449 words per row, **62 differences at baseline** and zero matching
+checkpoints. All ten native controllers stay `FFFF`. Examples include RNG
+native `0000` vs C `9146`, game clock `A8C0` vs `2A30`, shot clock `05A0` vs
+`0000`, and play code `0001` vs `0000`. The first native actor sweep is at
+relative video frame 25 while the first C sweep is at frame 2. The harness
+reports that cadence mismatch without fitting an offset.
 
-Repeatability: v5/v6 `rom.jsonl` and `port.jsonl` are each byte-identical across
-the two runs. However, **21,776 bytes of the full native WRAM snapshot differ**
-outside the compared projection. Their relevance is not classified; do not
-assume they are harmless. A reproducible complete starting context remains
-pending even though this short projection repeats.
+The probe was rebuilt against the final ball-history/edge-contract and
+generic-contact-gate objects. The report and both projected traces are byte-
+identical to `.analysis/differential-native-edges-final-cpu` in this short
+window, but the fresh full native WRAM snapshot differs outside the projection.
+That is not a whole-state match. `run.json` and `report.json` retain
+commands, ROM/tool/executable/trace hashes and the 50 checkpoint timing
+differences. Neither initial-state repair nor a permissive PASS was added.
 
-Default CPU-versus-human run `.analysis/differential-20260828-v7` preserves the
-one human assignment and reports **82 baseline differences**, including the
-expected controller mismatch with the currently CPU-only port. No human-input
-implementation was added. This mode is useful for exposing setup differences,
-not for claiming matched controller behavior. Use the v6/v7 manifests for the
-tested script and executable identities.
+The matching default run
+`.analysis/differential-human-ft-20260829-human-v2` preserves one native human
+assignment and reports **63 baseline differences**. The single additional
+difference is actor 0 controller `0000` in the ROM versus `FFFF` in the current
+CPU-only C runtime. The bounded human free-throw helper added in this checkpoint
+does not create a complete menu-to-game human ownership path. Both runs remain
+`INITIAL_STATE_MISMATCH`; their later rows are diagnostic only.
+
+Historical v5/v6/v7 runs used the 442-word schema and reported 81/82 baseline
+differences plus 21,776 differing bytes outside the projection. They remain
+useful artifacts but are superseded for current field counts and baseline
+values. A reproducible complete starting context is still pending.
 
 ## Tests and next increment
 
@@ -170,10 +179,12 @@ tests, NOT ROM-equivalence evidence.
 
 `differential_observer_probe.c` runs observed and unobserved C simulations for
 2,000 updates and compares the entire game/session state each update. It checks
-898 actual paired sweeps on the current build without changing gameplay.
-Both tests are part of `build.ps1 -Test`. Existing tip-off, Gameplay Lab and
-CPU-versus-CPU endurance regressions were also rerun successfully. No coverage
-credit is added for implementing this harness.
+1,000 actual paired sweeps on the current build without changing gameplay.
+Both tests are part of `build.ps1 -Test`. The native edge-contract work also
+has separate multi-team, court and 63,800-frame tip-flow checks; their current
+release results are recorded in `STATUS.md`. A passing C-only regression
+never overrides this harness's initial-state failure. No coverage credit is
+added for implementing the harness.
 
 Next, in order:
 

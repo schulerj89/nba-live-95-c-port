@@ -134,79 +134,19 @@ FORMATION = [
     (-8, -3), (16, 83), (24, -80), (-104, 56), (-96, -59),
 ]
 EXPECTED_RGB = {
-    # Reviewed after complete F34F caller ordering and coarse contact facing;
-    # these are C visual regression anchors, not emulator-parity claims.
-    # Independent ROM vectors and semantic endurance guards remain separate.
-    # Stage4 physical acquisition replaces the forced actor8/frame220 reset.
-    # All five captures inspected; wider loose-ball framing remains a gap.
-    # Re-reviewed after the live `$86:EC32` jump/reach binding changed the
-    # deterministic CPU trajectory. These frames visibly retain ten actors,
-    # the ball, court bounds and unobstructed HUD composition.
-    # Re-reviewed after replacing host rounding/truncation with the exact
-    # `$87:A3BB-$A3DC` integer-word projection. Player feet now use the same
-    # signed quarter-coordinate and origin as the native sprite compositor.
-    # Re-reviewed after gameplay adopted the shared Mode-1 priority/window
-    # compositor. These changes are isolated to BG/OBJ overlap and the newly
-    # visible low-priority basket cells; CPU state/trajectory is unchanged.
-    # Re-reviewed again after pack v31 replaced the opaque court panorama with
-    # indexed BG1/BG2/BG3/backdrop inputs. The full CPU trace and state guards
-    # remain unchanged; these hashes lock the corrected presentation output.
-    # Re-reviewed after the native E39A/E3E1 defensive pose caller was bound.
-    # The corrected state-7/8/10 poses change animation contact geometry and
-    # therefore the deterministic CPU trajectory; each anchor still shows
-    # ten complete players, ball, court, goal and unobstructed HUD.
-    # Re-reviewed after `$86:D86C-$D89B` stopped pairing by roster number and
-    # restored the native five-lineup-position matchups.  The corrected
-    # assignments intentionally alter the CPU trajectory.  All five anchors
-    # retain ten complete players, a visible ball, court/goal bounds and an
-    # unobstructed HUD; the visitor number-overlay mask is also side-correct.
-    # Re-reviewed after `$80:AD92-$AEC1` adopted the native direction-specific
-    # torso/number submission order. State and trajectory are unchanged; only
-    # the ROM-correct overlap priority of those two player layers differs.
-    # Re-reviewed after 500 native `$86:F43A-$F653` calls proved inbound
-    # behavior installs next-pass velocity only and reads signed integer
-    # coordinate words for arrival/side gates. The duplicate host integration
-    # and nearest-pixel gates were removed; all anchors retain ten complete
-    # players, the ball, court/goal bounds and an unobstructed HUD.
-    # Re-reviewed after the exact `$85:AD6B-$AF5B` parent branch sends all
-    # opposite-X roles through B3AA (unless the activity edge route owns back
-    # roles) and restores the DP-$5C short-timer target. The differential gate
-    # independently proves targets, flags and velocity; these anchors retain
-    # complete uniforms, ball, court/goal bounds and a clear HUD.
-    # Re-reviewed after exact `$86:F1B0-$F2C9` parent timing stopped derived
-    # movement from leading the ROM by one scheduled actor pass. All five
-    # frames retain valid player composition, ball, court and clear HUD; the
-    # changed trajectory is protected independently by the new ROM fixtures.
-    600: "7bff9493a5c9baf9e2b85a900e056fb8416e1d88209314936900e3650d8317a7",
-    # Re-reviewed after `$86:F45F-$F4F2` adopted the native sign-biased
-    # velocity/16 target compensation. The five final-goal anchor captures
-    # retain complete uniforms, visible ball/court/goal and an unobstructed
-    # HUD; frame 600 remains identical while later trajectories change.
-    # Re-reviewed after the live renderer adopted `$87:AFA2-$B053`'s tall
-    # lower-body selector and the asset pack gained every dynamically chosen
-    # `$87:AC76-$AC95` base+$28 torso resource. All five anchors show ten
-    # complete, correctly colored player uniforms; the altered body resources
-    # also correct native ball attachment points, so later CPU paths diverge
-    # from the retired incomplete-resource trajectory by design.
-    # Re-reviewed after the exact `$86:F43A-$F4F1` motion helper also adopted
-    # `$85:B3C9`'s distance<=8 damping branch and native negative /16 bias.
-    # The final five frames in `.analysis/inbound-final-review-20260829`
-    # retain ten complete players, ball, court/goal bounds and clear HUD.
-    # Re-reviewed after `$87:92A5-$949E` restored the native violation and
-    # boundary-dead-ball parent ordering. The corrected boundary possession
-    # changes the deterministic path after frame 600. These four anchors show
-    # ten complete actors, the ball, both baskets/court bounds and a clear HUD.
-    # Re-reviewed after the live renderer stopped bypassing the verified
-    # `$87:A52C-$A5FA` draw-direction resolver for cached action resources.
-    # Torso/legs now face the same presentation direction as head, number and
-    # flip state on receiver/passer frames; gameplay state is unchanged.
-    1300: "826cc4c57d1392388565e1b2594da4bf8bca9c000bd9f4c7f7f1bc077de45011",
-    3480: "8cf9b5af49c4a73fa357b4076edbd4e92d36df445ba0b618cd26b3b26be40dd4",
-    # Reviewed after the native `$85:BB5A->$85:BBAE` one-way help assignment
-    # replaced the former symmetric port behavior. The exact ROM-call corpus
-    # and matchup runtime probe independently protect the semantic change.
-    6932: "84e3262eb59f934c584f577092e6e90a325da451d1d9d44f4db83b4444e8dda7",
-    6954: "773d295f938cf3794a1591d78f55d4629ac9065d536a4ada7aa5e0952e252d69",
+    # C-only visual anchors, not native frame-parity evidence. Re-reviewed
+    # 2026-08-29 after the native ball ownership/substeps, actor edge response,
+    # OOB predicates, raw inbound arrival and live formation anchors changed
+    # the CPU trajectory. All five BMPs were inspected before accepting hashes:
+    # ROM-derived court, ball and uniforms remain intact. Wide loose-ball
+    # framing and some actor/HUD overlap remain explicit presentation gaps.
+    # Independent native fixtures protect the changed state contracts; these
+    # images lock only the inspected C output. See docs/native-edge-parity.md.
+    600: "a823728a4a07c766002b0344a705ef294dd6a3e8cc9e43ca22b6648e4365aad2",
+    1300: "cc9a671614933d0dce313c94036552c18e0655643ac40b293a3767a8109413fb",
+    3480: "b3f44864a8f40b5362d0489a115ce4d8aa02a25ca4887acd9a498954b74ed4c3",
+    6932: "9a9e5807af5ce7323307dcc8c61e7386feeda5dd9b754ddc2719a04af8e03829",
+    6954: "0a3d3e5b4bf1e2d175376eee54e15c59e201271339d49d4cac05f48c6cbcf864",
 }
 
 
@@ -223,11 +163,182 @@ def native_target_distance(dx, dy):
     return (y + (((x << 1) & 0xFFFF) >> 3)) & 0xFFFF
 
 
+def native_inbound_target(layout, source_x, source_y, side_anchor):
+    """C37D target at a fresh 9B88 snapshot, before later ball movement."""
+    if layout == 0:
+        x, y, direction = (394, -64, 6) if side_anchor < 0 else (-394, 64, 2)
+    elif layout < 0:
+        x = -394 if source_x < 0 else 394
+        y = max(-160, min(160, source_y))
+        direction = 2 if source_x < 0 else 6
+    elif layout in (1, 2, 3, 4):
+        if layout in (1, 4):
+            # C477 reads live integer $3EEF, not presentation $3FEF.
+            # 9B88 has just copied that same integer word into $09B0.
+            x = (-40 if side_anchor < 0 else 40) if \
+                (side_anchor ^ source_x) < 0 else source_x
+        elif layout == 2:
+            x = 226 if side_anchor < 0 else -226
+        else:
+            x = max(-332, min(337, source_x))
+        y = -224 if source_y < 0 else 224
+        direction = 0 if source_y < 0 else 4
+    elif layout == 5:
+        x = 394 if source_x >= 362 else -394 if source_x < -362 else source_x
+        y = 224 if source_y >= 192 else -224 if source_y < -192 else source_y
+        direction = 4 if y >= 208 else 0 if y < -208 else 6 if x >= 378 else 2
+    else:
+        raise AssertionError(f"unexpected dead-ball layout: {layout}")
+    x = max(x, -556 - y) if y < 0 else min(x, 561 - y)
+    return x, y, direction
+
+
+def inbound_seed_selector_matches(row):
+    """Observable A079/C37D seed, possibly followed by CFA0 contact."""
+    match = row["match"]
+    group, selector = match["inbound_state_raw"], match["inbound_actor_raw"]
+    if group not in (0, 5) or not group <= selector < group + 5:
+        return False
+    if selector == group + 2:
+        return True
+    # CFA0-CFDE bypasses unless live=$82, signed $093E<0, $09B8=0
+    # and $0978=0. Fresh seeds clear ownership; for play<6 a same-side
+    # contact then writes $0954 BEFORE the remaining acquisition gates.
+    # Thus a changed selector need not imply successful acquisition.
+    # Native collision-sweep-long call 434/f4753: play1, $0954 2->3,
+    # $093E FFFF->3. BAA2 installs $093E but does not write $0954.
+    return (match["live_state_raw"] == 0x82 and
+            match["inbound_transfer_raw"] == 0 and
+            row["fouls"]["free_throw_state_raw"] == 0 and
+            row["possession"]["play_code_raw"] < 6)
+
+
+def native_inbound_formation_actor(row, side):
+    """AE39-AE91's exact conditional teammate target override."""
+    match = row["match"]
+    if match["live_state_raw"] != 0x82 or not \
+            6 <= row["possession"]["play_code_raw"] < 10 or \
+            match["inbound_target_y_raw"] < 0 or \
+            match["inbound_target_x_raw"] >= 0:
+        return None
+    # AE58 starts at current actor's team role 4, then scans down. $0954
+    # and nonnegative (human) +$16 controllers are the only exclusions.
+    for actor_id in range(side * 5 + 4, side * 5 - 1, -1):
+        if actor_id != match["inbound_actor_raw"] and \
+                row["actors"][actor_id]["raw"]["controller_assignment_16"] < 0:
+            return actor_id
+    return None
+
+
+def verify_camera_subject_trace(rows):
+    """Check the retained 95AC resolver, 95BB copy and 8E1C resolver.
+
+    Native resolve/cadence/copy outputs are independently replayed from
+    camera-handoff-witnesses.json; camera_handoff_runtime_probe.c also changes
+    ownership during the wait and checks that only the second resolver moves.
+    This is a host binding guard, not a whole-frame native timing claim.
+    """
+    def resolve(actor):
+        if actor < 0:
+            return 0
+        if actor >= 10:
+            raise AssertionError(f"invalid signed $093E camera actor: {actor}")
+        return 0x34EB + actor * 0x100
+
+    def context(row):
+        return {
+            "frame": row["frame"], "scene_frame": row["scene_frame"],
+            "simulation_tick": row["simulation_tick"],
+            "093E": row["possession"]["actor"],
+            "0940": row["camera"]["pointer_raw_0940"],
+            "0564": row["camera"]["ticks_raw_0564"],
+            "0936": row["match"]["live_state_raw"],
+            "0926": row["match"]["period_raw_0926"],
+            "0928": row["match"]["match_clock_raw_0928"],
+        }
+
+    previous = rows[218]
+    expected_subject = previous["camera"]["subject_raw"]
+    latched_pointer = (previous["camera"]["pointer_raw_0940"]
+                       if previous["camera"]["ticks_raw_0564"] else None)
+    free_states, actor_states = set(), set()
+    for row in rows[219:]:
+        camera, before = row["camera"], previous["camera"]
+        ticks = camera["ticks_raw_0564"]
+        advanced = row["simulation_tick"] != previous["simulation_tick"]
+        pending = latched_pointer
+
+        def require(condition, message):
+            if not condition:
+                raise AssertionError(
+                    f"{message}: before={context(previous)} "
+                    f"after={context(row)} pending_0940={pending} "
+                    f"expected_subject={expected_subject} camera={camera}")
+
+        # 95AC resolves BEFORE the 0564>=2 wait; 95BB copies the retained
+        # record AFTER it. A yielded call can span more than one outer frame:
+        # period presentation froze simulation51249 with0564=2, and its
+        # restart cleared093E at outer52437 without replacing the resolver
+        # latched at51248. The copy at52438 must still use actor9, not the
+        # adjacent row's -1. No frame/period exemption is needed: keep the
+        # pending pointer until an actual tick-consuming camera dispatch.
+        if advanced and ticks == 0:
+            require(before["ticks_raw_0564"] >= 1,
+                    "camera consumed fewer than two presentation credits")
+            pointer = (latched_pointer if latched_pointer is not None else
+                       resolve(row["possession"]["actor"]))
+            expected_subject = (pointer - 0x34EB) // 0x100 if pointer else -1
+            require(pointer == resolve(expected_subject),
+                    "camera retained an invalid actor pointer")
+            subject = (row["actors"][expected_subject]
+                       if expected_subject >= 0 else row["ball"])
+            proxy = []
+            for axis in ("x_fp", "y_fp"):
+                proxy.extend(((subject[axis] << 8) & 0xFFFF,
+                              (subject[axis] >> 8) & 0xFFFF))
+            require(camera["proxy_raw_4a56"] == proxy,
+                    "95BB camera copy differs from retained subject XY")
+            # 8E1C resolves current093E again, independently of the copied
+            # subject. Substituting this pointer for the prewait copy is wrong.
+            require(camera["pointer_raw_0940"] ==
+                    resolve(row["possession"]["actor"]),
+                    "8E1C camera resolver differs from current signed $093E")
+            latched_pointer = None
+        else:
+            require(ticks == before["ticks_raw_0564"] + int(advanced),
+                    "camera wait/frozen presentation credits changed")
+            if advanced and ticks == 1:
+                require(latched_pointer is None,
+                        "camera restarted an unfinished resolver wait")
+                latched_pointer = resolve(row["possession"]["actor"])
+                require(camera["pointer_raw_0940"] == latched_pointer,
+                        "95AC prewait resolver differs from signed $093E")
+            else:
+                require(camera["pointer_raw_0940"] ==
+                        before["pointer_raw_0940"],
+                        "camera wait/freeze replaced the retained resolver")
+            require(camera["proxy_raw_4a56"] == before["proxy_raw_4a56"] and
+                    (camera["x"], camera["y"]) == (before["x"], before["y"]),
+                    "camera copy/position changed without dispatch")
+        require(camera["subject_raw"] == expected_subject,
+                "camera subject diverged from retained signed $093E")
+        # 093A is persistent offense-side context, never resolver output.
+        require(camera["side_group_raw"] in (0, 5),
+                "camera corrupted persistent $093A")
+        (actor_states if expected_subject >= 0 else free_states).add(
+            row["ball"]["state"])
+        previous = row
+    if not {3, 5, 6}.issubset(free_states) or not actor_states:
+        raise AssertionError("camera did not cover actor and free-ball proxy paths")
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--pack", required=True)
     parser.add_argument("--exe", required=True)
     parser.add_argument("--rom", required=True)
+    parser.add_argument("--reuse-trace", type=Path,
+                        help="recheck an existing 63800-row capture; skip capture only")
     args = parser.parse_args()
 
     with tempfile.TemporaryDirectory() as directory:
@@ -249,17 +360,20 @@ def main():
         if whistle_hash != "d047862c692b0b6a6c6b7b7b1f0c249407f53dd9db41d23393d2818ae0ac0894":
             raise AssertionError(
                 f"gameplay command-$44 whistle PCM changed: {whistle_hash}")
-        trace = root / "cpu_gameplay.jsonl"
+        trace = args.reuse_trace or root / "cpu_gameplay.jsonl"
         command = [
             args.exe, "--headless", "--rom", args.rom, "--assets", args.pack,
             "--tipoff-only", "--tipoff-clock", "43200", "--frames", "63800",
             "--gameplay-trace", str(trace),
             "--debug-state",
         ]
-        result = subprocess.run(command, capture_output=True, text=True, check=False)
-        if result.returncode or "INT:$85:963D" not in result.stdout or \
-                "BALL M:" not in result.stdout:
-            raise AssertionError(result.stdout + result.stderr)
+        if args.reuse_trace:
+            print(f"[CPU TRACE] rechecking retained capture: {trace}", flush=True)
+        else:
+            result = subprocess.run(command, capture_output=True, text=True, check=False)
+            if result.returncode or "INT:$85:963D" not in result.stdout or \
+                    "BALL M:" not in result.stdout:
+                raise AssertionError(result.stdout + result.stderr)
         rows = JsonlRows(trace)
         if len(rows) != 63800:
             raise AssertionError(f"expected 63800 CPU frames, got {len(rows)}")
@@ -416,35 +530,7 @@ def main():
         if [actor["roster"] for actor in live["actors"]] != \
                 [2, 0, 1, 3, 4, 2, 0, 1, 3, 4]:
             raise AssertionError("active actor-to-roster mapping changed")
-        free_camera_states = set()
-        actor_camera_states = set()
-        previous_camera_row = frame(219)
-        expected_camera_subject = previous_camera_row["camera"]["subject_raw"]
-        for row in rows[219:]:
-            possession_actor = row["possession"]["actor"]
-            camera = row["camera"]
-            # `$87:95BB-$95D8` samples signed `$093E` only on the 30-Hz
-            # logical pass identified by `$0564 == 0`. Camera dispatch occurs
-            # before same-frame acquisition, so it must sample the preceding
-            # frame's owner; the other outer frame preserves that proxy.
-            if camera["ticks_raw_0564"] == 0:
-                sampled_actor = previous_camera_row["possession"]["actor"]
-                expected_camera_subject = (
-                    sampled_actor if sampled_actor >= 0 else -1)
-            if camera["subject_raw"] != expected_camera_subject:
-                raise AssertionError(
-                    f"camera subject diverged from signed $093E: {camera}")
-            # `$093A` is persistent offense-side context, not an output of
-            # camera subject selection. Camera code must never rewrite it.
-            if camera["side_group_raw"] not in (0, 5):
-                raise AssertionError("camera corrupted persistent $093A")
-            if expected_camera_subject >= 0:
-                actor_camera_states.add(row["ball"]["state"])
-            else:
-                free_camera_states.add(row["ball"]["state"])
-            previous_camera_row = row
-        if not {3, 5, 6}.issubset(free_camera_states) or not actor_camera_states:
-            raise AssertionError("camera did not cover actor and free-ball proxy paths")
+        verify_camera_subject_trace(rows)
         if any(actor["control"] != 0 for actor in frame(1900)["actors"]):
             raise AssertionError("CPU-versus-CPU mode assigned a human actor")
         if any(row["control"]["actor"] != 0xFF for row in rows[219:]):
@@ -529,7 +615,7 @@ def main():
             # can straddle a trace row: frame-220 possession initialization
             # precedes actor dispatch, while ordinary play advance and a
             # rebound/catch commit follow it. Accept either adjacent state,
-            # but require the target to come from an exact packed ROM row.
+            # but require the exact packed ROM target or gated AE88 override.
             for before, after in zip(previous["actors"], current["actors"]):
                 old_flags = before["raw"]["behavior_flags"]
                 new_flags = after["raw"]["behavior_flags"]
@@ -538,14 +624,20 @@ def main():
                             after["id"] == current["match"]["inbound_actor_raw"]:
                         continue
                     side = after["id"] // 5
-                    expected_targets = {
-                        formation_target(
+                    expected_targets = set()
+                    for snapshot in (previous, current):
+                        possession = snapshot["possession"]
+                        expected = formation_target(
                             possession["play_code_raw"], after["id"] % 5,
                             possession["play_step_raw"],
                             possession["play_mirror_raw"] != 0, side)
-                        for possession in (previous["possession"],
-                                           current["possession"])
-                    }
+                        # Native formation-override witnesses replay plays
+                        # 6..9 on both sides plus X=0/Y=-1 negative controls.
+                        # AE88/AE91 replaces, rather than supplements, this
+                        # selected teammate's ordinary formation coordinate.
+                        if native_inbound_formation_actor(snapshot, side) == after["id"]:
+                            expected = (-40, 160)
+                        expected_targets.add(expected)
                     expected_targets.discard(None)
                     actual = (after["raw"]["target_x_56"],
                               after["raw"]["target_y_58"])
@@ -1079,25 +1171,10 @@ def main():
                     raise AssertionError(f"made basket state incomplete: {row}")
                 scoring_side = 0 if delta[0] else 1
                 expected_group = (scoring_side ^ 1) * 5
-                inbound_actor = match["inbound_actor_raw"]
-                provisional_actor = expected_group + 2
-                # `$85:A079` initially seeds actor 2/7. In the same outer
-                # native pass, `$86:D353->$85:BAA2` may already replace
-                # `$0954` with the colliding side-matched inbound carrier
-                # before the frame is observable. Accept that later native
-                # terminal state only when every ownership/mode invariant
-                # proves the replacement really occurred.
-                installed_actor = row["possession"]["actor"]
-                installed_replacement = (
-                    installed_actor == inbound_actor and
-                    expected_group <= installed_actor < expected_group + 5 and
-                    row["ball"]["owner"] == -1 and
-                    row["ball"]["state"] == 4 and
-                    match["inbound_ready_raw"] == 0 and
-                    row["actors"][installed_actor]["raw"]["control_mode"] == 11)
-                if match["inbound_state_raw"] != expected_group or not (
-                        inbound_actor == provisional_actor or
-                        installed_replacement):
+                # A079 seeds actor 2/7; an eligible CFA0 early-play contact
+                # may replace $0954 before this outer frame is published.
+                if match["inbound_state_raw"] != expected_group or \
+                        not inbound_seed_selector_matches(row):
                     raise AssertionError(f"$0952/$0954 inbound mapping changed: {row}")
                 score_changes.append((row["frame"], score))
                 previous_score = score
@@ -1115,51 +1192,21 @@ def main():
                 run_start = None
         if not dead_runs:
             raise AssertionError("$092E inbound executor was not exercised")
-        replaced_provisional = 0
+        alternate_carriers = 0
         completed_inbounds = 0
         expired_installed_inbounds = 0
         for inbound in dead_runs:
             first = inbound[0]
             match = first["match"]
             started_ready = bool(match["inbound_ready_raw"])
-            # `$0952` is the side-group seed. `$85:A079` derives the
-            # provisional carrier as group+2, even when a later same-frame
-            # collision has already replaced observable `$0954`.
+            # `$0952` is the side-group seed. CFCF, not BAA2, may replace
+            # provisional actor group+2 for an eligible early-play contact.
             provisional_actor = match["inbound_state_raw"] + 2
             observed_actor = match["inbound_actor_raw"]
             layout = match["inbound_layout_raw"]
-            if layout == 0:
-                expected_target = (394, -64, 6) if provisional_actor == 2 \
-                    else (-394, 64, 2)
-            elif layout in (1, 3, 4):
-                # `$85:C37D` consumes the rounded live ball record; `$09B0/B2`
-                # separately preserve its signed integer-word floor.
-                source_x = first["ball"]["x"]
-                source_y = first["ball"]["y"]
-                side_anchor = -336 if provisional_actor == 2 else 336
-                if layout in (1, 4):
-                    target_x = (-40 if side_anchor < 0 else 40) if \
-                        (side_anchor ^ source_x) < 0 else source_x
-                else:
-                    target_x = max(-332, min(337, source_x))
-                target_y = -224 if source_y < 0 else 224
-                target_x = max(target_x, -556 - target_y) if target_y < 0 \
-                    else min(target_x, 561 - target_y)
-                expected_target = (
-                    target_x, target_y, 0 if source_y < 0 else 4)
-            else:
-                raise AssertionError(f"unexpected dead-ball layout: {first}")
             actual_target = (match["inbound_target_x_raw"],
                              match["inbound_target_y_raw"],
                              match["inbound_direction_raw"])
-            installed_at_entry = first["possession"]["actor"]
-            valid_entry_actor = observed_actor == provisional_actor or (
-                observed_actor == installed_at_entry and
-                match["inbound_state_raw"] <= observed_actor <
-                    match["inbound_state_raw"] + 5 and
-                first["ball"]["owner"] == -1 and
-                first["ball"]["state"] == 4 and
-                first["actors"][observed_actor]["raw"]["control_mode"] == 11)
             if match["inbound_ready_raw"]:
                 # A lifecycle/dead-ball segment may begin after F54F already
                 # latched readiness, including a displaced-inbound F654 timer
@@ -1169,13 +1216,55 @@ def main():
                     -224 <= actual_target[1] <= 224 and
                     0 <= actual_target[2] <= 7)
                 if provisional_actor not in (2, 7) or \
-                        not valid_entry_actor or not legal_resumed_target:
+                        not (match["inbound_state_raw"] <= observed_actor <
+                             match["inbound_state_raw"] + 5) or \
+                        not legal_resumed_target:
                     raise AssertionError(
                         f"resumed ready inbound state changed: {first}")
-            elif match["inbound_timer_raw"] != 300 or \
-                    provisional_actor not in (2, 7) or \
-                    not valid_entry_actor or actual_target != expected_target:
-                raise AssertionError(f"$85:A1E9/C37D inbound seed changed: {first}")
+            else:
+                # DD56-DD75 negate both team-context +0A anchors only at Q3
+                # entry. Actor ID/side alone is not a fixed basket sign.
+                side_anchor = -336 if provisional_actor == 2 else 336
+                if match["period_raw_0926"] >= 2:
+                    side_anchor = -side_anchor
+                # 9B88-9B91 snapshot signed INTEGER $3EEF/$3EF3 into
+                # $09B0/B2 immediately before C37D. The post-pass live ball
+                # may already have moved; display rounding is never input.
+                expected_target = native_inbound_target(
+                    layout, match["dead_ball_x_raw_09b0"],
+                    match["dead_ball_y_raw_09b2"], side_anchor)
+                if match["inbound_timer_raw"] != 300 or \
+                        not inbound_seed_selector_matches(first) or \
+                        actual_target != expected_target:
+                    raise AssertionError(f"$85:A1E9/C37D inbound seed changed: {first}")
+            for before, after in zip(inbound, inbound[1:]):
+                prior, current = before["match"], after["match"]
+                owner = after["possession"]["actor"]
+                play = before["possession"]["play_code_raw"]
+                # Check an observable ownerless->owned contact, excluding
+                # side/target/period/score reseeds and transfer cancellation.
+                # Other intra-pass contacts need the native vector boundary.
+                stable_seed = all(prior[key] == current[key] for key in (
+                    "inbound_state_raw", "inbound_layout_raw",
+                    "inbound_target_x_raw", "inbound_target_y_raw",
+                    "inbound_direction_raw", "dead_ball_x_raw_09b0",
+                    "dead_ball_y_raw_09b2", "period_raw_0926",
+                    "score_left_raw", "score_right_raw"))
+                if not stable_seed or before["possession"]["actor"] >= 0 or \
+                        owner < 0 or prior["inbound_transfer_raw"] != 0 or \
+                        current["inbound_transfer_raw"] != 0 or \
+                        play != after["possession"]["play_code_raw"]:
+                    continue
+                expected_selector = owner if play < 6 else prior["inbound_actor_raw"]
+                if current["inbound_actor_raw"] != expected_selector or \
+                        owner != expected_selector or \
+                        not current["inbound_state_raw"] <= owner < \
+                            current["inbound_state_raw"] + 5:
+                    raise AssertionError(
+                        "$86:CFA0 conditional inbound contact changed: "
+                        f"frame={after['frame']} play={play} "
+                        f"selector={prior['inbound_actor_raw']}->"
+                        f"{current['inbound_actor_raw']} owner={owner}")
             installed = [row for row in inbound
                          if row["possession"]["actor"] >= 0]
             if not installed:
@@ -1183,14 +1272,27 @@ def main():
                 # a valid run; validate the complete collision/arrival path
                 # only for runs which actually install `$093E`.
                 continue
-            installed_actor = installed[0]["match"]["inbound_actor_raw"]
-            if installed_actor != installed[0]["possession"]["actor"] or \
-                    installed[0]["ball"]["owner"] != -1:
+            installed_match = installed[0]["match"]
+            installed_provisional = \
+                installed_match["inbound_state_raw"] + 2
+            installed_actor = installed[0]["possession"]["actor"]
+            # Early plays write the accepted candidate at CFCF. Plays>=6
+            # instead require candidate==$0954 and preserve it: raw native
+            # sweep call696/f5282 (play16) and call1208/f6326 (play11) both
+            # acquire actor7 while retaining $0954=7. Neither branch means
+            # that every inbound must still use provisional actor2/7.
+            if installed_match["inbound_actor_raw"] != installed_actor or \
+                    not (installed_match["inbound_state_raw"] <=
+                         installed_actor <
+                         installed_match["inbound_state_raw"] + 5) or \
+                    installed[0]["ball"]["owner"] != -1 or \
+                    installed[0]["actors"][installed_actor]["raw"][
+                        "control_mode"] != 11:
                 raise AssertionError(
                     "$093E dead-ball owner was conflated with logical ball ownership: "
                     f"{installed[0]}")
-            if installed_actor != provisional_actor:
-                replaced_provisional += 1
+            if installed_actor != installed_provisional:
+                alternate_carriers += 1
             ready = [row for row in inbound
                      if row["match"]["inbound_ready_raw"]]
             if not ready:
@@ -1219,8 +1321,9 @@ def main():
                 raise AssertionError(
                     "$86:F54F inbound arrival did not write $0968=2")
             # `$86:F3D2/F43A` executes through current actor X/$96. After an
-            # A613 cancellation, D353->BAA2 can replace ownership `$093E`
-            # without rewriting provisional `$0954`; validate the carrier.
+            # A613 cancellation, CFA0 gates contact and BAA2 installs its
+            # current ownership `$093E`; arrival executes through that owner,
+            # not through a presumed immutable provisional actor2/7.
             actor_id = first_ready["possession"]["actor"]
             actor = first_ready["actors"][actor_id]
             # F4F2 reads signed integer words +$04/+$08, not the nearest-pixel
@@ -1230,21 +1333,13 @@ def main():
                       actor["x_fp"] // 256)
             raw_dy = (first_ready["match"]["inbound_target_y_raw"] -
                       actor["y_fp"] // 256)
-            # `$86:F45F-$F4F2` applies an internal same-dispatch velocity
-            # update and sign-biased /16 target compensation before testing
-            # `[-9,+8]`; outer-frame telemetry cannot reconstruct that hidden
-            # velocity from the already-zeroed F54F result. Keep this journey
-            # guard on the native compensation envelope. The exact 500-call
-            # inbound-arrival fixture and gameplay85 runtime probe independently
-            # lock every field and the precise signed arrival threshold.
-            # Gameplay actor speed is capped near 1024 in these motion
-            # profiles, so compensation can contribute about 64 pixels before
-            # the signed nine-pixel arrival margin. Use a conservative 80-px
-            # outer-telemetry envelope; the fixture proves the exact inner box.
+            # F45F's compensated target is steering-only. `$86:F4E6-$F4F0`
+            # restores the raw target from the stack before F4F2 applies its
+            # asymmetric inclusive/exclusive arrival box.
             if not started_ready and not (
-                    -80 <= raw_dx <= 80 and -80 <= raw_dy <= 80):
+                    -9 <= raw_dx <= 8 and -9 <= raw_dy <= 8):
                 raise AssertionError(
-                    f"$86:F4F2 accepted outside compensation envelope: "
+                    f"$86:F4F2 accepted outside raw [-9,+8] box: "
                     f"{(raw_dx, raw_dy)}")
             before_ready = [row["match"]["inbound_timer_raw"]
                             for row in inbound
@@ -1286,9 +1381,9 @@ def main():
                 raise AssertionError(f"$86:F59F/F64F transfer gate changed: {transfer[:1]}")
         if completed_inbounds == 0 and expired_installed_inbounds == 0:
             raise AssertionError("no installed inbound continuation was exercised")
-        if replaced_provisional == 0:
+        if alternate_carriers == 0:
             raise AssertionError(
-                "$86:CCFC pose collision never completed/replaced provisional actor 2/7")
+                "$86:CCFC pose collision never installed an alternate $093E carrier")
 
         shots = []
         last_state = rows[218]["ball"]["state"]
@@ -1430,20 +1525,31 @@ def main():
                     # tail, use the incoming position, not post-step Z.
                     age=1 if row["scheduler"]["due_raw"] else 2
                     attachment_actor=rows[index-age]["actors"][owner]
-                actual = (row["ball"]["x"] - attachment_actor["x"],
-                          row["ball"]["y"] - attachment_actor["y"],
-                          row["ball"]["z"] - attachment_actor["z"])
+                # B649/B66A replace integer words and retain the independent
+                # ball fractions. Rounded display deltas hide a one-word
+                # error whenever actor and ball fractions straddle 0.5.
+                # Exact fraction preservation and A4F2's two substeps belong
+                # to the isolated 324-case native owned-driver fixture.
+                actual = tuple(row["ball"][axis + "_fp"] // 256 -
+                               attachment_actor[axis + "_fp"] // 256
+                               for axis in ("x", "y", "z"))
                 expected = expected_attachment(actor)
+                low_resource = actor["raw"]["upper_resource"] < 0xF0
+                ball_z = row["ball"]["z_fp"] // 256
+                if low_resource:
+                    # A518-A52F resets to B953's height offset alone;
+                    # unlike B66A, it does not add the actor's integer Z.
+                    actual = actual[:2] + (ball_z,)
                 attached.append((row["frame"], actual, expected,
-                                 actor["raw"]["upper_phase"]))
+                                 actor["raw"]["upper_phase"],
+                                 low_resource, ball_z))
         def attachment_matches(pair):
-            _, actual, expected, upper_phase = pair
+            _, actual, expected, upper_phase, low_resource, ball_z = pair
             # `$85:A50D-$A52F` uses the pose-resource Z point only before
             # phase three. `$85:A532-$A597` then keeps X/Y attached while Z
             # follows its own gravity/integration response.
-            axes = 2 if upper_phase >= 3 else 3
-            return all(abs(actual[i] - expected[i]) <= 1
-                       for i in range(axes)) and actual[2] >= 0
+            axes = 2 if low_resource and upper_phase >= 3 else 3
+            return actual[:axes] == expected[:axes] and ball_z >= 0
         if not attached or any(not attachment_matches(pair) for pair in attached):
             raise AssertionError(
                 "ball diverged from `$87:B832/$B953` resource attachment: " +

@@ -1,0 +1,1812 @@
+{
+  "schema": 1,
+  "controlled": true,
+  "provenance": {
+    "oracle": "Mesen 2.1.1 native ROM execution",
+    "controlled": true,
+    "entry_pc": "86F61F",
+    "exits": [
+      "86F648",
+      "86F653"
+    ],
+    "cases": 40,
+    "protocol": "Genuine Exhibition gate calls; temporarily replace context +0A, owner +04, receiver +04 and owner ID/+6E, restore at branch exit; no CPU or ROM writes.",
+    "rom_file_sha256": "2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870",
+    "vectors_sha256": "798c95a5161b5d6312364ef8f455a81005c943ce6d5c43d8952ab69ef5d1e445",
+    "source": ".analysis/inbound-side-gate-native-20260829/inbound-side-gate.jsonl"
+  },
+  "calls": [
+    {
+      "case": 1,
+      "controlled": true,
+      "frame": 5371,
+      "entry_pc": 8844831,
+      "exit_pc": 8844872,
+      "actor": 2,
+      "group": 0,
+      "owner_pointer": 15339,
+      "receiver_pointer": 15851,
+      "context_pointer": 18283,
+      "input": [
+        -336,
+        -21,
+        -1
+      ],
+      "entry_cpu": [
+        15851,
+        18,
+        15339,
+        0,
+        8182,
+        0,
+        126
+      ],
+      "exit_cpu": [
+        65535,
+        15851,
+        15339,
+        129
+      ],
+      "executed": [
+        8844831,
+        8844833,
+        8844836,
+        8844855,
+        8844858,
+        8844861,
+        8844863,
+        8844865,
+        8844868,
+        8844872
+      ],
+      "allowed": true
+    },
+    {
+      "case": 2,
+      "controlled": true,
+      "frame": 6540,
+      "entry_pc": 8844831,
+      "exit_pc": 8844883,
+      "actor": 2,
+      "group": 0,
+      "owner_pointer": 15339,
+      "receiver_pointer": 15595,
+      "context_pointer": 18283,
+      "input": [
+        -336,
+        -21,
+        0
+      ],
+      "entry_cpu": [
+        15595,
+        16,
+        15339,
+        0,
+        8182,
+        0,
+        126
+      ],
+      "exit_cpu": [
+        0,
+        15595,
+        15339,
+        3
+      ],
+      "executed": [
+        8844831,
+        8844833,
+        8844836,
+        8844855,
+        8844858,
+        8844861,
+        8844863,
+        8844865,
+        8844868,
+        8844870,
+        8844883
+      ],
+      "allowed": false
+    },
+    {
+      "case": 3,
+      "controlled": true,
+      "frame": 6661,
+      "entry_pc": 8844831,
+      "exit_pc": 8844872,
+      "actor": 2,
+      "group": 0,
+      "owner_pointer": 15339,
+      "receiver_pointer": 15851,
+      "context_pointer": 18283,
+      "input": [
+        -336,
+        -20,
+        -1
+      ],
+      "entry_cpu": [
+        15851,
+        18,
+        15339,
+        0,
+        8182,
+        0,
+        126
+      ],
+      "exit_cpu": [
+        65535,
+        15851,
+        15339,
+        129
+      ],
+      "executed": [
+        8844831,
+        8844833,
+        8844836,
+        8844855,
+        8844858,
+        8844861,
+        8844863,
+        8844865,
+        8844868,
+        8844872
+      ],
+      "allowed": true
+    },
+    {
+      "case": 4,
+      "controlled": true,
+      "frame": 7762,
+      "entry_pc": 8844831,
+      "exit_pc": 8844883,
+      "actor": 2,
+      "group": 0,
+      "owner_pointer": 15339,
+      "receiver_pointer": 14827,
+      "context_pointer": 18283,
+      "input": [
+        -336,
+        -20,
+        0
+      ],
+      "entry_cpu": [
+        14827,
+        10,
+        15339,
+        0,
+        8182,
+        0,
+        126
+      ],
+      "exit_cpu": [
+        0,
+        14827,
+        15339,
+        3
+      ],
+      "executed": [
+        8844831,
+        8844833,
+        8844836,
+        8844855,
+        8844858,
+        8844861,
+        8844863,
+        8844865,
+        8844868,
+        8844870,
+        8844883
+      ],
+      "allowed": false
+    },
+    {
+      "case": 5,
+      "controlled": true,
+      "frame": 7782,
+      "entry_pc": 8844831,
+      "exit_pc": 8844872,
+      "actor": 2,
+      "group": 0,
+      "owner_pointer": 15339,
+      "receiver_pointer": 14827,
+      "context_pointer": 18283,
+      "input": [
+        -336,
+        -19,
+        -1
+      ],
+      "entry_cpu": [
+        14827,
+        10,
+        15339,
+        0,
+        8182,
+        0,
+        126
+      ],
+      "exit_cpu": [
+        65535,
+        14827,
+        15339,
+        129
+      ],
+      "executed": [
+        8844831,
+        8844833,
+        8844836,
+        8844855,
+        8844858,
+        8844861,
+        8844863,
+        8844865,
+        8844868,
+        8844872
+      ],
+      "allowed": true
+    },
+    {
+      "case": 6,
+      "controlled": true,
+      "frame": 8720,
+      "entry_pc": 8844831,
+      "exit_pc": 8844883,
+      "actor": 2,
+      "group": 0,
+      "owner_pointer": 15339,
+      "receiver_pointer": 15851,
+      "context_pointer": 18283,
+      "input": [
+        -336,
+        -19,
+        0
+      ],
+      "entry_cpu": [
+        15851,
+        18,
+        15339,
+        0,
+        8182,
+        0,
+        126
+      ],
+      "exit_cpu": [
+        0,
+        15851,
+        15339,
+        3
+      ],
+      "executed": [
+        8844831,
+        8844833,
+        8844836,
+        8844855,
+        8844858,
+        8844861,
+        8844863,
+        8844865,
+        8844868,
+        8844870,
+        8844883
+      ],
+      "allowed": false
+    },
+    {
+      "case": 7,
+      "controlled": true,
+      "frame": 8722,
+      "entry_pc": 8844831,
+      "exit_pc": 8844872,
+      "actor": 2,
+      "group": 0,
+      "owner_pointer": 15339,
+      "receiver_pointer": 15851,
+      "context_pointer": 18283,
+      "input": [
+        -336,
+        19,
+        -1
+      ],
+      "entry_cpu": [
+        15851,
+        18,
+        15339,
+        0,
+        8182,
+        0,
+        126
+      ],
+      "exit_cpu": [
+        65535,
+        15851,
+        15339,
+        128
+      ],
+      "executed": [
+        8844831,
+        8844833,
+        8844836,
+        8844855,
+        8844858,
+        8844861,
+        8844863,
+        8844865,
+        8844868,
+        8844872
+      ],
+      "allowed": true
+    },
+    {
+      "case": 8,
+      "controlled": true,
+      "frame": 9774,
+      "entry_pc": 8844831,
+      "exit_pc": 8844883,
+      "actor": 2,
+      "group": 0,
+      "owner_pointer": 15339,
+      "receiver_pointer": 14827,
+      "context_pointer": 18283,
+      "input": [
+        -336,
+        19,
+        0
+      ],
+      "entry_cpu": [
+        14827,
+        10,
+        15339,
+        0,
+        8182,
+        0,
+        126
+      ],
+      "exit_cpu": [
+        0,
+        14827,
+        15339,
+        2
+      ],
+      "executed": [
+        8844831,
+        8844833,
+        8844836,
+        8844855,
+        8844858,
+        8844861,
+        8844863,
+        8844865,
+        8844868,
+        8844870,
+        8844883
+      ],
+      "allowed": false
+    },
+    {
+      "case": 9,
+      "controlled": true,
+      "frame": 9782,
+      "entry_pc": 8844831,
+      "exit_pc": 8844872,
+      "actor": 2,
+      "group": 0,
+      "owner_pointer": 15339,
+      "receiver_pointer": 14827,
+      "context_pointer": 18283,
+      "input": [
+        -336,
+        20,
+        -1
+      ],
+      "entry_cpu": [
+        14827,
+        10,
+        15339,
+        0,
+        8182,
+        0,
+        126
+      ],
+      "exit_cpu": [
+        20,
+        18283,
+        15339,
+        3
+      ],
+      "executed": [
+        8844831,
+        8844833,
+        8844836,
+        8844855,
+        8844858,
+        8844861,
+        8844872
+      ],
+      "allowed": true
+    },
+    {
+      "case": 10,
+      "controlled": true,
+      "frame": 10686,
+      "entry_pc": 8844831,
+      "exit_pc": 8844872,
+      "actor": 2,
+      "group": 0,
+      "owner_pointer": 15339,
+      "receiver_pointer": 15083,
+      "context_pointer": 18283,
+      "input": [
+        -336,
+        20,
+        0
+      ],
+      "entry_cpu": [
+        15083,
+        12,
+        15339,
+        0,
+        8182,
+        0,
+        126
+      ],
+      "exit_cpu": [
+        20,
+        18283,
+        15339,
+        3
+      ],
+      "executed": [
+        8844831,
+        8844833,
+        8844836,
+        8844855,
+        8844858,
+        8844861,
+        8844872
+      ],
+      "allowed": true
+    },
+    {
+      "case": 11,
+      "controlled": true,
+      "frame": 11480,
+      "entry_pc": 8844831,
+      "exit_pc": 8844872,
+      "actor": 2,
+      "group": 0,
+      "owner_pointer": 15339,
+      "receiver_pointer": 14827,
+      "context_pointer": 18283,
+      "input": [
+        336,
+        -21,
+        -1
+      ],
+      "entry_cpu": [
+        14827,
+        10,
+        15339,
+        0,
+        8182,
+        0,
+        126
+      ],
+      "exit_cpu": [
+        65515,
+        18283,
+        15339,
+        128
+      ],
+      "executed": [
+        8844831,
+        8844833,
+        8844836,
+        8844838,
+        8844841,
+        8844844,
+        8844872
+      ],
+      "allowed": true
+    },
+    {
+      "case": 12,
+      "controlled": true,
+      "frame": 12372,
+      "entry_pc": 8844831,
+      "exit_pc": 8844872,
+      "actor": 2,
+      "group": 0,
+      "owner_pointer": 15339,
+      "receiver_pointer": 15595,
+      "context_pointer": 18283,
+      "input": [
+        336,
+        -21,
+        0
+      ],
+      "entry_cpu": [
+        15595,
+        16,
+        15339,
+        0,
+        8182,
+        0,
+        126
+      ],
+      "exit_cpu": [
+        65515,
+        18283,
+        15339,
+        128
+      ],
+      "executed": [
+        8844831,
+        8844833,
+        8844836,
+        8844838,
+        8844841,
+        8844844,
+        8844872
+      ],
+      "allowed": true
+    },
+    {
+      "case": 13,
+      "controlled": true,
+      "frame": 13312,
+      "entry_pc": 8844831,
+      "exit_pc": 8844883,
+      "actor": 2,
+      "group": 0,
+      "owner_pointer": 15339,
+      "receiver_pointer": 15595,
+      "context_pointer": 18283,
+      "input": [
+        336,
+        -20,
+        -1
+      ],
+      "entry_cpu": [
+        15595,
+        16,
+        15339,
+        0,
+        8182,
+        0,
+        126
+      ],
+      "exit_cpu": [
+        65535,
+        15595,
+        15339,
+        129
+      ],
+      "executed": [
+        8844831,
+        8844833,
+        8844836,
+        8844838,
+        8844841,
+        8844844,
+        8844846,
+        8844848,
+        8844851,
+        8844883
+      ],
+      "allowed": false
+    },
+    {
+      "case": 14,
+      "controlled": true,
+      "frame": 13314,
+      "entry_pc": 8844831,
+      "exit_pc": 8844872,
+      "actor": 2,
+      "group": 0,
+      "owner_pointer": 15339,
+      "receiver_pointer": 15595,
+      "context_pointer": 18283,
+      "input": [
+        336,
+        -20,
+        0
+      ],
+      "entry_cpu": [
+        15595,
+        16,
+        15339,
+        0,
+        8182,
+        0,
+        126
+      ],
+      "exit_cpu": [
+        0,
+        15595,
+        15339,
+        3
+      ],
+      "executed": [
+        8844831,
+        8844833,
+        8844836,
+        8844838,
+        8844841,
+        8844844,
+        8844846,
+        8844848,
+        8844851,
+        8844853,
+        8844872
+      ],
+      "allowed": true
+    },
+    {
+      "case": 15,
+      "controlled": true,
+      "frame": 14143,
+      "entry_pc": 8844831,
+      "exit_pc": 8844883,
+      "actor": 2,
+      "group": 0,
+      "owner_pointer": 15339,
+      "receiver_pointer": 15595,
+      "context_pointer": 18283,
+      "input": [
+        336,
+        -19,
+        -1
+      ],
+      "entry_cpu": [
+        15595,
+        16,
+        15339,
+        0,
+        8182,
+        0,
+        126
+      ],
+      "exit_cpu": [
+        65535,
+        15595,
+        15339,
+        129
+      ],
+      "executed": [
+        8844831,
+        8844833,
+        8844836,
+        8844838,
+        8844841,
+        8844844,
+        8844846,
+        8844848,
+        8844851,
+        8844883
+      ],
+      "allowed": false
+    },
+    {
+      "case": 16,
+      "controlled": true,
+      "frame": 14247,
+      "entry_pc": 8844831,
+      "exit_pc": 8844872,
+      "actor": 2,
+      "group": 0,
+      "owner_pointer": 15339,
+      "receiver_pointer": 15595,
+      "context_pointer": 18283,
+      "input": [
+        336,
+        -19,
+        0
+      ],
+      "entry_cpu": [
+        15595,
+        16,
+        15339,
+        0,
+        8182,
+        0,
+        126
+      ],
+      "exit_cpu": [
+        0,
+        15595,
+        15339,
+        3
+      ],
+      "executed": [
+        8844831,
+        8844833,
+        8844836,
+        8844838,
+        8844841,
+        8844844,
+        8844846,
+        8844848,
+        8844851,
+        8844853,
+        8844872
+      ],
+      "allowed": true
+    },
+    {
+      "case": 17,
+      "controlled": true,
+      "frame": 15290,
+      "entry_pc": 8844831,
+      "exit_pc": 8844883,
+      "actor": 2,
+      "group": 0,
+      "owner_pointer": 15339,
+      "receiver_pointer": 14827,
+      "context_pointer": 18283,
+      "input": [
+        336,
+        19,
+        -1
+      ],
+      "entry_cpu": [
+        14827,
+        10,
+        15339,
+        0,
+        8182,
+        0,
+        126
+      ],
+      "exit_cpu": [
+        65535,
+        14827,
+        15339,
+        128
+      ],
+      "executed": [
+        8844831,
+        8844833,
+        8844836,
+        8844838,
+        8844841,
+        8844844,
+        8844846,
+        8844848,
+        8844851,
+        8844883
+      ],
+      "allowed": false
+    },
+    {
+      "case": 18,
+      "controlled": true,
+      "frame": 15330,
+      "entry_pc": 8844831,
+      "exit_pc": 8844872,
+      "actor": 2,
+      "group": 0,
+      "owner_pointer": 15339,
+      "receiver_pointer": 14827,
+      "context_pointer": 18283,
+      "input": [
+        336,
+        19,
+        0
+      ],
+      "entry_cpu": [
+        14827,
+        10,
+        15339,
+        0,
+        8182,
+        0,
+        126
+      ],
+      "exit_cpu": [
+        0,
+        14827,
+        15339,
+        2
+      ],
+      "executed": [
+        8844831,
+        8844833,
+        8844836,
+        8844838,
+        8844841,
+        8844844,
+        8844846,
+        8844848,
+        8844851,
+        8844853,
+        8844872
+      ],
+      "allowed": true
+    },
+    {
+      "case": 19,
+      "controlled": true,
+      "frame": 16137,
+      "entry_pc": 8844831,
+      "exit_pc": 8844883,
+      "actor": 2,
+      "group": 0,
+      "owner_pointer": 15339,
+      "receiver_pointer": 14827,
+      "context_pointer": 18283,
+      "input": [
+        336,
+        20,
+        -1
+      ],
+      "entry_cpu": [
+        14827,
+        10,
+        15339,
+        0,
+        8182,
+        0,
+        126
+      ],
+      "exit_cpu": [
+        65535,
+        14827,
+        15339,
+        128
+      ],
+      "executed": [
+        8844831,
+        8844833,
+        8844836,
+        8844838,
+        8844841,
+        8844844,
+        8844846,
+        8844848,
+        8844851,
+        8844883
+      ],
+      "allowed": false
+    },
+    {
+      "case": 20,
+      "controlled": true,
+      "frame": 16231,
+      "entry_pc": 8844831,
+      "exit_pc": 8844872,
+      "actor": 2,
+      "group": 0,
+      "owner_pointer": 15339,
+      "receiver_pointer": 15595,
+      "context_pointer": 18283,
+      "input": [
+        336,
+        20,
+        0
+      ],
+      "entry_cpu": [
+        15595,
+        16,
+        15339,
+        0,
+        8182,
+        0,
+        126
+      ],
+      "exit_cpu": [
+        0,
+        15595,
+        15339,
+        2
+      ],
+      "executed": [
+        8844831,
+        8844833,
+        8844836,
+        8844838,
+        8844841,
+        8844844,
+        8844846,
+        8844848,
+        8844851,
+        8844853,
+        8844872
+      ],
+      "allowed": true
+    },
+    {
+      "case": 21,
+      "controlled": true,
+      "frame": 17348,
+      "entry_pc": 8844831,
+      "exit_pc": 8844872,
+      "actor": 7,
+      "group": 5,
+      "owner_pointer": 15339,
+      "receiver_pointer": 15595,
+      "context_pointer": 18283,
+      "input": [
+        -336,
+        -21,
+        -1
+      ],
+      "entry_cpu": [
+        15595,
+        16,
+        15339,
+        0,
+        8182,
+        0,
+        126
+      ],
+      "exit_cpu": [
+        65535,
+        15595,
+        15339,
+        129
+      ],
+      "executed": [
+        8844831,
+        8844833,
+        8844836,
+        8844855,
+        8844858,
+        8844861,
+        8844863,
+        8844865,
+        8844868,
+        8844872
+      ],
+      "allowed": true
+    },
+    {
+      "case": 22,
+      "controlled": true,
+      "frame": 18541,
+      "entry_pc": 8844831,
+      "exit_pc": 8844883,
+      "actor": 7,
+      "group": 5,
+      "owner_pointer": 15339,
+      "receiver_pointer": 14827,
+      "context_pointer": 18283,
+      "input": [
+        -336,
+        -21,
+        0
+      ],
+      "entry_cpu": [
+        14827,
+        10,
+        15339,
+        0,
+        8182,
+        0,
+        126
+      ],
+      "exit_cpu": [
+        0,
+        14827,
+        15339,
+        3
+      ],
+      "executed": [
+        8844831,
+        8844833,
+        8844836,
+        8844855,
+        8844858,
+        8844861,
+        8844863,
+        8844865,
+        8844868,
+        8844870,
+        8844883
+      ],
+      "allowed": false
+    },
+    {
+      "case": 23,
+      "controlled": true,
+      "frame": 18547,
+      "entry_pc": 8844831,
+      "exit_pc": 8844872,
+      "actor": 7,
+      "group": 5,
+      "owner_pointer": 15339,
+      "receiver_pointer": 14827,
+      "context_pointer": 18283,
+      "input": [
+        -336,
+        -20,
+        -1
+      ],
+      "entry_cpu": [
+        14827,
+        10,
+        15339,
+        0,
+        8182,
+        0,
+        126
+      ],
+      "exit_cpu": [
+        65535,
+        14827,
+        15339,
+        129
+      ],
+      "executed": [
+        8844831,
+        8844833,
+        8844836,
+        8844855,
+        8844858,
+        8844861,
+        8844863,
+        8844865,
+        8844868,
+        8844872
+      ],
+      "allowed": true
+    },
+    {
+      "case": 24,
+      "controlled": true,
+      "frame": 19785,
+      "entry_pc": 8844831,
+      "exit_pc": 8844883,
+      "actor": 7,
+      "group": 5,
+      "owner_pointer": 15339,
+      "receiver_pointer": 15595,
+      "context_pointer": 18283,
+      "input": [
+        -336,
+        -20,
+        0
+      ],
+      "entry_cpu": [
+        15595,
+        16,
+        15339,
+        0,
+        8182,
+        0,
+        126
+      ],
+      "exit_cpu": [
+        0,
+        15595,
+        15339,
+        3
+      ],
+      "executed": [
+        8844831,
+        8844833,
+        8844836,
+        8844855,
+        8844858,
+        8844861,
+        8844863,
+        8844865,
+        8844868,
+        8844870,
+        8844883
+      ],
+      "allowed": false
+    },
+    {
+      "case": 25,
+      "controlled": true,
+      "frame": 19853,
+      "entry_pc": 8844831,
+      "exit_pc": 8844872,
+      "actor": 7,
+      "group": 5,
+      "owner_pointer": 15339,
+      "receiver_pointer": 14827,
+      "context_pointer": 18283,
+      "input": [
+        -336,
+        -19,
+        -1
+      ],
+      "entry_cpu": [
+        14827,
+        10,
+        15339,
+        0,
+        8182,
+        0,
+        126
+      ],
+      "exit_cpu": [
+        65535,
+        14827,
+        15339,
+        129
+      ],
+      "executed": [
+        8844831,
+        8844833,
+        8844836,
+        8844855,
+        8844858,
+        8844861,
+        8844863,
+        8844865,
+        8844868,
+        8844872
+      ],
+      "allowed": true
+    },
+    {
+      "case": 26,
+      "controlled": true,
+      "frame": 22022,
+      "entry_pc": 8844831,
+      "exit_pc": 8844883,
+      "actor": 7,
+      "group": 5,
+      "owner_pointer": 15339,
+      "receiver_pointer": 14827,
+      "context_pointer": 18283,
+      "input": [
+        -336,
+        -19,
+        0
+      ],
+      "entry_cpu": [
+        14827,
+        10,
+        15339,
+        0,
+        8182,
+        0,
+        126
+      ],
+      "exit_cpu": [
+        0,
+        14827,
+        15339,
+        3
+      ],
+      "executed": [
+        8844831,
+        8844833,
+        8844836,
+        8844855,
+        8844858,
+        8844861,
+        8844863,
+        8844865,
+        8844868,
+        8844870,
+        8844883
+      ],
+      "allowed": false
+    },
+    {
+      "case": 27,
+      "controlled": true,
+      "frame": 22078,
+      "entry_pc": 8844831,
+      "exit_pc": 8844872,
+      "actor": 7,
+      "group": 5,
+      "owner_pointer": 15339,
+      "receiver_pointer": 14827,
+      "context_pointer": 18283,
+      "input": [
+        -336,
+        19,
+        -1
+      ],
+      "entry_cpu": [
+        14827,
+        10,
+        15339,
+        0,
+        8182,
+        0,
+        126
+      ],
+      "exit_cpu": [
+        65535,
+        14827,
+        15339,
+        128
+      ],
+      "executed": [
+        8844831,
+        8844833,
+        8844836,
+        8844855,
+        8844858,
+        8844861,
+        8844863,
+        8844865,
+        8844868,
+        8844872
+      ],
+      "allowed": true
+    },
+    {
+      "case": 28,
+      "controlled": true,
+      "frame": 23355,
+      "entry_pc": 8844831,
+      "exit_pc": 8844883,
+      "actor": 7,
+      "group": 5,
+      "owner_pointer": 15339,
+      "receiver_pointer": 14827,
+      "context_pointer": 18283,
+      "input": [
+        -336,
+        19,
+        0
+      ],
+      "entry_cpu": [
+        14827,
+        10,
+        15339,
+        0,
+        8182,
+        0,
+        126
+      ],
+      "exit_cpu": [
+        0,
+        14827,
+        15339,
+        2
+      ],
+      "executed": [
+        8844831,
+        8844833,
+        8844836,
+        8844855,
+        8844858,
+        8844861,
+        8844863,
+        8844865,
+        8844868,
+        8844870,
+        8844883
+      ],
+      "allowed": false
+    },
+    {
+      "case": 29,
+      "controlled": true,
+      "frame": 23377,
+      "entry_pc": 8844831,
+      "exit_pc": 8844872,
+      "actor": 7,
+      "group": 5,
+      "owner_pointer": 15339,
+      "receiver_pointer": 14827,
+      "context_pointer": 18283,
+      "input": [
+        -336,
+        20,
+        -1
+      ],
+      "entry_cpu": [
+        14827,
+        10,
+        15339,
+        0,
+        8182,
+        0,
+        126
+      ],
+      "exit_cpu": [
+        20,
+        18283,
+        15339,
+        3
+      ],
+      "executed": [
+        8844831,
+        8844833,
+        8844836,
+        8844855,
+        8844858,
+        8844861,
+        8844872
+      ],
+      "allowed": true
+    },
+    {
+      "case": 30,
+      "controlled": true,
+      "frame": 24445,
+      "entry_pc": 8844831,
+      "exit_pc": 8844872,
+      "actor": 7,
+      "group": 5,
+      "owner_pointer": 15339,
+      "receiver_pointer": 14827,
+      "context_pointer": 18283,
+      "input": [
+        -336,
+        20,
+        0
+      ],
+      "entry_cpu": [
+        14827,
+        10,
+        15339,
+        0,
+        8182,
+        0,
+        126
+      ],
+      "exit_cpu": [
+        20,
+        18283,
+        15339,
+        3
+      ],
+      "executed": [
+        8844831,
+        8844833,
+        8844836,
+        8844855,
+        8844858,
+        8844861,
+        8844872
+      ],
+      "allowed": true
+    },
+    {
+      "case": 31,
+      "controlled": true,
+      "frame": 25344,
+      "entry_pc": 8844831,
+      "exit_pc": 8844872,
+      "actor": 7,
+      "group": 5,
+      "owner_pointer": 15339,
+      "receiver_pointer": 15851,
+      "context_pointer": 18283,
+      "input": [
+        336,
+        -21,
+        -1
+      ],
+      "entry_cpu": [
+        15851,
+        18,
+        15339,
+        0,
+        8182,
+        0,
+        126
+      ],
+      "exit_cpu": [
+        65515,
+        18283,
+        15339,
+        128
+      ],
+      "executed": [
+        8844831,
+        8844833,
+        8844836,
+        8844838,
+        8844841,
+        8844844,
+        8844872
+      ],
+      "allowed": true
+    },
+    {
+      "case": 32,
+      "controlled": true,
+      "frame": 26204,
+      "entry_pc": 8844831,
+      "exit_pc": 8844872,
+      "actor": 7,
+      "group": 5,
+      "owner_pointer": 15339,
+      "receiver_pointer": 14827,
+      "context_pointer": 18283,
+      "input": [
+        336,
+        -21,
+        0
+      ],
+      "entry_cpu": [
+        14827,
+        10,
+        15339,
+        0,
+        8182,
+        0,
+        126
+      ],
+      "exit_cpu": [
+        65515,
+        18283,
+        15339,
+        128
+      ],
+      "executed": [
+        8844831,
+        8844833,
+        8844836,
+        8844838,
+        8844841,
+        8844844,
+        8844872
+      ],
+      "allowed": true
+    },
+    {
+      "case": 33,
+      "controlled": true,
+      "frame": 27224,
+      "entry_pc": 8844831,
+      "exit_pc": 8844883,
+      "actor": 7,
+      "group": 5,
+      "owner_pointer": 15339,
+      "receiver_pointer": 15595,
+      "context_pointer": 18283,
+      "input": [
+        336,
+        -20,
+        -1
+      ],
+      "entry_cpu": [
+        15595,
+        16,
+        15339,
+        0,
+        8182,
+        0,
+        126
+      ],
+      "exit_cpu": [
+        65535,
+        15595,
+        15339,
+        129
+      ],
+      "executed": [
+        8844831,
+        8844833,
+        8844836,
+        8844838,
+        8844841,
+        8844844,
+        8844846,
+        8844848,
+        8844851,
+        8844883
+      ],
+      "allowed": false
+    },
+    {
+      "case": 34,
+      "controlled": true,
+      "frame": 27363,
+      "entry_pc": 8844831,
+      "exit_pc": 8844872,
+      "actor": 7,
+      "group": 5,
+      "owner_pointer": 15339,
+      "receiver_pointer": 15851,
+      "context_pointer": 18283,
+      "input": [
+        336,
+        -20,
+        0
+      ],
+      "entry_cpu": [
+        15851,
+        18,
+        15339,
+        0,
+        8182,
+        0,
+        126
+      ],
+      "exit_cpu": [
+        0,
+        15851,
+        15339,
+        3
+      ],
+      "executed": [
+        8844831,
+        8844833,
+        8844836,
+        8844838,
+        8844841,
+        8844844,
+        8844846,
+        8844848,
+        8844851,
+        8844853,
+        8844872
+      ],
+      "allowed": true
+    },
+    {
+      "case": 35,
+      "controlled": true,
+      "frame": 28504,
+      "entry_pc": 8844831,
+      "exit_pc": 8844883,
+      "actor": 7,
+      "group": 5,
+      "owner_pointer": 15339,
+      "receiver_pointer": 14827,
+      "context_pointer": 18283,
+      "input": [
+        336,
+        -19,
+        -1
+      ],
+      "entry_cpu": [
+        14827,
+        10,
+        15339,
+        0,
+        8182,
+        0,
+        126
+      ],
+      "exit_cpu": [
+        65535,
+        14827,
+        15339,
+        129
+      ],
+      "executed": [
+        8844831,
+        8844833,
+        8844836,
+        8844838,
+        8844841,
+        8844844,
+        8844846,
+        8844848,
+        8844851,
+        8844883
+      ],
+      "allowed": false
+    },
+    {
+      "case": 36,
+      "controlled": true,
+      "frame": 28530,
+      "entry_pc": 8844831,
+      "exit_pc": 8844872,
+      "actor": 7,
+      "group": 5,
+      "owner_pointer": 15339,
+      "receiver_pointer": 14827,
+      "context_pointer": 18283,
+      "input": [
+        336,
+        -19,
+        0
+      ],
+      "entry_cpu": [
+        14827,
+        10,
+        15339,
+        0,
+        8182,
+        0,
+        126
+      ],
+      "exit_cpu": [
+        0,
+        14827,
+        15339,
+        3
+      ],
+      "executed": [
+        8844831,
+        8844833,
+        8844836,
+        8844838,
+        8844841,
+        8844844,
+        8844846,
+        8844848,
+        8844851,
+        8844853,
+        8844872
+      ],
+      "allowed": true
+    },
+    {
+      "case": 37,
+      "controlled": true,
+      "frame": 29358,
+      "entry_pc": 8844831,
+      "exit_pc": 8844883,
+      "actor": 7,
+      "group": 5,
+      "owner_pointer": 15339,
+      "receiver_pointer": 15851,
+      "context_pointer": 18283,
+      "input": [
+        336,
+        19,
+        -1
+      ],
+      "entry_cpu": [
+        15851,
+        18,
+        15339,
+        0,
+        8182,
+        0,
+        126
+      ],
+      "exit_cpu": [
+        65535,
+        15851,
+        15339,
+        128
+      ],
+      "executed": [
+        8844831,
+        8844833,
+        8844836,
+        8844838,
+        8844841,
+        8844844,
+        8844846,
+        8844848,
+        8844851,
+        8844883
+      ],
+      "allowed": false
+    },
+    {
+      "case": 38,
+      "controlled": true,
+      "frame": 29394,
+      "entry_pc": 8844831,
+      "exit_pc": 8844872,
+      "actor": 7,
+      "group": 5,
+      "owner_pointer": 15339,
+      "receiver_pointer": 15083,
+      "context_pointer": 18283,
+      "input": [
+        336,
+        19,
+        0
+      ],
+      "entry_cpu": [
+        15083,
+        12,
+        15339,
+        0,
+        8182,
+        0,
+        126
+      ],
+      "exit_cpu": [
+        0,
+        15083,
+        15339,
+        2
+      ],
+      "executed": [
+        8844831,
+        8844833,
+        8844836,
+        8844838,
+        8844841,
+        8844844,
+        8844846,
+        8844848,
+        8844851,
+        8844853,
+        8844872
+      ],
+      "allowed": true
+    },
+    {
+      "case": 39,
+      "controlled": true,
+      "frame": 30566,
+      "entry_pc": 8844831,
+      "exit_pc": 8844883,
+      "actor": 7,
+      "group": 5,
+      "owner_pointer": 15339,
+      "receiver_pointer": 14827,
+      "context_pointer": 18283,
+      "input": [
+        336,
+        20,
+        -1
+      ],
+      "entry_cpu": [
+        14827,
+        10,
+        15339,
+        0,
+        8182,
+        0,
+        126
+      ],
+      "exit_cpu": [
+        65535,
+        14827,
+        15339,
+        128
+      ],
+      "executed": [
+        8844831,
+        8844833,
+        8844836,
+        8844838,
+        8844841,
+        8844844,
+        8844846,
+        8844848,
+        8844851,
+        8844883
+      ],
+      "allowed": false
+    },
+    {
+      "case": 40,
+      "controlled": true,
+      "frame": 30568,
+      "entry_pc": 8844831,
+      "exit_pc": 8844872,
+      "actor": 7,
+      "group": 5,
+      "owner_pointer": 15339,
+      "receiver_pointer": 14827,
+      "context_pointer": 18283,
+      "input": [
+        336,
+        20,
+        0
+      ],
+      "entry_cpu": [
+        14827,
+        10,
+        15339,
+        0,
+        8182,
+        0,
+        126
+      ],
+      "exit_cpu": [
+        0,
+        14827,
+        15339,
+        2
+      ],
+      "executed": [
+        8844831,
+        8844833,
+        8844836,
+        8844838,
+        8844841,
+        8844844,
+        8844846,
+        8844848,
+        8844851,
+        8844853,
+        8844872
+      ],
+      "allowed": true
+    }
+  ]
+}

@@ -101,6 +101,7 @@ typedef struct {
 
 typedef struct {
     int16_t world_x, world_y, world_z;
+    int32_t world_x_fp, world_y_fp, world_z_fp;
     int16_t screen_x, screen_y;
     int16_t velocity_x, velocity_y, velocity_z;
     int8_t owner_actor;
@@ -212,6 +213,8 @@ typedef struct {
     uint16_t free_throw_start_tick_raw_09be;
     uint16_t free_throw_aim_x_raw_0980;
     uint16_t free_throw_aim_y_raw_0982;
+    uint16_t free_throw_aim_accumulator_raw_0984;
+    uint16_t free_throw_aim_step_raw_0986;
     uint16_t free_throw_flight_timer_raw_0930;
     uint16_t deferred_shot_foul_phase_raw_0a02;
     uint16_t latched_event_raw_08f0;

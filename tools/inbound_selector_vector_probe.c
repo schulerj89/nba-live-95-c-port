@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include "nba_gameplay_ai.h"
 int main(void) {
-    unsigned v[55];
+    unsigned v[56];
     for (;;) {
-        for (unsigned i=0;i<55u;++i)
+        for (unsigned i=0;i<56u;++i)
             if (scanf("%x",&v[i])!=1) return i==0u ? 0 : 2;
         NbaGameplayReceiverState actors[10];
         for (unsigned i=0;i<10u;++i) {
@@ -17,6 +17,7 @@ int main(void) {
         int16_t selectors[3]={(int16_t)(uint16_t)v[2],
             (int16_t)(uint16_t)v[3],(int16_t)(uint16_t)v[4]};
         printf("%x\n",(uint8_t)nba_gameplay_select_inbound_receiver_cpu(
-            (uint8_t)v[0],(uint16_t)v[1],selectors,actors,10u));
+            (uint8_t)v[0],(uint16_t)v[1],(int16_t)(uint16_t)v[55],
+            selectors,actors,10u));
     }
 }

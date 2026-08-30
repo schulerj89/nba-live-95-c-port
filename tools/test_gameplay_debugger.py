@@ -89,7 +89,9 @@ def main():
                 not {"raw_087a", "subject_raw", "side_group_raw", "initialized_raw_4a54",
                      "pointer_raw_0940", "ticks_raw_0564", "proxy_raw_4a56",
                      "alternate_raw_08bc", "alternate_mode_raw_08cc"}.issubset(
-                    sample["camera"]) or "flags_raw" not in sample["ball"]:
+                    sample["camera"]) or not {
+                        "flags_raw", "x_fp", "y_fp", "z_fp"}.issubset(
+                            sample["ball"]):
             raise AssertionError("controller/camera/ball telemetry schema is incomplete")
         if not {"pass_actor_raw", "pass_receiver_raw", "pass_active_raw",
                 "pass_distance_raw"}.issubset(sample["possession"]):
@@ -101,6 +103,8 @@ def main():
                           "free_throw_start_tick_raw_09be",
                           "free_throw_aim_x_raw_0980",
                           "free_throw_aim_y_raw_0982",
+                          "free_throw_aim_accumulator_raw_0984",
+                          "free_throw_aim_step_raw_0986",
                           "free_throw_flight_timer_raw_0930",
                           "deferred_shot_foul_phase_raw_0a02",
                           "latched_event_raw_08f0",
@@ -117,6 +121,8 @@ def main():
                      "free_throw_start_tick_raw_09be": 0,
                      "free_throw_aim_x_raw_0980": 0,
                      "free_throw_aim_y_raw_0982": 0,
+                     "free_throw_aim_accumulator_raw_0984": 0,
+                     "free_throw_aim_step_raw_0986": 0,
                      # `$0930` is overloaded: the BB17 side-change block
                      # seeds $0258 on first tip possession; this is not a
                      # free-throw event despite the host field name.

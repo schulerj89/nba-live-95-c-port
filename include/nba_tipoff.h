@@ -85,6 +85,7 @@ typedef struct {
     uint8_t requested_direction;
     uint8_t movement_direction;
     uint8_t velocity_direction_raw_a2; /* actor `+$A2` */
+    uint16_t planar_edge_raw_a0; /* actor `+$A0`, common rectangle edge/corner */
     uint8_t facing_ease_timer_raw_be;  /* actor `+$BE` */
     uint8_t assignment_actor;
     uint8_t assignment_direction;
@@ -176,6 +177,8 @@ typedef struct NbaTipoff {
     uint16_t free_throw_start_tick_raw_09be;
     uint16_t free_throw_aim_x_raw_0980;
     uint16_t free_throw_aim_y_raw_0982;
+    uint16_t free_throw_aim_accumulator_raw_0984;
+    uint16_t free_throw_aim_step_raw_0986;
     uint16_t free_throw_resolution_raw_0972;
     uint16_t free_throw_flight_timer_raw_0930;
     uint16_t free_throw_clock_mirror_raw_493f;
@@ -299,6 +302,7 @@ typedef struct NbaTipoff {
     uint32_t shot_selection_serial;
     uint16_t shot_selection_inputs[8]; /* lane,move,range,direction,facing,variant,mode,actor */
     uint16_t shot_previous_actor_x_raw_0922;
+    uint16_t ball_previous_z_raw_0924; /* `$85:A59A-$A59D`, pre-substep integer Z */
     NbaShotLaunchState last_shot_launch; /* diagnostic snapshot, not actor/ball authority */
     uint32_t shot_launch_serial;
     uint8_t last_scoring_side;
@@ -356,6 +360,8 @@ void nba_tipoff_refresh_defense_roles_end_frame(NbaTipoff *tipoff);
 /* Verification entry for the ownerless `$85:9A6A-$A7C7` ball driver. */
 NbaGameplayRimResult nba_tipoff_replay_ownerless_ball_entry(
     NbaTipoff *tipoff);
+/* Verification entry for the ownership/resource dispatch at `$85:9A37`. */
+NbaGameplayRimResult nba_tipoff_replay_ball_driver_entry(NbaTipoff *tipoff);
 void nba_tipoff_replay_player_contact_sweep(NbaTipoff *tipoff);
 void nba_tipoff_replay_player_contact_order(NbaTipoff *tipoff,
                                             const uint8_t *order,
@@ -379,6 +385,8 @@ bool nba_tipoff_replay_matchup_helper(NbaTipoff *tipoff, uint16_t entry,
 /* Exact `$85:AD6B-$AF5B` formation target/steering boundary. */
 bool nba_tipoff_replay_formation_route(NbaTipoff *tipoff, uint8_t actor,
                                        uint8_t *direction);
+/* Readiness/selection continuation `$86:F4F2-$F653`, without host scheduling. */
+void nba_tipoff_replay_inbound_continuation(NbaTipoff *tipoff);
 /* Exact `$85:B678-$B8CA` mode-11 decision parent (0 return, 1 consumed,
  * 2 shot-started), including its native formation velocity continuation. */
 uint8_t nba_tipoff_replay_mode11_dispatch(NbaTipoff *tipoff, uint8_t actor);

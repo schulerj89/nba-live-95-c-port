@@ -124,12 +124,23 @@ static int run_scenario(const NbaAssetPack *assets, uint8_t away,
         was_dead = dead;
         long_dead = dead ? long_dead + 1u : 0u;
         if (long_dead > 2400u) {
-            fprintf(stderr,"GAMEPLAY85 dead stall frame=%u live=%x period=%u clock=%u owner=%d ball_owner=%d inbound=%u ready=%u transfer=%u ft=%u\n",
+            const NbaTipoffActor *inbound =
+                game.inbound_actor_raw < NBA_GAMEPLAY_ACTOR_COUNT ?
+                &game.actors[game.inbound_actor_raw] : NULL;
+            fprintf(stderr,"GAMEPLAY85 dead stall frame=%u live=%x period=%u clock=%u owner=%d ball_owner=%d inbound=%u layout=%d ready=%u transfer=%u ft=%u ball=%d,%d actor=%d,%d velocity=%d,%d target=%d,%d mode=%u\n",
                 frame,game.live_state_raw,game.period_raw_0926,
                 game.match_clock_raw_0928,game.possession_actor,
                 game.ball.owner_actor,game.inbound_actor_raw,
+                game.inbound_layout_raw,
                 game.inbound_ready_raw,game.inbound_transfer_raw,
-                game.fouls.free_throw_state_raw_0978);
+                game.fouls.free_throw_state_raw_0978,
+                game.ball.x_fp / 256,game.ball.y_fp / 256,
+                inbound ? inbound->x_fp / 256 : 0,
+                inbound ? inbound->y_fp / 256 : 0,
+                inbound ? inbound->velocity_x : 0,
+                inbound ? inbound->velocity_y : 0,
+                game.inbound_target_x_raw,game.inbound_target_y_raw,
+                inbound ? inbound->control_mode : 0u);
             return 13;
         }
         bool moved = false;
@@ -166,17 +177,16 @@ int main(int argc, char **argv) {
     if (!nba_assets_load(&assets, argv[1])) return 3;
     const uint8_t teams[][2] = {{0,18}, {18,3}, {26,8}};
     const uint16_t seeds[] = {0x1357u, 0x4A91u, 0xBEEFu};
-    /* Re-reviewed after `$87:A52C-$A5FA` presentation direction was applied
-     * to cached action torso/leg resources. State, camera, ownership, pass,
-     * shot, score and resource-change counts are unchanged; only sampled
-     * framebuffer hashes within this combined state/render digest changed. */
+    /* C-only integration digests, re-reviewed 2026-08-29 after the native
+     * ownership/substep, actor-edge, OOB, inbound and formation-anchor fixes.
+     * All three 16,000-frame paths retain scoring, both-team motion, multiple
+     * possessions, dead-ball recoveries and changing resources/renders. The
+     * exact ROM fixtures and these semantic guards are separate from hashes;
+     * see docs/native-edge-parity.md for the scoped native proof and gaps. */
     const uint64_t expected[] = {
-        /* Re-reviewed after `$86:F45F-$F4F2` arrival adopted the native
-         * sign-biased velocity/16 compensation. Boundary inbounds no longer
-         * stall at a raw delta of +9; all scenarios sustain live recovery. */
-        0x897cd1e370da86c4ull,
-        0xdce9df170a3899beull,
-        0x6d7509b56032703aull
+        0x5c699ab7906a9264ull,
+        0xe21e3fa411911e5full,
+        0x310e2241d5021888ull
     };
     ScenarioResult total = {0};
     int code = 0;

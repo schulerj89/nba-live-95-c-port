@@ -20,6 +20,8 @@ import json
 import re
 from pathlib import Path
 
+from evidence_ranges import coverage_intervals, validate_aggregate_opt_out
+
 ROOT = Path(__file__).resolve().parent.parent
 
 
@@ -116,11 +118,8 @@ def load_verified(docs):
     if not path.exists():
         return [], []
     entries = json.loads(path.read_text())["routines"]
-    intervals = []
-    for entry in entries:
-        start, end = (int(part, 16) for part in entry["range"].split("-"))
-        intervals.append((start, end))
-    return merge(intervals), entries
+    validate_aggregate_opt_out(entries)
+    return merge(coverage_intervals(entries)), entries
 
 
 def fmt(address):
@@ -184,7 +183,9 @@ def main():
               f"dispatch)",
               f"- of those observed executing in captures: {len(recomp_seen)}",
               f"- of those referenced by port provenance: {len(recomp_ported)}",
-              f"- verified routines (ledger): {len(verified_entries)}", "",
+              f"- verified ledger entries: {len(verified_entries)} total, "
+              f"{sum(entry.get('coverage_credit', True) for entry in verified_entries)} "
+              f"eligible for address coverage", "",
               "## Largest undocumented executed regions", "",
               "| range | address positions |", "|---|---|"]
     for start, end in gaps:

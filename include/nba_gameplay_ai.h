@@ -208,13 +208,15 @@ typedef struct {
     uint8_t inbound_group_raw_0952;
 } NbaGameplayLoosePursuitGateInput;
 
-/* Raw actor words consumed by the common `$85:96B5-$9961` physics commit.
+/* Raw actor words consumed by the common `$85:96B5-$9A13` physics commit.
  * Positions intentionally retain the ROM's split 16.16 representation so
  * vector replay does not discard the low fractional byte used by carries. */
 typedef struct {
     uint16_t x_fraction, y_fraction, z_fraction;
     int16_t x, y, z;
     int16_t velocity_x, velocity_y, velocity_z;
+    uint16_t control_mode_raw_5e;
+    uint16_t reaction_timer_raw_60;
     uint16_t behavior_flags_raw_7e;
     uint16_t speed_raw_4a;
     uint16_t movement_distance_raw_4c;
@@ -273,8 +275,11 @@ bool nba_gameplay_receiver_candidate_valid(
     uint8_t passer_actor, uint8_t candidate_actor,
     const NbaGameplayReceiverState *actors, uint8_t actor_count);
 int8_t nba_gameplay_select_inbound_receiver_cpu(
-    uint8_t inbounder, uint16_t timer, const int16_t selectors[3],
+    uint8_t inbounder, uint16_t timer, int16_t context_anchor_x,
+    const int16_t selectors[3],
     const NbaGameplayReceiverState *actors, uint8_t actor_count);
+bool nba_gameplay_inbound_side_allows(int16_t context_anchor_x,
+                                     int16_t owner_x, int16_t receiver_x);
 bool nba_gameplay_lane_to_basket_clear(
     uint8_t subject_actor, int16_t basket_x,
     const NbaGameplayLaneActor *actors, uint8_t actor_count);
@@ -306,9 +311,6 @@ bool nba_gameplay_inbound_target(
     NbaGameplayInboundTarget *target);
 bool nba_gameplay_inbound_arrived(int16_t actor_x, int16_t actor_y,
                                   int16_t target_x, int16_t target_y);
-bool nba_gameplay_inbound_arrived_motion(
-    int16_t actor_x, int16_t actor_y, int16_t target_x, int16_t target_y,
-    int16_t velocity_x, int16_t velocity_y);
 bool nba_gameplay_inbound_pass_due(uint16_t timer, uint16_t random_word);
 void nba_gameplay_inbound_motion_step(NbaGameplayInboundMotion *motion);
 void nba_gameplay_inbound_arrival_prepare(NbaGameplayInboundArrival *state);

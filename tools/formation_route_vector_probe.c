@@ -31,6 +31,8 @@ int main(int argc, char **argv) {
         state.session = &session;
         session.left_team = (uint8_t)word(raw, 0x46EBu);
         session.right_team = (uint8_t)word(raw, 0x476Bu);
+        state.team_context[0].anchor_x_raw_0a = (int16_t)word(raw, 0x46F5u);
+        state.team_context[1].anchor_x_raw_0a = (int16_t)word(raw, 0x4775u);
         state.possession_actor = (int8_t)(int16_t)word(raw, 0x093Eu);
         state.live_state_raw = word(raw, 0x0936u);
         state.ball_activity_raw = word(raw, 0x0948u);

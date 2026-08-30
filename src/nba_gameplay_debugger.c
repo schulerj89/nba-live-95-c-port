@@ -236,6 +236,8 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
             "\"free_throw_start_tick_raw_09be\":%u,"
             "\"free_throw_aim_x_raw_0980\":%u,"
             "\"free_throw_aim_y_raw_0982\":%u,"
+            "\"free_throw_aim_accumulator_raw_0984\":%u,"
+            "\"free_throw_aim_step_raw_0986\":%u,"
             "\"free_throw_flight_timer_raw_0930\":%u,"
             "\"deferred_shot_foul_phase_raw_0a02\":%u,"
             "\"latched_event_raw_08f0\":%u,"
@@ -257,6 +259,7 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
             "\"player_count\":%u,\"player_a\":%d,\"player_b\":%d,"
             "\"player_routine\":%u},"
             "\"ball\":{\"x\":%d,\"y\":%d,\"z\":%d,"
+            "\"x_fp\":%d,\"y_fp\":%d,\"z_fp\":%d,"
             "\"screen_x\":%d,\"screen_y\":%d,\"vx\":%d,\"vy\":%d,"
             "\"vz\":%d,\"owner\":%d,\"state\":%u,\"flags_raw\":%u,"
             "\"activity_raw\":%u,"
@@ -335,6 +338,8 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
             telemetry->free_throw_start_tick_raw_09be,
             telemetry->free_throw_aim_x_raw_0980,
             telemetry->free_throw_aim_y_raw_0982,
+            telemetry->free_throw_aim_accumulator_raw_0984,
+            telemetry->free_throw_aim_step_raw_0986,
             telemetry->free_throw_flight_timer_raw_0930,
             telemetry->deferred_shot_foul_phase_raw_0a02,
             telemetry->latched_event_raw_08f0,
@@ -365,6 +370,8 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
             telemetry->player_contact_routine_raw,
             telemetry->ball.world_x,
             telemetry->ball.world_y, telemetry->ball.world_z,
+            telemetry->ball.world_x_fp, telemetry->ball.world_y_fp,
+            telemetry->ball.world_z_fp,
             telemetry->ball.screen_x, telemetry->ball.screen_y,
             telemetry->ball.velocity_x, telemetry->ball.velocity_y,
             telemetry->ball.velocity_z, telemetry->ball.owner_actor,

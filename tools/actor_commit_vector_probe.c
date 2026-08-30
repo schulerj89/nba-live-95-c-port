@@ -32,6 +32,8 @@ int main(void) {
             .movement_distance_raw_4c = word(raw, base + 0x4Cu),
             .facing_raw_4e = (uint8_t)word(raw, base + 0x4Eu),
             .behavior_flags_raw_7e = word(raw, base + 0x7Eu),
+            .control_mode_raw_5e = word(raw, base + 0x5Eu),
+            .reaction_timer_raw_60 = word(raw, base + 0x60u),
             .velocity_direction_raw_a2 = (uint8_t)word(raw, base + 0xA2u),
             .previous_x_fraction_raw_94 = word(raw, base + 0x94u),
             .previous_x_raw_96 = (int16_t)word(raw, base + 0x96u),
@@ -41,7 +43,7 @@ int main(void) {
         };
         nba_gameplay_actor_commit(&actor, 2u, true);
         printf("%04x %04x %04x %04x %04x %04x %04x %04x "
-               "%04x %04x %04x %04x %04x %04x %04x %04x %04x %04x\n",
+               "%04x %04x %04x %04x %04x %04x %04x %04x %04x %04x %04x\n",
                actor.x_fraction, (uint16_t)actor.x,
                actor.y_fraction, (uint16_t)actor.y,
                actor.z_fraction, (uint16_t)actor.z,
@@ -53,7 +55,7 @@ int main(void) {
                (uint16_t)actor.previous_x_raw_96,
                actor.previous_y_fraction_raw_98,
                (uint16_t)actor.previous_y_raw_9a,
-               actor.planar_scratch_raw_a0);
+               actor.planar_scratch_raw_a0, actor.reaction_timer_raw_60);
     }
     return ferror(stdin) ? 1 : 0;
 }

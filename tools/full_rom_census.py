@@ -13,6 +13,9 @@ import shutil
 import struct
 from pathlib import Path
 
+from evidence_ranges import (coverage_intervals, text_source_sha256,
+                             validate_aggregate_opt_out)
+
 ROOT = Path(__file__).resolve().parent.parent
 CANONICAL_BANKS = range(0x80, 0xB0)  # 1.5 MiB / 48 LoROM banks
 PROVENANCE = re.compile(r"\$([0-9A-Fa-f]{2}):([0-9A-Fa-f]{4})")
@@ -57,8 +60,9 @@ def load_exec():
 
 def load_verified():
     data = json.loads((ROOT / "docs/verified-routines.json").read_text())
-    return merge(tuple(int(value, 16) for value in row["range"].split("-"))
-                 for row in data["routines"])
+    entries = data["routines"]
+    validate_aggregate_opt_out(entries)
+    return merge(coverage_intervals(entries))
 
 
 def provenance_seeds():
@@ -177,6 +181,14 @@ def report(args):
     payload = {
         "schema": 1,
         "method": "recursive Ghidra seeds; no linear sweep; unknown bytes may be data or code",
+        "inputs": {
+            "text_hash_policy": "UTF-8 with LF newlines",
+            "verified_routines_sha256": text_source_sha256(
+                ROOT / "docs/verified-routines.json"),
+            "census_tool_sha256": text_source_sha256(__file__),
+            "evidence_policy_sha256": text_source_sha256(
+                ROOT / "tools/evidence_ranges.py"),
+        },
         "totals": totals,
         "banks": banks,
     }
