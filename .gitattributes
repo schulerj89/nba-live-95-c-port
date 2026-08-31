@@ -71,3 +71,14 @@ tools/period_render_tail_probe.c -text
 # Preserve executed F1 control capture identities.
 tools/capture_setup_spc_control.py -text
 tools/mesen_setup_spc_control.lua -text
+# Preserve the reviewed period entry-prefix source and verifier bytes.
+include/nba_period_entry_prefix.h -text
+src/nba_period_entry_prefix.c -text
+tools/period_entry_prefix_probe.c -text
+tools/period_entry_prefix_fields.inc -text
+tools/build_period_entry_prefix_probe.ps1 -text
+tools/regenerate_period_entry_prefix_reference.py -text
+tools/ghidra/DumpPeriodEntryPrefix.java -text
+tools/verify_period_entry_prefix.py -text
+tools/period_entry_prefix_reference.py -text
+tools/test_period_entry_prefix.py -text
