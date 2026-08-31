@@ -33,6 +33,15 @@ mutated evidence/probe output. A verifier protocol PASS is not gameplay parity.
 
 ## Reproducible pipeline
 
+The indexed intro uses `capture_intro_indexed.py` with the byte-pinned
+`mesen_intro_indexed_capture.lua`, not the historical screenshot-based intro
+builder. See [indexed intro resources](../docs/intro-indexed-resources.md) for
+the exact capture/extraction command, provenance and limitations. Resources75
+and76 contain original indexed graphics/font data; RGB files are evidence only.
+`test_intro_sequence.py` compares303 native EA motion frames/five text samples;
+`verify_intro_text.py` compares31 native brightness rasters and one black
+reference. Neither establishes complete intro scheduling or audio parity.
+
 `capture_assets.ps1` runs these authoritative Mesen captures into ignored
 `.analysis` directories:
 

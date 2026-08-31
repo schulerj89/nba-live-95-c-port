@@ -31,7 +31,10 @@ EXPECTED_FRAME_HASHES = {
     "west": "94d3d4fe72c06911a9c27748dd1e5fdfcd83ec6e407706ca2c20326b7d9d0662",
     # Assets 277..285 change F12's count; test_shot_assets proves that the
     # only changed pixels are in the debugger's index/count row.
-    "logo_debug": "559c639f0d6e4736b84bc746b29cf8224953d71f7f657c9826ad708ff735b802",
+    # Indexed intro75/76 replacement likewise changes only the count/index;
+    # retained A1 images reproduce the prior hash and all pixels outside that
+    # metadata row match. C-only migration: docs/intro-indexed-resources.md.
+    "logo_debug": "81822e2e036339824927217bd1cfe350684ba7dcf53333cb6ff4bd70d890cf5f",
 }
 
 EXPECTED_LOGO_HASHES = {

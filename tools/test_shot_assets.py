@@ -1,4 +1,10 @@
-"""ROM table extraction and proof that the additive pack entry changes only F12's count."""
+"""ROM table checks plus a separate C-only debugger metadata regression.
+
+The F12 hashes are not ROM equivalence. Resource75/76 replaced eleven legacy
+intro entries: the retained A1 executable/pack reproduced all old hashes,
+and full-image comparisons proved only the index/count row changed. See
+docs/intro-indexed-resources.md and the private f12-directory-audit report.
+"""
 import argparse
 import hashlib
 from pathlib import Path
@@ -11,6 +17,11 @@ from extract_assets import build_shot_gameplay_asset, build_fatigue_gameplay_ass
 OLD_F12={126:'92c8fe62770b73b205c9beb0d014b68f6614a011bfb142ac47e1c8322ab14458',
          128:'70db5852e6c46f451ab3a059b22aff0cfca2403fb4c585370819883b7d71bee2',
          160:'0c080a631497de4170b6ece2efbadcce7e167a15acaacbd186f00d2a325cefc1'}
+# Retain the old full-image hashes above as migration provenance. These are
+# the reviewed C baselines for the current pack with the six entries removed.
+REDUCED_F12={126:'c97548e68407146f1ea29eb5aca82c3b0375eb67ec70c66ac55a77d7801e3109',
+             128:'26dc531a5fbc6b2ba7965c980c444f2ef487f6b32ae5ad820c4923098f524e65',
+             160:'4f506c80850e7fc84e923c6ccce255f6890463eb79d7a6445a110a7a13d36e0a'}
 
 def main():
     p=argparse.ArgumentParser()
@@ -36,11 +47,9 @@ def main():
         if raw[start+28]!=rating or not 3<=rating<=10:
             raise AssertionError(f'roster recovery rating mismatch: {i}')
     old=bytearray(raw)
-    # The historical count predates shot/fatigue, court map279, jump280 and
-    # graphics-scratch281. Remove all five plus the unrelated gameplay-audio
-    # bank 285 for the old-count oracle; court/PPU assets 282-284 legitimately
-    # advance that count. Displayed
-    # asset art must remain identical and only the count row may change.
+    # Remove the same six entries as the historical C-only debugger check.
+    # This reduced pack is a test fixture, not a previous production version.
+    # Displayed art must remain identical; only the count row may change.
     keep=[e for e in entries if e[0] not in (277,278,279,280,281,285)]
     struct.pack_into('<I',old,12,len(keep))
     for i,e in enumerate(keep):struct.pack_into('<6I',old,16+i*24,*e)
@@ -49,14 +58,14 @@ def main():
         root=Path(tmp);prior=root/'without_shot_table.pak';prior.write_bytes(old)
         proof=Path(args.proof_dir) if args.proof_dir else root
         proof.mkdir(parents=True,exist_ok=True)
-        for asset_id,expected in OLD_F12.items():
+        for asset_id,expected in REDUCED_F12.items():
             images=[]
             for label,pack in (('before',prior),('after',Path(args.pack))):
                 image=proof/f'f12_{asset_id}_{label}.bmp'
                 subprocess.run([args.exe,'--headless','--asset-debug',str(asset_id),'--frames','1',
                     '--rom',args.rom,'--assets',str(pack),'--dump-frame',str(image)],capture_output=True,check=True)
                 images.append(Image.open(image).convert('RGB'))
-            if hashlib.sha256(images[0].tobytes()).hexdigest()!=expected:raise AssertionError('old F12 baseline not reproduced')
+            if hashlib.sha256(images[0].tobytes()).hexdigest()!=expected:raise AssertionError('reviewed C-only reduced-pack F12 baseline not reproduced')
             bbox=ImageChops.difference(*images).getbbox()
             if not bbox or bbox[1]<19 or bbox[3]>27:raise AssertionError(f'non-count F12 pixels changed: {bbox}')
             print(f'[SHOT ASSETS] F12 {asset_id} only index/count changed: {bbox}; new hash={hashlib.sha256(images[1].tobytes()).hexdigest()}')

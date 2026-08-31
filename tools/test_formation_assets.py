@@ -55,25 +55,34 @@ def control_records(payload, play):
     return pointer, records
 
 
-def write_subset(path, payload, corrupt=False):
+def write_with_boot(path, asset_id, data, metadata, boot):
+    # These checks invoke normal game initialization. Keep its real indexed
+    # intro prerequisites so graph acceptance cannot fail for missing boot art.
+    entries = [(asset_id, bytes(data), metadata)] + boot
+    offset = 16 + 24 * len(entries)
+    directory = bytearray()
+    payloads = bytearray()
+    for item_id, payload, (width, height, flags) in entries:
+        directory += struct.pack('<6I', item_id, offset, len(payload),
+                                 width, height, flags)
+        payloads += payload
+        offset += len(payload)
+    path.write_bytes(b'NBA95PAK' + struct.pack('<II', 31, len(entries)) +
+                     directory + payloads)
+
+
+def write_subset(path, payload, boot, corrupt=False):
     data = bytearray(payload)
     if corrupt:
         struct.pack_into("<H", data, 48 + 2, 4)  # play 0 count must be three
-    offset = 40
-    raw = (b"NBA95PAK" + struct.pack("<II", 31, 1) +
-           struct.pack("<6I", 274, offset, len(data), 61, 5, 1595) + data)
-    path.write_bytes(raw)
+    write_with_boot(path, 274, data, (61, 5, 1595), boot)
 
 
-def write_control_subset(path, payload, corrupt=False):
+def write_control_subset(path, payload, boot, corrupt=False):
     data = bytearray(payload)
     if corrupt:
         struct.pack_into("<H", data, 36 + 2, 4)  # play 0 count must be three
-    offset = 40
-    raw = (b"NBA95PAK" + struct.pack("<II", 31, 1) +
-           struct.pack("<6I", 275, offset, len(data), 61, 320, 0x85C6AF) +
-           data)
-    path.write_bytes(raw)
+    write_with_boot(path, 275, data, (61, 320, 0x85C6AF), boot)
 
 
 def main():
@@ -184,14 +193,15 @@ def main():
         raise AssertionError("$86:9C6F/$A7A0 pass vectors changed")
 
     with tempfile.TemporaryDirectory() as directory:
+        boot = [(item_id, *pack_asset(args.pack, item_id)) for item_id in (75, 76)]
         valid = Path(directory) / "formation.pak"
         invalid = Path(directory) / "bad-formation.pak"
         valid_control = Path(directory) / "play-control.pak"
         invalid_control = Path(directory) / "bad-play-control.pak"
-        write_subset(valid, payload)
-        write_subset(invalid, payload, corrupt=True)
-        write_control_subset(valid_control, control)
-        write_control_subset(invalid_control, control, corrupt=True)
+        write_subset(valid, payload, boot)
+        write_subset(invalid, payload, boot, corrupt=True)
+        write_control_subset(valid_control, control, boot)
+        write_control_subset(invalid_control, control, boot, corrupt=True)
         base = [str(args.exe), "--headless", "--frames", "0", "--assets"]
         good = subprocess.run(base + [str(valid)], capture_output=True, text=True)
         bad = subprocess.run(base + [str(invalid)], capture_output=True, text=True)

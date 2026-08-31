@@ -1,6 +1,7 @@
 param(
     [string]$RomPath = '',
     [string]$AssetPack = '',
+    [string]$OutputExe = '',
     [switch]$ExtractAssets,
     [switch]$Run,
     [switch]$Headless,
@@ -48,7 +49,11 @@ if (!(Test-Path $VcVars)) {
     throw "vcvars64.bat was not found under $VsPath."
 }
 
-$ConsoleExePath = Join-Path $BuildDir "nba95_port.exe"
+$ConsoleExePath = if ([string]::IsNullOrWhiteSpace($OutputExe)) {
+    Join-Path $BuildDir "nba95_port.exe"
+} else {
+    [IO.Path]::GetFullPath($OutputExe)
+}
 
 $SourceManifest = Join-Path $Root "nba95_sources.txt"
 $Sources = Get-Content -LiteralPath $SourceManifest | ForEach-Object { $_.Trim() } |
@@ -628,6 +633,23 @@ if ($Test) {
     if ($LASTEXITCODE -ne 0) {
         throw "Intro sequence regression tests failed with exit code $LASTEXITCODE"
     }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name intro_resource_validate_probe
+    & python (Join-Path $Root 'tools\test_intro_indexed.py') `
+        --native (Join-Path $Root '.analysis\intro-exact-20260830\capture-v4') `
+        --rom $RomPath --probe (Join-Path $BuildDir 'intro_resource_validate_probe.exe')
+    if ($LASTEXITCODE -ne 0) { throw 'Intro resource integrity tests failed.' }
+    & python (Join-Path $Root 'tools\test_intro_frame_provenance.py') `
+        --native (Join-Path $Root '.analysis\intro-exact-20260830\capture-v4')
+    if ($LASTEXITCODE -ne 0) { throw 'Independent intro frame provenance integrity failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name intro_text_probe
+    $IntroTextOutput = Join-Path $BuildDir 'intro-text-rgb'
+    New-Item -ItemType Directory -Force -Path $IntroTextOutput | Out-Null
+    & (Join-Path $BuildDir 'intro_text_probe.exe') $AssetPack $IntroTextOutput
+    if ($LASTEXITCODE -ne 0) { throw 'Intro text raster probe failed.' }
+    & python (Join-Path $Root 'tools\verify_intro_text.py') `
+        --native (Join-Path $Root '.analysis\intro-exact-20260830\capture-v4') `
+        --actual $IntroTextOutput --report (Join-Path $BuildDir 'intro-text-parity.json')
+    if ($LASTEXITCODE -ne 0) { throw 'Intro text native raster comparison failed.' }
     & python (Join-Path $Root "tools\test_project_census.py")
     if ($LASTEXITCODE -ne 0) {
         throw "Project census regression tests failed with exit code $LASTEXITCODE"

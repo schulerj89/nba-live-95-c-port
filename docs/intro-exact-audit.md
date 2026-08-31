@@ -1,5 +1,11 @@
 # Cold-boot and EA transition audit, 2026-08-30
 
+Follow-up: `intro-indexed-resources.md` and `intro-text-independent-audit.md`
+record the accepted bounded replacement of screenshot/handwritten graphics
+and the exact303-frame EA renderer repair. The findings below describe the
+retained pre-repair baseline. Full-intro timing/input/audio/handoff remains
+FAIL; the phase-aligned renderer PASS does not change that verdict.
+
 **FAIL: complete intro timing and consecutive-frame equivalence.** This is
 fresh investigation evidence, separate from the accepted bounded Rules repair.
 No intro production change or new expected image hash is authorized by this

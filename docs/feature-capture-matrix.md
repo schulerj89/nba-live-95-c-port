@@ -27,9 +27,9 @@ The 2026-08-30 ownership audit does not endorse these inherited completion estim
 
 ### Boot, legal, EA intro, title and credits
 
-Reverify consecutive-frame boundaries with synchronous non-skipped Mesen output and isolated save state; historical screenshot timing and broad routine-address claims are insufficient.
+Indexed pack75/76 now passes303 EA renderer-phase frames and bounded font rasters. Complete cold-boot waits/input, legal-to-EA publication, EA hold/audio/title handoff and format30 decoder remain open; no whole-intro parity or current95% claim.
 
-Evidence: [`docs/ea-intro.md`](../docs/ea-intro.md), [`docs/title-to-setup-transition.md`](../docs/title-to-setup-transition.md), [`docs/post-ea-title-audio.md`](../docs/post-ea-title-audio.md)
+Evidence: [`docs/intro-indexed-resources.md`](../docs/intro-indexed-resources.md), [`docs/intro-text-independent-audit.md`](../docs/intro-text-independent-audit.md), [`docs/intro-exact-audit.md`](../docs/intro-exact-audit.md), [`docs/title-to-setup-transition.md`](../docs/title-to-setup-transition.md), [`docs/post-ea-title-audio.md`](../docs/post-ea-title-audio.md)
 
 ### Game Setup, Rules and Options
 

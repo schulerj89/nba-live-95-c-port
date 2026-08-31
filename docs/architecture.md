@@ -10,6 +10,15 @@ audio, resets scene-local timing, clears the inactive union, initializes the
 new scene, and applies its audio policy. GUI shortcuts, headless starts, and
 production transitions all use this path.
 
+The intro renderer requires pack resources75/76, containing original indexed
+graphics, palettes, font and strings. `nba_ea_intro` translates the integer
+Mode7/tile/palette sequence; `nba_intro_text` uses the shared portable
+`nba_rom_font` rasterizer. Neither reads evidence images or executes an
+emulator at runtime. `intro-indexed-resources.md` identifies the direct-ROM
+and native-memory source boundaries and exact renderer evidence. The existing
+scene dispatcher still has incorrect intro waits/input/audio/handoff behavior;
+renderer parity is deliberately separate from that unresolved scheduler work.
+
 `NbaSession.config` owns Mode, Style, Level, Quarter, Rules, and Options;
 `NbaSession.left_team/right_team` own the Exhibition matchup across scenes.
 `NbaSetupScreen` receives a pointer to that configuration and owns only

@@ -61,27 +61,36 @@ def require_failure(result, description):
         raise AssertionError(f"{description} was unexpectedly accepted")
 
 
-def check_asset_loader(exe, directory):
-    valid = b"NBA95PAK" + struct.pack("<II", PACK_VERSION, 1)
-    valid += pack_entry(18, 40, 1) + b"\0"
+def check_asset_loader(exe, directory, full_pack):
     valid_path = directory / "valid.pak"
-    valid_path.write_bytes(valid)
+    # Boot now requires its real font/indexed resources. A valid directory
+    # containing only one debug sample must not silently draw substitute art.
+    write_pack_subset(full_pack, valid_path, {75, 76})
     require_success(
         run(exe, "--headless", "--assets", valid_path, "--frames", 0),
-        "valid minimal asset pack",
+        "valid minimal boot-resource pack",
     )
+    missing = directory / "missing_boot_resources.pak"
+    missing.write_bytes(b"NBA95PAK" + struct.pack("<II", PACK_VERSION, 1) +
+                       pack_entry(18, 40, 1) + b"\0")
+    rejected = run(exe, "--headless", "--assets", missing, "--frames", 0)
+    require_failure(rejected, "missing mandatory boot resources")
+    if "Asset pack lacks indexed intro resources" not in rejected.stderr:
+        raise AssertionError("missing boot assets were not rejected at scene initialization")
 
     duplicate = b"NBA95PAK" + struct.pack("<II", PACK_VERSION, 2)
-    duplicate += pack_entry(1, 64, 1) + pack_entry(1, 65, 1) + b"\0\0"
+    # Both entries must be individually well formed so duplicate detection,
+    # rather than a preceding bad legacy-bitmap size check, owns the rejection.
+    duplicate += pack_entry(18, 64, 1) + pack_entry(18, 65, 1) + b"\0\0"
     invalid_packs = {
         "bad_magic.pak": b"NOTAPACK" + struct.pack("<II", PACK_VERSION, 1) + pack_entry(1, 40, 1) + b"\0",
         "bad_version.pak": b"NBA95PAK" + struct.pack("<II", 4, 1) + pack_entry(1, 40, 1) + b"\0",
-        "too_many.pak": b"NBA95PAK" + struct.pack("<II", PACK_VERSION, 286),
+        "too_many.pak": b"NBA95PAK" + struct.pack("<II", PACK_VERSION, 0xFFFFFFFF),
         "truncated_directory.pak": b"NBA95PAK" + struct.pack("<II", PACK_VERSION, 2) + pack_entry(1, 64, 1),
         "duplicate_id.pak": duplicate,
         "directory_overlap.pak": b"NBA95PAK" + struct.pack("<II", PACK_VERSION, 1) + pack_entry(1, 16, 1) + b"\0",
         "wrapped_range.pak": b"NBA95PAK" + struct.pack("<II", PACK_VERSION, 1) + pack_entry(1, 0xFFFFFFF0, 64) + b"\0",
-        "bad_id.pak": b"NBA95PAK" + struct.pack("<II", PACK_VERSION, 1) + pack_entry(286, 40, 1) + b"\0",
+        "bad_id.pak": b"NBA95PAK" + struct.pack("<II", PACK_VERSION, 1) + pack_entry(0xFFFFFFFF, 40, 1) + b"\0",
         "short_license.pak": b"NBA95PAK" + struct.pack("<II", PACK_VERSION, 1) +
             pack_entry(1, 40, 1, 128, 11) + b"\0",
         "short_court_map.pak": b"NBA95PAK" + struct.pack("<II", PACK_VERSION, 1) +
@@ -98,9 +107,12 @@ def check_asset_loader(exe, directory):
     for name, payload in invalid_packs.items():
         path = directory / name
         path.write_bytes(payload)
-        require_failure(
-            run(exe, "--headless", "--assets", path, "--frames", 0), name
-        )
+        result = run(exe, "--headless", "--assets", path, "--frames", 0)
+        require_failure(result, name)
+        if "[ASSETS] Error:" not in result.stderr:
+            raise AssertionError(f"{name} escaped the loader and failed elsewhere")
+        if name=="duplicate_id.pak" and "Duplicate asset ID" not in result.stderr:
+            raise AssertionError("duplicate fixture failed before duplicate detection")
     return valid_path
 
 
@@ -254,7 +266,7 @@ def check_scene_audio_failures(exe, rom, minimal_pack, full_pack, directory):
         raise AssertionError("Setup graphics failure was misclassified as audio")
 
     graphics_only = directory / "setup_graphics_only.pak"
-    write_pack_subset(full_pack, graphics_only, {16, 17, 92})
+    write_pack_subset(full_pack, graphics_only, {16, 17, 75, 76, 92})
     missing_audio = run(
         exe, "--headless", "--setup-only", "--rom", rom,
         "--assets", graphics_only, "--frames", 0,
@@ -299,7 +311,7 @@ def main():
 
     with tempfile.TemporaryDirectory(prefix="nba95-core-safety-") as temp:
         directory = Path(temp)
-        valid_pack = check_asset_loader(args.exe, directory)
+        valid_pack = check_asset_loader(args.exe, directory, args.pack)
         check_rom_identity(args.exe, args.rom, valid_pack, directory)
         check_host_rate_equivalence(args.exe, args.rom, args.pack, directory)
         check_asset_debug_cli(args.exe, args.pack)

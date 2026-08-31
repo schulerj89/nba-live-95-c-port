@@ -157,6 +157,15 @@ helper is not a wired feature. The detailed inventories are maintained in
 | F: retail modes/persistence | Season/Playoffs/Load Series, postgame/statistics/records and original persistence semantics; native capture precedes completion claims |
 | G: release acceptance | Independent differential/regression/endurance plus consecutive-frame/audio review, fresh playable desktop build, clean tree and pushed main. Any unimplemented/unverified original feature keeps whole-game acceptance FAIL |
 
+Checkpoint A2 replaces the inherited intro image sources with indexed pack
+resources75/76 and the original font. Bounded independent renderer evidence
+is in `intro-indexed-resources.md` and `intro-text-independent-audit.md`.
+This supersedes the intro asset-row findings in the **initial** inventory
+above; other historical paths/hashes remain identified as inventory snapshots.
+Current source counts and pack identity belong to each checkpoint manifest.
+Cold-boot scheduling, legal input/waits, intro audio and title handoff remain
+open; no whole-intro PASS follows from303 aligned renderer frames.
+
 At every coherent checkpoint: bounded implementation, native/recomp/Ghidra
 evidence, focused and integration tests, visual/audio review, independent
 PASS/FAIL audit with exact caveats, documentation, fresh build, root-owned

@@ -3,6 +3,7 @@ import sys
 import struct
 import argparse
 import hashlib
+import json
 from PIL import Image
 import numpy as np
 
@@ -984,207 +985,17 @@ def create_asset_pack(rom_path, output_path):
     if out_dir and not os.path.exists(out_dir):
         os.makedirs(out_dir, exist_ok=True)
 
-    # 1. Nintendo License Bitmap (128x11, 1bpp, 16 bytes per row * 11 = 176 bytes)
-    license_rows = [
-        [0xC3, 0x1C, 0x79, 0x98, 0xE3, 0xCF, 0x00, 0xF1, 0x98, 0x0C, 0xCC, 0xCC, 0xF3, 0xCC, 0xCF, 0x0E],
-        [0xC3, 0x3E, 0x79, 0x99, 0xF3, 0xCF, 0x80, 0xF9, 0x98, 0x0C, 0xCC, 0xCC, 0xF3, 0xCC, 0xCF, 0x9F],
-        [0xC3, 0x36, 0x61, 0xD9, 0xB3, 0x0D, 0x80, 0xD9, 0x98, 0x0E, 0xCC, 0xEC, 0x63, 0x0E, 0xCD, 0x9B],
-        [0xC3, 0x30, 0x61, 0xD9, 0x83, 0x0D, 0x80, 0xD9, 0x98, 0x0E, 0xCC, 0xEC, 0x63, 0x0E, 0xCD, 0x9B],
-        [0xC3, 0x30, 0x79, 0xF9, 0xC3, 0xCD, 0x80, 0xF8, 0xF0, 0x0F, 0xCC, 0xFC, 0x63, 0xCF, 0xCD, 0x9B],
-        [0xC3, 0x30, 0x79, 0xF8, 0xE3, 0xCD, 0x80, 0xF0, 0xF0, 0x0F, 0xCC, 0xFC, 0x63, 0xCF, 0xCD, 0x9B],
-        [0xC3, 0x30, 0x61, 0xF8, 0x73, 0x0D, 0x80, 0xD8, 0x60, 0x0F, 0xCC, 0xFC, 0x63, 0x0F, 0xCD, 0x9B],
-        [0xC3, 0x30, 0x61, 0xB8, 0x33, 0x0D, 0x80, 0xD8, 0x60, 0x0D, 0xCC, 0xDC, 0x63, 0x0D, 0xCD, 0x9B],
-        [0xC3, 0x36, 0x61, 0xB9, 0xB3, 0x0D, 0x80, 0xD8, 0x60, 0x0D, 0xCC, 0xDC, 0x63, 0x0D, 0xCD, 0x9B],
-        [0xF3, 0x3E, 0x79, 0x99, 0xF3, 0xCF, 0x80, 0xF8, 0x60, 0x0C, 0xCC, 0xCC, 0x63, 0xCC, 0xCF, 0x9F],
-        [0xF3, 0x1C, 0x79, 0x98, 0xE3, 0xCF, 0x00, 0xF0, 0x60, 0x0C, 0xCC, 0xCC, 0x63, 0xCC, 0xCF, 0x0E],
-    ]
-    nintendo_license_bytes = bytearray()
-    for r in license_rows:
-        for b in r:
-            nintendo_license_bytes.append(b)
-
-    # 2. NBA Legal Notice Bitmap (256x151, 1bpp, 32 bytes per row * 151 = 4832 bytes)
-    intro_capture_dir = os.environ.get("NBA95_INTRO_CAPTURE_DIR") or os.path.join(
+    # Original indexed intro resources. RGB screenshots are comparison evidence
+    # only; this builder loads raw attested memory and direct ROM data.
+    from build_intro_indexed import build as build_ea_indexed, build_text
+    intro_resources = os.environ.get("NBA95_INTRO_RESOURCE_DIR") or os.path.join(
         os.path.dirname(os.path.abspath(__file__)), "..", ".analysis",
-        "intro_capture")
-    legal_path = os.path.join(intro_capture_dir, "legal.png")
-    if not os.path.exists(legal_path):
-        raise RuntimeError(
-            f"Missing intro capture: {legal_path}. Run "
-            "tools/mesen_intro_capture.lua with the ROM first."
-        )
-
-    nba_legal_bytes = bytearray()
-    num_legal_rows = 151
-    start_y_legal = 35
-
-    if legal_path:
-        im = Image.open(legal_path).convert('L')
-        if im.size != (256, 224):
-            raise RuntimeError(
-                f"Intro capture must be a native 256x224 Mesen frame: {legal_path}"
-            )
-        snes_frame = (np.array(im) > 100).astype(np.uint8)
-
-        rows = np.where(np.any(snes_frame, axis=1))[0]
-        rmin, rmax = rows[0], rows[-1]
-        start_y_legal = int(rmin)
-        num_legal_rows = int(rmax - rmin + 1)
-
-        for r in range(rmin, rmax + 1):
-            for b in range(32):
-                byte_val = 0
-                for bit in range(8):
-                    col = b * 8 + bit
-                    if col < 256 and snes_frame[r, col]:
-                        byte_val |= (0x80 >> bit)
-                nba_legal_bytes.append(byte_val)
-
-    # 3-6. EA Logo Stages 1..4
-    ea_candidates = [
-        os.path.join(intro_capture_dir, f"ea_stage_{i}.png")
-        for i in range(1, 5)
-    ]
-    ea_final_candidate = os.path.join(intro_capture_dir, "ea_motion_131.png")
-    ea_a_fixed_candidates = [
-        os.path.join(intro_capture_dir, f"ea_motion_{frame:03d}.png")
-        for frame in range(56, 67)
-    ]
-    missing_stages = [path for path in
-                      ea_candidates + [ea_final_candidate] + ea_a_fixed_candidates
-                      if not os.path.exists(path)]
-    if missing_stages:
-        raise RuntimeError(
-            "Missing EA intro captures: " + ", ".join(missing_stages) +
-            ". Run tools/mesen_intro_capture.lua with the ROM first."
-        )
-
-    w4, h4 = 0, 0
-    ea_flags = 0
-    ea_packed = []
-    ea_a_layer_bytes = b""
-    ea_e_layer_bytes = b""
-    ea_sports_layer_bytes = b""
-    ea_a_fixed_bytes = bytearray()
-
-    if all(os.path.exists(p) for p in ea_candidates):
-        snes_frames = []
-        for p in ea_candidates + [ea_final_candidate]:
-            im = Image.open(p).convert('RGB')
-            if im.size != (256, 224):
-                raise RuntimeError(
-                    f"Intro capture must be a native 256x224 Mesen frame: {p}"
-                )
-            snes_frames.append(np.array(im))
-
-        # Union bounding box across all 4 frames
-        all_rows, all_cols = [], []
-        for frame in snes_frames:
-            m = np.any(frame > 10, axis=2)
-            rs = np.where(np.any(m, axis=1))[0]
-            cs = np.where(np.any(m, axis=0))[0]
-            if len(rs) > 0:
-                all_rows.extend([rs[0], rs[-1]])
-                all_cols.extend([cs[0], cs[-1]])
-
-        urmin, urmax = min(all_rows), max(all_rows)
-        ucmin, ucmax = min(all_cols), max(all_cols)
-        w4 = ucmax - ucmin + 1
-        h4 = urmax - urmin + 1
-        ea_flags = (int(ucmin) << 16) | int(urmin)
-
-        for frame in snes_frames:
-            crop = frame[urmin:urmax+1, ucmin:ucmax+1]
-            stage_bytes = bytearray()
-            for r in range(h4):
-                for c in range(w4):
-                    rgb = crop[r, c]
-                    if np.all(rgb <= 10):
-                        stage_bytes.extend(struct.pack("<I", 0x00000000))
-                    else:
-                        argb = 0xFF000000 | (int(rgb[0]) << 16) | (int(rgb[1]) << 8) | int(rgb[2])
-                        stage_bytes.extend(struct.pack("<I", argb))
-            ea_packed.append(stage_bytes)
-
-        # $82:F4C4 flashes the settled A as fixed OAM, not through Mode 7.
-        # Preserve identity frames 56-57, all eight palette steps 58-65, and
-        # the settled frame 66 in one typed sequence payload.
-        for p in ea_a_fixed_candidates:
-            frame = np.array(Image.open(p).convert('RGB'))
-            crop = frame[urmin:urmax+1, ucmin:ucmax+1]
-            for r in range(h4):
-                for c in range(w4):
-                    rgb = crop[r, c]
-                    if np.all(rgb <= 10):
-                        ea_a_fixed_bytes.extend(struct.pack("<I", 0x00000000))
-                    else:
-                        argb = (0xFF000000 | (int(rgb[0]) << 16) |
-                                (int(rgb[1]) << 8) | int(rgb[2]))
-                        ea_a_fixed_bytes.extend(struct.pack("<I", argb))
-
-        # $82:F512 returns after $80:8FA3 has written A's independent Mode 7
-        # tilegroup. Decode the native interleaved Mode 7 tilemap/character
-        # plane: even VRAM bytes select tiles and odd bytes hold indexed pixels.
-        def decode_ea_mode7_layer(stem, index_ranges, expected_bounds,
-                                  routine, letter):
-            vram_path = os.path.join(intro_capture_dir, stem + "_vram.bin")
-            cgram_path = os.path.join(intro_capture_dir, stem + "_cgram.bin")
-            if not os.path.exists(vram_path) or not os.path.exists(cgram_path):
-                raise RuntimeError(f"Missing {routine} Mode 7 hardware capture; "
-                                   "re-run tools/mesen_intro_capture.lua")
-            mode7_vram = open(vram_path, "rb").read()
-            mode7_cgram = open(cgram_path, "rb").read()
-            if len(mode7_vram) != 0x10000 or len(mode7_cgram) != 0x200:
-                raise RuntimeError(f"Invalid {routine} Mode 7 VRAM/CGRAM capture")
-            mode7 = np.zeros((1024, 1024), dtype=np.uint8)
-            for tile_y in range(128):
-                for tile_x in range(128):
-                    tile = mode7_vram[(tile_y * 128 + tile_x) * 2]
-                    for pixel_y in range(8):
-                        for pixel_x in range(8):
-                            word = tile * 64 + pixel_y * 8 + pixel_x
-                            mode7[tile_y * 8 + pixel_y,
-                                  tile_x * 8 + pixel_x] = mode7_vram[word * 2 + 1]
-            source = np.zeros(mode7.shape, dtype=bool)
-            for index_low, index_high in index_ranges:
-                source |= (mode7 >= index_low) & (mode7 <= index_high)
-            ys, xs = np.where(source)
-            bounds = (xs.min(), ys.min(), xs.max(), ys.max())
-            if bounds != expected_bounds:
-                raise RuntimeError(f"Unexpected {routine} {letter} tilegroup bounds")
-            layer = np.zeros((h4, w4), dtype=np.uint32)
-            for source_y, source_x in zip(ys, xs):
-                local_x = int(source_x) - 382 - ucmin
-                local_y = int(source_y) - 402 - urmin
-                if not (0 <= local_x < w4 and 0 <= local_y < h4):
-                    raise RuntimeError(f"{routine} {letter} pixel maps outside the EA canvas")
-                index = int(mode7[source_y, source_x])
-                bgr = mode7_cgram[index * 2] | (mode7_cgram[index * 2 + 1] << 8)
-                r5, g5, b5 = bgr & 31, (bgr >> 5) & 31, (bgr >> 10) & 31
-                r8, g8, b8 = ((r5 << 3) | (r5 >> 2),
-                              (g5 << 3) | (g5 >> 2),
-                              (b5 << 3) | (b5 >> 2))
-                layer[local_y, local_x] = (
-                    0xFF000000 | (r8 << 16) | (g8 << 8) | b8)
-            print(f"[ASSET EXTRACTOR] Decoded {routine} Mode 7 {letter} layer: "
-                  f"{len(xs)} indexed source pixels")
-            return layer.tobytes()
-
-        # M7X/M7Y and the captured scroll origin map source (382,402) to
-        # native screen (0,0). E and A use separate palette-index blocks.
-        ea_e_layer_bytes = decode_ea_mode7_layer(
-            "ea_e_mode7", [(0x31, 0x3F)], (441, 449, 519, 524), "$82:F4F6", "E")
-        ea_a_layer_bytes = decode_ea_mode7_layer(
-            "ea_a_mode7", [(0x41, 0x4F)], (494, 449, 572, 524), "$82:F512", "A")
-        # $82:F52E passes the ROM descriptor at $82:F6D8 to $80:8FA3 twice,
-        # at tile rows $38 and $3D.  Indices $21-$2F are the visible blue
-        # SPORTS word and trademark; the $11-$1F block is intentionally black
-        # background/clearing data and is not artwork in the host's transparent
-        # layer.  Deriving either from screenshot differences produces ghost
-        # EA pixels during the zoom.
-        ea_sports_layer_bytes = decode_ea_mode7_layer(
-            "ea_sports_mode7", [(0x21, 0x2F)],
-            (444, 530, 581, 559), "$82:F52E", "SPORTS")
+        "intro-exact-20260830", "capture-v4")
+    ea_indexed, ea_provenance = build_ea_indexed(rom_path, intro_resources)
+    intro_text, text_provenance = build_text(rom_path, intro_resources)
+    with open(output_path + ".intro-provenance.json", "w", encoding="utf-8") as manifest:
+        json.dump({"EA": ea_provenance, "text": text_provenance}, manifest, indent=2)
+        manifest.write("\n")
 
     # 7. Audio: EA Intro Voice / Sound Effect
     def decode_brr_to_pcm(data):
@@ -1930,17 +1741,8 @@ def create_asset_pack(rom_path, output_path):
         gameplay_court, gameplay_ppu_vram, gameplay_ppu_cgram)
 
     assets = [
-        (1, 128, 11, 0, nintendo_license_bytes),               # ASSET_NINTENDO_LICENSE
-        (2, 256, num_legal_rows, start_y_legal, nba_legal_bytes), # ASSET_NBA_LEGAL_NOTICE (flags = start_y)
-        (3, w4, h4, ea_flags, ea_packed[0]),                  # ASSET_EA_LOGO_STAGE1
-        (4, w4, h4, ea_flags, ea_packed[1]),                  # ASSET_EA_LOGO_STAGE2
-        (5, w4, h4, ea_flags, ea_packed[2]),                  # ASSET_EA_LOGO_STAGE3
-        (6, w4, h4, ea_flags, ea_packed[3]),                  # ASSET_EA_LOGO_STAGE4
-        (70, w4, h4, ea_flags, ea_a_layer_bytes),             # ASSET_EA_A_LAYER
-        (71, w4, h4, ea_flags, ea_e_layer_bytes),             # ASSET_EA_E_LAYER
-        (72, w4, h4, ea_flags, ea_packed[4]),                 # ASSET_EA_LOGO_FINAL
-        (73, w4, h4, ea_flags, ea_a_fixed_bytes),             # ASSET_EA_A_FIXED_SEQUENCE
-        (74, w4, h4, ea_flags, ea_sports_layer_bytes),        # ASSET_EA_SPORTS_LAYER
+        (75, 0, 0, 0, ea_indexed),  # NBA_ASSET_EA_INDEXED
+        (76, 0, 0, 0, intro_text),  # NBA_ASSET_INTRO_TEXT
     ]
 
     if len(audio_intro_bytes) > 0:

@@ -1,0 +1,2 @@
+# This reviewed script's exact bytes are part of native capture provenance.
+tools/mesen_intro_indexed_capture.lua text eol=lf

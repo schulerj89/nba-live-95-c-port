@@ -1,11 +1,12 @@
 # EA intro reconstruction
 
-**2026-08-30 audit correction:** the production path below is incomplete and
-some provenance claims were wrong. Legal/fixed EA assets still come from PNGs,
-license rows are handwritten, and selected-frame/mean-error gates do not
-establish consecutive-frame timing. See [intro-exact-audit.md](intro-exact-audit.md)
-and the active indexed-asset replacement. The following describes the historical
-implementation, not an accepted complete ROM translation.
+**2026-08-30 audit correction:** the historical path below was incomplete and
+some provenance claims were wrong. Its PNG/handwritten intro graphics have now
+been replaced by indexed pack75/76, and its selected-frame/mean-error gate by
+an exact303-frame renderer comparison. See
+[intro-indexed-resources.md](intro-indexed-resources.md) and the independent
+audit linked there. The following is retained as historical implementation
+context. Full-intro timing, input, audio and handoff remain unverified or wrong.
 
 The EA intro is reconstructed from ROM/PPU state rather than from emulator
 screenshots. Asset-pack version 18 contains independent indexed E, A, and

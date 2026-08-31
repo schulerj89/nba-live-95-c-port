@@ -69,19 +69,24 @@ despite exact pixels; whole routine/resource timing parity is not claimed. The s
 1,536-case controlled brightness experiment and conversion-only golden audit
 passed; see `docs/ppu-brightness-independent-audit.md`.
 
-Fresh cold-boot/EA investigation also disproves the old intro parity claim:
-91 of302 motion frames differ under the existing address-based mapping, and
-the legal scene omitted a second native wait/input loop. The old optional PNG
-mean-error checks cannot certify exact transitions. See
-`docs/intro-exact-audit.md`; these defects remain open while the Rules repair
-is integrated.
+The indexed intro repair replaces the handwritten license and screenshot-
+derived legal/EA assets1–6/70–74 with pack resources75/76: original font,
+strings, tiles, object layouts and palettes. It fixes the EA matrix arithmetic,
+tile publication order and palette stepping. Independent review now finds
+303 consecutive EA motion frames and five text samples pixel-exact, plus
+31 text brightness rasters and one explicitly forced-blank black reference.
+The comparison is aligned by renderer phase; **the full cold-boot intro still
+fails** because the existing waits, input polling, audio and title handoff are
+not yet translated. See `docs/intro-indexed-resources.md` and
+`docs/intro-text-independent-audit.md`. No captured RGB image enters these
+new production resources. Static format-$30 portions remain documented native
+VRAM/CGRAM extractions pending an independently verified decoder.
 
-The intro extractor also still uses handwritten bitmap rows for license
-asset1 and Mesen PNGs for legal asset2, EA stage
-assets3–6/final72 and flash sequence73. This violates the required production
-asset policy. The standalone indexed letter layers do not make that whole
-path ROM-derived. Replacement is active in an isolated intro worktree; the
-current pack is not yet fully compliant.
+This graphics checkpoint does not certify all other production assets/audio.
+Audio7 remains assembled from ROM BRR samples at incorrect host cue times;
+gameplay audio also has a separate RNG/event-consumption mismatch under audit.
+All resources must remain pack-backed and ROM-derived as the remaining
+legacy presentation and audio paths are replaced.
 
 A fresh strict run with a verified private portable Mesen home still fails:
 62 of449 baseline words differ, zero checkpoints match, and the first actor
@@ -105,6 +110,12 @@ See `docs/ownership-checkpoint-a1.md` for exact evidence and exclusions; this
 does not change whole-game acceptance. The August29 PASS table later in this
 file remains historical.
 
+Checkpoint A2's complete test list also passes, including the long CPU
+regression and the new independent intro gates. The desktop build and pack
+are refreshed. See `docs/ownership-checkpoint-a2.md` for source/artifact
+identities, two justified fixture updates, exact test-run accounting and
+remaining failures. This is a bounded renderer/resource checkpoint only.
+
 ## Current state
 
 The playable path runs from the Nintendo license through Player Setup,
@@ -120,7 +131,7 @@ Current measured coverage:
 | metric | captured address positions | % of captured addresses |
 |---|---:|---:|
 | observed executed code | 29,438 | 100.0% |
-| documented by ROM-address provenance | 29,438 | 100.0% |
+| documented by ROM-address provenance | 29,091 | 98.8% |
 | inside evidence-eligible verified boundaries | 11,529 | 39.16% |
 
 These values are generated, not estimated. The former 28,643/28,643 verified
@@ -130,7 +141,9 @@ remain documented but set `coverage_credit=false`. The detailed report is
 `docs/progress.md`; the authoritative verified list and evidence paths are in
 `docs/verified-routines.json`.
 Fresh ownership captures added 795 address positions without increasing
-eligible verification credit. The exec interval files mix instruction-start captures and older gap-coalesced
+eligible verification credit. Removing broad old intro comments reduced the
+documented count by347; adding comments merely to restore100% is not a goal.
+The exec interval files mix instruction-start captures and older gap-coalesced
 captures. This is an address-coverage metric, **not an instruction census or
 percentage of the whole game completed**. Disassembled instruction counts
 for a requested slice are reported separately.

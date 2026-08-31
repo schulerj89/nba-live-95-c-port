@@ -25,6 +25,8 @@ src/nba_font.c
 src/nba_renderer.c
 src/nba_snes_ppu.c
 src/nba_ea_intro.c
+src/nba_rom_font.c
+src/nba_intro_text.c
 src/nba_title_sequence.c
 src/nba_setup_screen.c
 src/nba_team_select.c
