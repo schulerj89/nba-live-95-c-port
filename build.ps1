@@ -580,6 +580,9 @@ if ($Test) {
     if ($LASTEXITCODE -ne 0) {
         throw "Player Introduction regression tests failed with exit code $LASTEXITCODE"
     }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name match_initialization_probe
+    & (Join-Path $BuildDir 'match_initialization_probe.exe') $AssetPack
+    if ($LASTEXITCODE -ne 0) { throw 'All-team match initialization failed.' }
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name tip_contact_probe
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name tip_completion_probe
     & python (Join-Path $Root 'tools\verify_tip_completion.py') --normalized `

@@ -4799,10 +4799,18 @@ static bool cpu_boundary_pass_recovery_self_test(void) {
 
 static bool cpu_boosted_pass_self_test(const NbaAssetPack *assets,
                                        NbaSession *session) {
+    /* This is an isolated test precondition, not match initialization.
+     * Philadelphia's original twelve +$3E profiles are all below $55; a
+     * valid selected team must not fail startup merely because this one
+     * synthetic boosted-pass case requires a qualifying player. Use the
+     * known Orlando test roster without changing the caller's session or
+     * any original rating/branch. The full lifecycle assertions stay active. */
+    NbaSession fixture = *session;
+    fixture.right_team = 18u;
     NbaTipoff state;
     memset(&state, 0, sizeof(state));
     state.assets = assets;
-    state.session = session;publish_exhibition_team_ids(&state);
+    state.session = &fixture;publish_exhibition_team_ids(&state);
     state.possession_actor = 0;
     state.handler_actor = 0u;
     state.receiver_actor = 1u;

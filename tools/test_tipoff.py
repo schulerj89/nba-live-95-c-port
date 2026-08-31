@@ -16,6 +16,10 @@ EXPECTED_ASSETS = {
           "f728c33e94f9266c36798975e5c8580868e237bb223494067893f31dd3c29d10"),
 }
 EXPECTED_FRAMES = {
+    # C-only images: canonical home/visitor ratings, jerseys and sorted ranks
+    # replace the old reversed team context. Matched-source counterfactuals
+    # reproduce every old/new pixel; see docs/tipoff-image-attribution.md.
+    # The unchanged captured WEST/ORLANDO score panel is still a port gap.
     # Updated only after the EC32 actor launch and ROM countdown/scratch
     # scheduler were bound to production movement/render state.
     # Re-reviewed after `$87:A3BB-$A43B` replaced host rounding with native
@@ -26,8 +30,8 @@ EXPECTED_FRAMES = {
     # Re-reviewed after native five-position matchup pairing and side-specific
     # jersey-number composition. Formation, launch and live frames retain ten
     # complete players, the ball, court/goal bounds and unobstructed HUD.
-    90: ("TIP PH:FORMATION", "39d3e6bf4d77fc58280d3e604e03063e82a621124a5d42d3c7f2a1e818b05ae8"),
-    170: ("TIP PH:POSSESSION", "da83d08b002c789af5b214b02e38d8ee6d1673d87e2d3753c3bb26a0634ff43d"),
+    90: ("TIP PH:FORMATION", "176c32401147f2222163c745e7e5555fd1604722230d6ad533ebf0bfb89f7b97"),
+    170: ("TIP PH:POSSESSION", "95a0a41026b80983219d57bd2c4b310dfa9f72d32299ff9580fcc4bc7aea2764"),
     # `$86:CF38` receiver reach now permits `$86:D365` possession at frame186.
     # Live frame re-reviewed after the exact direction-specific AD92 torso /
     # number queue ordering; formation/possession anchors do not overlap the
@@ -38,7 +42,7 @@ EXPECTED_FRAMES = {
     # Re-reviewed after exact `$86:F1B0-$F2C9` actor-parent timing stopped
     # publishing derived movement one actor pass early. The live frame retains
     # ten complete players, ball, center court and an unobstructed HUD.
-    220: ("TIP PH:LIVE", "85e8824265afa48bd41005c4d397b0db3e74482a21e11ef96ecfca82453e4e6d"),
+    220: ("TIP PH:LIVE", "97f3f4ff835de26b8ba76e3c3f44c6e224999690301c91a30d77efd05f4eb326"),
 }
 
 

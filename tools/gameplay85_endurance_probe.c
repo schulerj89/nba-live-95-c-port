@@ -177,16 +177,17 @@ int main(int argc, char **argv) {
     if (!nba_assets_load(&assets, argv[1])) return 3;
     const uint8_t teams[][2] = {{0,18}, {18,3}, {26,8}};
     const uint16_t seeds[] = {0x1357u, 0x4A91u, 0xBEEFu};
-    /* C-only integration digests, re-reviewed 2026-08-29 after the native
-     * ownership/substep, actor-edge, OOB, inbound and formation-anchor fixes.
+    /* C-only integration digests, re-reviewed after native team/rank and
+     * factory configuration corrections plus the $85:C39C inbound fix.
      * All three 16,000-frame paths retain scoring, both-team motion, multiple
      * possessions, dead-ball recoveries and changing resources/renders. The
      * exact ROM fixtures and these semantic guards are separate from hashes;
-     * see docs/native-edge-parity.md for the scoped native proof and gaps. */
+     * See docs/gameplay85-regression-attribution.md for isolated old-source,
+     * configuration and layout controls; no native trajectory is rebaselined. */
     const uint64_t expected[] = {
-        0x5c699ab7906a9264ull,
-        0xe21e3fa411911e5full,
-        0x310e2241d5021888ull
+        0xbe9fb0edcea0d524ull,
+        0x2a8877c0056dc49dull,
+        0xfddf2d5e8ba68e5aull
     };
     ScenarioResult total = {0};
     int code = 0;

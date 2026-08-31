@@ -183,6 +183,16 @@ static int settle_setup_transition(NbaSetupScreen *setup) {
     return 1;
 }
 
+static NbaSetupUpdateResult closure_press_setup(NbaSetupScreen *setup,
+                                               const NbaInput *input) {
+    /* The native menu producer consumes held words. Separate each requested
+     * press with a released frame; repeated pressed flags on a held button
+     * do not constitute separate native navigation commands. */
+    NbaInput released = {0};
+    (void)closure_update_setup(setup, &released);
+    return closure_update_setup(setup, input);
+}
+
 static int exercise_setup(const NbaAssetPack *assets, NbaSession *session,
                           NbaRenderer *renderer, ClosureResult *result,
                           uint64_t *previous_render) {
@@ -200,23 +210,23 @@ static int exercise_setup(const NbaAssetPack *assets, NbaSession *session,
      * the real transition path. B never commits in the original. */
     NbaInput input = button(NBA_BTN_DOWN);
     for (unsigned row = 0; row < 4u; ++row)
-        (void)closure_update_setup(setup, &input);
+        (void)closure_press_setup(setup, &input);
     if (setup->row != NBA_SETUP_ROW_RULES) { free(setup); return 12; }
     input = button(NBA_BTN_A);
-    NbaSetupUpdateResult update = closure_update_setup(setup, &input);
+    NbaSetupUpdateResult update = closure_press_setup(setup, &input);
     if (update.action != NBA_SETUP_ACTION_OPEN_RULES ||
         settle_setup_transition(setup)) { free(setup); return 13; }
     ++result->transitions;
     uint16_t old_rule = setup->working_rules[0];
     input = button(old_rule ? NBA_BTN_LEFT : NBA_BTN_RIGHT);
-    update = closure_update_setup(setup, &input);
+    update = closure_press_setup(setup, &input);
     if (update.sound != NBA_SETUP_SOUND_ADJUST ||
         setup->working_rules[0] == old_rule) { free(setup); return 14; }
     uint16_t committed_rule = setup->working_rules[0];
     nba_setup_screen_render(setup, renderer);
     capture_frame(result, renderer, previous_render,"rules-edited",setup->frame,setup);
     input = button(NBA_BTN_START);
-    update = closure_update_setup(setup, &input);
+    update = closure_press_setup(setup, &input);
     if (update.action != NBA_SETUP_ACTION_RETURN_MAIN ||
         settle_setup_transition(setup) ||
         session->config.rules[0] != committed_rule) { free(setup); return 15; }
@@ -228,39 +238,39 @@ static int exercise_setup(const NbaAssetPack *assets, NbaSession *session,
 #ifdef NBA_CLOSURE_HISTORICAL_NAVIGATION
     /* Reproduce the old C-only probe while auditing its checked-in digest.
      * That version incorrectly retained row4 after Rules return. */
-    (void)closure_update_setup(setup, &input);
+    (void)closure_press_setup(setup, &input);
 #else
     /* Original $81:B901 rebuilds Main with row0. The corrected production
      * return requires all five real Down dispatches to reach Options. */
     if (setup->row != NBA_SETUP_ROW_MODE) { free(setup); return 16; }
     for (unsigned row = 0; row < 5u; ++row)
-        (void)closure_update_setup(setup, &input);
+        (void)closure_press_setup(setup, &input);
 #endif
     if (setup->row != NBA_SETUP_ROW_OPTIONS) { free(setup); return 16; }
     input = button(NBA_BTN_A);
-    update = closure_update_setup(setup, &input);
+    update = closure_press_setup(setup, &input);
     if (update.action != NBA_SETUP_ACTION_OPEN_OPTIONS ||
         settle_setup_transition(setup)) { free(setup); return 17; }
     ++result->transitions;
     uint16_t old_option = setup->working_options[0];
     input = button(old_option ? NBA_BTN_LEFT : NBA_BTN_RIGHT);
-    update = closure_update_setup(setup, &input);
+    update = closure_press_setup(setup, &input);
     if (update.sound != NBA_SETUP_SOUND_ADJUST ||
         setup->working_options[0] == old_option) { free(setup); return 18; }
     uint16_t committed_option = setup->working_options[0];
     nba_setup_screen_render(setup, renderer);
     capture_frame(result, renderer, previous_render,"options-edited",setup->frame,setup);
     input = button(NBA_BTN_START);
-    update = closure_update_setup(setup, &input);
+    update = closure_press_setup(setup, &input);
     if (update.action != NBA_SETUP_ACTION_RETURN_MAIN ||
         settle_setup_transition(setup) ||
         session->config.options[0] != committed_option) { free(setup); return 19; }
     ++result->transitions;
 
     /* Return to Exhibition and allow all 52 native exit frames to complete. */
-    setup->row = NBA_SETUP_ROW_MODE;
+    if (setup->row != NBA_SETUP_ROW_MODE) { free(setup); return 20; }
     input = button(NBA_BTN_START);
-    update = closure_update_setup(setup, &input);
+    update = closure_press_setup(setup, &input);
     if (update.action != NBA_SETUP_ACTION_NONE ||
         !setup->team_select_exit_active) { free(setup); return 20; }
     for (unsigned frame = 0; frame < 80u; ++frame) {
@@ -463,7 +473,12 @@ int main(int argc, char **argv) {
      * See docs/closure-digest-attribution.md. Further
      * transition changes require fresh attribution, never automatic refresh. */
 #ifndef NBA_CLOSURE_EXPECTED_DIGEST
-#define NBA_CLOSURE_EXPECTED_DIGEST 0xfdbdd69c21271f89ull
+/* Released menu presses, native factory configuration, canonical teams/ranks
+ * and the C39C layout repair have separate before/after controls. The old
+ * fdbdd69c21271f89 remains exactly reproducible by the documented historical
+ * source/configuration control. This is a C regression, not native parity;
+ * see docs/closure-regression-driver-attribution.md. */
+#define NBA_CLOSURE_EXPECTED_DIGEST 0xd26e6deec1fdc18eull
 #endif
     /* Private historical builds derive this override from that revision's
      * checked-in golden. It affects only final acceptance, never game input. */
