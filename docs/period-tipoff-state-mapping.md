@@ -109,3 +109,22 @@ The next acceptance step is a real runtime adapter plus ordinary CPU replay,
 including the currently failing frame49412. Standalone native data proofs
 alone do not establish scheduler timing, visible period transitions, or
 whole-game parity.
+
+## Private alias experiment, not an integrated repair
+
+`build/period-tipoff-alias-candidate-v2` tests consolidating+56/+58/+60 onto
+the existing target and reaction fields, with explicit unsigned interpretation
+for the+58 variant. Its40-source `/W4 /WX` build and7200-frame smoke run pass,
+including the existing initialization self-checks. This is not native proof.
+Against the unchanged screenshot-baseline executable, the first telemetry
+difference is frame306 (actor4's mode14 selector changes from a separate zero
+mirror to its carried target word-336). The first subsequent non-selector
+animation difference is frame348, and the two runs produce different scores.
+The original mode14 entry and later shared-word readers need direct source
+validation before this can be accepted. No main or integration source files
+were changed by the experiment.
+
+V1's anonymous-union approach was rejected by MSVC's C4201 warning under
+`/W4 /WX`; its failed build is retained. V2 uses ordinary named C fields,
+not suppressed compiler warnings. Neither experiment is in the game source
+manifest or an accepted component freeze.

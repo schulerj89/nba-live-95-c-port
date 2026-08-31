@@ -511,3 +511,46 @@ The known CPU frame49412 failure, rules-reentry mismatches, HUD replacement,
 hardware scheduling and full-game acceptance remain open. The separate Max
 consultant remains idle and read-only. No production period repair is yet
 claimed complete.
+
+### Typed composition accepted; user-visible priorities
+
+`913f3a8` integrates the independently accepted typed formation component,
+unchanged from freeze8265eb8e8e71e6c59186b2a0526d9ea75c02fe96a80ccf18bed5507dde41e244.
+Fresh root19-source `/W4 /WX` checks pass125native checkpoints/128,500values,
+47controlled cases,8entry and32protocol refusals. Twelve replay artifacts
+remain byte-identical. Dependency snapshots and the alias map can now be
+recreated locally from pinned source hashes. Historical v1parent files in the
+transitive packet are kept in ignored preparation evidence, not the source
+tree. Production source manifest/NbaTipoff remain unchanged.
+
+The user requested a sub-agent to fix the persistent scoreboard and apparent
+frozen clock, explicitly including implementation rather than investigation
+alone. Controllers owns that repair in private `build/hud-repair-v1`, based
+on ownerdc10166. Baseline7200-frame telemetry proves the match clock advances
+43200to36796 with6404decrements and scores change0-0to4-6. The captured BG3
+image still showsWEST2/ORLANDO0/11:49. The candidate targets original panel
+request/show/expiry, match-clock and shot-clock visibility with original indexed
+assets, preserving all existing263payloads. Actual85:EDAC/EDAF skips a negative
+or zero08DE; the old port unconditionally decrements it. Original83:CC1A has
+a separate decrement/clear consumer. Their shared lifecycle needs verification,
+not an invented permanent scoreboard. Auditor is reviewing this source scope;
+no HUD candidate is accepted or applied to the root yet.
+
+The user also requested a new original-bugs documentation sub-agent. Creation
+hit the four-agent thread limit even after pausing a worker; the user was told,
+and scheduler performed the separate documentation job instead. `e43d7e0`
+contains `known-original-game-bugs.md`:2confirmed arithmetic/indexing defects
+and7retained quirks, with evidence and production-availability limits. All30
+local references resolve. Root clarified that role+86 words are pairing
+directions, not displayed facing. The document was opened and linked to the
+user. Scheduler has resumed the separate normal draw-order prerequisite.
+
+Root also tested a private consolidation of actor+56/+58/+60 aliases. The
+candidate compiles and completes7200frames but changes behavior beginning with
+mode14 diagnostics/frame306 and animation/frame348. It is an experiment awaiting
+source validation, not an accepted fix. See `period-tipoff-state-mapping.md`.
+The failed anonymous-union build remains local. Original root code is untouched.
+
+Launch verifier repair is paused behind the requested HUD fix. The separate
+Max consultant remains idle/read-only; no additional agent was successfully
+created. Screenshot history and its latest gallery remain local and ignored.
