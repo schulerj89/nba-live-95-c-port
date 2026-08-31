@@ -152,3 +152,8 @@ tools/hud_native_lifecycle_probe.c -text
 tools/hud_runtime_probe.c -text
 tools/verify_gameplay_hud_lifecycle.py -text
 tools/period_formation_dependencies_v1/nba_assets.h -text
+
+# Keep the three reviewed completion-planning reports byte-identical to handoff.
+docs/completion-gameplay-work-plan-20260831.md -text
+docs/completion-timing-work-plan-20260831.md -text
+docs/completion-plan-audit-20260831.md -text

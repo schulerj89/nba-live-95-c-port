@@ -7,13 +7,19 @@ main. See `docs/completion-continuation.md` for current ownership, evidence,
 first failures and next actions. `docs/checkpoint-paused-20260830.md` records
 the historical stop and remains preserved. The game remains incomplete.
 
-Last updated 2026-08-30. This is a current-state handoff, not a milestone log.
+Current completion plan (2026-08-31):
+[delegated implementation and release gates](docs/completion-plan-20260831.md).
+Planning baseline is `f318478`; the bounded HUD repair is integrated, but CPU
+frame41,876 and Rules reentry158 failures remain. Older details below retain
+their historical scope; use the plan and living continuation for current order.
+
+Last updated 2026-08-31. This is a current-state handoff, not a milestone log.
 Use Git history for older checkpoints and run
 `python tools/progress.py --write docs/progress.md` for live measurements.
 
 ## Active ownership audit and implementation
 
-The current plan is `docs/ownership-plan.md`, with detailed gameplay and
+The historical ownership plan is `docs/ownership-plan.md`, with detailed gameplay and
 configuration inventories in `docs/gameplay-ownership-audit.md` and
 `docs/options-test-ownership-audit.md`. Whole-game acceptance remains **FAIL**:
 ordinary human gameplay, multiple rule/option consumers, exact transitions,

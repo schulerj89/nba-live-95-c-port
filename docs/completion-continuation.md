@@ -7,6 +7,16 @@ Sol Max consultant `01a05634-5316-78c0-bb36-f9cdfd3b562e` (local) was created
 after scheduler and independent auditor established the complex carried-phase
 blocker. Reuse that task for qualifying later blockers; no other escalation.
 
+The current execution order and full release criteria are in
+`completion-plan-20260831.md`, created at the user's request after the f318478
+preservation checkpoint. Three sub-agents reviewed gameplay, timing and feature
+coverage; their first implementation assignments are recorded there. The existing
+Max task returned a read-only consultation on the established SPC/carried-phase
+blocker: start with normal reset/IPL/upload and a persistent game-level CPU/SPC
+owner outside the scene union. Its bounded first gate reaches the real F1/0387
+state and explicit03DB DSP-read stop. See `completion-timing-consultation-20260831.md`.
+Planning and archival commits are not implementation acceptance.
+
 Explicit user instruction (2026-08-31): preserve every bug present in the
 original game and comment it. Confirm native behavior with ROM/routine/evidence
 before labeling it an original bug; preserve quirks and document them near the

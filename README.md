@@ -25,6 +25,11 @@ The [ownership inventory and milestone plan](docs/ownership-plan.md) records the
 distinguish production wiring, bounded native evidence, C regressions, and
 missing behavior. Captured instruction coverage is not game completion.
 
+The current [completion plan](docs/completion-plan-20260831.md) assigns the
+remaining work to the implementation and audit agents, lists dependencies and
+release gates, and covers full human play, timing/audio, all original modes and
+persistence. Its milestones are not claims that those features are finished.
+
 The [known original-game bugs and preserved quirks](docs/known-original-game-bugs.md)
 catalog separates demonstrated original defects from unusual behavior and port
 errors. Each entry records its source evidence and whether the preserving
