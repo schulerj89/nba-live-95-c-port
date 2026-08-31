@@ -46,11 +46,13 @@ Independent verification on the rebuilt candidate:
 | Repaired poison behavior | New0 changed RGB pixels and0 changed raw bytes | Same current journey with pristine/poisoned pack; full canvas comparison |
 
 The fourteen independent journeys use Left for quarter choices descending from
-factory12 minutes. Four Right journeys there would clamp to the same value;
-the owner's earlier fourteen-journey report did not by itself cover all quarter
-values. The40 native canvases already covered those values, and this audit
-adds genuinely distinct CLI controls. All18 independent cases pass with the
-same test source that exposed the v1 raw defect.
+factory12 minutes. Main values wrap, so the owner's Right journeys also cover
+all four quarter choices: `span-attribution-v2/after-3-{0,1,2,3}.log` records
+quarter values `[3,0,1,2]`. The earlier audit statement that these clamped and
+lacked distinct coverage was incorrect; source and actual telemetry confirm
+the owner's fourteen journeys were distinct. All18 independent cases pass
+with the same test logic that exposed the v1 raw defect; only the incorrect
+explanatory comment was corrected afterward.
 
 The original tail test used an empty tile from row8 and was not an effective
 negative control. The owner corrected it to row9 and compares the poisoned

@@ -143,3 +143,31 @@ New-match fixture now compares native home0/visitor1 pause side with the mapped
 legacy UI side; two return journeys and unchanged startup projection pass.
 Production was unchanged for these fixture corrections. Full suitev5 continues
 past those gates; a complete suite pass is not yet claimed.
+
+2026-08-31 further checkpoints: Main source-span restoration is committed as
+bb8b3c0; canonical team-context probe adapters and independently attributed
+C-only Mode1 counts as0034f06, both pushed only to the integration branch.
+All12 affected native probe gates pass with unchanged fixtures/comparison
+fields; see docs/gameplay-adapter-migration.md. Full suitev6 reaches the legacy
+Setup monolith and fails its old frame162 default hash. No gate was skipped.
+
+The Main screen-coordinate highlight correction is independently accepted:
+docs/setup-highlight-independent-audit.md records a private fresh build,
+all9 old-image attributions and unchanged selected native Rules gates. Fresh
+native HDMA evidence supports the fixed screen band but does not observe a
+populated moving-label crossing. Do not call the C entrance crossing an
+original-game bug; initial-entry timing remains unresolved. Only162/166 old
+default images differ after correction, by1116 changed Style/Quarter pixels.
+
+Main values wrap. The earlier audit prose incorrectly claimed Main quarter
+clamped; actual preserved logs show3,0,1,2. Only prose/comments were corrected.
+A suspected --setup-down driver defect was also disproved: its scene clock
+starts at-105, ENTER_FRAMES is32, and three taps at139/147/155 reach rows1/2/3.
+No production driver change was made for that hypothesis.
+
+Controller19-file checkpoint plus repaired verifier independently passes
+270020 native words,45 integrity cases,200 controlled original-ROM/quirk checks,
+and3055 artifact attestations. Root integration is underway; the normal
+human path remains disabled. The separate10-file human dispatch and codec
+continuation work are not integrated or accepted yet. Scheduler and human
+action implementation continue; whole-game completion remains incomplete.

@@ -49,9 +49,11 @@ full build test path. Fresh verification and independent re-review are pending.
 Final independent review accepts revised freezev2 for the bounded span scope;
 see `completion-main-span-independent-audit.md`. All18 independent cases pass,
 including14 distinct actual row/value journeys, RGB poison resistance and raw
-canvas poison resistance. The owner's earlier14 journeys included repeated
-quarter-length endpoints because Right clamps at12minutes; they were not14
-distinct values. The independent run uses Left for those quarter values.
+canvas poison resistance. The owner's14 journeys also cover distinct values:
+the retained quarter telemetry for0/1/2/3Right presses is3/0/1/2. Main values
+wrap. An earlier audit comment incorrectly said Right clamps at12minutes;
+this was checked against those logs and the native Main adjustment contract.
+The independent run uses Left and reaches the same four quarter values.
 The47 native canvases,730configuration checkpoints,57391input frames and1770
 adjustment observations pass again. The owner's147native opening frames also
 pass separately. Early highlight/initial-default migration, reentry and the

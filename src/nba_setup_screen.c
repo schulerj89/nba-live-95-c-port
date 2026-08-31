@@ -1378,7 +1378,7 @@ static bool setup_copy_rom_text_span(const uint8_t *source_vram,
                                      const uint8_t *source_cgram,
                                      NbaRenderer *ren, int sx, int sy,
                                      int width, int height, int dx, int dy,
-                                     int brightness, bool highlighted) {
+                                     int brightness, int band_top, int band_bottom) {
     if (!source_vram || !source_cgram || !ren || width <= 0) return false;
     bool copied = false;
     for (int py = 0; py < height; ++py) {
@@ -1394,9 +1394,9 @@ static bool setup_copy_rom_text_span(const uint8_t *source_vram,
             ren->pixels[y * NBA_SNES_WIDTH + x] = nba_snes_cgram_color(
                 source_cgram, pixel.palette * 4 + pixel.color_index,
                 brightness,
-                highlighted && py < NBA_SETUP_HIGHLIGHT_HEIGHT ? NBA_SETUP_MATH_SUB_R : 0,
-                highlighted && py < NBA_SETUP_HIGHLIGHT_HEIGHT ? NBA_SETUP_MATH_SUB_G : 0,
-                highlighted && py < NBA_SETUP_HIGHLIGHT_HEIGHT ? NBA_SETUP_MATH_SUB_B : 0);
+                y >= band_top && y < band_bottom ? NBA_SETUP_MATH_SUB_R : 0,
+                y >= band_top && y < band_bottom ? NBA_SETUP_MATH_SUB_G : 0,
+                y >= band_top && y < band_bottom ? NBA_SETUP_MATH_SUB_B : 0);
             copied = true;
         }
     }
@@ -1404,8 +1404,14 @@ static bool setup_copy_rom_text_span(const uint8_t *source_vram,
 }
 
 static void setup_render_main_values(const NbaSetupScreen *s, NbaRenderer *ren,
-                                     int bg3_scroll) {
+                                     int bg3_scroll, bool math_active) {
     if (!s || s->page != NBA_SETUP_PAGE_MAIN) return;
+    /* Native HDMA ch7 ($7F:6800 -> $2126/$2127) gates BG3 color math by
+     * screen scanline. Preserve its fixed band while BG3 scrolls: during
+     * entrance it can cross another word. Do not attach the gold color to
+     * a logical selected value. See nba_setup_screen.h's native PPU contract. */
+    int band_top = math_active ? nba_setup_screen_row_band_top(s->row) : 0;
+    int band_bottom = math_active ? band_top + NBA_SETUP_HIGHLIGHT_HEIGHT : 0;
     for (int row = NBA_SETUP_MAIN_VALUE_COUNT - 1; row >= 0; --row) {
         uint16_t value = s->working_main[row];
         if (value > setup_main_max[row]) continue;
@@ -1419,7 +1425,7 @@ static void setup_render_main_values(const NbaSetupScreen *s, NbaRenderer *ren,
         (void)setup_copy_rom_text_span(source_vram, s->cgram, ren,
                                        138, source_top, setup_main_value_span[row][value], 19,
                                        138, top, s->brightness,
-                                       row == (int)s->row);
+                                       band_top, band_bottom);
     }
 }
 
@@ -1469,7 +1475,8 @@ static bool setup_copy_rom_value(const NbaSetupScreen *s, NbaRenderer *ren,
      * top of the following18-line row. Preserve the original font shadow. */
     return setup_copy_rom_text_span(source_vram, s->options_cgram, ren,
                                     156, sy, copy_width, 19, dx, dy,
-                                    s->brightness, highlighted);
+                                    s->brightness, highlighted ? dy : 0,
+                                    highlighted ? dy + NBA_SETUP_HIGHLIGHT_HEIGHT : 0);
 }
 
 static int setup_obj_tile_pixel(const uint8_t *tile, int x, int y) {
@@ -1811,7 +1818,7 @@ void nba_setup_screen_render(const NbaSetupScreen *s, NbaRenderer *ren) {
         int overlay_scroll = s->bg3_vscroll;
         if (s->page == NBA_SETUP_PAGE_RULES && s->menu_scroll > 0)
             overlay_scroll += s->menu_scroll * NBA_SETUP_ROW_PITCH;
-        setup_render_main_values(s, ren, overlay_scroll);
+        setup_render_main_values(s, ren, overlay_scroll, math_active);
         setup_render_menu_values(s, ren, vram, cgram, overlay_scroll,
                                  (s->main_screen & 0x10) != 0 || rules_return_dispatch, math_active);
     }

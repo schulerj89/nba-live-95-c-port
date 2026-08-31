@@ -23,8 +23,8 @@ def main():
         run=subprocess.run(command,text=True,capture_output=True,check=True,timeout=30)
         (a.output/(label+'.log')).write_text(run.stdout+run.stderr)
         # Verify the requested value was actually reached, including all four
-        # quarter choices descending from factory12min. Four Right calls would
-        # merely clamp at12min and would not cover these values.
+        # quarter choices descending from factory12min. Main values wrap;
+        # ascending Right journeys also cover all choices in a different order.
         field=('mode','style','level','quarter')[row]
         summary=next(line for line in run.stdout.splitlines() if line.startswith('[SETUP MAIN TEST]'))
         if f'{field}={value}' not in summary: raise AssertionError('input journey did not reach requested value')
