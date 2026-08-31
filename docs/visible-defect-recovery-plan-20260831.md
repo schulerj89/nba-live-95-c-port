@@ -33,8 +33,8 @@ remain open for broader interactive/directional coverage.
 
 | Ticket | Current observed defect | Owner | Required regression and exit |
 |---|---|---|---|
-| F1 | Corrupt/glitching frames on entry to Team Select | `startup_nmi` | Game Setup confirm through settled Team Select, consecutive transition frames and team changes; no stale/foreign tiles, palette or OAM pieces |
-| F2 | Incorrect fade into Player Setup | `startup_nmi` | Team Select Start through settled Player Setup compared at source transition boundaries; replace the current 109-frame fully black hold with the source transition sequence, retaining only source-demonstrated forced blanking |
+| F1 | Corrupt/glitching frames on entry to Team Select | `startup_nmi` | Game Setup confirm through settled Team Select, consecutive native and port transition frames and team changes; preserve and comment only transient layers that the original demonstrably shows |
+| F2 | Incorrect transition into Player Setup | `startup_nmi` | Team Select Start through settled Player Setup compared at source transition boundaries; replace the port's frozen fade and 90-frame fully black hold with the native layer exit and 67-frame forced-black interval while retaining the native arrival boundary |
 | F3 | Centered controller cannot confirm CPU-vs-CPU | `startup_nmi` | Move pad0 to native neutral `$166D=1`, press the original confirm input, enter next scene and Tipoff with no human assignment or forced side |
 | F4 | Team presentation and starting lineup cannot be skipped | `startup_nmi` | Press/release edges at every presentation phase; match original permitted skip destinations and handoff without repeated held-input activation |
 | F5 | Intro/lineup text renders incorrectly | Root | Fixed at `b42350d`: render the ROM strip count from each proportional descriptor width; focused regression passes and independent exact-build screenshots prove `312 TURNER` is now `31 TURNER` and clipped I/M/W glyphs are complete |
