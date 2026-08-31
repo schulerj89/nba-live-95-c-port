@@ -82,3 +82,26 @@ tools/ghidra/DumpPeriodEntryPrefix.java -text
 tools/verify_period_entry_prefix.py -text
 tools/period_entry_prefix_reference.py -text
 tools/test_period_entry_prefix.py -text
+
+# Preserve the reviewed period role source and verifier bytes.
+include/nba_period_roles.h -text
+src/nba_period_roles.c -text
+tools/period_roles_probe.c -text
+tools/period_roles_probe_fields.inc -text
+tools/build_period_roles_probe.ps1 -text
+tools/verify_period_roles.py -text
+tools/test_period_roles.py -text
+tools/freeze_period_roles.py -text
+include/nba_period_roles_v2.h -text
+src/nba_period_roles_v2.c -text
+tools/period_roles_probe_v2.c -text
+tools/period_roles_probe_fields_v2.inc -text
+tools/build_period_roles_probe_v2.ps1 -text
+tools/verify_period_roles_v2.py -text
+tools/test_period_roles_v2.py -text
+tools/period_roles_rom_reference_v2.py -text
+tools/test_period_roles_protocol_v2.py -text
+tools/freeze_period_roles_v2.py -text
+tools/verify_period_roles_v3.py -text
+tools/test_period_roles_verifier_v3.py -text
+tools/freeze_period_roles_v3.py -text
