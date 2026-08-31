@@ -160,3 +160,14 @@ docs/completion-plan-audit-20260831.md -text
 # Preserve the independently reviewed normal retail-entry capture identities.
 tools/capture_retail_mode_entry.py -text
 tools/mesen_retail_mode_entry.lua -text
+# Preserve the C1 candidate's executed source, guard and capture identities.
+tools/test_cpu_gameplay.py -text
+docs/pass-interruption-c1.md -text
+tools/build_pass_interruption_probe.py -text
+tools/capture_pass_interruption.py -text
+tools/mesen_pass_interruption.lua -text
+tools/pass_interruption_probe.c -text
+tools/pass_interruption_trace.py -text
+tools/test_pass_interruption_contract.py -text
+tools/test_pass_interruption_trace.py -text
+tools/verify_pass_interruption_trace.py -text

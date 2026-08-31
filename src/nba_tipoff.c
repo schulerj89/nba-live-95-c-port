@@ -2593,17 +2593,26 @@ static bool cpu_try_player_knockdown_contact(NbaTipoff *tipoff,
         if (tipoff->live_state_raw < 0x80u) tipoff->live_state_raw = 0u;
         tipoff->ball_activity_raw = 0u;
     }
+    bool drop_owner = false;
     if (victim_slot == (unsigned)tipoff->possession_actor) {
-        bool inhibit_hitter = action == 0x36u ||
+        /* $86:C0F5-C0FE: action35's nonzero RNG&3 jumps directly to
+         * C189, skipping both hitter inhibition and C15F-C186 owner drop.
+         * Preserve possession on that branch; an interrupted mode15 pass
+         * may retain 09C4/0942/0946 while mode8 executes recovery. C476
+         * cancels receiver modes10/14 only, not the passing actor. */
+        drop_owner = action == 0x36u ||
             (nba_gameplay_rng_next(&tipoff->rng) & 3u) == 0u;
-        if (inhibit_hitter) hitter->contact_inhibit_raw_5a = 10u;
-        if (action == 0x36u) {
-            tipoff->ball.velocity_z = 480;
-            victim->velocity_z = 600;
-        }
+        if (drop_owner) hitter->contact_inhibit_raw_5a = 10u;
+        if (action == 0x36u) tipoff->ball.velocity_z = 480;
+    }
+    /* $86:C154-C157 gives action36 its vertical impulse even when the
+     * victim is not the owner; only C14E-C151's ball impulse is gated. */
+    if (action == 0x36u) victim->velocity_z = 600;
+    if (drop_owner) {
         tipoff->possession_actor = -1;
         tipoff->possession_team = -1;
         tipoff->deferred_shot_foul_phase_raw_0a02 = 1u;
+        tipoff->catch_actor_record_raw_0910 = 0x3EEBu; /* $86:C16B-C16E */
         tipoff->ball.owner_actor = -1;
         tipoff->ball.state = NBA_BALL_LOOSE;
         tipoff->ball.velocity_x = nba_gameplay_arithmetic_shift_right(

@@ -77,3 +77,28 @@ The real63,800-frame loop has completed; regression review is still in progress.
 S1 has a first executable reset/IPL upload with matching resident entry/F1 ARAM
 and an explicit stop before an untranslated CPU reset helper. Its fresh native
 capture/replay review remains underway; neither candidate is integrated yet.
+
+## C1 contact repair checkpoint
+
+This update supersedes the C1 pending status above. Independent QA accepted
+freeze b3653771a3384bfa705cf4255d424a912b726fc7f1095dcd3ab6ef3533ef5253.
+Root verified all581identities, copied the11files unchanged and rebuilt the
+actual contact probe, full CLI, HUD runtime and new-match runtime from source.
+The9,216source cases, actual41876interruption/41908recovery, six positive and
+29negative guard cases, HUD checks and two C new-match return journeys pass.
+The fresh63,800-frame trace matches the reviewed candidate exactly.
+
+The final combined CPU regression passes gameplay/state/pass/receiver/motion
+checks, then fails the existing frame600RGB golden with the same pre-C1 image.
+That failure remains unchanged; the next screenshot checkpoint also examines
+600/1300 before any separately reviewed golden migration. Natural original
+contact coverage remains absent. See `pass-interruption-integration.md` for
+the precise scope, identities and retained failures.
+
+The screenshot agent will publish the usual13views and additional before/contact/
+recovery frames from this exact committed source. C2 ordinary receiver-caller
+capture is underway. S1's first bootstrap source replay matches the native
+checkpoint, but QA found verifier omissions; a new verifier revision is required
+without changing the frozen source/evidence. FullS1 through03DB remains open.
+The existing Max task is providing read-only advice on D1 draw-order/shared
+render-state integration, with implementation retained in the delegated workers.

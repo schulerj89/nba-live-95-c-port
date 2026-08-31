@@ -13,6 +13,7 @@ from pathlib import Path
 
 from PIL import Image
 from test_shot_state_trace import verify as verify_shot_state_trace
+from pass_interruption_trace import PassInterruptionGuard
 
 if sys.platform == "win32":
     import msvcrt
@@ -1592,7 +1593,9 @@ def main():
         # phase/apex gate, then releases it via the ROM table.
         pass_rows = []
         release_rows = []
+        interruption_guard = PassInterruptionGuard()
         for index, row in enumerate(rows[219:], 219):
+            interruption_guard.observe(rows[index - 1], row)
             possession = row["possession"]
             actor_id = possession["pass_actor_raw"]
             for released_actor in range(10):
@@ -1609,7 +1612,11 @@ def main():
                 # `$85:A656-$A726 -> $86:A613` clears both words when any
                 # integrated record touches a rectangular boundary; `$09C4`
                 # and the installed mode-15 executor intentionally survive.
-                if actor_id != -1 or receiver_id != -1:
+                # C476 is a different source contract: a struck mode10/14
+                # receiver clears0946 only, preserving0942 and09C4. Require
+                # the actual contact transition before accepting its carry.
+                if ((actor_id != -1 or receiver_id != -1) and
+                        not interruption_guard.receiver_only_clear(rows[index - 1], row)):
                     raise AssertionError(
                         f"partial `$0942/$0946` boundary clear: {possession}")
                 # `$86:A613` has destroyed the only global identities. The
@@ -1630,7 +1637,7 @@ def main():
             if raw["pass_band_62"] not in (0, 6, 12, 18, 24, 30) or \
                     raw["mode_saved_62"] != raw["pass_band_62"] or \
                     raw["saved_mode_84"] != raw["control_mode_saved"] or \
-                    (not raw["pass_released"] and
+                    (raw["control_mode"] == 15 and not raw["pass_released"] and
                      actor["animation"] not in
                      (0x18, 0x2A, 0x2B, 0x2C,
                       0x2D, 0x2E, 0x2F, 0x30, 0x31)):
@@ -1638,6 +1645,11 @@ def main():
                     f"mode-15 pass metadata diverged: possession={possession} "
                     f"actor={actor}")
             pass_rows.append((index, row, actor))
+        if interruption_guard.interrupted:
+            raise AssertionError("trace ended before interrupted-pass recovery")
+        print(f"[PASS INTERRUPTION] entries={interruption_guard.entries} "
+              f"recoveries={interruption_guard.recoveries} "
+              f"receiver-only-clears={interruption_guard.receiver_clears}", flush=True)
         if len(pass_rows) < 100 or not release_rows:
             raise AssertionError("ROM mode-15 pass lifecycle was not sustained")
         exact_pass_frames = 0

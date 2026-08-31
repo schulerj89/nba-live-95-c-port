@@ -25,6 +25,16 @@ inventory. See `implementation-checkpoints-20260831.md` and
 `retail-mode-state-inventory.md`. Commit/push follows independently verified
 integration checkpoints; gallery publication follows exact-build visual QA.
 
+Current checkpoint: `pass-interruption-integration.md` records accepted C1
+production corrections and fresh root verification. All63,800Ctrace rows match
+the candidate, but the full regression still fails its preexisting600-frame
+image golden; no golden was changed. Root M0 normal-entry evidence and the
+Season-length/team selector mapping are committed. C2 source/caller work is
+underway. S1 reset/upload/F1 source replay matches its native packet but needs
+verifier repair and the remaining CPU/DMA/resident continuation before fullS1.
+The Max task is read-only on D1 ownership/render integration. Main and desktop
+remain unchanged; whole-game acceptance is still incomplete.
+
 Explicit user instruction (2026-08-31): preserve every bug present in the
 original game and comment it. Confirm native behavior with ROM/routine/evidence
 before labeling it an original bug; preserve quirks and document them near the
