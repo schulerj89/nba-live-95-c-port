@@ -70,9 +70,63 @@ static uint8_t team_id_for_context(const NbaTipoff *tipoff, unsigned context) {
     return (uint8_t)tipoff->team_context[context].strategy_team_raw_00;
 }
 
-/* The current frontend exposes only left0/right1. Its native controller
- * allocator uses left selection0 -> group5/context1 and right selection2 ->
- * group0/context0. Neutral/multiple-controller routing is still unwired. */
+/* Actor +16 remains canonical for gameplay consumers. The controller module
+ * receives/returns a projection only at an ownership mutation boundary. */
+static void controller_read_actors(NbaTipoff *t) {
+    for (unsigned actor=0;actor<10;++actor)
+        t->controllers.actor_assignment[actor]=t->actors[actor].controller_assignment_raw;
+}
+
+static void controller_write_actors(NbaTipoff *t) {
+    for (unsigned actor=0;actor<10;++actor)
+        t->actors[actor].controller_assignment_raw=(int8_t)t->controllers.actor_assignment[actor];
+}
+
+bool nba_tipoff_initialize_controllers(NbaTipoff *t,const uint16_t selections[5],
+    const uint16_t flags[5],uint16_t override_07f8) {
+    if (!t) return false;
+    controller_read_actors(t);
+    if (!nba_controller_initialize(&t->controllers,selections,flags,override_07f8)) {
+        t->controller_contract_fault=true;return false;
+    }
+    t->controller_override_raw_07f8=override_07f8;
+    controller_write_actors(t);
+    return true;
+}
+
+bool nba_tipoff_transfer_controller(NbaTipoff *t,unsigned target) {
+    if (!t || target>=10) return false;
+    controller_read_actors(t);
+    if (!nba_controller_transfer(&t->controllers,target,t->actors[target].team_group_raw_6e)) {
+        t->controller_contract_fault=true;return false;
+    }
+    controller_write_actors(t);
+    return true;
+}
+
+void nba_tipoff_publish_controller_input(NbaTipoff *t,unsigned actor,uint16_t held) {
+    if (!t || actor>=10) return;
+    NbaTipoffActor *a=&t->actors[actor];
+    int pad=a->controller_assignment_raw;
+    if (pad<0 || pad>=5) return;
+    unsigned roster=t->fatigue.active_roster[actor];
+    if (roster>=24) {t->controller_contract_fault=true;return;}
+    NbaControllerInputContext c={(uint16_t)actor,(uint16_t)((int32_t)a->z_fp>>8),
+        t->fatigue.stamina[roster],a->movement_boost_timer,
+        t->fouls.free_throw_state_raw_0978,t->live_state_raw,t->attached_ball_state_raw_09f6,
+        t->session->config.rules[4],(uint16_t)t->possession_actor,
+        t->fouls.shooting_foul_raw_09bc,t->fouls.foul_event_raw_0964,
+        t->fouls.whistle_active_raw_09b6,(uint16_t)(int16_t)t->collision_actor_a_raw};
+    nba_controller_publish_input(&t->controllers.record[pad],held,&c);
+    a->movement_boost_timer=c.boost;
+    t->fouls.foul_event_raw_0964=c.event_0964;
+    t->collision_actor_a_raw=(int8_t)c.event_actor_492d;
+}
+
+/* Legacy pause compatibility still consumes player_one_side left0/right1.
+ * The allocator uses selection0 -> group5/context1 and selection2 ->
+ * group0/context0. Native requesting-pad pause routing, including neutral,
+ * must replace this compatibility path before human gameplay is enabled. */
 static uint8_t context_for_ui_side(uint8_t ui_side) {
     return ui_side ? 0u : 1u;
 }
@@ -2086,10 +2140,8 @@ static void ball_position_at_actor(NbaTipoff *tipoff, unsigned owner) {
 static void ball_attach_to_actor(NbaTipoff *tipoff, unsigned owner) {
     ball_position_at_actor(tipoff, owner);
     NbaTipoffActor *actor = &tipoff->actors[owner];
-    for (unsigned i = 0; i < NBA_GAMEPLAY_ACTOR_COUNT; ++i)
-        tipoff->actors[i].controller_assignment_raw = -1;
-    if (!tipoff->cpu_vs_cpu)
-        actor->controller_assignment_raw = 0;
+    /* Attachment is a render/ball-state projection. Controller transfer is
+     * owned by D25A acquisition and explicit BC9B callers, never this helper. */
     tipoff->ball.owner_actor = (int8_t)owner;
     tipoff->ball.state = NBA_BALL_ATTACHED;
     /* Mode 12 owns its wind-up counter: attachment must not replace a
@@ -3499,8 +3551,6 @@ static void ball_launch(NbaTipoff *tipoff, int target_x, int target_y,
     tipoff->ball.velocity_z = (int16_t)vertical_velocity;
     tipoff->ball.owner_actor = -1;
     tipoff->ball.state = (uint8_t)mode;
-    for (unsigned i = 0; i < NBA_GAMEPLAY_ACTOR_COUNT; ++i)
-        tipoff->actors[i].controller_assignment_raw = -1;
 }
 
 static NbaShotAction actor_shot_action(const NbaTipoff *tipoff,
@@ -3569,8 +3619,6 @@ static bool cpu_start_rom_shot(NbaTipoff *tipoff, unsigned slot) {
     tipoff->shot_miss_index_raw = 0xFFu;
     tipoff->shot_result_resolved = false;
     cpu_enter_play_state(tipoff, NBA_CPU_PLAY_SHOT);
-    for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor)
-        tipoff->actors[actor].controller_assignment_raw = -1;
     shooter->exact_shot_animation = true;
     actor_store_shot_action(tipoff,shooter,&start);
     ball_attach_to_actor(tipoff, slot);
@@ -3722,12 +3770,12 @@ static CpuMode11Outcome cpu_dispatch_rom_mode11(
      * route. A matching active controller, either late clock, or a clear lane
      * sends the actor toward the team anchor; only the first three conditions
      * start a shot. This path is normally dormant in CPU-vs-CPU play. */
-    if (tipoff->mode11_context_raw_3b[context_side] != 0u) {
+    if (tipoff->controllers.count[context_side] != 0u) {
         for (unsigned control = 0; control < 5u; ++control) {
-            if (tipoff->mode11_control_group_raw[control] >= 0 &&
-                (uint16_t)tipoff->mode11_control_group_raw[control] ==
+            if (tipoff->controllers.record[control].group >= 0 &&
+                (uint16_t)tipoff->controllers.record[control].group ==
                     tipoff->camera_side_group_raw &&
-                (tipoff->mode11_control_flags_raw[control] & 0x0040u) != 0u) {
+                (tipoff->controllers.record[control].held & 0x0040u) != 0u) {
                 if (z != 0) return CPU_MODE11_NORMAL_RETURN;
                 return cpu_start_rom_shot(tipoff, slot) ?
                     CPU_MODE11_SHOT_STARTED : CPU_MODE11_NORMAL_RETURN;
@@ -4455,6 +4503,9 @@ static bool cpu_special_shot_self_test(const NbaAssetPack *assets,NbaSession *se
     s.team_context[0].anchor_x_raw_0a=336;
     for(unsigned i=5;i<10;++i)s.actors[i].x_fp=-1000*256;
     NbaTipoffActor *a=&s.actors[0];
+    /* CPU fixture: zero-initialized +16 would mean human pad0. Shot startup
+     * correctly preserves controller ownership instead of clearing it. */
+    a->controller_assignment_raw=-1;
     a->x_fp=280*256;a->anchor_distance_raw=56;a->anchor_direction_raw=4;
     a->shot_stamina_raw_18=0x7FFF;a->assignment_distance=100;
     a->animation_upper_queue_cursor_raw_18=a->animation_lower_queue_cursor_raw_1a=0xFFFF;
@@ -6252,6 +6303,17 @@ static void cpu_apply_ball_acquisition_core(NbaTipoff *tipoff,
 }
 
 static void cpu_commit_ball_acquisition(NbaTipoff *tipoff, uint8_t catcher) {
+    /* `$86:D25A-$D349`: publish prior controller, transfer a designated
+     * passer controller or select the catcher's own team's round-robin pad.
+     * Preserve the designated-pass branch's native lack of a group check;
+     * only the round-robin branch explicitly restricts the controller team. */
+    controller_read_actors(tipoff);
+    if (!nba_controller_acquire(&tipoff->controllers,catcher,
+            tipoff->actors[catcher].team_group_raw_6e,
+            (uint16_t)tipoff->pass_receiver_raw,(uint16_t)tipoff->pass_aux_raw,
+            &tipoff->controller_previous_owner_raw_0a00))
+        tipoff->controller_contract_fault=true;
+    else controller_write_actors(tipoff);
     /* `$86:D34A-$D3C5`: mark the collision, run the shared BAA2 ownership
      * installer, then clear only the pass globals owned by this continuation.
      * `$09C4/$09DA`, the inbound timer, and the ball record are not reset here. */
@@ -6298,7 +6360,10 @@ static bool cpu_ball_acquisition_self_test(void) {
     state.handler_actor = 1u;
     state.possession_actor = 1;
     state.pass_actor_raw = 1;
-    state.pass_aux_raw = 3;
+    /* This is a CPU catch fixture. $0944=-1 must name no passing pad;
+     * historical value3 unintentionally requests the now-implemented
+     * designated controller transfer and contradicts the expected -1. */
+    state.pass_aux_raw = -1;
     state.pass_receiver_raw = 7;
     state.ball_activity_raw = 0xFFFFu;
     state.rim_raw_094a = 29u;
@@ -6317,6 +6382,8 @@ static bool cpu_ball_acquisition_self_test(void) {
     state.actors[7].velocity_z = 0x123;
     state.actors[7].movement_magnitude_raw = 0x80u;
     for (unsigned i = 0; i < NBA_GAMEPLAY_ACTOR_COUNT; ++i) {
+        state.actors[i].team_group_raw_6e = i < 5 ? 0 : 5;
+        state.actors[i].controller_assignment_raw = -1;
         state.actors[i].assignment_base_raw = (uint16_t)(i * 2u);
         state.actors[i].assignment_current_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
     }
@@ -7047,10 +7114,19 @@ static void cpu_update_all_actors(NbaTipoff *tipoff) {
 }
 
 static void cpu_update_actor_behaviors(NbaTipoff *tipoff) {
+    /* $87:9075-9086 clears the per-pad latch before the $91xx actor sweep.
+     * Human action/movement dispatch is still gated off at match creation;
+     * publishing a record here alone does not implement $84:E2AC. */
+    nba_controller_begin_sweep(&tipoff->controllers);
     for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
+        int pad=tipoff->actors[actor].controller_assignment_raw;
+        if(pad>=0 && pad<5 && !tipoff->controllers.record[pad].processed)
+            nba_tipoff_publish_controller_input(tipoff,actor,pad==0?tipoff->pad_held_raw:0);
         /* Even inbound owners enter F34F; F3DA selects the separate F43A
          * continuation only after the common flag/pose prefix. */
         cpu_dispatch_normal_actor_behavior(tipoff, actor);
+        if(pad>=0 && pad<5 && tipoff->actors[actor].controller_assignment_raw>=0)
+            tipoff->controllers.record[pad].processed=1;
     }
 }
 
@@ -7385,6 +7461,9 @@ static bool cpu_update_free_throw_scene(NbaTipoff *tipoff) {
         tipoff->rim_raw_097c = 0u;
         tipoff->pass_receiver_raw = -1;
         tipoff->fouls.whistle_active_raw_09b6 = 0u;
+        /* $87:9CDE-9CE6 reaches BC9B for the designated shooter before
+         * A15C moves him to the free-throw position. */
+        (void)nba_tipoff_transfer_controller(tipoff,shooter);
         if (tipoff->ball.owner_actor >= 0 &&
             tipoff->ball.owner_actor != (int8_t)shooter) {
             ball_position_at_actor(tipoff, (unsigned)tipoff->ball.owner_actor);
@@ -7424,7 +7503,7 @@ static bool cpu_update_free_throw_scene(NbaTipoff *tipoff) {
             tipoff->shot_origin_y = fp_round(tipoff->actors[shooter].y_fp);
             tipoff->free_throw_upload_raw_180b = 0xA046u;
             tipoff->free_throw_upload_raw_180c = 0x87A0u;
-            if (tipoff->mode11_context_raw_3b[tipoff->offense_side] != 0u) {
+            if (tipoff->controllers.count[tipoff->offense_side] != 0u) {
                 NbaGameplayHumanFreeThrowAim human = {
                     .aim_x_raw_0980 = tipoff->free_throw_aim_x_raw_0980,
                     .aim_y_raw_0982 = tipoff->free_throw_aim_y_raw_0982,
@@ -7471,7 +7550,7 @@ static bool cpu_update_free_throw_scene(NbaTipoff *tipoff) {
         NbaTipoffActor *actor = &tipoff->actors[shooter];
         if (*state == 3u) actor_set_upper_animation(actor, 2u);
         bool human_path = actor->controller_assignment_raw >= 0 &&
-            tipoff->mode11_context_raw_3b[tipoff->offense_side] != 0u;
+            tipoff->controllers.count[tipoff->offense_side] != 0u;
         if (*state == 4u || *state == 5u || human_path) {
             NbaGameplayHumanFreeThrowAim human = {
                 .state_raw_0978 = *state,
@@ -7483,9 +7562,10 @@ static bool cpu_update_free_throw_scene(NbaTipoff *tipoff) {
                 .controller_assignment_raw_16 =
                     actor->controller_assignment_raw,
                 .human_context_raw_3b =
-                    tipoff->mode11_context_raw_3b[tipoff->offense_side],
-                .shoot_held = actor->controller_assignment_raw == 0 &&
-                    (tipoff->pad_held_raw & (NBA_BTN_B | NBA_BTN_Y)) != 0u
+                    tipoff->controllers.count[tipoff->offense_side],
+                .shoot_held = actor->controller_assignment_raw >= 0 &&
+                    actor->controller_assignment_raw < 5 &&
+                    (tipoff->controllers.record[actor->controller_assignment_raw].held & 0xC000u) != 0u
             };
             NbaGameplayHumanFreeThrowResult result =
                 nba_gameplay_free_throw_human_aim_step_frame(&human);
@@ -7681,20 +7761,20 @@ static bool cpu_free_throw_scene_self_test(void) {
     live.fouls.free_throw_state_raw_0978 = 3u;
     live.fouls.victim_actor_raw = 0;
     live.actors[0].controller_assignment_raw = 0;
-    live.mode11_context_raw_3b[0] = 1u;
+    live.controllers.count[0] = 1u;
     live.free_throw_aim_step_raw_0986 = 0x0226u;
     live.simulation_tick = 2u;
     live.free_throw_start_tick_raw_09be = 2u;
-    live.pad_held_raw = NBA_BTN_B;
+    live.controllers.record[0].held = 0x8000u;
     if (!cpu_update_free_throw_scene(&live) ||
         live.fouls.free_throw_state_raw_0978 != 4u ||
         live.free_throw_aim_x_raw_0980 != 0u ||
         live.free_throw_aim_y_raw_0982 != 5u) return false;
-    live.pad_held_raw = 0u;
+    live.controllers.record[0].held = 0u;
     if (!cpu_update_free_throw_scene(&live) ||
         live.fouls.free_throw_state_raw_0978 != 5u ||
         live.free_throw_aim_x_raw_0980 != 5u) return false;
-    live.pad_held_raw = NBA_BTN_Y;
+    live.controllers.record[0].held = 0x4000u;
     if (!cpu_update_free_throw_scene(&live) ||
         live.fouls.free_throw_state_raw_0978 != 9u ||
         live.free_throw_aim_x_raw_0980 != 10u ||
@@ -7782,11 +7862,11 @@ static void cpu_update_rom_inbound(NbaTipoff *tipoff) {
      * through the ROM's direction table before returning. `$86:F58F` then
      * uses signed actor +$16, not actor Z, to enter the CPU selector. */
     if (actor->controller_assignment_raw >= 0) {
-        uint16_t held = actor->controller_assignment_raw == 0 ?
-                        tipoff->pad_held_raw : 0u;
+        uint16_t held = actor->controller_assignment_raw < 5 ?
+            tipoff->controllers.record[actor->controller_assignment_raw].held : 0u;
         actor->special_contact_raw_56 = nba_gameplay_human_inbound_direction(
             actor->controller_assignment_raw, actor->movement_boost_timer,
-            held, actor->special_contact_raw_56);
+            nba_controller_host_buttons(held), actor->special_contact_raw_56);
         return;
     }
     if ((int16_t)tipoff->inbound_timer_raw >= 240) return;
@@ -8433,6 +8513,13 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
         state->visible = actor != 4u && actor != 9u;
     }
     publish_appearance_assignment_roles(tipoff->actors, &active_appearance);
+    /* Policy remains CPU-only pending complete $84:E2AC action/movement
+     * integration. Use a real neutral allocator result, not selected human
+     * records with contradictory all-CPU actor assignments. Saved UI choices
+     * are retained in the session for the eventual human enable boundary. */
+    const uint16_t effective_selection[5]={1,1,1,1,1};
+    if (!nba_tipoff_initialize_controllers(tipoff,effective_selection,
+            session->controller_flags,0)) return false;
     /* `$86:D8D3-$D8E2`: the reciprocal +$78 values were produced atomically
      * with +$76 above, before mutable +$74 can diverge during live play. */
     /* `$85:BC52-$BC81` and `$85:AFC2-$AFE5`: initialize pair and basket
@@ -8935,7 +9022,7 @@ void nba_tipoff_update(NbaTipoff *tipoff, const NbaInput *input) {
         (void)nba_tipoff_step_match_lifecycle(tipoff);
         return;
     }
-    tipoff->pad_held_raw = input ? (uint16_t)(input->held & 0x0FFFu) : 0u;
+    tipoff->pad_held_raw = input ? nba_controller_native_buttons(input->held) : 0u;
     /* `$13E7` is an outer-frame event bitfield. Acquisition's bit $0010 is
      * observable for one completed frame, then the next outer pass clears it. */
     tipoff->rim_raw_13e7 &= 0xFFEFu;
@@ -9223,7 +9310,7 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
     telemetry->input_pressed = input ? input->pressed : 0u;
     telemetry->input_held = input ? input->held : 0u;
     telemetry->input_released = input ? input->released : 0u;
-    telemetry->pad_held_raw[0] = (uint16_t)(telemetry->input_held & 0x0FFFu);
+    telemetry->pad_held_raw[0] = nba_controller_native_buttons(telemetry->input_held);
     for (unsigned pad = 0; pad < NBA_GAMEPLAY_PAD_COUNT; ++pad) {
         telemetry->controller_assignment_raw[pad] = NBA_GAMEPLAY_UNKNOWN_WORD;
         telemetry->controller_repeat_raw[pad] = NBA_GAMEPLAY_UNKNOWN_WORD;

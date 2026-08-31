@@ -1,14 +1,20 @@
 -- Natural Player Setup -> first-court controller ownership investigation.
 -- No emu.write, savestate, CPU mutation or RAM repair. Inputs use pad0 only.
 local out=assert(os.getenv('NBA95_CAPTURE_DIR'))
+local home=assert(io.open(out..'/observed-script-data-folder.txt','wb'))
+home:write(emu.getScriptDataFolder()..'\n');home:close()
 local target=assert(tonumber(os.getenv('NBA95_CONTROL_SELECTION')))
 local team_variant=os.getenv('NBA95_CONTROL_TEAM_VARIANT')=='1'
 local pause_at=tonumber(os.getenv('NBA95_CONTROL_PAUSE_AT')) or -1
+local court_frames=tonumber(os.getenv('NBA95_CONTROL_COURT_FRAMES')) or 400
+local live_pass=os.getenv('NBA95_CONTROL_LIVE_PASS')=='1'
 assert(target>=0 and target<=2)
 local log=assert(io.open(out..'/ownership.jsonl','wb'))
+local writes=assert(io.open(out..'/controller-writes.jsonl','wb'))
 local journey=assert(io.open(out..'/journey.txt','wb'))
 local frame,title,setup,player,court,pause_frame=0,-1,-1,-1,-1,-1
 local snapshots,init_calls,update_calls,human_calls=0,0,0,0
+local input_calls,transfer_calls=0,0
 local function word(a)
     return emu.read(a,emu.memType.snesWorkRam)|
            (emu.read(a+1,emu.memType.snesWorkRam)<<8)
@@ -52,6 +58,12 @@ local function snapshot(tag,pc)
         word(0x96),word(0x9a),word(0xae),word(0xb6),words(0x576,5)))
     log:flush(); snapshots=snapshots+1
 end
+local function leaf(tag,pc)
+    snapshot(tag,pc)
+    -- Retain each complete caller pre/post state. These are replay evidence,
+    -- never runtime input recordings or production graphics.
+    dump_wram(string.format('leaf_%05d_%s',snapshots,tag))
+end
 local function rgb(name)
     local pixels=emu.getScreenBuffer();assert(#pixels==256*239)
     local b={};for _,v in ipairs(pixels)do b[#b+1]=string.char((v>>16)&255,(v>>8)&255,v&255)end
@@ -65,13 +77,28 @@ hook(0x80a2bf,function()if title>=850 and setup<0 then setup=0 end end)
 hook(0x81a489,function()
     if player<0 then player=0;journey:write('PlayerSetup entry at '..frame..'\n');snapshot('player_setup.entry',0x81a489)end
 end)
-hook(0x86e208,function()init_calls=init_calls+1;snapshot('initialize.entry',0x86e208)end)
-hook(0x86e24b,function()snapshot('initialize.exit',0x86e24b)end)
-hook(0x86e24c,function()update_calls=update_calls+1;snapshot('allocate.entry',0x86e24c)end)
+hook(0x86e208,function()init_calls=init_calls+1;leaf('initialize.entry',0x86e208)end)
+hook(0x86e24b,function()leaf('initialize.exit',0x86e24b)end)
+hook(0x86e24c,function()update_calls=update_calls+1;leaf('allocate.entry',0x86e24c)end)
 hook(0x86e389,function()
-    snapshot('allocate.exit',0x86e389)
+    leaf('allocate.exit',0x86e389)
     dump_wram('allocate_exit_'..update_calls)
 end)
+hook(0x85ef3a,function()if court>=0 then input_calls=input_calls+1;leaf('input.entry',0x85ef3a)end end)
+hook(0x85efec,function()if court>=0 then leaf('input.exit',0x85efec)end end)
+hook(0x86bc9b,function()transfer_calls=transfer_calls+1;leaf('transfer.entry',0x86bc9b)end)
+hook(0x86bd1e,function()leaf('transfer.exit',0x86bd1e)end)
+hook(0x86d25a,function()if court>=0 then leaf('acquire.entry',0x86d25a)end end)
+hook(0x86d34a,function()if court>=0 then leaf('acquire.exit',0x86d34a)end end)
+for pad=0,4 do
+    local address=0x47ed+pad*0x40
+    emu.addMemoryCallback(function(a,v)
+        local s=emu.getState()
+        writes:write(string.format('{"court":%d,"address":%d,"value":%d,"bank":%d,"pc":%d}\n',court,a,v,s['cpu.k']or 0,s['cpu.pc']or 0));writes:flush()
+    end,emu.callbackType.write,address,address+1,emu.cpuType.snes,emu.memType.snesWorkRam)
+end
+hook(0x879075,function()if court>=0 then snapshot('input_reset.entry',0x879075)end end)
+hook(0x879106,function()if court>=0 then snapshot('actor_sweep.entry',0x879106)end end)
 hook(0x87a47a,function()
     if court<0 then
         court=0;journey:write('Firstcourt at '..frame..'\n');snapshot('first_court',0x87a47a)
@@ -108,6 +135,7 @@ emu.addEventCallback(function()
         input.right=court>=60 and court<90
         input.up=court>=110 and court<140
         input.b=court>=170 and court<185
+        if live_pass and pulse(court,900) then input.b=true end
         input.a=pulse(court,230)
         input.y=court>=300 and court<320
         if pause_at>=0 then input.start=pulse(court,pause_at)end
@@ -135,6 +163,8 @@ emu.addEventCallback(function()
         if player==580 then
             snapshot('player_setup.after_input',0);rgb('player_after')
             dump_wram('player_after')
+            local b={};for a=0,0x21f do b[#b+1]=string.char(emu.read(a,emu.memType.snesSpriteRam))end
+            local f=assert(io.open(out..'/player_after.oam','wb'));f:write(table.concat(b));f:close()
             require_case(word(0x166d)==target,'natural left inputs did not reach requested selection')
         end
     end
@@ -144,8 +174,8 @@ emu.addEventCallback(function()
         if court==0 or court==90 or court==140 or court==185 or court==320 then rgb('court_'..court)end
         court=court+1
         if pause_at>=0 then require_case(court<2000,'natural requesting-controller pause journey did not complete')end
-        if (pause_at<0 and court==400) or (pause_at>=0 and pause_frame>=0) then
-            log:close();journey:close()
+        if (pause_at<0 and court==court_frames) or (pause_at>=0 and pause_frame>=0) then
+            log:close();journey:close();writes:close()
             local f=assert(io.open(out..'/capture_complete.txt','wb'))
             f:write(string.format('selection=%d\nsnapshots=%d\ninit_calls=%d\nallocation_calls=%d\nhuman_action_calls=%d\n',target,snapshots,init_calls,update_calls,human_calls));f:close();emu.stop(0)
         end

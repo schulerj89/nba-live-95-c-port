@@ -258,6 +258,12 @@ if ($Test) {
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name timeout_resume_runtime_probe
     & (Join-Path $BuildDir 'timeout_resume_runtime_probe.exe')
     if ($LASTEXITCODE -ne 0) { throw 'Timeout/resume runtime binding failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name controller_runtime_probe
+    & (Join-Path $BuildDir 'controller_runtime_probe.exe') $AssetPack
+    if ($LASTEXITCODE -ne 0) { throw 'Bounded controller integration regression failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name controller_contract_audit_probe
+    & (Join-Path $BuildDir 'controller_contract_audit_probe.exe') $RomPath
+    if ($LASTEXITCODE -ne 0) { throw 'Controller original-ROM direction/quirk guards failed.' }
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name complete_shot_vector_probe
     & python (Join-Path $Root 'tools\verify_complete_shot_vectors.py') `
         --normalized --vectors (Join-Path $Root 'tests\fixtures\complete-shot-witnesses.json') `

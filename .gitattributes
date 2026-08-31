@@ -3,3 +3,5 @@ tools/mesen_intro_indexed_capture.lua text eol=lf
 # The ball initializer witnesses hash these exact schema bytes. Windows
 # checkout conversion must not invalidate their unchanged native protocol.
 tools/ball_init_fields.def text eol=lf
+# Controller schema2 capabilities are tied to this executed runner identity.
+tools/capture_controller_contract.py text eol=lf

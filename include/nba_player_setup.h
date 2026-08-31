@@ -10,7 +10,7 @@
 #define SNES_ADDR_TEAM_SELECT_CONFIRM       0x828553
 #define SNES_ADDR_PLAYER_SETUP_TRANSITION   0x81C41E
 #define SNES_ADDR_MENU_TRANSITION_SCRIPT    0x80E95B
-#define SNES_ADDR_PLAYER_SETUP_POSITION     0x81B493
+#define SNES_ADDR_PLAYER_SETUP_POSITION     0x81A7D0
 #define SNES_ADDR_PLAYER_SETUP_PALETTE      0x81B546
 #define SNES_ADDR_PLAYER_SETUP_REDRAW       0x81B62C
 #define SNES_ADDR_PLAYER_SETUP_OBJECT_BUILD 0x81B719
@@ -30,6 +30,7 @@ typedef struct {
     uint32_t *outgoing_pixels;
     uint8_t *scene_vram;
     NbaTeamSide player_one_side;
+    uint16_t controller_selection; /* native pad0 $166D: 0 left/1 neutral/2 right */
     int transition_frame;
     int steady_frame;
     bool confirm_requested;

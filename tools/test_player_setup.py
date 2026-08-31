@@ -24,7 +24,11 @@ EXPECTED_FRAME_HASHES = {
     "background": "18e07023dae89084b28b738c7b50dddfa0ab77a6d24c41a6ec92ab6ac39432e8",
     "labels": "19673f073dbc2f2af58a3dbcf19cbe1e3b0d94f44a8600b7913a539c6e0750f8",
     "settled": "52d521e29d8665b63eb6e98a63af4d22480a51833ab72a40aee0eae6b022082d",
-    "left": "3dfda176c6c30f5b137f1ee2003fd1ba6a484855000794aa4025c4abefab3cbd",
+    # Native OAM places the left controller at x40, not the old C x42.
+    # build/player-setup-attribution-v2 restores only the old offset and
+    # reproduces the old full hash3dfda176... exactly. The318 changed pixels
+    # lie in x40..78/y110..125. This remains a C regression, not full UI parity.
+    "left": "3ed5198441075776e92641754bfd2302ed2782050e5889270693052988c8ad23",
 }
 
 
@@ -128,6 +132,14 @@ def main():
                      "--frames", 240, "--dump-frame", left)
         if "p1=LEFT" not in output or frame_hash(left) != EXPECTED_FRAME_HASHES["left"]:
             raise AssertionError(f"Player 1 side assignment failed:\n{output}")
+
+        # The CLI destination LEFT now requires two native one-step presses.
+        # The first tap reaches neutral; its release must not advance again.
+        for frames, selection in ((201, "NEUTRAL"), (202, "NEUTRAL"), (203, "LEFT")):
+            output = run(exe, "--headless", "--rom", rom, "--assets", pack,
+                         "--player-setup-only", "--player-setup-left", "--frames", frames)
+            if f"[PLAYER SETUP TEST] p1={selection}" not in output:
+                raise AssertionError(f"Player Setup press/release sequence changed at{frames}:\n{output}")
 
         changed = directory / "changed.bmp"
         output = run(exe, *base, "--team-side-toggle", "--team-right", 5,

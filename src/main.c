@@ -789,7 +789,7 @@ int main(int argc, char *argv[]) {
         int player_animation_right_done = 0;
         int player_direction_right_done = 0;
         bool team_confirm_done = false;
-        bool player_setup_left_done = false;
+        unsigned player_setup_left_steps = 0u;
         bool player_intro_confirm_done = false;
         int gameplay_steps_done = 0;
 
@@ -992,9 +992,12 @@ int main(int argc, char *argv[]) {
                     if (game.state == NBA_STATE_PLAYER_SETUP &&
                         game.scene.player_setup.transition_frame >=
                             NBA_PLAYER_SETUP_TRANSITION_FRAMES) {
-                        if (player_setup_left && !player_setup_left_done) {
+                        /* Native selection walks RIGHT(2), NEUTRAL(1), LEFT(0).
+                         * Keep the CLI's requested LEFT destination using two
+                         * taps; the outer driver supplies their release frames. */
+                        if (player_setup_left && player_setup_left_steps < 2u) {
                             raw_buttons = NBA_BTN_LEFT;
-                            player_setup_left_done = true;
+                            ++player_setup_left_steps;
                         } else if (player_setup_confirm &&
                                    !game.scene.player_setup.confirm_requested) {
                             raw_buttons = NBA_BTN_START;
@@ -1234,10 +1237,10 @@ int main(int argc, char *argv[]) {
         }
         if (game.state == NBA_STATE_PLAYER_SETUP) {
             const NbaPlayerSetup *player_setup = &game.scene.player_setup;
+            unsigned selection = player_setup->controller_selection & 0x7fffu;
             printf("[PLAYER SETUP TEST] p1=%s left=%u:%s right=%u:%s "
                    "transition=%d steady=%d confirm=%d\n",
-                   player_setup->player_one_side == NBA_TEAM_SIDE_LEFT ?
-                       "LEFT" : "RIGHT",
+                   selection == 0u ? "LEFT" : selection == 1u ? "NEUTRAL" : "RIGHT",
                    player_setup->session->left_team,
                    nba_team_records[player_setup->session->left_team].name,
                    player_setup->session->right_team,

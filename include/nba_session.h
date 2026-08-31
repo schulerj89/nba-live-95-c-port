@@ -82,7 +82,9 @@ typedef struct {
     NbaGameConfig config;
     uint8_t left_team;  /* Team Select $7E:16FB */
     uint8_t right_team; /* Team Select $7E:16FD */
-    uint8_t player_one_side; /* Player Setup controller ownership, 0 left/1 right */
+    uint8_t player_one_side; /* legacy UI side, 0 left/1 right; no neutral value */
+    uint16_t controller_selection[5]; /* $166D: 0 left, 1 neutral, 2 right */
+    uint16_t controller_flags[5];     /* $1681: high bit selects direction table */
     /* Native order: home/right `$46EB` then visitor/left `$476B`;
      * +$26 scores are `$4711/$4791`. UI display order is the opposite. */
     uint16_t score[2];

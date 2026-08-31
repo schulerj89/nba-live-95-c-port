@@ -4,6 +4,7 @@
 #include "nba_assets.h"
 #include "nba_renderer.h"
 #include "nba_session.h"
+#include "nba_controller.h"
 #include "nba_gameplay_debugger.h"
 #include "nba_gameplay_camera.h"
 #include "nba_court_presentation.h"
@@ -189,9 +190,10 @@ typedef struct NbaTipoff {
     NbaGameplayTeamContext team_context[2];
     /* `$85:B83E-$B85D` scans the five $47EB+$40n controller records when
      * team context +$3B requests the alternate mode-11 path. */
-    uint16_t mode11_context_raw_3b[2];
-    int16_t mode11_control_group_raw[5];
-    uint16_t mode11_control_flags_raw[5];
+    NbaControllerState controllers;
+    uint16_t controller_previous_owner_raw_0a00;
+    uint16_t controller_override_raw_07f8;
+    bool controller_contract_fault;
     uint16_t period_raw_0926;
     uint16_t match_clock_raw_0928;
     int8_t possession_actor;
@@ -259,7 +261,7 @@ typedef struct NbaTipoff {
     int16_t inbound_target_x_raw;  /* `$0958` */
     int16_t inbound_target_y_raw;  /* `$095A` */
     uint16_t inbound_direction_raw;/* `$095C` */
-    uint16_t pad_held_raw;         /* controller 0 `$090C+$08`, current frame */
+    uint16_t pad_held_raw;         /* pad0 $0576, native SNES button bits */
     uint16_t inbound_ready_raw;    /* represented `$09BA` arrival latch */
     uint16_t inbound_transfer_raw; /* `$09B8` */
     uint16_t ball_activity_raw;    /* `$0948`, canonical shot detach */
@@ -327,6 +329,13 @@ typedef struct NbaTipoff {
 bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
                      NbaSession *session);
 void nba_tipoff_update(NbaTipoff *tipoff, const NbaInput *input);
+/* Controller initializer boundary. The normal frontend still uses neutral
+ * effective selections until the complete human actor dispatcher is wired. */
+bool nba_tipoff_initialize_controllers(NbaTipoff *tipoff,
+    const uint16_t selections[5], const uint16_t flags[5], uint16_t override_07f8);
+bool nba_tipoff_transfer_controller(NbaTipoff *tipoff, unsigned target);
+void nba_tipoff_publish_controller_input(NbaTipoff *tipoff, unsigned actor,
+                                          uint16_t native_held);
 /* `$86:8300-$857B` bounded TIMEOUT/RESUME dispatcher. */
 bool nba_tipoff_pause_active(const NbaTipoff *tipoff);
 bool nba_tipoff_pause_can_enter(const NbaTipoff *tipoff);

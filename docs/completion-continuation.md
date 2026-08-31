@@ -171,3 +171,14 @@ and3055 artifact attestations. Root integration is underway; the normal
 human path remains disabled. The separate10-file human dispatch and codec
 continuation work are not integrated or accepted yet. Scheduler and human
 action implementation continue; whole-game completion remains incomplete.
+
+Owner controller integration now passes a fresh all-object build and combined
+270020 native words,45 integrity cases,200 ROM/quirk checks,61 Mode11 calls,
+39 acquisition calls, runtime/timeout/Player Setup checks and730configuration
+checkpoints/57391input frames. See docs/controller-integration-checkpoint.md.
+The CLI reaches LEFT through two released taps; debug output reports neutral.
+The old left image differs only because original OAM usesx40 instead ofC'sx42;
+the exact-offset counterfactual reproduces the old whole image. Human remains
+disabled. The separate human-stage audit found an original carried-X pointer
+quirk that its movement wrapper did not yet preserve; that stage is rejected
+pending repair, not integrated. Scheduler codec review is queued separately.
