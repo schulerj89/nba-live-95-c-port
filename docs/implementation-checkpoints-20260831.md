@@ -162,4 +162,7 @@ other serialized state unchanged. The contact regression still passes. The
 existing panorama exit20 and later3480 image difference remain explicit open
 failures. The screenshot agent will publish the exact committed build, including
 the changed visibility window. This is one D1 correction, not full graphics
-integration or a full-game acceptance milestone.
+integration or a full-game acceptance milestone. The exact fc1e73a gallery is
+now published:19 inspected images, all standard views and late before/after
+pairs unchanged in RGB,132 links verified. Dated identities and the explicit
+clipping limitation are recorded in `court-culling-integration.md`.

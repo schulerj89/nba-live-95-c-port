@@ -34,6 +34,15 @@ test; four later period scenarios do not run. The complete CPU regression
 also still has the separately recorded3480 image difference after migration
 of only the two accepted600/1300 anchors. No additional expected image changed.
 
-Exact-commit screenshot publication follows this commit. Main and the desktop
+Exact-commit screenshots were published from clean fc1e73a as standard run
+20260831T194317.538269Z and supplement20260831T194424.926580Z-culling-supplement.
+All13 standard images and the54151/54152/54174 before/after pairs are unchanged
+in RGB; clipping prevents this state correction from changing those pixels.
+The screenshot agent inspected all19 images and verified132 local links.
+Standard manifest a621ce2806d9fd66904f754aae5c37ff2b61d33c6d44d1c619717c9aed0904c8;
+supplement a559b0a7d991fc07bb418d44c2f1be70fc31cfe9c37dc0cfa885231cb3a57d80.
+QA receipt `checkpoint-qa-20260831/build/culling-screenshot-checkpoint.md`
+SHA256ba7328f1b2d855dfc04f5bd3d5a89e65c41ee07d1d4e9fc9b9ed9d47cb371854.
+The ignored latest gallery links both preserved runs. Main and the desktop
 executable remain untouched. Next D1 work covers source draw direction, ordered
 actor/OAM processing, shared queue/DP ownership and exceptional period callers.
