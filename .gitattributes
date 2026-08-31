@@ -44,3 +44,6 @@ tools/capture_setup_sound_init.py -text
 tools/mesen_setup_sound_init.lua -text
 tools/capture_setup_spc_resident.py -text
 tools/mesen_setup_spc_resident.lua -text
+# Preserve executed catch capture bytes.
+tools/capture_human_pass_catch.py -text
+tools/mesen_human_pass_catch.lua -text
