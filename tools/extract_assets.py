@@ -989,6 +989,14 @@ def create_asset_pack(rom_path, output_path, capture_root=None):
     print(f"[ASSET EXTRACTOR] Output asset pack: {output_path}")
     rom_data = load_verified_rom(rom_path)
 
+    # Validate the original indexed HUD input before doing expensive extraction.
+    # This is decompressor-output provenance, never screenshot pixels. The
+    # default is portable under --capture-root; an existing reviewed capture
+    # can be selected explicitly without copying or modifying its evidence.
+    from build_gameplay_hud_lifecycle_assets import build as build_hud
+    hud_native = os.environ.get("NBA95_HUD_NATIVE_CAPTURE") or capture_path("gameplay-hud")
+    gameplay_hud, hud_provenance = build_hud(rom_data, hud_native)
+
     out_dir = os.path.dirname(output_path)
     if out_dir and not os.path.exists(out_dir):
         os.makedirs(out_dir, exist_ok=True)
@@ -1903,6 +1911,11 @@ def create_asset_pack(rom_path, output_path, capture_root=None):
         pcm_offset += len(pcm) * 2
     gameplay_audio_bytes.extend(pcm_blob)
     assets.append((285, 0, 0, 0, bytes(gameplay_audio_bytes)))
+    assets.append((286, 0, 0, 0, gameplay_hud))
+
+    with open(output_path + ".hud-provenance.json", "w", encoding="utf-8") as manifest:
+        json.dump(hud_provenance, manifest, indent=2)
+        manifest.write("\n")
 
     header_magic = b"NBA95PAK"
     version = 31

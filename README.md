@@ -65,6 +65,11 @@ use another new directory and set `NBA95_RULES_OPEN_CAPTURE` to its absolute
 path for extraction. The recorded raw PPU resources are production inputs;
 RGB frames remain comparison evidence and are not packed.
 
+The extractor also requires the original indexed HUD capture under
+`.analysis/gameplay-hud`, or the explicit `NBA95_HUD_NATIVE_CAPTURE` path.
+See [HUD asset reproduction](docs/gameplay-hud-assets.md) for the capture
+command and an upgrade that preserves every resource in an existing pack.
+
 Press **F9** for the ROM-backed Player Lab. Left/Right cycles all teams and
 Up/Down cycles the selected team's 12-player roster; see
 [`docs/player-lab.md`](docs/player-lab.md) for asset and Ghidra provenance.

@@ -28,3 +28,10 @@ bytes, and still rejects the deliberately modified ROM. The first isolated
 full-suite attempt failed because this test tried to read absent local capture
 files; `build/core-safety-capture-root-v1.log` subsequently reached the unrelated
 legacy debug-state assertion, proving both extraction cases completed.
+
+The later HUD resource addition is recorded in
+[HUD asset reproduction](gameplay-hud-assets.md). It adds required resource286
+through a portable `gameplay-hud` capture-root default or the explicit
+`NBA95_HUD_NATIVE_CAPTURE` override. A fresh full extraction and the preserving
+pack-upgrade tool produce identical264-entry packs; the263-entry evidence
+above remains the unchanged earlier baseline.

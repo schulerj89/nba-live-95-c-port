@@ -134,3 +134,9 @@ tools/test_draw_order.py -text
 tools/test_draw_order_protocol.py -text
 tools/freeze_draw_order.py -text
 tools/test_draw_order_independent_cases.py -text
+
+# HUD extraction validates these exact reviewed capture and builder bytes.
+tools/capture_gameplay_hud.py -text
+tools/mesen_gameplay_hud.lua -text
+tools/build_gameplay_hud_assets.py -text
+tools/build_gameplay_hud_lifecycle_assets.py -text
