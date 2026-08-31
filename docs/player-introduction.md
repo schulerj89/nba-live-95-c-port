@@ -3,8 +3,9 @@
 Player Setup now hands off to a court-backed pregame presentation with matchup,
 ratings, and ten Starting Lineup cards. The first five records belong to the
 visitor and the next five belong to the home team. Cards advance every 434
-frames, matching the measured ROM sequence, and the final home player waits for
-Start/A.
+frames, matching the measured ROM sequence. Start skips the current matchup,
+ratings, or complete lineup presentation. Left and Right navigate lineup cards;
+A does not substitute for the source's Start edge.
 
 ## ROM and Ghidra proof
 
@@ -30,6 +31,11 @@ Start/A.
 - Live Mesen changes occurred 434 frames apart. The visitor/home boundary came
   after roster slot four, and roster table `$84:E640` confirms that slots 0..4
   are the five starters.
+- `$83:F277-$83:F2BA`, `$83:F5F0-$83:F63C`, and `$83:F7D0-$83:F830`
+  read input through `$86:8042`, test Start bit `$1000`, and leave their team
+  presentation. In the lineup loop, `$87:BF5E-$87:BFA6` makes Start exit the
+  complete presentation; `$0200/$0100` at `$87:BF70-$87:BF9D` move to the
+  previous/next card.
 
 The generated listings and decompilation are under the ignored
 `.analysis/player_intro_ghidra` directory. Rebuild them with
@@ -68,4 +74,6 @@ The C runtime synthesizes the BRR samples and does not store a mixed song WAV.
 `tools/test_player_intro.py` locks the visual assets, all 290 portrait keys,
 ROM font format, SPC/DSP asset dimensions, a phase-tolerant runtime-audio
 fingerprint, Player Setup handoff, first-card frame, visitor/home boundary,
-and final-card cadence.
+and final-card cadence. `tools/test_frontend_route.py` drives the real
+Team Select -> Player Setup -> Player Introduction -> Tipoff caller path and
+checks centered controllers plus Start skips at all three presentation phases.

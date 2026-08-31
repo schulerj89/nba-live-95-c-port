@@ -234,15 +234,12 @@ void nba_player_setup_render(const NbaPlayerSetup *screen, NbaRenderer *renderer
     const uint8_t *oam = (const uint8_t *)oam_asset->data;
     int frame = screen->transition_frame;
 
-    if (frame < 32) {
-        int brightness = 15 - frame * 15 / 31;
-        for (int index = 0; index < NBA_SNES_WIDTH * NBA_SNES_HEIGHT; ++index) {
-            uint32_t color = screen->outgoing_pixels[index];
-            uint32_t r = ((color >> 16) & 255u) * (uint32_t)brightness / 15u;
-            uint32_t g = ((color >> 8) & 255u) * (uint32_t)brightness / 15u;
-            uint32_t b = (color & 255u) * (uint32_t)brightness / 15u;
-            renderer->pixels[index] = 0xFF000000u | (r << 16) | (g << 8) | b;
-        }
+    /* `$82:8553 -> $81:C41E -> $80:E95B`: preserve the 51-frame outgoing
+     * owner before forced black.  The layer compositor carries the actual
+     * `$80:EBF9` foreground withdrawal and opposed background motion. */
+    if (frame <= 50) {
+        nba_team_select_render_exit(screen->assets, screen->session,
+                                    screen->outgoing_pixels, frame, renderer);
         return;
     }
     if (frame < 117) {

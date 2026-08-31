@@ -120,6 +120,42 @@ static void next_phase(NbaPlayerIntro *screen) {
 void nba_player_intro_update(NbaPlayerIntro *screen, const NbaInput *input) {
     if (!screen || !screen->is_initialized) return;
     screen->phase_frame++;
+
+    /* The presentation screens consume pressed edges, never held state.
+     * `$83:F277-$F2BA`, `$83:F5F0-$F63C`, and `$83:F7D0-$F830` each read
+     * `$86:8042`, test Start bit $1000, and leave their team presentation.
+     * In the lineup loop, `$87:BF5E-$BFA6` likewise exits the complete
+     * presentation instead of advancing one card; `$0200/$0100` remain the
+     * source's previous/next-card controls. */
+    uint32_t pressed = input ? input->pressed : 0u;
+    if ((pressed & NBA_BTN_START) &&
+        screen->phase == NBA_PLAYER_INTRO_MATCHUP) {
+        next_phase(screen);
+        return;
+    }
+    if ((pressed & NBA_BTN_START) &&
+        screen->phase == NBA_PLAYER_INTRO_RATINGS) {
+        next_phase(screen);
+        return;
+    }
+    if (screen->phase == NBA_PLAYER_INTRO_LINEUPS) {
+        if (pressed & NBA_BTN_START) {
+            screen->phase = NBA_PLAYER_INTRO_COMPLETE;
+            screen->phase_frame = 0;
+            return;
+        }
+        if ((pressed & NBA_BTN_LEFT) && screen->lineup_card > 0) {
+            screen->lineup_card--;
+            screen->phase_frame = 0;
+            return;
+        }
+        if ((pressed & NBA_BTN_RIGHT) &&
+            screen->lineup_card + 1 < NBA_PLAYER_INTRO_CARD_COUNT) {
+            screen->lineup_card++;
+            screen->phase_frame = 0;
+            return;
+        }
+    }
     if (screen->phase == NBA_PLAYER_INTRO_TRANSITION &&
         screen->phase_frame >= NBA_PLAYER_INTRO_TRANSITION_FRAMES)
         next_phase(screen);
@@ -131,16 +167,11 @@ void nba_player_intro_update(NbaPlayerIntro *screen, const NbaInput *input) {
         next_phase(screen);
     else if (screen->phase == NBA_PLAYER_INTRO_LINEUPS) {
         bool advance = screen->phase_frame >= NBA_PLAYER_INTRO_CARD_FRAMES;
-        if (input && (input->pressed & (NBA_BTN_START | NBA_BTN_A))) advance = true;
         if (advance && screen->lineup_card + 1 < NBA_PLAYER_INTRO_CARD_COUNT) {
             screen->lineup_card++;
             screen->phase_frame = 0;
             printf("[PLAYER INTRO] lineup card %d/%d\n",
                    screen->lineup_card + 1, NBA_PLAYER_INTRO_CARD_COUNT);
-        } else if (advance && screen->lineup_card + 1 >= NBA_PLAYER_INTRO_CARD_COUNT &&
-                   input && (input->pressed & (NBA_BTN_START | NBA_BTN_A))) {
-            screen->phase = NBA_PLAYER_INTRO_COMPLETE;
-            screen->phase_frame = 0;
         }
     }
 }

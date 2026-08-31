@@ -9,6 +9,16 @@
 #define TEAM_BG3_MAP 0x0000
 #define TEAM_BG3_CHR 0x8000
 
+/* Player Setup receives the rendered framebuffer at the state handoff, but
+ * the source exit moves individual Team Select layers. Retain the last
+ * rendered menu selectors so the exit withdraws the row actually confirmed.
+ * The game/render loop is single threaded and the cache is accepted only for
+ * the same session pointer. */
+static const NbaSession *last_rendered_session;
+static NbaTeamSide last_rendered_active_side;
+static NbaTeamSelectPosition last_rendered_selector;
+static int last_rendered_bg2_v;
+
 /* Host-visible implementation of the `$82:809A-$91FF` Team Select/Options
  * ownership family. Fresh headless listings retain the actual scene, input,
  * redraw, confirmation and shared option-handoff boundaries; the portable
@@ -377,6 +387,11 @@ void nba_team_select_render(const NbaTeamSelect *screen, NbaRenderer *renderer) 
         bg3_v = 280;
         show_bg3 = false; show_objects = false;
     } else {
+        /* The original hardware also exposes clipped BG3 name/rank rows
+         * during this vertical release before the logo objects appear.  The
+         * consecutive normal-input capture at `$82:809A` shows the same
+         * transient fragments; keep them instead of hiding them as host
+         * corruption. */
         bg3_v = k <= 40 ? 252 : 252 - (k - 40) * 14;
         if (bg3_v < 0) bg3_v = 0;
         show_bg3 = k >= 40;
@@ -384,6 +399,10 @@ void nba_team_select_render(const NbaTeamSelect *screen, NbaRenderer *renderer) 
     }
     int bg2_v = screen->transition_frame < NBA_TEAM_TRANSITION_FRAMES ?
                 k / 3 : 20 + (screen->steady_frame + 1) / 3;
+    last_rendered_session = screen->session;
+    last_rendered_active_side = screen->active_side;
+    last_rendered_selector = screen->selector;
+    last_rendered_bg2_v = bg2_v;
     team_render_layers(renderer, home_vram->data, home_cgram->data,
                        bg1_h, bg2_h, bg2_v,
                        bg3_v, brightness, show_bg3, screen->selector);
@@ -443,4 +462,84 @@ void nba_team_select_render(const NbaTeamSelect *screen, NbaRenderer *renderer) 
     }
     team_draw_logo(renderer, team_asset(screen, NBA_ASSET_TEAM_LOGO_BASE, teams[0]), 30, 62);
     team_draw_logo(renderer, team_asset(screen, NBA_ASSET_TEAM_LOGO_BASE, teams[1]), 182, 62);
+}
+
+void nba_team_select_render_exit(const NbaAssetPack *assets,
+                                 const NbaSession *session,
+                                 const uint32_t *outgoing_pixels,
+                                 int frame, NbaRenderer *renderer) {
+    if (!assets || !session || !outgoing_pixels || !renderer || frame < 0)
+        return;
+    if (frame == 0) {
+        memcpy(renderer->pixels, outgoing_pixels,
+               (size_t)NBA_SNES_WIDTH * NBA_SNES_HEIGHT * sizeof(uint32_t));
+        return;
+    }
+    if (frame > 50) {
+        nba_renderer_clear(renderer, 0xFF000000u);
+        return;
+    }
+
+    NbaTeamSelect screen = {0};
+    screen.assets = assets;
+    screen.session = (NbaSession *)session;
+    screen.active_side = last_rendered_session == session ?
+        last_rendered_active_side : NBA_TEAM_SIDE_RIGHT;
+    screen.selector = last_rendered_session == session ?
+        last_rendered_selector : NBA_TEAM_SELECT_RIGHT_NAME;
+    screen.is_initialized = true;
+    uint8_t home_team = session->right_team;
+    const NbaAssetItem *home_vram = team_asset(
+        &screen, NBA_ASSET_TEAM_VRAM_BASE, home_team);
+    const NbaAssetItem *home_cgram = team_asset(
+        &screen, NBA_ASSET_TEAM_CGRAM_BASE, home_team);
+    if (!home_vram || !home_cgram) {
+        nba_renderer_clear(renderer, 0xFF000000u);
+        return;
+    }
+
+    /* `$80:EBF9-$80:EC53`, called from `$81:C43C`, first withdraws the
+     * foreground in sixteen 14-pixel steps (`$1775 -= $000E`, `$0617 +=
+     * $000E`).  The remaining forced-blank construction span keeps only the
+     * opposed eight-pixel background motion used by `$80:EB27-$80:EB7B`.
+     * This composes the ROM-derived layers instead of fading a frozen RGB
+     * screenshot. */
+    int bg1_h = 512, bg2_h = 0, bg3_v = 0, brightness = 15;
+    int bg2_v = last_rendered_session == session ? last_rendered_bg2_v : 20;
+    /* The sixteen source iterations span 22 presented frames on the normal
+     * route because the VRAM/DMA waits repeat selected scanouts. The observed
+     * hardware boundary changes on +1, begins its brightness withdrawal on
+     * +23, and reaches forced black on +51. */
+    bool show_bg3 = frame <= 22;
+    if (show_bg3) {
+        int iteration = (frame * 16 + 21) / 22;
+        bg3_v = iteration * 14;
+    } else {
+        int k = frame - 23;
+        int iteration = k * 15 / 27;
+        bg1_h = 512 + iteration * 8;
+        bg2_h = (1024 - iteration * 8) & 1023;
+        brightness = 15 - k * 14 / 27;
+    }
+    team_render_layers(renderer, home_vram->data, home_cgram->data,
+                       bg1_h, bg2_h, bg2_v, bg3_v, brightness, show_bg3,
+                       screen.selector);
+    if (!show_bg3) return;
+
+    uint8_t teams[2] = { session->left_team, session->right_team };
+    for (int side = 0; side < 2; ++side) {
+        const NbaAssetItem *vram = team_asset(
+            &screen, NBA_ASSET_TEAM_VRAM_BASE, teams[side]);
+        const NbaAssetItem *cgram = team_asset(
+            &screen, NBA_ASSET_TEAM_CGRAM_BASE, teams[side]);
+        if (!vram || !cgram) continue;
+        team_draw_name(renderer, vram->data, cgram->data, side,
+                       (side == 0 ? 63 : 95) - bg3_v, brightness,
+                       screen.selector == (NbaTeamSelectPosition)side);
+        int selected_rank = side == (int)screen.active_side &&
+                            screen.selector >= NBA_TEAM_SELECT_SCORING ?
+                            (int)screen.selector - NBA_TEAM_SELECT_SCORING : -1;
+        team_draw_rank_column(renderer, vram->data, cgram->data, side,
+                              116 - bg3_v, brightness, selected_rank);
+    }
 }

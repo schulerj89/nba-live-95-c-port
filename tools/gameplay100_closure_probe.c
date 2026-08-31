@@ -344,8 +344,10 @@ static int exercise_flow_and_gameplay(const NbaAssetPack *assets,
     for (unsigned card = 0; card < NBA_PLAYER_INTRO_CARD_COUNT; ++card) {
         nba_player_intro_render(&intro, renderer);
         capture_frame(result, renderer, previous_render,"lineup",intro.phase_frame,NULL);
-        input = button(NBA_BTN_A);
-        nba_player_intro_update(&intro, &input);
+        if (card + 1 < NBA_PLAYER_INTRO_CARD_COUNT) {
+            for (int frame = 0; frame < NBA_PLAYER_INTRO_CARD_FRAMES; ++frame)
+                nba_player_intro_update(&intro, NULL);
+        }
     }
     input = button(NBA_BTN_START);
     nba_player_intro_update(&intro, &input);
