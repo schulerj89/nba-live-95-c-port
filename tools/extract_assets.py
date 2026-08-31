@@ -9,6 +9,7 @@ import numpy as np
 import re
 from snes65816_decompressor import Snes65816Decompressor
 from setup_transition_capture import validate_rules_capture, read_ppu_states, read_rgb_flags
+from setup_transition_resource_jobs import expand_native_writes, read_native_differences
 
 NBA_ROM_EXPECTED_SHA256 = "2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870"
 
@@ -1502,10 +1503,17 @@ def create_asset_pack(rom_path, output_path):
         directory = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..",
                                  ".analysis", f"setup_{menu_name}")
         if current_scanout:
-            suffix = "setup_rules_exact" if prefix == "open" else "setup_rules_return_exact"
+            suffix = "setup_rules_publications"
             directory = os.environ.get(f"NBA95_RULES_{prefix.upper()}_CAPTURE", os.path.join(
                 os.path.dirname(os.path.abspath(__file__)), "..", ".analysis", suffix))
+            if not os.path.isdir(directory):
+                raise RuntimeError("Rules resource publication capture is required: run "
+                    "capture_setup_transition_exact.ps1 -OutputRoot .analysis/setup_rules_publications "
+                    "-Menu rules -SimulationThreeMinute -HoldMenu -ResourcePublications")
             manifest = validate_rules_capture(directory, include_return=prefix == "return")
+            if manifest.get("configuration", {}).get("resource_publications") is not True or                     not {"resource_jobs.csv", "resource_writes.csv", "capture_environment.txt"}.issubset(
+                        manifest.get("artifacts", {}).get("files", {})):
+                raise ValueError("Rules extraction requires attested native DMA publications; legacy snapshot-only traces are not a fallback")
             if prefix == "return" and manifest.get("configuration", {}).get("hold_menu_without_value_edits") is not True:
                 raise ValueError("Rules production return base requires the unchanged native hold-menu capture")
         base_vram = open(os.path.join(directory, f"{prefix}_transition_vram.bin"), "rb").read()
@@ -1517,8 +1525,8 @@ def create_asset_pack(rom_path, output_path):
             flag_path = os.path.join(directory, "rgb_state.csv")
             if not os.path.isfile(flag_path):
                 raise RuntimeError("Rules open requires a fresh exact capture with rgb_state.csv; "
-                                   "run capture_setup_transition_exact.ps1 -OutputRoot .analysis/setup_rules_exact "
-                                   "-SimulationThreeMinute (or set NBA95_RULES_OPEN_CAPTURE)")
+                                   "run capture_setup_transition_exact.ps1 -OutputRoot .analysis/setup_rules_publications "
+                                   "-SimulationThreeMinute -HoldMenu -ResourcePublications (or set NBA95_RULES_OPEN_CAPTURE)")
             for name, row in read_rgb_flags(flag_path).items():
                 match = re.fullmatch(rf"{'open' if prefix == 'open' else 'close'}_step_(\d+)\.png", name)
                 if match:
@@ -1527,6 +1535,10 @@ def create_asset_pack(rom_path, output_path):
         states = {}
         for event_index, memory_name in enumerate(("vram", "cgram")):
             path = os.path.join(directory, f"{prefix}_transition_{memory_name}_writes.txt")
+            if current_scanout:
+                events[event_index].update(read_native_differences(path, first_frame, last_frame,
+                    0x10000 if memory_name == "vram" else 0x200))
+                continue
             for raw in open(path, "r", encoding="ascii"):
                 if not raw.strip() or raw.startswith("#"):
                     continue
@@ -1550,7 +1562,12 @@ def create_asset_pack(rom_path, output_path):
         frame_count = last_frame - first_frame + 1
         if len(states) != frame_count:
             raise RuntimeError(f"Incomplete Set {menu_name.title()} {prefix} PPU states")
-        trace = bytearray(struct.pack("<8sII", b"NBSPPU2\0", 2, frame_count))
+        publications = current_scanout and "resource_jobs.csv" in manifest.get("artifacts", {}).get("files", {})
+        if publications:
+            events = (expand_native_writes(directory, manifest, prefix, first_frame,
+                                           last_frame, base_vram, events[0]), events[1])
+        version = 3 if publications else 2
+        trace = bytearray(struct.pack("<8sII", b"NBSPPU3\0" if publications else b"NBSPPU2\0", version, frame_count))
         # NBSPPU2's reserved state byte now uses bit6 to mark an observed
         # INIDISP bit7 and bit7 for forced blank. This prevents static route
         # windows from exposing config-dependent one-frame builder work.
@@ -1571,8 +1588,8 @@ def create_asset_pack(rom_path, output_path):
                     state[base + 4], state[base + 5]))
             vw, cw = events[0].get(frame, []), events[1].get(frame, [])
             trace.extend(struct.pack("<HH", len(vw), len(cw)))
-            for address, value in vw:
-                trace.extend(struct.pack("<HB", address, value))
+            for write in vw:
+                trace.extend(struct.pack("<HBB" if publications else "<HB", *write))
             for address, value in cw:
                 trace.extend(struct.pack("<HB", address, value))
         print(f"[ASSET EXTRACTOR] Packed Set {menu_name.title()} {prefix} transition: "

@@ -15,9 +15,21 @@ local target_menu_row = tonumber(os.getenv("NBA95_CAPTURE_TARGET_ROW") or "-1")
 local target_menu_rights = tonumber(os.getenv("NBA95_CAPTURE_TARGET_RIGHTS") or "0")
 assert(target_menu_row >= -1 and target_menu_row <= 12)
 assert(target_menu_rights >= 0 and target_menu_rights <= 2)
+local resource_publications = os.getenv("NBA95_CAPTURE_RESOURCE_PUBLICATIONS") == "1"
 local OPEN_LAST_FRAME = 829
 assert(out and out ~= "", "NBA95_CAPTURE_DIR is not set")
 assert(menu == "rules" or menu == "options", "NBA95_CAPTURE_MENU must be rules or options")
+
+local environment = assert(io.open(out .. "/capture_environment.txt", "wb"))
+environment:write("directory=" .. out:gsub("\\", "/") .. "\nmenu=" .. menu ..
+    "\nevery_frame=" .. tostring(every_frame_mode) ..
+    "\ncanonical_ui=" .. tostring(canonical_ui_mode) ..
+    "\nhold_menu=" .. tostring(hold_menu_mode) ..
+    "\nrepeat_visit=" .. tostring(repeat_visit_mode) ..
+    "\ntarget_row=" .. tostring(target_menu_row) ..
+    "\ntarget_rights=" .. tostring(target_menu_rights) .. "\n")
+if resource_publications then environment:write("resource_publications=true\n") end
+environment:close()
 
 local log = assert(io.open(out .. "/capture_log.txt", "wb"))
 local exec_log = assert(io.open(out .. "/exec_trace.txt", "wb"))
@@ -525,3 +537,73 @@ emu.addEventCallback(function()
         done:write("ok\n"); done:close(); emu.stop(0)
     end
 end, emu.eventType.endFrame)
+
+if resource_publications then
+-- DMA publication coverage, including writes unchanged in a baseline snapshot.
+-- No CPU/WRAM/PPU writes are performed. All units here are native VRAM bytes.
+local jobs=assert(io.open(out..'/resource_jobs.csv','wb'))
+local segments=assert(io.open(out..'/resource_writes.csv','wb'))
+jobs:write('job,label,channel,mode,bbus,source,size,word_address,stride,parity,increment,remap,fill\n');jobs:flush()
+segments:write('label,job,first,count\n');segments:flush()
+local pending={};local serial=0
+local function watched()return (setup_frame>=465 and setup_frame<=620)or(setup_frame>=825 and setup_frame<=965)or(setup_frame>=1095 and setup_frame<=1250)or(setup_frame>=1455 and setup_frame<=1595)end
+local function publish(job,done,label)
+ if done<job.done or done>job.size then error('invalid DMA progress')end
+ if done>job.done then segments:write(string.format('%d,%d,%d,%d\n',label,job.id,job.done,done-job.done));segments:flush();job.done=done end
+end
+for _,bank in ipairs({0,0x80,0x81,0x82})do
+ local address=(bank<<16)|0x420b
+ emu.addMemoryCallback(function(_,mask)
+  if not watched()then return end
+  local st=emu.getState()
+  -- Later channels share the PPU address changed by earlier channels. This
+  -- bounded observer samples one starting address, so reject that case.
+  local vram_channels=0
+  for ch=0,7 do if(mask&(1<<ch))~=0 then
+   local bbus=emu.read(0x4301+ch*16,emu.memType.snesMemory,false)
+   if bbus==0x18 or bbus==0x19 then vram_channels=vram_channels+1 end
+  end end
+  if vram_channels>1 then error('multiple VRAM channels in one DMA submission are not supported')end
+  -- CPU cannot submit another DMA while any preceding normal DMA is active.
+  for _,old in pairs(pending)do publish(old,old.size,setup_frame)end;pending={}
+  for ch=0,7 do if(mask&(1<<ch))~=0 then
+   local p=0x4300+ch*16;local function reg(a)return emu.read(a,emu.memType.snesMemory,false)end
+   local mode,bbus=reg(p),reg(p+1)
+   if bbus==0x18 or bbus==0x19 then
+    local size=reg(p+5)|(reg(p+6)<<8);if size==0 then size=65536 end
+    local source=reg(p+2)|(reg(p+3)<<8)|(reg(p+4)<<16)
+    local increment=st['ppu.vramIncrementValue'];local remap=st['ppu.vramAddressRemapping']
+    local stride,parity
+    if mode==1 and bbus==0x18 and st['ppu.vramAddrIncrementOnSecondReg']then stride=1;parity=0
+    elseif mode==8 and ((bbus==0x18 and not st['ppu.vramAddrIncrementOnSecondReg'])or(bbus==0x19 and st['ppu.vramAddrIncrementOnSecondReg']))then stride=2;parity=bbus-0x18
+    else error(string.format('unsupported observed VRAM DMA mode %02X bbus %02X',mode,bbus))end
+    if increment~=1 or remap~=0 then error('unmapped VRAM DMA addressing')end
+    serial=serial+1
+    local job={id=serial,size=size,done=0,word=st['ppu.vramAddress'],stride=stride,parity=parity}
+    pending[ch]=job
+    jobs:write(string.format('%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n',serial,setup_frame,ch,mode,bbus,source,size,job.word,stride,parity,increment,remap,mode==8 and reg(source)or -1));jobs:flush()
+   end
+  end end
+ end,emu.callbackType.write,address,address,emu.cpuType.snes,emu.memType.snesMemory)
+end
+emu.addEventCallback(function()
+ -- Base endFrame callback has already advanced this evidence label by one.
+ local label=setup_frame-1
+ if not ((label>=465 and label<=620)or(label>=825 and label<=965)or(label>=1095 and label<=1250)or(label>=1455 and label<=1595))then return end
+ local st=emu.getState()
+ for ch,job in pairs(pending)do
+  local prefix='dmaController.channel['..ch..'].'
+  local done=job.size
+  if st[prefix..'dmaActive']then
+   done=job.size-st[prefix..'transferSize']
+   if job.stride==2 then
+    -- PPU word address changes after a completed fill byte, providing a
+    -- direct completed-write observation rather than inferring a bus phase.
+    done=(st['ppu.vramAddress']-job.word)&0xffff
+   end
+  end
+  publish(job,done,label)
+ end
+end,emu.eventType.endFrame)
+
+end

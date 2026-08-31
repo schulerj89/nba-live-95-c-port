@@ -6,6 +6,7 @@ param(
     [switch]$SimulationThreeMinute,
     [switch]$HoldMenu,
     [switch]$RepeatVisit,
+    [switch]$ResourcePublications,
     [ValidateRange(-1,12)][int]$TargetRow = -1,
     [ValidateRange(0,2)][int]$TargetRights = 0
 )
@@ -20,8 +21,13 @@ if ($TargetRow -ge 0 -and $TargetRow + $TargetRights -gt 13) {
 if ($RepeatVisit -and ($Menu -ne 'rules' -or $TargetRow -ne 2 -or $TargetRights -ne 1)) {
     throw 'RepeatVisit currently specifies the bounded Rules row2/right1 journey.'
 }
+if ($ResourcePublications -and ($Menu -ne 'rules' -or !$SimulationThreeMinute)) {
+    throw 'ResourcePublications currently requires the normalized Rules journey.'
+}
 $root = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
-$out = [IO.Path]::GetFullPath((Join-Path $root $OutputRoot))
+$out = if ([IO.Path]::IsPathRooted($OutputRoot)) {
+    [IO.Path]::GetFullPath($OutputRoot)
+} else { [IO.Path]::GetFullPath((Join-Path $root $OutputRoot)) }
 if (Test-Path -LiteralPath $out) { throw 'OutputRoot must be a new directory.' }
 New-Item -ItemType Directory -Path $out | Out-Null
 $saves = Join-Path $out 'isolated-saves'
@@ -63,6 +69,7 @@ $manifest = [ordered]@{
     configuration=[ordered]@{natural_ui_normalization=[bool]$SimulationThreeMinute;
         hold_menu_without_value_edits=[bool]$HoldMenu;
         repeat_visit=[bool]$RepeatVisit;
+        resource_publications=[bool]$ResourcePublications;
         target_row=$TargetRow;target_rights=$TargetRights;
         variant_schedule= $(if ($TargetRow -ge 0) {
             'Natural down pulses at620+10*n; right pulses after the final down. Snapshot753 validates selected row. This is an equivalent UI-state snapshot, not a claim of identical button timing to the C harness.'
@@ -86,34 +93,62 @@ foreach ($pair in @(@('rom',$RomPath),@('mesen',$mesen),@('capture',$script),
     $manifest.sources[$pair[0]]=[ordered]@{path=[IO.Path]::GetFullPath($pair[1]);
         sha256=(Get-FileHash -Algorithm SHA256 -LiteralPath $pair[1]).Hash.ToLowerInvariant()}
 }
-$oldEnv=@{}
-foreach($name in @('NBA95_CAPTURE_DIR','NBA95_CAPTURE_MENU','NBA95_CAPTURE_EVERY_FRAME',
-                   'NBA95_CAPTURE_SCROLL','NBA95_CAPTURE_VARIANTS','NBA95_CAPTURE_VALUES',
-                   'NBA95_CAPTURE_CALLS','NBA95_CAPTURE_CANONICAL_UI','NBA95_CAPTURE_HOLD_MENU',
-                   'NBA95_CAPTURE_TARGET_ROW','NBA95_CAPTURE_TARGET_RIGHTS','NBA95_CAPTURE_REPEAT_VISIT')) {
-    $oldEnv[$name]=[Environment]::GetEnvironmentVariable($name,'Process')
-    [Environment]::SetEnvironmentVariable($name,$null,'Process')
+# Each native process receives its own environment dictionary. Codex tool
+# PowerShell runspaces can share the parent process environment; mutating
+# $env:NBA95_* races another capture even when Mesen executables are private.
+$startInfo = New-Object Diagnostics.ProcessStartInfo
+$startInfo.FileName = $mesen
+$startInfo.Arguments = $arguments -join ' '
+$startInfo.UseShellExecute = $false
+$startInfo.CreateNoWindow = $true
+$startInfo.WindowStyle = [Diagnostics.ProcessWindowStyle]::Hidden
+$startInfo.RedirectStandardOutput = $true
+$startInfo.RedirectStandardError = $true
+foreach ($name in @($startInfo.EnvironmentVariables.Keys)) {
+    if ($name.StartsWith('NBA95_')) { $startInfo.EnvironmentVariables.Remove($name) }
 }
+$startInfo.EnvironmentVariables['NBA95_CAPTURE_DIR']=$out.Replace('\','/')
+$startInfo.EnvironmentVariables['NBA95_CAPTURE_MENU']=$Menu
+$startInfo.EnvironmentVariables['NBA95_CAPTURE_EVERY_FRAME']='1'
+if ($SimulationThreeMinute) { $startInfo.EnvironmentVariables['NBA95_CAPTURE_CANONICAL_UI']='1' }
+if ($HoldMenu) { $startInfo.EnvironmentVariables['NBA95_CAPTURE_HOLD_MENU']='1' }
+if ($RepeatVisit) { $startInfo.EnvironmentVariables['NBA95_CAPTURE_REPEAT_VISIT']='1' }
+if ($ResourcePublications) { $startInfo.EnvironmentVariables['NBA95_CAPTURE_RESOURCE_PUBLICATIONS']='1' }
+if ($TargetRow -ge 0) {
+    $startInfo.EnvironmentVariables['NBA95_CAPTURE_TARGET_ROW']=[string]$TargetRow
+    $startInfo.EnvironmentVariables['NBA95_CAPTURE_TARGET_RIGHTS']=[string]$TargetRights
+}
+$manifest.isolation['environment']='private ProcessStartInfo environment; no parent environment mutation'
+$manifest | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $out 'manifest.json')
+$process = New-Object Diagnostics.Process
+$process.StartInfo = $startInfo
 try {
-    $env:NBA95_CAPTURE_DIR=$out.Replace('\','/')
-    $env:NBA95_CAPTURE_MENU=$Menu
-    $env:NBA95_CAPTURE_EVERY_FRAME='1'
-    if ($SimulationThreeMinute) { $env:NBA95_CAPTURE_CANONICAL_UI='1' }
-    if ($HoldMenu) { $env:NBA95_CAPTURE_HOLD_MENU='1' }
-    if ($RepeatVisit) { $env:NBA95_CAPTURE_REPEAT_VISIT='1' }
-    if ($TargetRow -ge 0) {
-        $env:NBA95_CAPTURE_TARGET_ROW=[string]$TargetRow
-        $env:NBA95_CAPTURE_TARGET_RIGHTS=[string]$TargetRights
+    if (!$process.Start()) { throw 'Could not start isolated native capture.' }
+    $stdoutTask=$process.StandardOutput.ReadToEndAsync()
+    $stderrTask=$process.StandardError.ReadToEndAsync()
+    if (!$process.WaitForExit(200000)) {
+        $process.Kill()
+        throw 'Native capture exceeded the bounded 200-second process limit.'
     }
-    $manifest | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $out 'manifest.json')
-    $process=Start-Process -FilePath $mesen -ArgumentList $arguments -PassThru -Wait `
-        -WindowStyle Hidden -RedirectStandardOutput (Join-Path $out 'stdout.log') `
-        -RedirectStandardError (Join-Path $out 'stderr.log')
+    [IO.File]::WriteAllText((Join-Path $out 'stdout.log'),$stdoutTask.GetAwaiter().GetResult())
+    [IO.File]::WriteAllText((Join-Path $out 'stderr.log'),$stderrTask.GetAwaiter().GetResult())
     if($process.ExitCode -ne 0 -or !(Test-Path (Join-Path $out 'capture_complete.txt'))) {
         throw "Native capture incomplete (exit $($process.ExitCode))."
     }
-    # A2BF is a shared builder: it can also execute in the unskipped title
-    # sequence. Require the actual Rules/Options handler to have executed,
+    $expectedEnvironment=@(
+        ('directory='+$out.Replace('\','/')),('menu='+$Menu),'every_frame=true',
+        ('canonical_ui='+([string][bool]$SimulationThreeMinute).ToLowerInvariant()),
+        ('hold_menu='+([string][bool]$HoldMenu).ToLowerInvariant()),
+        ('repeat_visit='+([string][bool]$RepeatVisit).ToLowerInvariant()),
+        ('target_row='+$TargetRow),('target_rights='+$TargetRights))
+    if ($ResourcePublications) { $expectedEnvironment += 'resource_publications=true' }
+    $observedEnvironment=@(Get-Content -LiteralPath (Join-Path $out 'capture_environment.txt'))
+    if (($observedEnvironment -join "`n") -cne ($expectedEnvironment -join "`n")) {
+        throw 'Native Lua environment does not match this declared capture folder/profile.'
+    }
+    $manifest.isolation['observed_environment']=$observedEnvironment
+    # A2BF is an audio-loop tail also executed in the unskipped title
+    # sequence; it is only the historical capture label anchor. Require the actual Rules/Options handler to have executed,
     # not just a frame counter and completion sentinel.
     $expectedHandler = if ($Menu -eq 'rules') { 0x81D318 } else { 0x828CD1 }
     $handlerObserved = $false
@@ -157,7 +192,8 @@ try {
         transition_main_values=$working;committed_before_open=$committed;
         committed_after_open=$committedAfter}
     $artifactNames=@('rgb_state.csv','raster_registers.csv','exec_trace.txt','capture_log.txt',
-        'wram_before_open.bin','wram_open.bin','wram_after_back.bin','dispatch_ppu_states.txt','capture_complete.txt')
+        'wram_before_open.bin','wram_open.bin','wram_after_back.bin','dispatch_ppu_states.txt','capture_environment.txt','capture_complete.txt')
+    if ($ResourcePublications) { $artifactNames += @('resource_jobs.csv','resource_writes.csv') }
     if ($RepeatVisit) {
         $artifactNames += @('wram_repeat_before_open.bin','wram_repeat_open.bin',
                            'wram_repeat_before_return.bin','wram_repeat_after_return.bin')
@@ -190,8 +226,6 @@ try {
     }
     $manifest | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $out 'manifest.json')
 } finally {
-    foreach($name in $oldEnv.Keys) {
-        [Environment]::SetEnvironmentVariable($name,$oldEnv[$name],'Process')
-    }
+    $process.Dispose()
 }
 Write-Host "Exact $Menu capture complete: $out"

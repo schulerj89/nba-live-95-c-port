@@ -1,9 +1,11 @@
 # Game Setup screen — ROM facts
 
-Everything here was measured from the running ROM (Mesen) or disassembled from
-it (Ghidra headless). Nothing is inferred. The addresses the previous pass used
-(`$80:DB37`, `$80:E01E`, `$80:DD36`, `$80:DD50`, `$82:809A`, `$82:91EC`,
-`$87:8C6B`) do **not** execute on this screen and should not be trusted.
+This document combines historical captures with later routine-level audits.
+The historical `$80:A2BF/$80:A3B8/$80:A62D/$80:A77C` graphics labels were
+incorrect: concurrent execution was mistaken for ownership. Current callers
+and unresolved scheduling/resource gaps are recorded in
+[rules-reentry-resource-audit.md](rules-reentry-resource-audit.md).
+A matching settled frame does not establish transition or gameplay completion.
 
 ## Reproducing the measurements
 
@@ -46,10 +48,10 @@ Bank `$80` unless noted. Full list in `setup_exec_addrs.txt`.
 
 | address | role |
 |---|---|
-| `$80:A2BF` | screen build / layer + scroll setup |
-| `$80:A3B8` | per-frame update driving the backdrop scroll |
-| `$80:A62D` | option row state |
-| `$80:A77C` | option value dispatch |
+| `$81:BA8E` / `$81:CF62` | Main / Rules constructors |
+| `$81:F9FC` -> `$87:89D5` | live backdrop phase/counter update |
+| `$81:BDA8` / `$81:BDD5` | Main Up / Down branches |
+| `$81:BDEA` / `$81:BE2D` | Main Left / Right branches |
 | `$80:A9E3`, `$80:AA7B`, `$80:AACD` | APU ports `$2140`–`$2143` (music/SFX commands) |
 | `$80:CB8F` | DMA/transfer helper |
 | `$80:C62B` | ROM decompressor |
@@ -77,7 +79,7 @@ global frame numbers are included only to relate the original trace):
 
 - `$80:E600` enters the 15-step fade; the brightness-1 frame is capture frame 0
 - the following 105 frames are forced blank while the next scene is built
-- `$80:A2BF` builds the Setup layers; forced blank then releases at brightness
+- `$81:BA8E` constructs Main Setup; forced blank then releases at brightness
   1 with BG1/BG2 scroll 768
 
 Entrance, 32 frames:
@@ -161,7 +163,7 @@ Two PPU details were needed to land this pixel-exactly:
 
 ## Rendering status
 
-The captured settled reference frame is **100% pixel-identical** (0 of 57,344
+The single captured settled reference frame is **100% pixel-identical** (0 of 57,344
 pixels differ), including the gold highlight. Transition and cursor-row hashes
 are enforced by `tools/test_setup_transition.py`.
 
@@ -178,8 +180,9 @@ through the exact Mesen-observed cycles:
 | Level | Rookie, Starter, All-Star |
 | Quarter | 3 Minutes, 5 Minutes, 8 Minutes, 12 Minutes |
 
-`$80:9DEA` dispatches the input, `$80:A62D` selects the row state, and
-`$80:A77C` selects the value passed to the proportional BG3 glyph writer.
+`$81:BDA3` begins the Main direction dispatcher: Up/Down bodies are
+`$81:BDA8/$81:BDD5`, Left/Right bodies `$81:BDEA/$81:BE2D`.
+The values feed the proportional BG3 glyph writer.
 Every accepted adjustment uses command `$49`/SRCN `$1A`, while row movement
 uses `$4A`/SRCN `$1B`. The port stores these values in the session-owned
 `NbaGameConfig`, so they survive Rules/Options round trips and complete Setup
@@ -208,31 +211,28 @@ seven-row scrolling viewport. The port scrolls the captured 64-row BG3 canvas,
 so hidden rule labels and glyph pixels remain ROM-authentic rather than being
 redrawn with a host font.
 
-Opening either submenu is a shared screen transition, not a direct page swap.
-The complete Mesen `$2100/$212C/$212D/$210D-$2112` trace shows BG3 scrolling
-out by 14 pixels/frame, followed by opposing BG1/BG2 slides at 8 pixels/frame
-while brightness falls 15→1. The ROM holds forced blank while `$80:A2BF`
-builds the target, then `$80:A3B8` runs the 32-frame entrance and delayed BG3
-staging. The builders are page-specific: Set Rules finishes after 146
-transition frames, Set Options after 132, and Start returns to Game Setup
-after 132. Packed PPU traces preserve the VRAM writes that continue while the
-new BG3 canvas becomes visible instead of swapping directly to a settled page.
-The trace's opening BG2 vertical coordinates are capture-time absolute values,
-not a command to reset the live backdrop. `$80:A3B8` carries the current BG2
-phase through the visible exit; `$80:A2BF` resets it only after forced blank is
-active, and the rebuilt phase continues one pixel every three frames after the
-new page settles. The port therefore rebases only the visible trace prefix and
-hands the final trace phase to the steady updater instead of recomputing it from
-the lifetime Setup frame counter.
-Mesen's `screenBrightness` field contains only the low four INIDISP bits, so
-the port separately restores bit 7 using edge-specific measured windows:
-Rules open 51–80, Options open 51–76, Rules return 36–62, and Options return
-52–78 (transition-frame numbering). Mesen's end-frame callback reports the
-scroll, brightness, layer-designation, and map registers prepared for the next
-scanout. The asset pack therefore delays that complete PPU presentation state
-one frame, alongside its already delayed VRAM/CGRAM deltas. This keeps both
-submenu routes on the shared `$80:A2BF/$80:A3B8` cadence without a route-only
-renderer correction.
+The shared visible exit calls `$80:EBF9-$EC67` (BG3) and
+`$80:EB27-$EB9E` (BG1/BG2 and brightness). Resource producers are
+`$80:EC68-$EEC0` (backdrop) and `$80:EEC6-$EF8D` (header), called by the
+page-specific constructors. `$80:EA99-$EB26` handles incoming layers.
+The captured first Rules opening has 146 post-dispatch states and Main return
+132. These are particular journeys, not universal execution budgets: a
+natural second opening reaches the next NMI one frame earlier. The remaining
+visible timing difference is an explicit FAIL.
+
+Rules current-scanout traces use synchronous `getScreenBuffer` plus the actual
+INIDISP forced-blank flag. Their state/resources are not delayed to match
+asynchronous `takeScreenshot` images. Options still uses its historical
+presentation contract pending an independent complete transition capture.
+
+Native `$168F` three-frame phase survives construction; `$0613` is reset by
+the exit/PPU initializer and then published to BG2 on the next frame.
+The portable Rules exit advances its existing phase instead of inheriting
+the baseline capture's phase. `NBSPPU3` retains complete native DMA write
+coverage, including unchanged zero writes, and inserts current value-glyph
+bits at observed font publications. It still replays a captured constructor
+schedule. See the resource audit for the first-divergence and partial-DMA
+limitations; no whole-transition or whole-routine completion is implied.
 
 The shared sound dispatch is `$80:9DF3`: command `$49` selects SRCN `$1A` for
 a value adjustment, `$4A` selects SRCN `$1B` for cursor movement, and `$4B`

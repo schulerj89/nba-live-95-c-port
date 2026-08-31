@@ -1,0 +1,17 @@
+
+# Preserve exact bytes in the 2026-08-31 worktree snapshot.
+docs/game-setup-screen.md -text
+include/nba_setup_screen.h -text
+src/nba_setup_screen.c -text
+tools/capture_setup_transition_exact.ps1 -text
+tools/extract_assets.py -text
+tools/mesen_setup_menus_capture.lua -text
+docs/rules-reentry-resource-audit.md -text
+docs/setup-config-independent-audit.md -text
+docs/setup-resource-scheduler-contract.md -text
+tools/capture_setup_scheduler.py -text
+tools/mesen_setup_scheduler.lua -text
+tools/setup_publications_probe.c -text
+tools/setup_transition_resource_jobs.py -text
+tools/test_setup_publications_decoder.py -text
+tools/test_setup_resource_publications.py -text
