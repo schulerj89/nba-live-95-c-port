@@ -111,7 +111,9 @@ def main():
                 "--team-only", "--team-confirm"]
         cases = {
             "outgoing": 177,
-            "blank": 209,
+            # Native normal-input capture reaches forced black 51 presented
+            # frames after the Team Select Start edge (650 -> 701).
+            "blank": 229,
             "background": 327,
             "labels": 355,
             "settled": 378,
@@ -155,7 +157,7 @@ def main():
                 "48ff66cddbbfd42ee9a884e8e064a589c932051acfb6caf4cfa6339ae9346d8a":
             raise AssertionError("selected home logo/wallpaper did not replace Orlando")
 
-    print("[TEST] PASS: Team Select handoff, 200-frame transition, dynamic home wallpaper, selected teams, and Player 1 side")
+    print("[TEST] PASS: Team Select layer exit, 200-frame transition, dynamic home wallpaper, selected teams, and Player 1 side")
 
 
 if __name__ == "__main__":

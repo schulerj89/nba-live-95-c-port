@@ -87,5 +87,9 @@ void nba_team_select_shutdown(NbaTeamSelect *screen);
 NbaTeamSelectSound nba_team_select_update(NbaTeamSelect *screen,
                                            const NbaInput *input);
 void nba_team_select_render(const NbaTeamSelect *screen, NbaRenderer *renderer);
+void nba_team_select_render_exit(const NbaAssetPack *assets,
+                                 const NbaSession *session,
+                                 const uint32_t *outgoing_pixels,
+                                 int frame, NbaRenderer *renderer);
 
 #endif

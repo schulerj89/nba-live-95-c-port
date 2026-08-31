@@ -118,8 +118,10 @@ static int run_pair(const NbaAssetPack *assets, uint8_t away, uint8_t home,
         uint64_t card_hash = frame_hash(&renderer);
         if (card == 0) hashes[4] = card_hash;
         if (card > 0 && card_hash == hashes[4]) return 34;
-        press(&input, NBA_BTN_A);
-        nba_player_intro_update(&intro, &input);
+        if (card + 1 < NBA_PLAYER_INTRO_CARD_COUNT) {
+            for (int frame = 0; frame < NBA_PLAYER_INTRO_CARD_FRAMES; ++frame)
+                nba_player_intro_update(&intro, NULL);
+        }
     }
     press(&input, NBA_BTN_START);
     nba_player_intro_update(&intro, &input);

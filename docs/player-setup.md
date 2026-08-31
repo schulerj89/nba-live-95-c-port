@@ -14,7 +14,9 @@ Live Mesen execution and the headless Ghidra dump establish this path:
 | Address | Role |
 |---|---|
 | `$82:8553` | Team Select Start confirmation and selected-team commit |
-| `$81:C41E` | outgoing fade/forced-blank setup |
+| `$81:C41E` | outgoing layer withdrawal/forced-blank setup |
+| `$80:EBF9-$80:EC53` | sixteen-step foreground withdrawal (`$1775 -= $000E`, `$0617 += $000E`) |
+| `$80:EB27-$80:EB7B` | opposed eight-pixel background motion and brightness stepping |
 | `$80:E95B` | shared transition-script interpreter, invoked with `$81:B901` |
 | `$81:A489` | Player Setup scene dispatcher |
 | `$81:B404` | patches Player Setup object-pool markers during construction |
@@ -25,12 +27,16 @@ Live Mesen execution and the headless Ghidra dump establish this path:
 | `$81:B7C1` | Player Setup vertical-scroll IRQ handler |
 | `$82:863C` | rebuilds the selected home graphics through `$80:D0E2`; its twenty-five wallpaper tiles remain at VRAM `$20A0-$23BF` |
 
-The reproducible trace reaches Team Select confirmation at frame 1650, the
+The earlier targeted trace reaches Team Select confirmation at frame 1650, the
 Player Setup dispatcher at 1701, object construction at 1795, and the vertical
-scroll handler at 1816. The reference screen is settled by frame 1850. The C
-handoff therefore preserves the measured 200-frame cadence: outgoing fade,
-forced black, opposed background slide, title/label reveal, and final object
-release.
+scroll handler at 1816. A later normal-input, normal-power-on consecutive frame
+capture pins the visible boundary more tightly: Start at setup frame 650,
+outgoing layer motion at 651-672, brightness withdrawal at 673-700, forced
+black at 701, and the first Player Setup reveal at 768. The C handoff composes
+the ROM-derived Team Select layers through that 51-frame outgoing boundary;
+it does not fade a frozen RGB screenshot. It then preserves the existing
+200-frame destination cadence through opposed background slide, title/label
+reveal, and final object release.
 
 The selected gold plate uses the existing 26-byte Team Select palette-cycle
 asset. Moving Player 1 left or right moves the entire arrow/controller OAM group
@@ -45,7 +51,9 @@ matching the ROM's retained-VRAM handoff instead of baking in Orlando.
 PPU memories. `tools/ghidra/Run-PlayerSetupAnalysis.ps1` regenerates the labeled
 bank listings and decompilation notes. `tools/test_player_setup.py` locks the
 asset hashes, OAM geometry, transition checkpoints, selected-team persistence,
-and left-side assignment rendering.
+and left-side assignment rendering. `tools/test_frontend_route.py` checks the
+consecutive-frame exit, centered CPU-vs-CPU selection, and complete production
+route through presentation skips to Tipoff.
 
 For a focused headless render:
 
