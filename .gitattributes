@@ -105,3 +105,18 @@ tools/freeze_period_roles_v2.py -text
 tools/verify_period_roles_v3.py -text
 tools/test_period_roles_verifier_v3.py -text
 tools/freeze_period_roles_v3.py -text
+
+# Preserve reviewed typed formation sources and diagnostic metadata.
+include/nba_period_formation.h -text
+src/nba_period_formation.c -text
+tools/period_formation_probe.c -text
+tools/period_formation_fields.inc -text
+tools/generate_period_formation_fields.py -text
+tools/build_period_formation_probe.ps1 -text
+tools/verify_period_formation.py -text
+tools/test_period_formation.py -text
+tools/test_period_formation_protocol.py -text
+tools/freeze_period_formation.py -text
+tools/period_formation_dependencies_v1.json -text
+tools/period_formation_role_alias_map_v1.json -text
+tools/prepare_period_formation_dependencies.py -text

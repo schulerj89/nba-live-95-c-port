@@ -1,0 +1,156 @@
+{
+  "commit": "979c042",
+  "render_freeze_sha256": "b9362eab95705e0b0c4fcab5a8f6ce85b846de9f32a28a1dfc90dcdc79e90e96",
+  "files": {
+    "include/period_appearance.h": {
+      "path": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-owner\\include\\period_appearance.h",
+      "sha256": "49c6265e94bba9ca2b228ad4bf491274794e0add8180ff0509e02493dbccf8b7",
+      "snapshot": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-scheduler\\.analysis\\period-formation-dependencies-v1\\period_appearance.h"
+    },
+    "src/period_appearance.c": {
+      "path": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-owner\\src\\period_appearance.c",
+      "sha256": "05f3489e1ce59a769631b43bfc776e5ed997ee7e962339b8e9e7ee1a94e7027b",
+      "snapshot": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-scheduler\\.analysis\\period-formation-dependencies-v1\\period_appearance.c"
+    },
+    "include/period_support.h": {
+      "path": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-owner\\include\\period_support.h",
+      "sha256": "eb7e5d31aa5f135722400aafd00f7c2c3367c1a36b79da299ebfad37adf9b590",
+      "snapshot": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-scheduler\\.analysis\\period-formation-dependencies-v1\\period_support.h"
+    },
+    "src/period_support.c": {
+      "path": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-owner\\src\\period_support.c",
+      "sha256": "3c9c82354bf5856be81065b00878f7d5fa040b06e4017964b85f38a698552896",
+      "snapshot": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-scheduler\\.analysis\\period-formation-dependencies-v1\\period_support.c"
+    },
+    "period_render_tail.h": {
+      "path": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-owner\\build\\period-render-tail-attribution-v1\\period_render_tail.h",
+      "sha256": "e6eaf3598e7a3a70348ed0f9397accc0b1a4c014fc4d5ed416dc2cf9286df982",
+      "snapshot": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-scheduler\\.analysis\\period-formation-dependencies-v1\\period_render_tail.h"
+    },
+    "period_render_tail.c": {
+      "path": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-owner\\build\\period-render-tail-attribution-v1\\period_render_tail.c",
+      "sha256": "8552701d29ee36357a6b51c9c0395e3ca5b979d8e7293bf4842e68d78c99f18f",
+      "snapshot": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-scheduler\\.analysis\\period-formation-dependencies-v1\\period_render_tail.c"
+    },
+    "src/nba_player_lab.c": {
+      "path": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-owner\\src\\nba_player_lab.c",
+      "snapshot": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-scheduler\\.analysis\\period-formation-dependencies-v1\\nba_player_lab.c",
+      "sha256": "6262c6a3100cebba382a19eabc8e60b46325692b4ac80ecff5ed16d3e55e00a2"
+    },
+    "src/nba_assets.c": {
+      "path": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-owner\\src\\nba_assets.c",
+      "snapshot": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-scheduler\\.analysis\\period-formation-dependencies-v1\\nba_assets.c",
+      "sha256": "f4f4c520b1891b6089a1bf26b371dc12dfeadb4e1646b71e22cb34db0964eccf"
+    },
+    "src/nba_gameplay_ai.c": {
+      "path": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-owner\\src\\nba_gameplay_ai.c",
+      "snapshot": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-scheduler\\.analysis\\period-formation-dependencies-v1\\nba_gameplay_ai.c",
+      "sha256": "0f05e141e553e5c989360c82aaf4ca64ab74c34d02a94dc0be29a7bfa1d87aca"
+    },
+    "src/nba_controller.c": {
+      "path": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-owner\\src\\nba_controller.c",
+      "snapshot": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-scheduler\\.analysis\\period-formation-dependencies-v1\\nba_controller.c",
+      "sha256": "c3f12d2f41bb13c978207f091af3256e638090da7aa5e621e5e573a02287322e"
+    },
+    "src/nba_ea_intro.c": {
+      "path": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-owner\\src\\nba_ea_intro.c",
+      "snapshot": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-scheduler\\.analysis\\period-formation-dependencies-v1\\nba_ea_intro.c",
+      "sha256": "f4be592c33d4044deb7cc467764f0075e2b8287fdfdf1086751bbe94df142c88"
+    },
+    "src/nba_intro_text.c": {
+      "path": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-owner\\src\\nba_intro_text.c",
+      "snapshot": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-scheduler\\.analysis\\period-formation-dependencies-v1\\nba_intro_text.c",
+      "sha256": "be5073a41e364c0bcbc6c2502eed1328f44f072abd24bb9ce82d630bab220677"
+    },
+    "include/nba_player_lab.h": {
+      "path": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-owner\\include\\nba_player_lab.h",
+      "snapshot": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-scheduler\\.analysis\\period-formation-dependencies-v1\\nba_player_lab.h",
+      "sha256": "1ee62153aa44cc7ab5b55c5faaf95bd90cbfb3ba2d24526ec2e0a67b962efcc5"
+    },
+    "include/nba_controller.h": {
+      "path": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-owner\\include\\nba_controller.h",
+      "snapshot": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-scheduler\\.analysis\\period-formation-dependencies-v1\\nba_controller.h",
+      "sha256": "8d530f64d69ba2da7b9bb467034213d111a37f221b964a17b84ce35c6b252c80"
+    },
+    "include/nba_assets.h": {
+      "path": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-owner\\include\\nba_assets.h",
+      "snapshot": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-scheduler\\.analysis\\period-formation-dependencies-v1\\nba_assets.h",
+      "sha256": "10ef521bf81623f8f38cc5316b9a6a3de19e862de60363ff7d05a4898f4010a0"
+    },
+    "include/nba_renderer.h": {
+      "path": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-owner\\include\\nba_renderer.h",
+      "snapshot": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-scheduler\\.analysis\\period-formation-dependencies-v1\\nba_renderer.h",
+      "sha256": "4d466da4c44daffe5fe910f71674537927020e82e4282b126d4cb5c1570ca0e2"
+    },
+    "include/nba_team_select.h": {
+      "path": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-owner\\include\\nba_team_select.h",
+      "snapshot": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-scheduler\\.analysis\\period-formation-dependencies-v1\\nba_team_select.h",
+      "sha256": "8be4afad763cb5c9a6d47e9a348052e1daf222b9ec843626f5de661890c85c80"
+    },
+    "include/nba_session.h": {
+      "path": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-owner\\include\\nba_session.h",
+      "snapshot": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-scheduler\\.analysis\\period-formation-dependencies-v1\\nba_session.h",
+      "sha256": "5dc1daf4d7e86d0111dc34f718383174057d59a3112590e8084232be83ae0b00"
+    },
+    "include/nba_types.h": {
+      "path": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-owner\\include\\nba_types.h",
+      "snapshot": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-scheduler\\.analysis\\period-formation-dependencies-v1\\nba_types.h",
+      "sha256": "5386f544563a79fe9dad1aa32c7afb058654ccfa611443060aabcfc8ee052484"
+    },
+    "include/nba_intro_text.h": {
+      "path": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-owner\\include\\nba_intro_text.h",
+      "snapshot": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-scheduler\\.analysis\\period-formation-dependencies-v1\\nba_intro_text.h",
+      "sha256": "2f4b792d2dfbd65259a8df095c5c977af7ef2beda98d5364f5879710c48993d5"
+    },
+    "include/nba_rom_font.h": {
+      "path": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-owner\\include\\nba_rom_font.h",
+      "snapshot": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-scheduler\\.analysis\\period-formation-dependencies-v1\\nba_rom_font.h",
+      "sha256": "55f4d0054104b018560db8a85f17ff1bd16060e8b2272de16be515f2a42d881b"
+    },
+    "include/nba_snes_ppu.h": {
+      "path": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-owner\\include\\nba_snes_ppu.h",
+      "snapshot": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-scheduler\\.analysis\\period-formation-dependencies-v1\\nba_snes_ppu.h",
+      "sha256": "a31efbcab4cde2faa255d967e017bffbc7a4d4497bf600650c9fcd7f4ee5dbf8"
+    },
+    "include/nba_ea_intro.h": {
+      "path": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-owner\\include\\nba_ea_intro.h",
+      "snapshot": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-scheduler\\.analysis\\period-formation-dependencies-v1\\nba_ea_intro.h",
+      "sha256": "f86db4ae6a89e6284b7ae78feece125a64522832bf0d1b08cb896d10c0c3de42"
+    },
+    "include/nba_gameplay_ai.h": {
+      "path": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-owner\\include\\nba_gameplay_ai.h",
+      "snapshot": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-scheduler\\.analysis\\period-formation-dependencies-v1\\nba_gameplay_ai.h",
+      "sha256": "98839ec6c91563586fc455a889e6077a7201f410a17db53f5ee43082667900d8"
+    },
+    "include/nba_font.h": {
+      "path": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-owner\\include\\nba_font.h",
+      "snapshot": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-scheduler\\.analysis\\period-formation-dependencies-v1\\nba_font.h",
+      "sha256": "b5fa0e1367f8e6877d3d18316369a7fdefa6500564641c28420a46c702d4bc02"
+    },
+    "src/nba_renderer.c": {
+      "path": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-owner\\src\\nba_renderer.c",
+      "snapshot": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-scheduler\\.analysis\\period-formation-dependencies-v1\\nba_renderer.c",
+      "sha256": "7a3aeffba6ba550067ebaadfb9bda578a1e54146b06064ba71a7c11e540aa5f5"
+    },
+    "src/nba_snes_ppu.c": {
+      "path": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-owner\\src\\nba_snes_ppu.c",
+      "snapshot": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-scheduler\\.analysis\\period-formation-dependencies-v1\\nba_snes_ppu.c",
+      "sha256": "6bcbd81f92cbbb98e654b23c16a579ee5e914bc540bb3208c23afe08825711bb"
+    },
+    "src/nba_font.c": {
+      "path": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-owner\\src\\nba_font.c",
+      "snapshot": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-scheduler\\.analysis\\period-formation-dependencies-v1\\nba_font.c",
+      "sha256": "7eca95d59a0b7a09fafad6fa4b4917bb9c4187733939c20879ede16121021d61"
+    },
+    "src/nba_rom_font.c": {
+      "path": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-owner\\src\\nba_rom_font.c",
+      "snapshot": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-scheduler\\.analysis\\period-formation-dependencies-v1\\nba_rom_font.c",
+      "sha256": "053c5201e34e3dce9e7902b83486cf9a5245d9dcdefad631c2690e06e1f4a698"
+    },
+    "src/nba_team_select.c": {
+      "path": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-owner\\src\\nba_team_select.c",
+      "snapshot": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\worktrees\\completion-scheduler\\.analysis\\period-formation-dependencies-v1\\nba_team_select.c",
+      "sha256": "ca5fd0bf0b91610f6499beb5be8d4e2694d28e933eda515eaf76cca35943980b"
+    }
+  }
+}
