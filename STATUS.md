@@ -8,11 +8,12 @@ change the visible runtime. Main and the desktop executable remain separate and
 are not promoted by these checkpoints.
 
 The HUD, C1 contact/recovery, culling and pass body/direction fixes are integrated.
-The63,800-frame CPU journey and focused guards pass, while the combined suite
-still stops at the existing3480 image expectation. The earlier41876 failure is
-repaired; it is not the current blocker. Repeated Rules timing, normal human play,
-full match lifecycle, retail modes, persistence and complete rendering/audio
-remain open. The exact744809a progress gallery is published and gitignored.
+After independent attribution of the remaining three C-only image anchors, a
+fresh63,800-frame capture now passes the complete maintained CPU gameplay test.
+The earlier41876 and3480 stops are repaired; neither is the current blocker.
+Repeated Rules timing, normal human play, full match lifecycle, retail modes,
+persistence and complete rendering/audio remain open. The exact744809a progress
+gallery is published and gitignored; a separate current preview build is available.
 
 Receiver and startup/period/human helper acceptance is not full runtime wiring.
 Use the current plan and `docs/implementation-checkpoints-20260831.md` for scope

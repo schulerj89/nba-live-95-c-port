@@ -11,15 +11,17 @@ coverage, passing helper tests or screenshots.
 The integrated HUD score/clock/expiry repair, contact interruption/recovery,
 culling, draw-direction and reported pass body-pose corrections are reviewed and
 pushed. The latest runtime screenshot checkpoint is `744809a`:33 inspected
-images and195 checked links. Later commits through `d0aa808` change documentation
-and bootstrap validation only. Main and the desktop executable remain separate.
+images and195 checked links. Later commits change documentation, C-only
+expectations and dormant bootstrap/graphics prerequisites; they do not change
+the visible runtime. Main and the standing release desktop executable remain
+separate; a current isolated preview build is available for progress review.
 
-The actual63,800-frame CPU journey completes and its contact guard passes. The
-existing combined regression passes its gameplay/state/pass/receiver/motion
-checks and600/1300 images, then fails the pre-existing3480 image expectation.
-That frame is unchanged by the pass-render correction;6932/6954 and final checks
-are not reached by that suite. QA is attributing the remaining expectations;
-none will be refreshed without accounting for the difference.
+Independent controls attributed the remaining3480/6932/6954 C-only image
+expectations to the accepted HUD and pass-direction/body changes. After the
+three reviewed strings were migrated, a fresh63,800-frame capture passed the
+complete maintained CPU gameplay regression without trace reuse. This removes
+the old combined-suite stop; it does not complete the CPU match lifecycle or
+establish native frame parity.
 
 Receiver B468/selected AF66 and many period/human components are accepted in
 isolation, **not wired gameplay features**. Normal controls remain forced neutral.
@@ -230,7 +232,7 @@ about every part of that subsystem. Acceptance details remain in the receipts.
 | NMI/SPC/DSP, Rules transitions, audio | In progress T1 | Incomplete | Partial | Timing failures open | Full audible route open |
 | Season/Playoffs/Load | Entry inventory | No retail scenes | First-entry evidence | Whole modes open | Pending |
 | Disk persistence | Source inventory | No | Transactions mapped | Process restart open | Save/load routes open |
-| Full regression/release | Partial | No release candidate | Incomplete |3480 and later gates open | Endurance/audio open |
+| Full regression/release | Partial | No release candidate | Incomplete | Maintained CPU suite passes; wider gates open | Endurance/audio open |
 
 ## Checkpoint routine and immediate work
 

@@ -150,12 +150,16 @@ EXPECTED_RGB = {
     # The two600/1300 anchors below were separately migrated2026-08-31
     # after accepted HUD lifecycle repair: only the old static-panel
     # rectangle changes. See docs/hud-two-golden-migration.md for old
-    # hashes and independent review. The other three anchors are unchanged.
+    # hashes and independent review. The remaining three anchors were migrated
+    # only after an immutable pre-HUD control reproduced every old value. A
+    # detached accepted-HUD build accounts for3480/6932 and the pre-graphics
+    # 6954 value; the accepted direction/body fix changes only6954's player
+    # pixels. See docs/remaining-golden-migration-20260831.md.
     600: "b555afbcbfeb868b1a56b255ea15259214d9d9c49044d294b34c7d34c400853f",
     1300: "4a778fc91a809ea99e723b0054d21f499ca64beef1fb2964781ed779f8d70a01",
-    3480: "fa0f172faddd535d9532fd3828cfc49731e36b53dcc27c3ddc781614160448ae",
-    6932: "1184c50a1e87e762b491f10c842e5e9405a7d81f45a1e1cbce62d83afec6dd02",
-    6954: "2423194db5a9fc31e24b4bff0ca2733484630654c157310b6a01d3bfaebfa759",
+    3480: "805bc5705a4faa6946bf484fe670614767a0f34a2465e490343c5cbff79e6662",
+    6932: "c9e82ab29223a7b5953fc795a48ce010c1a6314819f189216cc36f2f6fbf584e",
+    6954: "9cad6d013aca98e32b28e4cb792ddcfc95b3ea7d61621d3b92b4b9857c6553cf",
 }
 
 
