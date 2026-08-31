@@ -25,6 +25,11 @@ The [ownership inventory and milestone plan](docs/ownership-plan.md) records the
 distinguish production wiring, bounded native evidence, C regressions, and
 missing behavior. Captured instruction coverage is not game completion.
 
+The [known original-game bugs and preserved quirks](docs/known-original-game-bugs.md)
+catalog separates demonstrated original defects from unusual behavior and port
+errors. Each entry records its source evidence and whether the preserving
+component is enabled in normal gameplay.
+
 Graphics and audio come from a user-supplied ROM-derived asset pack. The title,
 Game Setup, and Player Introduction music use the original SPC700/S-DSP state
 and BRR samples; the pack does not contain rendered video or mixed music WAVs.

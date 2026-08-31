@@ -124,6 +124,25 @@ The original mode14 entry and later shared-word readers need direct source
 validation before this can be accepted. No main or integration source files
 were changed by the experiment.
 
+The current `cpu_owner_flow_call` special-receiver branch sets mode14 and
+copies the old XY velocities, but does not execute the original receiver
+preparation child. Original86:AF66 first derives the receiver's+60 timer from
+the pass-band table, swaps the actor pointers, and calls **86:B468** atAF83
+before setting mode14 atAF8F. This is bank86, not87. The child selects an
+animation and trajectory using original tables and RNG, writes velocities
+and baseline velocities, and finally writes+56 atB612 and+58 atB61A. Those
+last writes explain why merging the host aliases alone can expose a stale
+target coordinate as a mode14 selector. This identifies a missing producer;
+it does not prove the private candidate's frame306 state matches native play.
+
+The existing `cpu_start_rom_layup` is not a drop-in replacement: the receiver
+route supplies a pass-derived timer, while that host layup entry initializes
+its own timer. A repair must preserve the receiver entry inputs, original
+child calls and RNG ordering before alias consolidation can be accepted.
+The bounded accepted catch component intentionally stops before this child;
+its source-only table-overrun behavior is documented separately in the
+[original-game bug catalog](known-original-game-bugs.md).
+
 V1's anonymous-union approach was rejected by MSVC's C4201 warning under
 `/W4 /WX`; its failed build is retained. V2 uses ordinary named C fields,
 not suppressed compiler warnings. Neither experiment is in the game source
