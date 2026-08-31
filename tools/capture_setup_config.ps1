@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param([Parameter(Mandatory=$true)][string]$OutputDir,
-      [ValidateSet('presets','rules','options','load','held','main')][string]$Journey='presets',
+      [ValidateSet('presets','rules','options','load','held','main','input','faces')][string]$Journey='presets',
       [string]$RomPath='F:\Games\SNES\NBA Live 95 (USA).sfc',
       [string]$SaveSource)
 $ErrorActionPreference='Stop'
@@ -38,7 +38,9 @@ $script=Join-Path $capture 'capture.lua'
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'mesen_setup_config.lua') -Destination $script
 $runner=Join-Path $capture 'capture-runner.ps1'
 Copy-Item -LiteralPath $PSCommandPath -Destination $runner
-$arguments=@('--testrunner','--timeout=240',('"'+$rom+'"'),('"'+$script+'"'))
+$arguments=@('--testrunner','--timeout=240',$rom,$script)
+$launcher=Join-Path $capture 'run_mesen_isolated.py'
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'run_mesen_isolated.py') -Destination $launcher
 $manifest=[ordered]@{classification='natural controller-only configuration journey';
     journey=$Journey;cpu_state_injection=$false;rom_patch=$false;wram_injection=$false;
     sram_injection=$false;default_input_pulse_frames=3;ordinary_action_period=60;
@@ -46,26 +48,20 @@ $manifest=[ordered]@{classification='natural controller-only configuration journ
     initial_save_files=$initialSaves;
     isolation=[ordered]@{method='private portable executable/settings';home=$runtime;
         save_folder=$saves;settings=$settings};sources=[ordered]@{}}
-foreach($pair in @(@('rom',$rom),@('mesen',$mesen),@('script',$script),@('settings',$settingsPath),@('runner',$runner))){
+foreach($pair in @(@('rom',$rom),@('mesen',$mesen),@('script',$script),@('settings',$settingsPath),@('runner',$runner),@('launcher',$launcher))){
     $manifest.sources[$pair[0]]=[ordered]@{path=$pair[1];sha256=(Get-FileHash -Algorithm SHA256 -LiteralPath $pair[1]).Hash.ToLowerInvariant()}
 }
-$old=@{}
-foreach($name in @('NBA95_CAPTURE_DIR','NBA95_CONFIG_JOURNEY')){
-    $old[$name]=[Environment]::GetEnvironmentVariable($name,'Process')
-}
-try{
-    $env:NBA95_CAPTURE_DIR=$capture.Replace('\','/')
-    $env:NBA95_CONFIG_JOURNEY=$Journey
+& {
     $manifest|ConvertTo-Json -Depth 8|Set-Content -LiteralPath (Join-Path $capture 'manifest.json') -Encoding utf8
-    $process=Start-Process -FilePath $mesen -ArgumentList $arguments -PassThru -WindowStyle Hidden `
-        -RedirectStandardOutput (Join-Path $capture 'stdout.log') `
-        -RedirectStandardError (Join-Path $capture 'stderr.log')
-    $processHandle=$process.Handle
-    $process.WaitForExit()
-    $manifest['process_exit_code']=$process.ExitCode
+    & python $launcher --executable $mesen --cwd $runtime `
+        --stdout (Join-Path $capture 'stdout.log') --stderr (Join-Path $capture 'stderr.log') `
+        --env ('NBA95_CAPTURE_DIR='+$capture.Replace('\','/')) `
+        --env ('NBA95_CONFIG_JOURNEY='+$Journey) -- @arguments
+    $processExit=$LASTEXITCODE
+    $manifest['process_exit_code']=$processExit
     $manifest|ConvertTo-Json -Depth 8|Set-Content -LiteralPath (Join-Path $capture 'manifest.json') -Encoding utf8
-    if($process.ExitCode-ne 0-or!(Test-Path -LiteralPath (Join-Path $capture 'capture_complete.txt'))){
-        throw "Incomplete configuration capture (exit $($process.ExitCode)): $capture"
+    if($processExit-ne 0-or!(Test-Path -LiteralPath (Join-Path $capture 'capture_complete.txt'))){
+        throw "Incomplete configuration capture (exit $processExit): $capture"
     }
     $observed=(Get-Content -Raw -LiteralPath (Join-Path $capture 'observed-script-data-folder.txt')).Trim()
     $expected=[IO.Path]::GetFullPath((Join-Path $runtime 'LuaScriptData'))+[IO.Path]::DirectorySeparatorChar
@@ -82,11 +78,12 @@ try{
         $path=Join-Path $capture $name
         $manifest.sources[$name]=[ordered]@{path=$path;sha256=(Get-FileHash -Algorithm SHA256 -LiteralPath $path).Hash.ToLowerInvariant()}
     }
+    foreach($file in @(Get-ChildItem -LiteralPath $capture -Filter 'visual_*' -File)){
+        $manifest.sources[$file.Name]=[ordered]@{path=$file.FullName;sha256=(Get-FileHash -Algorithm SHA256 -LiteralPath $file.FullName).Hash.ToLowerInvariant()}
+    }
     $manifest['final_save_files']=@(Get-ChildItem -LiteralPath $saves -File|ForEach-Object{
         [ordered]@{path=$_.FullName;size=$_.Length;sha256=(Get-FileHash -Algorithm SHA256 -LiteralPath $_.FullName).Hash.ToLowerInvariant()}
     })
     $manifest|ConvertTo-Json -Depth 8|Set-Content -LiteralPath (Join-Path $capture 'manifest.json') -Encoding utf8
     Get-Content -LiteralPath (Join-Path $capture 'capture_complete.txt')
-}finally{
-    foreach($name in $old.Keys){[Environment]::SetEnvironmentVariable($name,$old[$name],'Process')}
 }

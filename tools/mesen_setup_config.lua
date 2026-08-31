@@ -2,7 +2,7 @@
 -- No ROM, CPU register, WRAM, SRAM, or PPU writes. Screens are evidence only.
 local out=assert(os.getenv('NBA95_CAPTURE_DIR'))
 local journey=assert(os.getenv('NBA95_CONFIG_JOURNEY'))
-assert(journey=='presets' or journey=='rules' or journey=='options' or journey=='load' or journey=='held' or journey=='main')
+assert(journey=='presets' or journey=='rules' or journey=='options' or journey=='load' or journey=='held' or journey=='main' or journey=='input' or journey=='faces')
 local function json(value)
     if type(value)=='string'then return '"'..value:gsub('\\','\\\\'):gsub('"','\\"')..'"'end
     if type(value)~='table'then return tostring(value)end
@@ -26,7 +26,37 @@ local function add(key,label,wait,hold)
     actions[#actions+1]={key=key,label=label,wait=wait or 60,hold=hold or 3}
 end
 local function down(count)for i=1,count do add('down','move_down')end end
-if journey=='load'then
+if journey=='faces'then
+    for _,key in ipairs({'b','y','x','l','r','a+start','b+right'})do
+        down(4);add(key,'face_mask_opens_rules_'..key,260)
+        add('start','return_from_rules',260)
+    end
+    down(4) -- the final exact Start confirms a match from the Rules row.
+elseif journey=='input'then
+    -- These holds deliberately have no release between adjacent actions.
+    -- Native repeat preserves its fast flag across nonzero word changes.
+    down(4);add('a','open_rules',260)
+    add('left','rule_bar_hold_then_change_without_release',180,180)
+    add('right','rule_bar_fast_preserved_on_right',120,120)
+    add('left+right','opposing_horizontal_ignored',70,70)
+    add('right','single_right_after_combination',210,180)
+    add('up+down','opposing_vertical_ignored',110,80)
+    add('left+start','adjust_confirm_combination_ignored',110,80)
+    add('a+start','two_confirm_buttons_ignored',110,80)
+    add('b+right','cancel_adjust_combination_ignored',110,80)
+    down(2);add('right','boolean_repeat_without_acceleration',210,180)
+    add('left+right','boolean_combination_ignored',110,80)
+    add('left','boolean_reverse_repeat',210,180)
+    add('start','commit_rules',260)
+    down(5);add('a','open_options',260)
+    add('right','option_fast_hold_without_release',120,120)
+    add('down','option_row_change_without_release',1,1)
+    add('left','option_fast_flag_with_acceleration_cleared',130,100)
+    add('left+right','options_opposing_ignored',110,80)
+    add('a+start','options_two_confirm_buttons_ignored',110,80)
+    add('start','commit_options',260)
+    add('a+start','main_two_confirm_buttons_ignored',110,80)
+elseif journey=='load'then
     add('none','observe_loaded_setup',60,0)
 elseif journey=='main'then
     add('up','main_top_boundary')
@@ -165,12 +195,34 @@ emu.addEventCallback(function()
         if title_frame>=850 and title_frame<853 then input.start=true end
     elseif action_frame>=0 and actions[action_index]then
         local action=actions[action_index]
-        if action_frame<action.hold then input[action.key]=true end
+        if action_frame<action.hold then
+            for key in action.key:gmatch('[^+]+')do
+                if key~='none'then input[key]=true end
+            end
+        end
     end
     emu.setInput(input,0)
 end,emu.eventType.inputPolled)
 local function record_stage(kind)
     stages:write(json(snapshot(kind))..'\n');stages:flush()
+    if (journey=='faces' or journey=='main') and kind~='before_action'then
+        local prefix=out..'/visual_'..(kind=='initial_setup' and 0 or action_index)
+        local screen=emu.getScreenBuffer()
+        assert(#screen==256*239,'unexpected native screen geometry')
+        local pixels={}
+        for y=7,230 do for x=0,255 do
+            local c=screen[y*256+x+1]
+            pixels[#pixels+1]=string.char((c>>16)&255,(c>>8)&255,c&255)
+        end end
+        local f=assert(io.open(prefix..'.rgb','wb'));f:write(table.concat(pixels));f:close()
+        for _,spec in ipairs({{'vram',emu.memType.snesVideoRam,65536},
+                              {'cgram',emu.memType.snesCgRam,512}})do
+            local bytes={}
+            for i=0,spec[3]-1 do bytes[#bytes+1]=string.char(emu.read(i,spec[2],false))end
+            f=assert(io.open(prefix..'_'..spec[1]..'.bin','wb'))
+            f:write(table.concat(bytes));f:close()
+        end
+    end
 end
 emu.addEventCallback(function()
     frame=frame+1

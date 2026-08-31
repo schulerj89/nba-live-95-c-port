@@ -735,9 +735,9 @@ static bool player_record(const NbaAssetPack *assets, int team, int player,
 
 /* `$86:D85E-$DA17`: construct the ten active matchup/appearance records.
  * The SNES writes and sorts two temporary upload-key lists as part of this
- * routine. The host keeps the sorted keys as evidence/diagnostics while the
- * asset pack supplies the already-deduplicated resources; it does not emulate
- * the subsequent WRAM DMA queue. Appearance sums intentionally wrap at eight
+ * routine. The production initializer consumes sorted actor offsets to publish
+ * actor +$92 ranks through $86:D789-$D7B7. The asset pack supplies the
+ * deduplicated graphics; the subsequent WRAM DMA queue remains untranslated. Appearance sums intentionally wrap at eight
  * bits before the optional +100 high-bit lineup class is applied. */
 bool nba_player_build_active_appearance(
     const NbaPlayerActiveAppearanceInput *input,

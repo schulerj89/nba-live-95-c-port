@@ -113,5 +113,63 @@ class ConfigurationEvidenceTests(unittest.TestCase):
         self.assertTrue(all(row['working'][:7]==row['options'] for row in rows))
         self.assertEqual(j['native_manifest']['process_exit_code'],0)
 
+    def test_compact_replay_rejects_mutated_provenance_and_source_identities(self):
+        mutations={
+            'cpu injection':lambda m:m.update(cpu_state_injection=True),
+            'ROM patch':lambda m:m.update(rom_patch=True),
+            'WRAM injection':lambda m:m.update(wram_injection=True),
+            'SRAM injection':lambda m:m.update(sram_injection=True),
+            'failed exit':lambda m:m.update(process_exit_code=9),
+            'boolean exit':lambda m:m.update(process_exit_code=False),
+            'fake classification':lambda m:m.update(classification='C-derived fake'),
+            'different ROM':lambda m:m['sources']['rom'].update(sha256='0'*64),
+            'changed raw hash':lambda m:m['sources']['events.jsonl'].update(sha256='0'*64),
+            'valid-looking changed script':lambda m:m['sources']['script'].update(sha256='1'*64),
+            'unverified settings':lambda m:m['isolation'].update(post_settings_verified=False),
+            'changed observed home':lambda m:m['isolation'].update(observed_script_data_folder='C:/other/LuaScriptData/capture'),
+        }
+        for label,mutate in mutations.items():
+            fixture=evidence.read_json(FIXTURE);mutate(fixture['journeys'][0]['native_manifest'])
+            with self.subTest(label=label),patch.object(evidence,'read_json',return_value=fixture),self.assertRaises(ValueError):
+                evidence.read_compact('not-read')
+
+    def test_manifest_schema_is_checked_for_new_raw_captures_without_registry(self):
+        source=evidence.read_json(ROOT/'tests/fixtures/setup-config-input-native-witnesses.json')['journeys'][0]['native_manifest']
+        evidence.validate_manifest(source,'new-independent-capture')
+        mutations={
+            'missing exit':lambda m:m.pop('process_exit_code'),
+            'nonzero exit':lambda m:m.update(process_exit_code=1),
+            'boolean exit':lambda m:m.update(process_exit_code=False),
+            'integer injection flag':lambda m:m.update(cpu_state_injection=0),
+            'missing source':lambda m:m['sources'].pop('rom'),
+            'malformed hash':lambda m:m['sources']['rom'].update(sha256='abc'),
+            'wrong ROM':lambda m:m['sources']['rom'].update(sha256='0'*64),
+            'relative script':lambda m:m['sources']['script'].update(path='capture.lua'),
+            'wrong executable home':lambda m:m['sources']['mesen'].update(path='C:/other/Mesen.exe'),
+            'wrong observed home':lambda m:m['isolation'].update(observed_script_data_folder='C:/other/LuaScriptData/capture'),
+            'wrong args':lambda m:m['arguments'].__setitem__(2,'C:/other/game.sfc'),
+            'settings not verified':lambda m:m['isolation'].update(post_settings_verified=False),
+            'global saves':lambda m:m['isolation']['settings']['Preferences'].update(OverrideSaveDataFolder=False),
+            'auto patch':lambda m:m['isolation']['settings']['Preferences'].update(AutoLoadPatches=True),
+            'random RAM':lambda m:m['isolation']['settings']['Snes'].update(EnableRandomPowerOnState=True),
+            'frame skipping':lambda m:m['isolation']['settings']['Snes'].update(DisableFrameSkipping=False),
+            'wrong controller':lambda m:m['isolation']['settings']['Snes']['Port1'].update(Type='None'),
+            'filter':lambda m:m['isolation']['settings']['Video'].update(VideoFilter='Ntsc'),
+            'bad final save size':lambda m:m['final_save_files'][0].update(size=8191),
+        }
+        for label,mutate in mutations.items():
+            manifest=copy.deepcopy(source);mutate(manifest)
+            with self.subTest(label=label),self.assertRaises(ValueError):
+                evidence.validate_manifest(manifest,'new-independent-capture')
+
+    def test_legacy_missing_exit_is_bound_without_inventing_recorded_zero(self):
+        m=self.journeys['presets-v2']['native_manifest']
+        self.assertNotIn('process_exit_code',m)
+        evidence.validate_manifest(m,'presets-v2',bind=True)
+        with self.assertRaises(ValueError):evidence.validate_manifest(m,'unreviewed-legacy')
+        witness=evidence.manifest_witnesses()['presets-v2']
+        self.assertEqual(witness['manifest'],m)
+        self.assertEqual(witness['exit_evidence'],'legacy_runner_success_path_only_no_recorded_exit_code')
+
 
 if __name__=='__main__':unittest.main()

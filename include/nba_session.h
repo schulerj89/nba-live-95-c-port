@@ -12,9 +12,12 @@
 #define NBA_MATCH_INITIAL_TIMEOUTS   7
 
 typedef struct {
-    uint16_t main_values[NBA_SETUP_MAIN_VALUE_COUNT]; /* $7E:16FB working block */
+    uint16_t main_values[NBA_SETUP_MAIN_VALUE_COUNT]; /* $7E:17AB committed block */
     uint16_t rules[NBA_SETUP_RULE_COUNT];             /* $7E:17D1 commit block  */
     uint16_t options[NBA_SETUP_OPTION_COUNT];         /* $7E:17B5 commit block  */
+    /* Separate native SRAM profile $70:0053-$0056, decoded to word values.
+     * Session storage alone is not a claim that host disk saving is wired. */
+    uint16_t custom_rules[NBA_SETUP_RULE_COUNT];
 } NbaGameConfig;
 
 typedef enum {
@@ -49,12 +52,15 @@ typedef enum {
 typedef struct {
     NbaMatchPauseState state;
     NbaMatchPauseSelection selection;
-    uint8_t selected_side; /* native `$08D2`: zero left, nonzero right */
+    /* Host native-context index: 0 home/right, 1 visitor/left. Original
+     * `$08D2` instead contains requesting-controller group0/5. */
+    uint8_t selected_side;
     uint16_t saved_live_state_raw_4988;
     uint16_t transition_ticks_remaining;
 } NbaMatchPauseFlow;
 
-/* Persistent match-owned state. `$0926`, `$4715/$4795`, the selected five
+/* All per-team arrays use native context order: 0 home/right, 1 visitor/left.
+ * Persistent match-owned state. `$0926`, `$4715/$4795`, the selected five
  * roster slots, and lifecycle phase outlive an individual court presentation.
  * Timeout-menu orchestration is the bounded TIMEOUT/RESUME slice only. */
 typedef struct {
@@ -77,7 +83,8 @@ typedef struct {
     uint8_t left_team;  /* Team Select $7E:16FB */
     uint8_t right_team; /* Team Select $7E:16FD */
     uint8_t player_one_side; /* Player Setup controller ownership, 0 left/1 right */
-    /* Gameplay team records `$46EB/$476B`; +$26 are `$4711/$4791`. */
+    /* Native order: home/right `$46EB` then visitor/left `$476B`;
+     * +$26 scores are `$4711/$4791`. UI display order is the opposite. */
     uint16_t score[2];
     uint16_t game_clock_ticks;
     NbaMatchLifecycle match;
@@ -86,6 +93,10 @@ typedef struct {
 extern const uint16_t nba_default_main_values[NBA_SETUP_MAIN_VALUE_COUNT];
 extern const uint16_t nba_default_rules[NBA_SETUP_RULE_COUNT];
 extern const uint16_t nba_default_options[NBA_SETUP_OPTION_COUNT];
+extern const uint16_t nba_default_custom_rules[NBA_SETUP_RULE_COUNT];
+
+void nba_config_apply_style(NbaGameConfig *config, uint16_t working_style);
+void nba_config_commit_rules(NbaGameConfig *config, const uint16_t *working_rules);
 
 void nba_session_init(NbaSession *session);
 /* Start a new Exhibition match while preserving session configuration,

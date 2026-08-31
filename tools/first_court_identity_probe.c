@@ -8,7 +8,7 @@
 #include <stdlib.h>
 
 int main(int argc, char **argv) {
-    if (argc != 2) return 2;
+    if (argc != 2 && argc != 3) return 2;
     unsigned left, right, quarter;
     char trailing;
     if (scanf("%u %u %u", &left, &right, &quarter) != 3 ||
@@ -55,6 +55,20 @@ int main(int argc, char **argv) {
         printf("%s%u", i ? "," : "", game->fatigue.rating[roster]);
     }
     puts("]}");
+    if (argc == 3) {
+        /* Optional visual evidence:30 ordinary production updates with no
+         * input, after the initializer projection. This is not a claimed
+         * native frame alignment; native/C scheduler differences remain. */
+        NbaRenderer renderer;
+        NbaInput input = {0};
+        nba_renderer_init(&renderer);
+        for (unsigned frame = 0; frame < 30u; ++frame)
+            nba_tipoff_update(game, &input);
+        nba_tipoff_render(game, &renderer);
+        if (!nba_renderer_save_bmp(&renderer, argv[2])) {
+            nba_assets_free(&pack); free(game); return 6;
+        }
+    }
     nba_assets_free(&pack);
     free(game);
     return 0;

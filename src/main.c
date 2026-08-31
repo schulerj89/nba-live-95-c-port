@@ -979,9 +979,9 @@ int main(int argc, char *argv[]) {
                        s->working_rules[report_row] : s->working_options[report_row],
                    strcmp(setup_menu, "rules") == 0 ?
                        s->config->rules[report_row] : s->config->options[report_row],
-                   (int)s->row, s->config->main_values[0],
-                   s->config->main_values[1], s->config->main_values[2],
-                   s->config->main_values[3]);
+                   (int)s->row, s->working_main[0],
+                   s->working_main[1], s->working_main[2],
+                   s->working_main[3]);
             printf(" rules=");
             for (int row = 0; row < NBA_SETUP_RULE_COUNT; row++) {
                 printf("%s%u", row ? "/" : "", s->config->rules[row]);

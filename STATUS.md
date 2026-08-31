@@ -1,5 +1,11 @@
 # Project status
 
+**Paused at the user's request on 2026-08-30. This is a WIP branch.**
+See `docs/ownership-stop-wip.md` for its integrated checks, known headless
+input-driver failure, unwired HUD/audio modules and unpassed release gates.
+The verified desktop/main runtime remains A2 `0d3a420`; do not promote this
+branch or interpret the older status below as combined acceptance.
+
 Last updated 2026-08-30. This is a current-state handoff, not a milestone log.
 Use Git history for older checkpoints and run
 `python tools/progress.py --write docs/progress.md` for live measurements.

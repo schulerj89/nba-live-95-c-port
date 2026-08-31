@@ -146,7 +146,8 @@ typedef enum {
     NBA_ASSET_GAMEPLAY_PPU_INPUTS                = 284,
     /* NBGAUD1: ROM-decoded gameplay BRR sources used by the live mixer. */
     NBA_ASSET_GAMEPLAY_AUDIO_BANK                = 285,
-    NBA_ASSET_MAX                   = 286
+    NBA_ASSET_GAMEPLAY_HUD          = 286, /* WIP resource; production caller is unwired. */
+    NBA_ASSET_MAX                   = 287
 } NbaAssetId;
 
 typedef struct {

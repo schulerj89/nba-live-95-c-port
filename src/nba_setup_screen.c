@@ -18,6 +18,7 @@
 
 #define SETUP_PPU_MAGIC "NBSPPU1\0"
 #define SETUP_TRANSITION_PPU_MAGIC "NBSPPU2\0"
+#define SETUP_TRANSITION_PPU_PUBLICATIONS_MAGIC "NBSPPU3\0"
 #define SETUP_PPU_HEADER_SIZE 16
 #define SETUP_TRANSITION_STATE_SIZE 34
 
@@ -28,11 +29,106 @@ static const uint16_t setup_option_max[NBA_SETUP_OPTION_COUNT] = {
     45, 45, 2, 1, 1, 1, 1
 };
 static const uint16_t setup_main_max[NBA_SETUP_MAIN_VALUE_COUNT] = { 3, 2, 2, 3 };
+/* The existing canvas witnesses were captured after configuring Simulation
+ * and three-minute quarters. These are asset baselines, never factory or
+ * saved configuration defaults. */
+static const uint16_t setup_rules_canvas_values[NBA_SETUP_RULE_COUNT] = {
+    45, 45, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+};
 
 static NbaSetupUpdateResult setup_result(NbaSetupSound sound,
                                          NbaSetupAction action) {
     NbaSetupUpdateResult result = { sound, action };
     return result;
+}
+
+static void setup_observe_adjustment(const NbaSetupScreen *s, uint16_t command,
+                                      bool after) {
+    if (!s->adjustment_observer) return;
+    NbaSetupAdjustmentSnapshot out = {0};
+    bool rules = s->page == NBA_SETUP_PAGE_RULES;
+    const uint16_t *values = rules ? s->working_rules : s->working_options;
+    const NbaMenuControllerInput *input =
+        &s->menu_input.controller[s->menu_input.selected_offset / 2u];
+    out.native_pc = rules ? (after ? 0x81D494u : command == 0x0200u ? 0x81D446u : 0x81D4C0u) :
+                           (after ? 0x828DDAu : command == 0x0200u ? 0x828D92u : 0x828E5Fu);
+    out.command = command;
+    out.row = (uint16_t)s->menu_row;
+    out.value = values[s->menu_row];
+    out.maximum = (rules ? setup_rule_max : setup_option_max)[s->menu_row];
+    out.controller = s->menu_input.selected_offset;
+    out.previous_input = input->previous;
+    out.pending_input = input->pending;
+    out.repeat_input = input->fast;
+    out.repeat_delay = input->delay;
+    out.repeat_speed = input->speed;
+    out.repeat_flag = s->menu_input.accelerate;
+    out.working_count = rules ? NBA_SETUP_RULE_COUNT : NBA_SETUP_OPTION_COUNT;
+    memcpy(out.working, values, out.working_count * sizeof(*values));
+    out.config = *s->config;
+    s->adjustment_observer(s->adjustment_observer_context, &out);
+}
+
+/* Address the actual 32x64 BG3 map, including its second 0x800-byte
+ * quadrant. The map owns the tile allocation/palette; only glyph plane bits
+ * are changed, preserving other rows and resources. */
+static void setup_write_bg3_cell_pixel(uint8_t *canvas, int x, int y, unsigned color) {
+    unsigned px = (unsigned)x & 255u;
+    unsigned py = (unsigned)(y + 1) & 511u;
+    unsigned tile_y = py >> 3;
+    unsigned map = (tile_y >= 32u ? 0x800u : 0u) +
+                   ((tile_y & 31u) * 32u + (px >> 3)) * 2u;
+    uint16_t entry = (uint16_t)(canvas[map] | ((uint16_t)canvas[map + 1u] << 8));
+    unsigned sx = (entry & 0x4000u) ? 7u - (px & 7u) : px & 7u;
+    unsigned sy = (entry & 0x8000u) ? 7u - (py & 7u) : py & 7u;
+    unsigned address = (NBA_SETUP_BG3_CHR + (entry & 0x3ffu) * 16u + sy * 2u) & 0xffffu;
+    uint8_t mask = (uint8_t)(1u << (7u - sx));
+    for (unsigned plane = 0; plane < 2u; ++plane)
+        canvas[(address + plane) & 0xffffu] = (uint8_t)(
+            (canvas[(address + plane) & 0xffffu] & (uint8_t)~mask) |
+            ((color & (1u << plane)) ? mask : 0u));
+}
+
+/* `$81:D5D5-$D672 -> $81:9FD4`: render each Boolean Rule at logical
+ * x140,y76+18*row in the full 32x64 BG3 canvas. Existing ON/OFF glyph
+ * witnesses supply color indices, not a complete variant-screen delta.
+ * The current pack's captured-glyph provenance remains an asset audit gap;
+ * this helper does not claim a translation of the full native font writer.
+ * Clear all cells before painting: a nineteen-line shadow overlaps the
+ * following eighteen-line row's empty top, which must not erase that tail.
+ * Sliders belong to OAM and are deliberately untouched. */
+bool nba_setup_screen_apply_rules_value_cells(const NbaSetupScreen *s,
+                                             uint8_t *canvas,
+                                             const uint16_t *rules) {
+    if (!s || !canvas || !rules || !s->rules_vram || !s->options_off_vram)
+        return false;
+    for (int row = 2; row < NBA_SETUP_RULE_COUNT; ++row) {
+        if (rules[row] > 1u) return false;
+    }
+    for (int row = 2; row < NBA_SETUP_RULE_COUNT; ++row)
+        for (int dy = 0; dy < 19; ++dy)
+            for (int dx = 0; dx < 108; ++dx)
+                setup_write_bg3_cell_pixel(canvas, 140 + dx, 76 + row * 18 + dy, 0u);
+    for (int row = 2; row < NBA_SETUP_RULE_COUNT; ++row) {
+        /* Rules' first ON follows OAM bars and has no preceding text tail.
+         * Options ON at y122 includes STEREO's shadow on its first line;
+         * that contaminated cell cannot serve as an isolated glyph source. */
+        const uint8_t *source = rules[row] ? s->rules_vram : s->options_off_vram;
+        int sx = rules[row] ? 140 : 156;
+        int sy = rules[row] ? 112 : 104;
+        int width = rules[row] ? 24 : 32;
+        for (int dy = 0; dy < 19; ++dy) {
+            for (int dx = 0; dx < width; ++dx) {
+                NbaSnesBgPixel pixel;
+                if (nba_snes_sample_bg(source, NBA_SETUP_BG3_TILEMAP,
+                        NBA_SETUP_BG3_CHR, 2, false, true, 0, 0,
+                        sx + dx, sy + dy, &pixel))
+                    setup_write_bg3_cell_pixel(canvas, 140 + dx,
+                        76 + row * 18 + dy, pixel.color_index);
+            }
+        }
+    }
+    return true;
 }
 
 /* $81:9756/$81:9FD4 write proportional 2bpp glyphs into a mutable BG3
@@ -55,9 +151,12 @@ static void setup_apply_rom_text_delta(uint8_t *canvas, const uint8_t *base,
  * in exactly200 bytes; this cell projection reproduces all200 independently
  * observed differences without importing another row's state. */
 static void setup_apply_main_value_cells(const NbaSetupScreen *s, uint8_t *canvas) {
-    for (int row = 0; row < NBA_SETUP_MAIN_VALUE_COUNT; ++row) {
-        unsigned value = s->config->main_values[row];
-        if (value > setup_main_max[row] || value == nba_default_main_values[row]) continue;
+    /* Adjacent rows have18px pitch and19px shadows. Work upwards so a
+     * source cell's preceding-row shadow is replaced by that row's actual
+     * selected value, even when variant captures contain other edited rows. */
+    for (int row = NBA_SETUP_MAIN_VALUE_COUNT - 1; row >= 0; --row) {
+        unsigned value = s->working_main[row];
+        if (value > setup_main_max[row]) continue;
         const uint8_t *source = s->main_value_vram[row][value];
         if (!source) continue;
         int top = nba_setup_screen_row_band_top((NbaSetupRow)row);
@@ -76,6 +175,15 @@ static void setup_apply_main_value_cells(const NbaSetupScreen *s, uint8_t *canva
             }
         }
     }
+}
+
+bool nba_setup_screen_build_main_value_canvas(const NbaSetupScreen *s, uint8_t *canvas) {
+    if (!s || !canvas) return false;
+    for (int row = 0; row < NBA_SETUP_MAIN_VALUE_COUNT; ++row)
+        if (s->working_main[row] > setup_main_max[row] ||
+            !s->main_value_vram[row][s->working_main[row]]) return false;
+    setup_apply_main_value_cells(s, canvas);
+    return true;
 }
 
 static bool setup_rebuild_options_text_canvas(NbaSetupScreen *s) {
@@ -161,7 +269,7 @@ typedef struct {
 } SetupTransitionProfile;
 
 /* Ghidra: $81:D318 (Rules) and $82:8CD1 (Options) enter the common
- * $80:A2BF/$80:A3B8 builder/sequencer.  These profiles retain the
+ * $81:BA8E/$81:CF62 constructors and $80:EA99/$80:EADE slides.  These profiles retain the
  * screen-edge-specific cadence observed in the corresponding PPU traces. */
 static const SetupTransitionProfile setup_transition_profiles[] = {
     { NBA_SETUP_TRANSITION_MAIN_TO_RULES, NBA_SETUP_PAGE_MAIN,
@@ -216,7 +324,7 @@ static void setup_advance_steady_bg2(NbaSetupScreen *s) {
     }
 }
 
-/* $80:A3B8, observed after Start on Exhibition at Mesen frames 401..452.
+/* $81:C41E -> $80:EBF9/$80:EB27, observed after Start on Exhibition.
  * This is still the live Game Setup scene: BG3 leaves first at 14 px/frame,
  * then BG1/BG2 separate at 8 px/frame while INIDISP fades.  Team Select is
  * not dispatched until the forced-blank handoff through $80:DBF6. */
@@ -257,8 +365,9 @@ static void setup_release_page_transition(NbaSetupScreen *s) {
     setup_finish_page_transition(s);
 }
 
-/* $80:A2BF/$80:A3B8 are the shared layer builder/frame sequencer reached by
- * both $81:D318 (Rules) and $82:8CD1 (Options).  The values below are the
+/* The native $81:CF62 Rules constructor and $80:EA99/$80:EADE slides
+ * publish the values below. The legacy Options profile remains separately
+ * unverified. These profiles contain the
  * complete $2100/$212C/$212D/$210D-$2112 trace around A/Start, captured by
  * tools/mesen_setup_menus_capture.lua rather than an invented host tween. */
 static void setup_update_page_transition(NbaSetupScreen *s) {
@@ -276,6 +385,12 @@ static void setup_update_page_transition(NbaSetupScreen *s) {
     }
 
     if (t >= trace_start && s->active_transition_trace) {
+        const int live_bg2_vscroll = s->bg2_vscroll;
+        const int live_bg2_phase = s->bg2_scroll_hold_frames;
+        const bool live_exit_cadence =
+            profile->route == NBA_SETUP_TRANSITION_MAIN_TO_RULES &&
+            s->bg2_scroll_from_transition &&
+            t <= profile->forced_blank_start;
         if (t >= profile->target_switch && s->page != profile->target) {
             s->page = profile->target;
             /* $81:BD0E-$BD22 clears $1693 and loads Mode's current value:
@@ -285,7 +400,7 @@ static void setup_update_page_transition(NbaSetupScreen *s) {
                 s->row = NBA_SETUP_ROW_MODE;
         }
         /* Mesen's screenBrightness property omits INIDISP bit 7.  The ROM
-         * asserts forced blank after the 30-frame exit slide while $80:A2BF
+         * asserts forced blank after the 30-frame exit slide while the native constructor
          * rebuilds VRAM, then releases it at this edge's entrance frame. */
         s->transition_blank = t >= profile->forced_blank_start &&
                               t < profile->forced_blank_end;
@@ -293,17 +408,29 @@ static void setup_update_page_transition(NbaSetupScreen *s) {
             s->has_gfx = false;
             return;
         }
-        if (profile->route == NBA_SETUP_TRANSITION_RULES_TO_MAIN &&
+        if (s->active_transition_trace_version == 2 &&
+            profile->route == NBA_SETUP_TRANSITION_RULES_TO_MAIN &&
             s->page == NBA_SETUP_PAGE_MAIN && s->layer_chr[2] == NBA_SETUP_BG3_CHR)
             setup_apply_main_value_cells(s, s->transition_vram);
         /* The packed trace contains the absolute BG2 position from the Mesen
          * recording.  The $81:F9FC -> $87:89D5 cadence continues whatever position
          * the live page had during the visible exit, then resets BG2 only
-         * inside $80:A2BF's forced-blank rebuild.  Rebase that visible prefix
+         * at $80:EB91 and $80:89BD during the forced-blank rebuild.  Rebase that visible prefix
          * to this run's current position; use the ROM values unchanged once
          * the rebuild is hidden. */
         int raw_bg2_vscroll = s->bg2_vscroll;
-        if (!s->transition_bg2_origin_valid) {
+        if (live_exit_cadence) {
+            /* $81:F9FC -> $87:89D5 advances $168F/$0613 until the
+             * teardown retires the frame task. The final pending $0613
+             * value reaches the first blank frame too. A recorded three-
+             * frame increment pattern loses the phase on a second visit.
+             * Fresh pre-call/exit witnesses: phase-probe/native-repeat-v1,
+             * labels1100..1151. Initial Setup's phase is still supplied by
+             * its separate trace; this branch preserves a live return phase. */
+            s->bg2_vscroll = live_bg2_vscroll;
+            s->bg2_scroll_hold_frames = live_bg2_phase;
+            setup_advance_steady_bg2(s);
+        } else if (!s->transition_bg2_origin_valid) {
             s->transition_bg2_trace_origin = raw_bg2_vscroll;
             s->transition_bg2_last_raw = raw_bg2_vscroll;
             s->bg2_scroll_hold_frames = 0;
@@ -314,7 +441,7 @@ static void setup_update_page_transition(NbaSetupScreen *s) {
             s->transition_bg2_last_raw = raw_bg2_vscroll;
             s->bg2_scroll_hold_frames = 0;
         }
-        if (t < profile->forced_blank_start) {
+        if (!live_exit_cadence && t < profile->forced_blank_start) {
             s->bg2_vscroll = (raw_bg2_vscroll +
                               s->transition_bg2_start_vscroll -
                               s->transition_bg2_trace_origin) & 0x3FF;
@@ -474,11 +601,55 @@ static bool nba_setup_screen_decode_ppu_to(NbaSetupScreen *s, int target) {
                                target);
 }
 
+/* Validate the entire publication stream before mutating live resources.
+ * Version2 Options remains on its separate historical reader. */
+bool nba_setup_screen_validate_publications(const uint8_t *trace, size_t size,
+                                            uint32_t expected_frames) {
+    if (!trace || size < SETUP_PPU_HEADER_SIZE ||
+        memcmp(trace, SETUP_TRANSITION_PPU_PUBLICATIONS_MAGIC, 8) != 0 ||
+        setup_u32(trace + 8) != 3 || expected_frames == 0 ||
+        expected_frames > 300 || setup_u32(trace + 12) != expected_frames)
+        return false;
+    size_t off = SETUP_PPU_HEADER_SIZE;
+    for (uint32_t frame = 0; frame < expected_frames; ++frame) {
+        if (size - off < SETUP_TRANSITION_STATE_SIZE + 4u) return false;
+        if (trace[off] > 15 || trace[off + 1] > 31 || trace[off + 2] > 31 ||
+            (trace[off + 3] != 0x40u && trace[off + 3] != 0xc0u)) return false;
+        off += 4;
+        for (unsigned layer = 0; layer < 3; ++layer, off += 10) {
+            if (setup_u16(trace + off) > 1023 || setup_u16(trace + off + 2) > 1023 ||
+                (setup_u16(trace + off + 4) & 0x7ffu) != 0 ||
+                (setup_u16(trace + off + 6) & 0x1fffu) != 0 ||
+                trace[off + 8] > 1 || trace[off + 9] > 1) return false;
+        }
+        uint16_t vram_count = setup_u16(trace + off);
+        uint16_t cgram_count = setup_u16(trace + off + 2);
+        off += 4;
+        if (cgram_count > 512 || (size_t)vram_count * 4u + (size_t)cgram_count * 3u > size - off)
+            return false;
+        int previous = -1;
+        for (unsigned i = 0; i < vram_count; ++i, off += 4) {
+            int address = setup_u16(trace + off);
+            if (address <= previous || trace[off + 3] > 2u) return false;
+            previous = address;
+        }
+        previous = -1;
+        for (unsigned i = 0; i < cgram_count; ++i, off += 3) {
+            int address = setup_u16(trace + off);
+            if (address <= previous || address >= 512) return false;
+            previous = address;
+        }
+    }
+    return off == size;
+}
+
 static bool setup_decode_transition_to(NbaSetupScreen *s, int target) {
     const uint8_t *trace = s->active_transition_trace;
     if (!trace || s->active_transition_trace_size < SETUP_PPU_HEADER_SIZE ||
-        memcmp(trace, SETUP_TRANSITION_PPU_MAGIC, 8) != 0 ||
-        setup_u32(trace + 8) != 2) return false;
+        !((memcmp(trace, SETUP_TRANSITION_PPU_MAGIC, 8) == 0 && setup_u32(trace + 8) == 2) ||
+          (memcmp(trace, SETUP_TRANSITION_PPU_PUBLICATIONS_MAGIC, 8) == 0 && setup_u32(trace + 8) == 3)))
+        return false;
+    const size_t write_size = setup_u32(trace + 8) == 3 ? 4u : 3u;
     uint32_t frame_count = setup_u32(trace + 12);
     if (frame_count == 0 || frame_count > 300) return false;
     if (target >= (int)frame_count) target = (int)frame_count - 1;
@@ -518,12 +689,26 @@ static bool setup_decode_transition_to(NbaSetupScreen *s, int target) {
         uint16_t vram_count = setup_u16(trace + off);
         uint16_t cgram_count = setup_u16(trace + off + 2);
         off += 4;
-        if (off + ((size_t)vram_count + cgram_count) * 3u >
+        if (off + (size_t)vram_count * write_size + (size_t)cgram_count * 3u >
             s->active_transition_trace_size) return false;
         for (uint16_t i = 0; i < vram_count; ++i) {
             uint16_t address = setup_u16(trace + off);
-            s->transition_vram[address] = trace[off + 2];
-            off += 3;
+            uint8_t value = trace[off + 2];
+            if (write_size == 4u) {
+                unsigned scope = trace[off + 3];
+                if (scope > 2u) return false;
+                if (scope) {
+                    /* $81:A1EE/$81:A28E queue these bytes from $7F:2360
+                     * onward. Apply the current value glyph bits only when
+                     * that native font upload publishes them. Clearing DMA
+                     * jobs have scope0 and must overwrite even an old zero. */
+                    uint8_t mask = s->transition_font_mask[scope - 1u][address];
+                    value = (uint8_t)((value & (uint8_t)~mask) |
+                        (s->transition_target_vram[address] & mask));
+                }
+            }
+            s->transition_vram[address] = value;
+            off += write_size;
         }
         for (uint16_t i = 0; i < cgram_count; ++i) {
             uint16_t address = setup_u16(trace + off);
@@ -572,13 +757,56 @@ static bool setup_begin_page_transition(NbaSetupScreen *s,
         trace_size = s->options_open_trace_size;
     }
     if (!vram || !cgram || !trace || trace_size < SETUP_PPU_HEADER_SIZE ||
-        memcmp(trace, SETUP_TRANSITION_PPU_MAGIC, 8) != 0 ||
-        setup_u32(trace + 8) != 2)
+        !((memcmp(trace, SETUP_TRANSITION_PPU_MAGIC, 8) == 0 && setup_u32(trace + 8) == 2) ||
+          (memcmp(trace, SETUP_TRANSITION_PPU_PUBLICATIONS_MAGIC, 8) == 0 && setup_u32(trace + 8) == 3)))
         return false;
     uint32_t frames = setup_u32(trace + 12);
     if (frames != (uint32_t)profile->trace_frames) return false;
-    memcpy(s->transition_vram, vram, sizeof(s->transition_vram));
-    memcpy(s->transition_cgram, cgram, sizeof(s->transition_cgram));
+    if (setup_u32(trace + 8) == 3 &&
+        !nba_setup_screen_validate_publications(trace, trace_size, frames)) return false;
+    const bool live_parent = profile->route == NBA_SETUP_TRANSITION_MAIN_TO_RULES &&
+        s->bg2_scroll_from_transition && s->active_transition_trace_version == 3 &&
+        s->transition_target == NBA_SETUP_PAGE_MAIN;
+    /* A second visit starts with the preceding constructor's entire live
+     * resource state, including bytes outside the visible text cells. The
+     * first-visit snapshot is not a replacement for that production state. */
+    if (!live_parent) {
+        memcpy(s->transition_vram, vram, sizeof(s->transition_vram));
+        memcpy(s->transition_cgram, cgram, sizeof(s->transition_cgram));
+    }
+    if (profile->route == NBA_SETUP_TRANSITION_MAIN_TO_RULES)
+        setup_apply_main_value_cells(s, s->transition_vram);
+    else if (profile->route == NBA_SETUP_TRANSITION_RULES_TO_MAIN &&
+             !nba_setup_screen_apply_rules_value_cells(s, s->transition_vram,
+                                                       s->working_rules))
+        return false;
+    s->active_transition_trace_version = (uint8_t)setup_u32(trace + 8);
+    if (s->active_transition_trace_version == 3) {
+        const uint8_t *font_base = target == NBA_SETUP_PAGE_RULES ? s->rules_vram : s->vram;
+        if (!font_base) return false;
+        memcpy(s->transition_target_vram, font_base, sizeof(s->transition_target_vram));
+        if (target == NBA_SETUP_PAGE_RULES) {
+            uint16_t first_values[NBA_SETUP_RULE_COUNT];
+            memcpy(first_values, s->working_rules, sizeof(first_values));
+            /* $81:D117-$D15B draws rows2..8 before its first upload.
+             * $81:D21D-$D261 supplies rows8..12 only after the viewport
+             * entrance. Keep lower-row value changes out of the first job. */
+            for (int row = 9; row < NBA_SETUP_RULE_COUNT; ++row) first_values[row] = 1;
+            memcpy(s->transition_font_mask[0], font_base, sizeof(s->transition_font_mask[0]));
+            if (!nba_setup_screen_apply_rules_value_cells(s, s->transition_target_vram, s->working_rules) ||
+                !nba_setup_screen_apply_rules_value_cells(s, s->transition_font_mask[0], first_values))
+                return false;
+            for (size_t i = 0; i < sizeof(s->transition_target_vram); ++i) {
+                s->transition_font_mask[0][i] ^= font_base[i];
+                s->transition_font_mask[1][i] = s->transition_target_vram[i] ^ font_base[i];
+            }
+        } else {
+            setup_apply_main_value_cells(s, s->transition_target_vram);
+            for (size_t i = 0; i < sizeof(s->transition_target_vram); ++i)
+                s->transition_font_mask[0][i] = s->transition_font_mask[1][i] =
+                    s->transition_target_vram[i] ^ font_base[i];
+        }
+    }
     s->active_transition_base_vram = vram;
     s->active_transition_base_cgram = cgram;
     memcpy(s->transition_base_tilemap, s->layer_tilemap,
@@ -660,8 +888,8 @@ int nba_setup_screen_row_band_top(NbaSetupRow row) {
  *          Returns -1 where the layer is transparent (colour index 0).
  */
 /**
- * Offset/Address/Size: 0x00A2BF | $80:A2BF | size: 0xA2
- * Subroutines: $80:C62B (decompressor), $80:CB8F (DMA helper), $81:F9F1 (HDMA)
+ * Offset/Address/Size: $81:BA8E-$81:BD22 | main Setup constructor
+ * Subroutines: $80:EC68/$80:EEC6 (resources), $80:EA99/$80:EADE (slides)
  * Purpose: Builds the Game Setup screen: binds the decompressed layer image,
  *          seeds the slide-in scroll offsets and starts the INIDISP fade.
  */
@@ -688,7 +916,7 @@ void nba_setup_screen_init(NbaSetupScreen *s, const NbaAssetPack *assets,
         printf("[SETUP] Game Setup layer image missing from the asset pack.\n");
     }
 
-    /* $80:E600 has completed the title fade, but $80:A2BF does not release
+    /* The captured $80:E600 title fade has completed, but Setup does not release
      * forced blank until 105 frames later. Keep that hardware loading interval
      * in the scene instead of exposing partially initialized Setup layers. */
     s->frame = -NBA_SETUP_FORCED_BLANK_FRAMES;
@@ -811,16 +1039,17 @@ void nba_setup_screen_init(NbaSetupScreen *s, const NbaAssetPack *assets,
         else if (index < 7) s->main_value_vram[2][index - 4] = data;
         else s->main_value_vram[3][index - 6] = data;
     }
+    memcpy(s->working_main, config->main_values, sizeof(s->working_main));
     memcpy(s->working_options, config->options, sizeof(s->working_options));
     (void)setup_rebuild_options_text_canvas(s);
     s->is_initialized = true;
 
-    printf("[SETUP] Entered 105-frame forced-blank build before $80:A2BF.\n");
+    printf("[SETUP] Entered captured 105-frame Setup construction interval.\n");
 }
 
 /**
- * Offset/Address/Size: 0x00A3B8 | $80:A3B8 | size: 0xAD
- * Subroutines: $80:A62D (row state), $80:A77C (option dispatch)
+ * Offset/Address/Size: $81:F9F1/$87:89D5 and $80:EA99/$80:EADE
+ * Subroutines: $81:BD26 (main input dispatch), $81:D318 (Rules input)
  * Purpose: Per-frame update. Runs the 32-frame slide-in (8 px/frame) with the
  *          15-step brightness ramp, then holds the settled scroll values and
  *          advances the backdrop one pixel every third frame.
@@ -829,6 +1058,17 @@ NbaSetupUpdateResult nba_setup_screen_update(NbaSetupScreen *s,
                                              const NbaInput *input) {
     if (!s || !s->is_initialized)
         return setup_result(NBA_SETUP_SOUND_NONE, NBA_SETUP_ACTION_NONE);
+
+    /* `$81:AB58` runs at the native frame boundary even while the page
+     * coroutine waits for its next canvas/transition. Queue input there;
+     * `$81:AC04` below consumes only when the menu dispatcher is ready.
+     * The current host exposes one Setup controller. Other native records
+     * remain disconnected; modelling them does not claim host routing. */
+    uint16_t held[NBA_MENU_CONTROLLER_COUNT] = {
+        nba_menu_input_native_buttons(input ? input->held : 0u), 0u, 0u, 0u, 0u
+    };
+    const uint8_t types[NBA_MENU_CONTROLLER_COUNT] = { 1u, 0u, 0u, 0u, 0u };
+    nba_menu_input_produce(&s->menu_input, held, types);
 
     if (s->transition != NBA_SETUP_TRANSITION_NONE) {
         s->transition_previous_main = (uint8_t)s->main_screen;
@@ -864,7 +1104,7 @@ NbaSetupUpdateResult nba_setup_screen_update(NbaSetupScreen *s,
     }
 
     /* The initial live register trace starts BG2 at $3FF (-1) and advances to
-     * zero on entrance frame 3.  After a submenu transition, $80:A3B8 keeps
+     * zero on entrance frame 3.  After a submenu transition, $87:89D5 keeps
      * the phase established by the rebuilt page instead of restarting it from
      * the lifetime Setup frame counter. */
     if (s->transition == NBA_SETUP_TRANSITION_NONE) {
@@ -874,7 +1114,7 @@ NbaSetupUpdateResult nba_setup_screen_update(NbaSetupScreen *s,
             s->bg2_vscroll = s->frame / NBA_SETUP_SCROLL_PERIOD - 1;
     }
 
-    /* $80:A3B8 stages the BG3 canvas separately after BG1/BG2 have settled.
+    /* $80:EADE stages the BG3 canvas separately after BG1/BG2 have settled.
      * The one-frame $17 designation at frame 40 and the $13 interval are real
      * $212C writes in the ROM, not renderer artifacts. */
     if (s->frame < NBA_SETUP_BG3_PREP_FRAME) {
@@ -900,7 +1140,7 @@ NbaSetupUpdateResult nba_setup_screen_update(NbaSetupScreen *s,
                             ? NBA_SETUP_SUB_SETTLED : 0;
     }
 
-    /* $80:A3B8's final trace state must reach scanout once before normal page
+    /* The final captured state must reach scanout once before normal page
      * state resumes.  Release it on the following update, after the base
      * registers above have already been restored for the settled page. */
     if (s->transition_release_pending)
@@ -920,22 +1160,31 @@ NbaSetupUpdateResult nba_setup_screen_update(NbaSetupScreen *s,
         return setup_result(NBA_SETUP_SOUND_NONE, NBA_SETUP_ACTION_NONE);
     }
 
+    uint16_t command = nba_menu_input_consume(&s->menu_input);
+    bool fast = s->menu_input.controller[s->menu_input.selected_offset / 2u].fast != 0u;
+
     if (s->page != NBA_SETUP_PAGE_MAIN) {
         int count = s->page == NBA_SETUP_PAGE_RULES ?
                     NBA_SETUP_RULE_COUNT : NBA_SETUP_OPTION_COUNT;
-        if (input->pressed & NBA_BTN_UP) {
+        int old_row = s->menu_row;
+        if (command == 0x0800u) {
             if (s->page == NBA_SETUP_PAGE_RULES) {
                 s->menu_arrow_pressed = 1;
                 s->menu_arrow_frames = 0;
+                if (s->menu_row > 0) s->menu_row--;
+            } else {
+                s->menu_row = (s->menu_row + count - 1) % count;
             }
-            s->menu_row = (s->menu_row + count - 1) % count;
-        } else if (input->pressed & NBA_BTN_DOWN) {
+        } else if (command == 0x0400u) {
             if (s->page == NBA_SETUP_PAGE_RULES) {
                 s->menu_arrow_pressed = 2;
                 s->menu_arrow_frames = 0;
+                if (s->menu_row + 1 < count) s->menu_row++;
+            } else {
+                s->menu_row = (s->menu_row + 1) % count;
             }
-            s->menu_row = (s->menu_row + 1) % count;
-        } else if (input->pressed & (NBA_BTN_LEFT | NBA_BTN_RIGHT)) {
+        } else if (command == 0x0200u || command == 0x0100u) {
+            setup_observe_adjustment(s, command, false);
             uint16_t *values = s->page == NBA_SETUP_PAGE_RULES ?
                                s->working_rules : s->working_options;
             const uint16_t *maximums = s->page == NBA_SETUP_PAGE_RULES ?
@@ -945,15 +1194,17 @@ NbaSetupUpdateResult nba_setup_screen_update(NbaSetupScreen *s,
             if (s->menu_row < 2) {
                 /* Rules $81:D4A9-$D4B9/$81:D4FA-$D508 and Options
                  * $82:8E43-$8E54/$82:8E97-$8EA5 clamp bar values. */
-                if ((input->pressed & NBA_BTN_LEFT) && values[s->menu_row] > 0u) {
-                    values[s->menu_row]--;
-                    changed = true;
-                } else if ((input->pressed & NBA_BTN_RIGHT) &&
-                           values[s->menu_row] < max) {
-                    values[s->menu_row]++;
-                    changed = true;
-                }
-            } else if (input->pressed & NBA_BTN_LEFT) {
+                unsigned step = fast ? 4u : 1u;
+                uint16_t before = values[s->menu_row];
+                if (command == 0x0200u)
+                    values[s->menu_row] = before >= step ? (uint16_t)(before - step) : 0u;
+                else
+                    values[s->menu_row] = before + step <= max ? (uint16_t)(before + step) : max;
+                changed = before != values[s->menu_row];
+                /* `$81:D46E/$D4E9`, `$82:8DBA/$8E85`: after the first
+                 * bar adjustment, repeats shorten12..5 and then step4. */
+                if (command == 0x0100u || !fast) s->menu_input.accelerate = 1u;
+            } else if (command == 0x0200u) {
                 values[s->menu_row] = values[s->menu_row] == 0u ? max :
                                       (uint16_t)(values[s->menu_row] - 1u);
                 changed = true;
@@ -967,23 +1218,33 @@ NbaSetupUpdateResult nba_setup_screen_update(NbaSetupScreen *s,
              * The Rules buffer itself is committed only by Start below. */
             if (s->page == NBA_SETUP_PAGE_RULES)
                 s->config->main_values[1] = 2;
+            setup_observe_adjustment(s, command, true);
+            /* Rules' row redraw `$81:D59B-$D5AB` also publishes whether
+             * this row is a bar. Options has no equivalent publication. */
+            if (s->page == NBA_SETUP_PAGE_RULES)
+                s->menu_input.accelerate = s->menu_row < 2 ? 1u : 0u;
             if (changed)
             {
                 if (s->page == NBA_SETUP_PAGE_OPTIONS)
                     (void)setup_rebuild_options_text_canvas(s);
                 return setup_result(NBA_SETUP_SOUND_ADJUST, NBA_SETUP_ACTION_NONE);
             }
-        } else if (input->pressed & NBA_BTN_START) {
+        } else if (command == 0x1000u) {
             /* $81:D516 copies 26 bytes to $17D1; $82:8CD9/$8D0A copies
              * 14 bytes to $17B5. B is deliberately ignored by the ROM. */
             if (s->page == NBA_SETUP_PAGE_RULES) {
-                memcpy(s->config->rules, s->working_rules, sizeof(s->config->rules));
+                nba_config_commit_rules(s->config, s->working_rules);
             } else {
                 memcpy(s->config->options, s->working_options, sizeof(s->config->options));
             }
+            /* Main's shared native $16FB buffer is restored from $17AB
+             * after the submenu commits its own words. */
+            memcpy(s->working_main, s->config->main_values, sizeof(s->working_main));
+            s->menu_input.accelerate = 0u; /* Main entry `$81:BD0B`. */
             if (s->page != NBA_SETUP_PAGE_RULES) {
                 s->menu_row = 0;
                 s->menu_scroll = 0;
+                s->row = NBA_SETUP_ROW_MODE;
             }
             if (!setup_begin_page_transition(s, NBA_SETUP_PAGE_MAIN))
                 return setup_result(NBA_SETUP_SOUND_NONE, NBA_SETUP_ACTION_NONE);
@@ -993,35 +1254,51 @@ NbaSetupUpdateResult nba_setup_screen_update(NbaSetupScreen *s,
 
         if (s->menu_row < s->menu_scroll) s->menu_scroll = s->menu_row;
         if (s->menu_row >= s->menu_scroll + 7) s->menu_scroll = s->menu_row - 6;
-        if (input->pressed & (NBA_BTN_UP | NBA_BTN_DOWN))
+        if (command == 0x0800u || command == 0x0400u) {
+            /* Even Rules' clamped cursor dispatch redraws its bar and sets
+             * $1639; Options Up/Down explicitly clear it at8D44/8D77. */
+            s->menu_input.accelerate =
+                s->page == NBA_SETUP_PAGE_RULES && s->menu_row < 2 ? 1u : 0u;
+        }
+        if (s->menu_row != old_row)
             return setup_result(NBA_SETUP_SOUND_MOVE, NBA_SETUP_ACTION_NONE);
         return setup_result(NBA_SETUP_SOUND_NONE, NBA_SETUP_ACTION_NONE);
     }
 
-    /* $80:A62D - row cursor wraps at both ends. */
-    if (input->pressed & NBA_BTN_UP) {
+    /* Main and Options wrap; Rules clamps. Dispatch compares the complete
+     * native word, so simultaneous buttons do not acquire host bit priority. */
+    if (command == 0x0800u) {
         s->row = (NbaSetupRow)((s->row + NBA_SETUP_ROW_COUNT - 1) % NBA_SETUP_ROW_COUNT);
     }
-    if (input->pressed & NBA_BTN_DOWN) {
+    if (command == 0x0400u) {
         s->row = (NbaSetupRow)((s->row + 1) % NBA_SETUP_ROW_COUNT);
     }
-    if ((input->pressed & (NBA_BTN_LEFT | NBA_BTN_RIGHT)) &&
+    if ((command == 0x0200u || command == 0x0100u) &&
         s->row < NBA_SETUP_ROW_RULES) {
         int row = (int)s->row;
-        uint16_t old_value = s->config->main_values[row];
+        uint16_t old_value = s->working_main[row];
         uint16_t max = setup_main_max[row];
-        uint16_t new_value = (input->pressed & NBA_BTN_LEFT) ?
+        uint16_t new_value = command == 0x0200u ?
             (old_value == 0u ? max : (uint16_t)(old_value - 1u)) :
             (old_value >= max ? 0u : (uint16_t)(old_value + 1u));
         /* The ROM redraws these values into BG3 at $7E:16FB + row*2.
          * Refuse a state whose captured game-authored glyph canvas is absent. */
         if (s->main_value_vram[row][new_value]) {
-            s->config->main_values[row] = new_value;
+            s->working_main[row] = new_value;
+            if (row == NBA_SETUP_ROW_STYLE)
+                nba_config_apply_style(s->config, new_value);
             return setup_result(NBA_SETUP_SOUND_ADJUST, NBA_SETUP_ACTION_NONE);
         }
     }
-    if (input->pressed & (NBA_BTN_A | NBA_BTN_START)) {
-        if (s->row == NBA_SETUP_ROW_RULES && setup_menu_assets_ready(s)) {
+    /* `$81:BE57` tests B/Y/A/X/L/R as a mask after the exact direction
+     * comparisons. A mixed word containing one of those buttons can open
+     * a submenu. `$81:BF18` separately accepts only the exact Start word,
+     * from every Main row. Submenu dispatchers use different contracts. */
+    if ((command & 0xC0F0u) || command == 0x1000u) {
+        if ((command & 0xC0F0u) && s->row == NBA_SETUP_ROW_RULES && setup_menu_assets_ready(s)) {
+            /* `$81:BED5-$BEE4`: commit all four Main values before the
+             * submenu replaces the shared native working buffer. */
+            memcpy(s->config->main_values, s->working_main, sizeof(s->working_main));
             memcpy(s->working_rules, s->config->rules, sizeof(s->working_rules));
             s->menu_row = s->menu_scroll = 0;
             if (!setup_begin_page_transition(s, NBA_SETUP_PAGE_RULES))
@@ -1029,7 +1306,8 @@ NbaSetupUpdateResult nba_setup_screen_update(NbaSetupScreen *s,
             return setup_result(NBA_SETUP_SOUND_CONFIRM,
                                 NBA_SETUP_ACTION_OPEN_RULES);
         }
-        if (s->row == NBA_SETUP_ROW_OPTIONS && setup_menu_assets_ready(s)) {
+        if ((command & 0xC0F0u) && s->row == NBA_SETUP_ROW_OPTIONS && setup_menu_assets_ready(s)) {
+            memcpy(s->config->main_values, s->working_main, sizeof(s->working_main));
             memcpy(s->working_options, s->config->options, sizeof(s->working_options));
             (void)setup_rebuild_options_text_canvas(s);
             s->menu_row = s->menu_scroll = 0;
@@ -1038,9 +1316,10 @@ NbaSetupUpdateResult nba_setup_screen_update(NbaSetupScreen *s,
             return setup_result(NBA_SETUP_SOUND_CONFIRM,
                                 NBA_SETUP_ACTION_OPEN_OPTIONS);
         }
-        /* Live ROM: A opens Rules/Options, but only Start confirms a mode. */
-        if (s->row < NBA_SETUP_ROW_RULES && (input->pressed & NBA_BTN_START)) {
-            /* Exhibition remains in Game Setup while $80:A3B8 performs its
+        if (command == 0x1000u) {
+            /* `$81:BF59-$BF68`: the match consumes committed Main. */
+            memcpy(s->config->main_values, s->working_main, sizeof(s->working_main));
+            /* Exhibition remains in Game Setup while $80:EBF9/$80:EB27 perform its
              * layer exit. Other modes are still reported to their future
              * dispatchers immediately. */
             if (s->config->main_values[0] == 0u) {
@@ -1054,7 +1333,7 @@ NbaSetupUpdateResult nba_setup_screen_update(NbaSetupScreen *s,
                                 NBA_SETUP_ACTION_NONE);
         }
     }
-    if (input->pressed & (NBA_BTN_UP | NBA_BTN_DOWN))
+    if (command == 0x0800u || command == 0x0400u)
         return setup_result(NBA_SETUP_SOUND_MOVE, NBA_SETUP_ACTION_NONE);
     return setup_result(NBA_SETUP_SOUND_NONE, NBA_SETUP_ACTION_NONE);
 }
@@ -1112,34 +1391,21 @@ static bool setup_copy_rom_text_span(const uint8_t *source_vram,
     return copied;
 }
 
-/* $80:A77C selects the active main-page value and the generic BG3 writer
- * stores it at $7E:16FB + row*2. These spans include each word's final shadow
- * column, measured from the independent Mesen VRAM states. */
-static const uint8_t setup_main_value_span[NBA_SETUP_MAIN_VALUE_COUNT][4] = {
-    { 0, 48, 60, 75 }, /* Exhibition, Season, Playoffs, Load Series */
-    { 47, 0, 49, 0 },  /* Arcade, Simulation, Custom */
-    { 0, 52, 59, 0 },  /* Rookie, Starter, All-Star */
-    { 0, 65, 65, 70 }  /* 3, 5, 8, 12 Minutes */
-};
-
 static void setup_render_main_values(const NbaSetupScreen *s, NbaRenderer *ren,
                                      int bg3_scroll) {
     if (!s || s->page != NBA_SETUP_PAGE_MAIN) return;
-    for (int row = 0; row < NBA_SETUP_MAIN_VALUE_COUNT; ++row) {
-        uint16_t value = s->config->main_values[row];
-        if (value == nba_default_main_values[row] || value > setup_main_max[row]) continue;
+    for (int row = NBA_SETUP_MAIN_VALUE_COUNT - 1; row >= 0; --row) {
+        uint16_t value = s->working_main[row];
+        if (value > setup_main_max[row]) continue;
         const uint8_t *source_vram = s->main_value_vram[row][value];
-        int copy_width = setup_main_value_span[row][value];
-        if (!source_vram || copy_width == 0) continue;
+        if (!source_vram) continue;
         int source_top = nba_setup_screen_row_band_top((NbaSetupRow)row);
         int top = source_top - bg3_scroll;
-        /* Native changed-Rules return963 preserves Custom's full shadow
-         * after the trace is released. Other main value spans retain their
-         * existing separately tested copy contracts. */
-        int height = row == 1 && value == 2 ? 19 : 16;
-        setup_restore_bg2_rect(s, ren, s->vram, s->cgram, 138, top, 110, height);
+        /* The full19-line cell also removes the replaced value's shadow.
+         * Upwards ordering is the same overlap contract as the raw canvas. */
+        setup_restore_bg2_rect(s, ren, s->vram, s->cgram, 138, top, 110, 19);
         (void)setup_copy_rom_text_span(source_vram, s->cgram, ren,
-                                       138, source_top, copy_width, height,
+                                       138, source_top, 110, 19,
                                        138, top, s->brightness,
                                        row == (int)s->row);
     }
@@ -1307,7 +1573,7 @@ static void setup_render_menu_values(const NbaSetupScreen *s, NbaRenderer *ren,
     int count = s->page == NBA_SETUP_PAGE_RULES ?
                 NBA_SETUP_RULE_COUNT : NBA_SETUP_OPTION_COUNT;
     const uint16_t *defaults = s->page == NBA_SETUP_PAGE_RULES ?
-                               nba_default_rules : nba_default_options;
+                               setup_rules_canvas_values : nba_default_options;
 
     for (int visible = 0; visible < 7; ++visible) {
         int row = s->menu_scroll + visible;
@@ -1339,7 +1605,7 @@ static void setup_render_menu_values(const NbaSetupScreen *s, NbaRenderer *ren,
 }
 
 /**
- * Offset/Address/Size: 0x00A3B8 | $80:A3B8 | size: 0xAD
+ * Offset/Address/Size: $81:F9F1/$87:89D5 and $80:EA99/$80:EADE
  * Purpose: Composites the screen the way the PPU does in BG Mode 1 - BG2
  *          backdrop, then BG1 header banner, then the BG3 text canvas -
  *          honouring the main-screen designation and INIDISP brightness.
@@ -1442,7 +1708,7 @@ void nba_setup_screen_render(const NbaSetupScreen *s, NbaRenderer *ren) {
                                        4, layer_double_width[0],
                                        layer_double_height[0], s->bg1_hscroll,
                                        s->bg1_vscroll, x, y, &pixel)) {
-                    /* $80:A2BF's slide exposes only palette-5 BG1 artwork.
+                    /* The legacy initial-Setup projection exposes palette-5 BG1 artwork.
                      * Other map palettes are construction/staging cells and
                      * are not designated into the visible entrance scanout. */
                     if (s->frame > NBA_SETUP_ENTER_FRAMES ||
@@ -1454,7 +1720,7 @@ void nba_setup_screen_render(const NbaSetupScreen *s, NbaRenderer *ren) {
                 }
             }
 
-            /* During $80:A3B8's submenu reveal, the captured layer state uses
+            /* During the captured submenu reveal, the layer state uses
              * the $10 designation while the freshly built BG3 canvas scrolls
              * on.  Treat it as part of the transition scanout; after the edge
              * settles, the normal $04 main/sub designation is authoritative. */

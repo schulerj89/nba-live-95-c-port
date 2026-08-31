@@ -20,7 +20,9 @@ int main(int argc, char **argv) {
         const NbaTipoffActor *state = &game.actors[actor];
         unsigned logical = actor % 5u;
         unsigned paired = actor < 5u ? 5u + logical : logical;
-        uint8_t team = actor < 5u ? session.left_team : session.right_team;
+        /* Native first-court context order is home/right then visitor/left;
+         * the independent64-field witness separately verifies publication. */
+        uint8_t team = actor < 5u ? session.right_team : session.left_team;
         uint16_t variant = 0u;
         CHECK(state->roster_slot == lineup[logical]);
         CHECK(state->assignment_base_raw == paired * 2u);

@@ -36,3 +36,5 @@ src/nba_tipoff.c
 src/nba_tipoff_flow.c
 src/nba_jump_reach.c
 src/nba_game.c
+src/nba_menu_input.c
+src/nba_gameplay_hud.c

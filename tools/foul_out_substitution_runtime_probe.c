@@ -17,7 +17,7 @@ static bool expected_selection(const NbaTipoff *game, unsigned actor,
     memcpy(input.eligible, game->session->match.roster_available[side],
            sizeof(input.eligible));
     input.eligible[input.roster_order[input.outgoing_lineup_index]] = false;
-    uint8_t team = side ? game->session->right_team : game->session->left_team;
+    uint8_t team = side ? game->session->left_team : game->session->right_team;
     for (uint8_t roster = 0; roster < NBA_MATCH_ROSTER_SIZE; ++roster)
         CHECK(nba_player_gameplay_position(
             game->assets, team, roster, &input.position[roster]));
@@ -99,7 +99,7 @@ static bool run_case(const NbaAssetPack *pack, uint8_t left, uint8_t right,
               (uint16_t)(70u + stat));
     }
     uint16_t variant = 0u;
-    uint8_t team = side ? right : left;
+    uint8_t team = side ? left : right;
     CHECK(nba_player_gameplay_animation_variant(
         pack, team, expected.replacement_roster, &variant));
     CHECK(game.actors[actor].animation_variant_raw_6c == variant &&

@@ -54,6 +54,43 @@ static const TipoffFormation formation[10] = {
  * lower OAM indices priority, so the framebuffer composites it in reverse. */
 static const uint8_t visible_submission[8] = { 8, 2, 6, 5, 0, 1, 7, 3 };
 
+/* `$86:DA8D-$DAAB`, normal Exhibition (`$15C3=0`): gameplay context0
+ * `$46EB` is home/right; context1 `$476B` is visitor/left. Only this
+ * publication boundary reads the frontend's left/right team choices.
+ * Native first-court captures for Rockets/Knicks and Pacers/Magic, plus
+ * the owning Ghidra/recomp stores, are documented in
+ * docs/controller-ownership-model.md. Other game-mode swap paths remain
+ * outside this Exhibition initializer; never infer them from UI truthiness. */
+static void publish_exhibition_team_ids(NbaTipoff *tipoff) {
+    tipoff->team_context[0].strategy_team_raw_00 = tipoff->session->right_team;
+    tipoff->team_context[1].strategy_team_raw_00 = tipoff->session->left_team;
+}
+
+static uint8_t team_id_for_context(const NbaTipoff *tipoff, unsigned context) {
+    return (uint8_t)tipoff->team_context[context].strategy_team_raw_00;
+}
+
+/* The current frontend exposes only left0/right1. Its native controller
+ * allocator uses left selection0 -> group5/context1 and right selection2 ->
+ * group0/context0. Neutral/multiple-controller routing is still unwired. */
+static uint8_t context_for_ui_side(uint8_t ui_side) {
+    return ui_side ? 0u : 1u;
+}
+
+/* `$86:D789-$D7B5` follows the appearance sort; `$D7A8` stores rank4..0
+ * through each sorted actor offset. `$D97A/$DA07` apply it to both teams.
+ * This is gameplay actor+$92, not the roster-position category. The helper
+ * consumes the translated sort's results without recomputing its keys. */
+static void publish_appearance_assignment_roles(
+    NbaTipoffActor actors[NBA_GAMEPLAY_ACTOR_COUNT],
+    const NbaPlayerActiveAppearance *appearance) {
+    for (unsigned context = 0; context < 2u; ++context)
+        for (unsigned rank = 0; rank < 5u; ++rank) {
+            unsigned actor = appearance->sorted_actor_offset[context][rank] / 2u;
+            actors[actor].assignment_role_raw_92 = (uint8_t)(4u - rank);
+        }
+}
+
 static uint16_t read_u16(const uint8_t *p) {
     return (uint16_t)p[0] | ((uint16_t)p[1] << 8);
 }
@@ -486,7 +523,7 @@ bool nba_tipoff_jump_reach(NbaTipoff *t,unsigned slot) {
     NbaTipoffActor *a=&t->actors[slot];
     unsigned pair=a->assignment_current_raw>>1;
     if(pair>=NBA_GAMEPLAY_ACTOR_COUNT)return false;
-    uint8_t r3c,r3d,team=slot<5?t->session->left_team:t->session->right_team;
+    uint8_t r3c,r3d,team=team_id_for_context(t, slot / 5u);
     if(!nba_player_gameplay_jump_ratings(t->assets,team,a->roster_slot,&r3c,&r3d))return false;
     NbaJumpReachInput in={0};
     in.actor_x=fp_integer_word(a->x_fp);in.actor_y=fp_integer_word(a->y_fp);
@@ -764,8 +801,7 @@ bool nba_tipoff_begin_rom_pass(NbaTipoff *tipoff, unsigned passer_slot,
     uint16_t receiver_timer = 0x28u;
     if (relative >= 3u && relative < 6u) {
         receiver_timer = 0x3Cu;
-        uint8_t team = passer_slot >= 5u ? tipoff->session->right_team :
-                                           tipoff->session->left_team;
+        uint8_t team = team_id_for_context(tipoff, passer_slot / 5u);
         uint8_t profile_39 = 0u, profile_3e = 0xFFu;
         (void)nba_player_gameplay_pass_profiles(
             tipoff->assets, team, passer->roster_slot,
@@ -960,8 +996,7 @@ static bool cpu_refresh_defense_target(NbaTipoff *tipoff, unsigned slot,
         (int16_t)(paired_anchor - paired_x), (int16_t)(-paired_y),
         &paired->anchor_distance_raw);
 
-    uint8_t paired_team = paired_slot >= 5u ?
-        tipoff->session->right_team : tipoff->session->left_team;
+    uint8_t paired_team = team_id_for_context(tipoff, paired_slot / 5u);
     uint8_t rating_2pt = 0u, rating_3pt = 0u;
     (void)nba_player_gameplay_shot_ratings(
         tipoff->assets, paired_team, paired->roster_slot,
@@ -1164,8 +1199,7 @@ static bool cpu_active_decision_due(NbaTipoff *tipoff, unsigned slot) {
     NbaTipoffActor *actor = &tipoff->actors[slot];
     uint8_t mode = actor->control_mode;
     if ((mode < 1u || mode > 6u) && mode != 11u) return true;
-    uint8_t team = slot >= 5u ? tipoff->session->right_team :
-                               tipoff->session->left_team;
+    uint8_t team = team_id_for_context(tipoff, slot / 5u);
     uint8_t profile_3f = 0u, profile_40 = 0u;
     (void)nba_player_gameplay_decision_profiles(
         tipoff->assets, team, actor->roster_slot,
@@ -1377,8 +1411,7 @@ static bool cpu_move_inbound_actor(NbaTipoff *tipoff, unsigned slot) {
         actor->action_state = tipoff->cpu_play_state;
         return true;
     }
-    uint8_t team = slot >= 5u ? tipoff->session->right_team :
-                               tipoff->session->left_team;
+    uint8_t team = team_id_for_context(tipoff, slot / 5u);
     uint8_t profile_42 = 0x58u;
     (void)nba_player_gameplay_movement_profile(
         tipoff->assets, team, actor->roster_slot, &profile_42);
@@ -1480,7 +1513,7 @@ typedef struct { NbaTipoff *game; unsigned slot; } CpuOwnerContext;
 static NbaOwnerFlow cpu_owner_flow_read(const CpuOwnerContext *c) {
     NbaTipoff *t=c->game;NbaTipoffActor *a=&t->actors[c->slot];
     uint8_t rating=0,unused=0;
-    uint8_t team=c->slot<5?t->session->left_team:t->session->right_team;
+    uint8_t team=team_id_for_context(t, c->slot / 5u);
     (void)nba_player_gameplay_decision_profiles(t->assets,team,a->roster_slot,&rating,&unused);
     NbaOwnerFlow s={
         (uint16_t)c->slot,(uint16_t)(int16_t)t->possession_actor,t->shot_inner_veto_raw,
@@ -1544,7 +1577,7 @@ static bool cpu_owner_pose_call(NbaTipoff *t,unsigned slot,unsigned paired) {
  * before B50E selects/leads a receiver, not after the pass has been built. */
 static void cpu_owner_accelerate(NbaTipoff *t,unsigned slot,uint8_t direction) {
     NbaTipoffActor *a=&t->actors[slot];uint8_t profile=0x58;
-    uint8_t team=slot<5?t->session->left_team:t->session->right_team;
+    uint8_t team=team_id_for_context(t, slot / 5u);
     (void)nba_player_gameplay_movement_profile(t->assets,team,a->roster_slot,&profile);
     nba_gameplay_velocity_step(&a->velocity_x,&a->velocity_y,&a->movement_boost_timer,
         direction,profile,2,t->live_state_raw==0x81 || fp_integer_word(a->z_fp)!=0,
@@ -1682,8 +1715,7 @@ static void cpu_dispatch_normal_actor_behavior(NbaTipoff *tipoff,
             direction = actor->movement_direction;
     }
     if (stop_velocity) actor->velocity_x = actor->velocity_y = 0;
-    uint8_t team = slot >= 5u ? tipoff->session->right_team :
-                               tipoff->session->left_team;
+    uint8_t team = team_id_for_context(tipoff, slot / 5u);
     uint8_t profile_42 = 0x58u;
     (void)nba_player_gameplay_movement_profile(
         tipoff->assets, team, actor->roster_slot, &profile_42);
@@ -1728,7 +1760,7 @@ static bool cpu_owner_pose_animation_self_test(const NbaAssetPack *assets,
     /* Runtime bindings: stop-before-pose, base (+74) not current (+76),
      * lost-owner immediate return, and no direction clobber on timer hold. */
     {
-        NbaTipoff game={0};game.assets=assets;game.session=session;
+        NbaTipoff game={0};game.assets=assets;game.session=session;publish_exhibition_team_ids(&game);
         game.possession_actor=0;game.live_state_raw=2;
         game.special_actor_raw=NBA_GAMEPLAY_UNKNOWN_WORD;
         NbaTipoffActor *a=&game.actors[0];
@@ -1792,7 +1824,7 @@ static bool cpu_owner_pose_animation_self_test(const NbaAssetPack *assets,
     }
     for (unsigned distance=16;distance<=17;++distance) {
         NbaTipoff game={0};
-        game.assets=assets;game.session=session;game.possession_actor=0;
+        game.assets=assets;game.session=session;publish_exhibition_team_ids(&game);game.possession_actor=0;
         game.ball.owner_actor=0;game.live_state_raw=2;game.rng.state=0x9146;
         game.special_actor_raw=NBA_GAMEPLAY_UNKNOWN_WORD;
         NbaTipoffActor *a=&game.actors[0];
@@ -2113,8 +2145,7 @@ static bool cpu_actor_contact_height(const NbaTipoff *tipoff,
     const NbaTipoffActor *actor = &tipoff->actors[actor_index];
     uint8_t direction = actor->direction < 8u ? actor->direction : 0u;
     uint16_t upper_resource = 0u, lower_resource = 0u;
-    uint8_t team = actor_index >= 5u ? tipoff->session->right_team :
-                                      tipoff->session->left_team;
+    uint8_t team = team_id_for_context(tipoff, actor_index / 5u);
     return actor_animation_resources(tipoff, actor, direction,
                &upper_resource, &lower_resource) &&
            nba_player_animation_contact_height(
@@ -2906,7 +2937,7 @@ static bool cpu_player_contact_self_test(void) {
     NbaSession session;
     memset(&state, 0, sizeof(state));
     memset(&session, 0, sizeof(session));
-    state.session = &session;
+    state.session = &session;publish_exhibition_team_ids(&state);
     session.config.rules[0] = 45u;
     session.config.rules[1] = 25u;
     state.inbound_actor_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
@@ -2932,7 +2963,7 @@ static bool cpu_player_contact_self_test(void) {
      * cached RNG to 1, B advances to 2 and skips all action writes. */
     memset(&state, 0, sizeof(state));
     memset(&session, 0, sizeof(session));
-    state.session = &session;
+    state.session = &session;publish_exhibition_team_ids(&state);
     state.cpu_vs_cpu = true;
     state.possession_actor = -1;
     state.shot_actor_raw_09c8 = -1;
@@ -2953,7 +2984,7 @@ static bool cpu_player_contact_self_test(void) {
     /* Standard action-35/owner-drop vector: B=8, C=16, D=32. The ball
      * receives half the undoubled CB84 base vector. */
     memset(&state, 0, sizeof(state));
-    state.session = &session;
+    state.session = &session;publish_exhibition_team_ids(&state);
     state.cpu_vs_cpu = true;
     state.possession_actor = 5;
     state.possession_team = 1;
@@ -3004,8 +3035,7 @@ static bool cpu_try_owned_ball_contact(NbaTipoff *tipoff) {
         int point = cpu_actor_ball_contact_index(
             tipoff, candidate, false, threshold);
         if (point < 0) continue;
-        uint8_t team = candidate >= 5u ? tipoff->session->right_team :
-                                        tipoff->session->left_team;
+        uint8_t team = team_id_for_context(tipoff, candidate / 5u);
         uint8_t contact_rating = 0u;
         if (!nba_player_gameplay_contact_rating(
                 tipoff->assets, team, candidate_state->roster_slot,
@@ -3362,7 +3392,7 @@ static bool cpu_contact_orchestration_self_test(const NbaAssetPack *assets,
      * This is a C binding test, not an additional native vector. */
     memset(&state, 0, sizeof(state));
     state.assets = assets;
-    state.session = session;
+    state.session = session;publish_exhibition_team_ids(&state);
     state.live_state_raw = 0x82u;
     state.possession_actor = -1;
     state.ball.owner_actor = -1;
@@ -3596,8 +3626,7 @@ static bool cpu_start_rom_layup(NbaTipoff *tipoff, unsigned slot) {
         actor->anchor_distance_raw >= 0x69u ||
         actor->movement_magnitude_raw < 0x0100u) return false;
 
-    uint8_t team = slot >= 5u ? tipoff->session->right_team :
-                               tipoff->session->left_team;
+    uint8_t team = team_id_for_context(tipoff, slot / 5u);
     uint8_t profile_39 = 0u, unused_3e = 0u;
     if (!nba_player_gameplay_pass_profiles(
             tipoff->assets, team, actor->roster_slot,
@@ -3763,8 +3792,7 @@ static CpuMode11Outcome cpu_dispatch_rom_mode11(
             CPU_MODE11_SHOT_STARTED : CPU_MODE11_NORMAL_RETURN;
     }
 
-    uint8_t team = slot >= 5u ? tipoff->session->right_team :
-                               tipoff->session->left_team;
+    uint8_t team = team_id_for_context(tipoff, slot / 5u);
     uint8_t rating_36 = 0u, rating_37 = 0u, range_49 = 0u;
     if (!nba_player_gameplay_shot_ratings(
             tipoff->assets, team, actor->roster_slot,
@@ -3812,7 +3840,7 @@ static void cpu_release_rom_shot(NbaTipoff *tipoff, unsigned slot) {
     NbaGameplayTeamContext *context=&tipoff->team_context[slot/5u];
     NbaShotLaunchInput in={0};
     NbaShotLaunchState s=tipoff->last_shot_launch;
-    uint8_t team=slot>=5u ? tipoff->session->right_team : tipoff->session->left_team;
+    uint8_t team=team_id_for_context(tipoff, slot / 5u);
     uint32_t roster;
     if(!nba_player_gameplay_shot_ratings(tipoff->assets,team,shooter->roster_slot,
             &in.rating_two,&in.rating_three) ||
@@ -4168,7 +4196,7 @@ static bool cpu_special_receiver_self_test(const NbaAssetPack *assets) {
 
     memset(&state, 0, sizeof(state));
     memset(&session, 0, sizeof(session));
-    state.session = &session;
+    state.session = &session;publish_exhibition_team_ids(&state);
     state.assets = assets;
     state.possession_actor = -1;
     state.pass_actor_raw = 3;
@@ -4190,7 +4218,7 @@ static bool cpu_special_receiver_self_test(const NbaAssetPack *assets) {
         state.rng.state != seed) return false;
 
     memset(&state, 0, sizeof(state));
-    state.session = &session;
+    state.session = &session;publish_exhibition_team_ids(&state);
     state.assets = assets;
     state.possession_actor = 0;
     state.actors[0].control_mode = 14u;
@@ -4208,7 +4236,7 @@ static bool cpu_special_receiver_self_test(const NbaAssetPack *assets) {
         state.rng.state != seed) return false;
 
     memset(&state, 0, sizeof(state));
-    state.session = &session;
+    state.session = &session;publish_exhibition_team_ids(&state);
     state.assets = assets;
     state.possession_actor = 0;
     state.actors[0].control_mode = 14u;
@@ -4222,7 +4250,7 @@ static bool cpu_special_receiver_self_test(const NbaAssetPack *assets) {
         state.ball.velocity_z != 0x0048) return false;
 
     memset(&state, 0, sizeof(state));
-    state.session = &session;
+    state.session = &session;publish_exhibition_team_ids(&state);
     state.assets = assets;
     state.possession_actor = -1;
     state.pass_receiver_raw = 0;
@@ -4242,7 +4270,7 @@ static bool cpu_special_receiver_self_test(const NbaAssetPack *assets) {
 
     /* `$86:B1E2-$B202`: inclusive +/-80 retains; 81 converts to 9D6E. */
     memset(&state, 0, sizeof(state));
-    state.session = &session;
+    state.session = &session;publish_exhibition_team_ids(&state);
     state.assets = assets;
     state.possession_actor = 0;
     state.pass_receiver_raw = 0;
@@ -4269,7 +4297,7 @@ static bool cpu_special_receiver_self_test(const NbaAssetPack *assets) {
         return false;
 
     memset(&state, 0, sizeof(state));
-    state.session = &session;
+    state.session = &session;publish_exhibition_team_ids(&state);
     state.assets = assets;
     state.possession_actor = 1;
     state.pass_receiver_raw = 0;
@@ -4422,7 +4450,7 @@ shot_physics:
  * this facing-dependent action, so exercise selector -> jump -> 9DA6 here. */
 static bool cpu_special_shot_self_test(const NbaAssetPack *assets,NbaSession *session) {
     NbaTipoff s={0};
-    s.assets=assets;s.session=session;s.cpu_vs_cpu=true;s.possession_actor=0;
+    s.assets=assets;s.session=session;publish_exhibition_team_ids(&s);s.cpu_vs_cpu=true;s.possession_actor=0;
     s.ball.owner_actor=0;s.rng.state=1;s.assistance_team_raw_09c0=0xFFFF;
     s.team_context[0].anchor_x_raw_0a=336;
     for(unsigned i=5;i<10;++i)s.actors[i].x_fp=-1000*256;
@@ -4454,7 +4482,7 @@ static bool cpu_special_shot_self_test(const NbaAssetPack *assets,NbaSession *se
 static bool cpu_shot_branches_self_test(const NbaAssetPack *assets,
                                         NbaSession *session) {
     NbaTipoff s={0};
-    s.assets=assets; s.session=session; s.cpu_vs_cpu=true;
+    s.assets=assets; s.session=session;publish_exhibition_team_ids(&s); s.cpu_vs_cpu=true;
     s.possession_actor=0; s.handler_actor=0; s.rng.state=1;
     NbaTipoffActor *a=&s.actors[0];
     a->x_fp=100*256; a->y_fp=0; a->anchor_distance_raw=119;
@@ -4723,7 +4751,7 @@ static bool cpu_boosted_pass_self_test(const NbaAssetPack *assets,
     NbaTipoff state;
     memset(&state, 0, sizeof(state));
     state.assets = assets;
-    state.session = session;
+    state.session = session;publish_exhibition_team_ids(&state);
     state.possession_actor = 0;
     state.handler_actor = 0u;
     state.receiver_actor = 1u;
@@ -4739,7 +4767,7 @@ static bool cpu_boosted_pass_self_test(const NbaAssetPack *assets,
     uint8_t profile_39 = 0u, profile_3e = 0u;
     for (uint8_t roster = 0u; roster < 12u; ++roster) {
         if (nba_player_gameplay_pass_profiles(
-                assets, session->left_team, roster,
+                assets, team_id_for_context(&state, 0u), roster,
                 &profile_39, &profile_3e) && profile_3e >= 0x55u) {
             state.actors[0].roster_slot = roster;
             break;
@@ -5122,7 +5150,7 @@ static bool cpu_out_of_bounds_dispatch_self_test(void) {
     for (unsigned i = 0; i < sizeof(cases) / sizeof(cases[0]); ++i) {
         NbaTipoff state;
         memset(&state, 0, sizeof(state));
-        state.session = &session;
+        state.session = &session;publish_exhibition_team_ids(&state);
         state.possession_actor = cases[i].owned ? 2 : -1;
         state.ball.owner_actor = state.possession_actor;
         state.team_context[0].dead_ball_actor_raw_3f = 2u;
@@ -5196,7 +5224,7 @@ static bool cpu_dead_ball_dispatch_self_test(void) {
     NbaSession session;
     memset(&state, 0, sizeof(state));
     memset(&session, 0, sizeof(session));
-    state.session = &session;
+    state.session = &session;publish_exhibition_team_ids(&state);
     state.session->config.rules[5] = 1u;
     state.ball.x_fp = 121 * 256;
     state.ball.y_fp = -19 * 256;
@@ -5236,7 +5264,7 @@ static bool cpu_dead_ball_dispatch_self_test(void) {
 
     NbaTipoff defensive;
     memset(&defensive, 0, sizeof(defensive));
-    defensive.session = &session;
+    defensive.session = &session;publish_exhibition_team_ids(&defensive);
     defensive.camera_side_group_raw = 0u;
     defensive.possession_actor = 8;
     defensive.ball.owner_actor = 8;
@@ -5262,7 +5290,7 @@ static bool cpu_dead_ball_dispatch_self_test(void) {
 
     NbaTipoff charging;
     memset(&charging, 0, sizeof(charging));
-    charging.session = &session;
+    charging.session = &session;publish_exhibition_team_ids(&charging);
     charging.camera_side_group_raw = 0u;
     charging.possession_actor = 2;
     charging.ball.owner_actor = 2;
@@ -5290,7 +5318,7 @@ static bool cpu_dead_ball_dispatch_self_test(void) {
      * `$87:922E` then diverts actors into the free-throw scene. */
     NbaTipoff bonus;
     memset(&bonus, 0, sizeof(bonus));
-    bonus.session = &session;
+    bonus.session = &session;publish_exhibition_team_ids(&bonus);
     bonus.camera_side_group_raw = 0u;
     bonus.possession_actor = 8;
     bonus.ball.owner_actor = 8;
@@ -5317,7 +5345,7 @@ static bool cpu_dead_ball_dispatch_self_test(void) {
      * reachable from the common actor cap at +394 through F4F2's +8 edge. */
     NbaTipoff fractional;
     memset(&fractional, 0, sizeof(fractional));
-    fractional.session = &session;
+    fractional.session = &session;publish_exhibition_team_ids(&fractional);
     fractional.inbound_state_raw = 5u;
     fractional.inbound_layout_raw = 1;
     fractional.team_context[1].anchor_x_raw_0a = 336;
@@ -5762,7 +5790,7 @@ static bool cpu_ball_substep_self_test(void) {
     NbaTipoff ownerless_attached;
     memset(&ownerless_attached, 0, sizeof(ownerless_attached));
     memset(&session, 0, sizeof(session));
-    ownerless_attached.session = &session;
+    ownerless_attached.session = &session;publish_exhibition_team_ids(&ownerless_attached);
     ownerless_attached.possession_actor = -1;
     ownerless_attached.ball.owner_actor = 7; /* stale host cache, not `$093E` */
     ownerless_attached.ball.state = NBA_BALL_ATTACHED;
@@ -5793,7 +5821,7 @@ static bool cpu_ball_substep_self_test(void) {
     const uint8_t free_modes[]={NBA_BALL_LOOSE,NBA_BALL_PASS,NBA_BALL_SHOT,NBA_BALL_BOUNCE};
     int32_t expected_z=0;int16_t expected_vz=0;
     for(unsigned i=0;i<sizeof(free_modes);++i) {
-        memset(&state,0,sizeof(state));memset(&session,0,sizeof(session));state.session=&session;
+        memset(&state,0,sizeof(state));memset(&session,0,sizeof(session));state.session=&session;publish_exhibition_team_ids(&state);
         state.ball.owner_actor=-1;state.possession_actor=-1;state.pass_receiver_raw=-1;
         state.ball.state=free_modes[i];state.ball.z_fp=63*256;state.live_state_raw=0x82;
         state.fouls.whistle_active_raw_09b6=1;
@@ -5804,7 +5832,7 @@ static bool cpu_ball_substep_self_test(void) {
 
     memset(&session, 0, sizeof(session));
     memset(&state, 0, sizeof(state));
-    state.session = &session;
+    state.session = &session;publish_exhibition_team_ids(&state);
     state.possession_actor = -1;
     state.ball.owner_actor = -1;
     state.ball.state = NBA_BALL_SHOT;
@@ -7285,8 +7313,7 @@ static bool cpu_free_throw_move_actor(NbaTipoffActor *actor,
 static uint8_t cpu_free_throw_rating(const NbaTipoff *tipoff,
                                      uint8_t shooter) {
     uint8_t rating = 0x80u;
-    uint8_t team = shooter < 5u ? tipoff->session->left_team :
-                                 tipoff->session->right_team;
+    uint8_t team = team_id_for_context(tipoff, shooter / 5u);
     (void)nba_player_gameplay_free_throw_rating(
         tipoff->assets, team, tipoff->actors[shooter].roster_slot, &rating);
     return rating;
@@ -7786,7 +7813,7 @@ static bool cpu_inbound_recovery_carrier_self_test(
     NbaTipoff state;
     memset(&state, 0, sizeof(state));
     state.assets = assets;
-    state.session = session;
+    state.session = session;publish_exhibition_team_ids(&state);
     state.live_state_raw = 0x82u;
     state.inbound_actor_raw = 1u; /* provisional `$0954` */
     state.possession_actor = 3;   /* recovered `$093E` carrier */
@@ -8242,6 +8269,9 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
     NBA_TIPOFF_REQUIRE("tipoff ball asset", nba_assets_get(assets, NBA_ASSET_TIPOFF_BALL));
 #undef NBA_TIPOFF_REQUIRE
     memset(tipoff, 0, sizeof(*tipoff));
+    tipoff->assets = assets;
+    tipoff->session = session;
+    publish_exhibition_team_ids(tipoff);
     NbaShotMomentum momentum = {0};
     nba_shot_momentum_reset(&momentum); /* $86:DD80 */
     tipoff->assistance_team_raw_09c0=momentum.assistance_team;
@@ -8250,13 +8280,11 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
     for (unsigned i=0;i<24;++i) {
         uint8_t rating=0;
         if (!nba_player_gameplay_stamina_rating(assets,
-                i<12 ? session->left_team : session->right_team,(uint8_t)(i%12),&rating) || rating<3 || rating>10)return false;
+                team_id_for_context(tipoff, i / 12u),(uint8_t)(i%12),&rating) || rating<3 || rating>10)return false;
         tipoff->fatigue.rating[i]=rating;
     }
     nba_gameplay_effect_init(&tipoff->rim_effect);
     tipoff->special_actor_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
-    tipoff->assets = assets;
-    tipoff->session = session;
     tipoff->cpu_vs_cpu = true;
     nba_gameplay_rng_seed(&tipoff->rng, 0x9146u);
     tipoff->graphics_scratch.rng=tipoff->rng.state;
@@ -8267,8 +8295,6 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
         {0x04u, 0x06u, 0x08u, 0x00u, 0x02u}
     };
     for (unsigned side = 0; side < 2u; ++side) {
-        tipoff->team_context[side].strategy_team_raw_00 =
-            side ? session->right_team : session->left_team;
         tipoff->team_context[side].anchor_x_raw_0a =
             side ? 336 : -336;
         tipoff->team_context[side].score_raw_26 = 0u;
@@ -8339,7 +8365,7 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
     uint8_t appearance_teams[NBA_PLAYER_APPEARANCE_COUNT];
     uint8_t appearance_roster[NBA_PLAYER_APPEARANCE_COUNT];
     for (unsigned i = 0; i < NBA_PLAYER_APPEARANCE_COUNT; ++i) {
-        appearance_teams[i] = i < 5u ? session->left_team : session->right_team;
+        appearance_teams[i] = team_id_for_context(tipoff, i / 5u);
         appearance_roster[i] =
             session->match.active_lineup[i / NBA_MATCH_LINEUP_SIZE]
                                                 [i % NBA_MATCH_LINEUP_SIZE];
@@ -8351,7 +8377,7 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
     for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
         uint8_t selector = (uint8_t)(actor % 5u);
         unsigned paired = actor < 5u ? 5u + selector : selector;
-        uint8_t team = paired >= 5u ? session->right_team : session->left_team;
+        uint8_t team = team_id_for_context(tipoff, paired / 5u);
         uint8_t roster = session->match.active_lineup
             [paired / NBA_MATCH_LINEUP_SIZE][paired % NBA_MATCH_LINEUP_SIZE];
         active_input.lineup_selector[actor] = selector;
@@ -8394,10 +8420,6 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
         state->assignment_current_raw = state->assignment_base_raw;
         state->assignment_alternate_raw =
             active_appearance.assignment_alternate[actor];
-        uint8_t team = actor >= 5u ? session->right_team : session->left_team;
-        state->assignment_role_raw_92 = (uint8_t)(actor % 5u);
-        (void)nba_player_gameplay_position(
-            assets, team, state->roster_slot, &state->assignment_role_raw_92);
         state->free_throw_launch_half_raw_a8 = appearance.players[actor].alternate_lower;
         state->animation_variant_raw_6c =
             active_appearance.upper_variant[actor];
@@ -8410,6 +8432,7 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
         state->control_mode = actor == 0u || actor == 5u ? 4u : 2u;
         state->visible = actor != 4u && actor != 9u;
     }
+    publish_appearance_assignment_roles(tipoff->actors, &active_appearance);
     /* `$86:D8D3-$D8E2`: the reciprocal +$78 values were produced atomically
      * with +$76 above, before mutable +$74 can diverge during live play. */
     /* `$85:BC52-$BC81` and `$85:AFC2-$AFE5`: initialize pair and basket
@@ -8481,7 +8504,7 @@ bool nba_tipoff_pause_can_enter(const NbaTipoff *tipoff) {
 static void match_pause_enter(NbaTipoff *tipoff) {
     NbaMatchPauseFlow *pause = &tipoff->session->match.pause;
     pause->saved_live_state_raw_4988 = tipoff->live_state_raw;
-    pause->selected_side = tipoff->session->player_one_side ? 1u : 0u;
+    pause->selected_side = context_for_ui_side(tipoff->session->player_one_side);
     pause->selection = tipoff->session->match.timeouts_remaining[
         pause->selected_side] ? NBA_MATCH_PAUSE_SELECT_TIMEOUT :
                                NBA_MATCH_PAUSE_SELECT_RESUME;
@@ -8505,8 +8528,10 @@ static void match_pause_confirm_timeout(NbaTipoff *tipoff) {
         pause->selection = NBA_MATCH_PAUSE_SELECT_RESUME;
         return;
     }
-    tipoff->context_raw_4933 = side;
-    tipoff->context_raw_4935 = side;
+    /* `$86:8453` copies requesting-controller group0/5 from `$08D2`.
+     * selected_side is the host array context0/1, never the raw group. */
+    tipoff->context_raw_4933 = (uint16_t)(side * NBA_MATCH_LINEUP_SIZE);
+    tipoff->context_raw_4935 = tipoff->context_raw_4933;
     --tipoff->session->match.timeouts_remaining[side];
     nba_shot_stamina_fixed_grant(&tipoff->fatigue);
     pause->state = NBA_MATCH_PAUSE_TIMEOUT_TRANSITION;
@@ -8718,8 +8743,7 @@ static bool prepare_substitution_actor_bindings(
     uint8_t rosters[NBA_PLAYER_APPEARANCE_COUNT];
     for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
         unsigned side = actor / NBA_MATCH_LINEUP_SIZE;
-        teams[actor] = side ? tipoff->session->right_team :
-                              tipoff->session->left_team;
+        teams[actor] = team_id_for_context(tipoff, side);
         rosters[actor] = lineup[side][actor % NBA_MATCH_LINEUP_SIZE];
     }
     NbaPlayerAppearanceSetup appearance;
@@ -8730,8 +8754,7 @@ static bool prepare_substitution_actor_bindings(
         uint8_t selector = (uint8_t)(actor % NBA_MATCH_LINEUP_SIZE);
         unsigned paired = actor < NBA_MATCH_LINEUP_SIZE ?
             NBA_MATCH_LINEUP_SIZE + selector : selector;
-        uint8_t team = paired >= NBA_MATCH_LINEUP_SIZE ?
-            tipoff->session->right_team : tipoff->session->left_team;
+        uint8_t team = team_id_for_context(tipoff, paired / NBA_MATCH_LINEUP_SIZE);
         uint8_t roster = lineup[paired / NBA_MATCH_LINEUP_SIZE]
                                [paired % NBA_MATCH_LINEUP_SIZE];
         active_input.lineup_selector[actor] = selector;
@@ -8757,11 +8780,6 @@ static bool prepare_substitution_actor_bindings(
         state->assignment_current_raw = state->assignment_base_raw;
         state->assignment_alternate_raw =
             active.assignment_alternate[actor];
-        state->assignment_role_raw_92 =
-            (uint8_t)(actor % NBA_MATCH_LINEUP_SIZE);
-        if (!nba_player_gameplay_position(
-                tipoff->assets, teams[actor], state->roster_slot,
-                &state->assignment_role_raw_92)) return false;
         state->free_throw_launch_half_raw_a8 =
             appearance.players[actor].alternate_lower;
         state->animation_variant_raw_6c = active.upper_variant[actor];
@@ -8776,6 +8794,7 @@ static bool prepare_substitution_actor_bindings(
                 &state->lower_animation_resource_raw_2c)) return false;
         state->animation_resources_valid = true;
     }
+    publish_appearance_assignment_roles(actors, &active);
     /* Native actor rebuild restores reciprocal matchup geometry after the
      * lineup/resource transaction, before `$0A08` is cleared. */
     for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
@@ -8825,8 +8844,7 @@ bool nba_tipoff_apply_foul_out_substitution(NbaTipoff *tipoff) {
            sizeof(selection.eligible));
     uint8_t outgoing_roster = selection.roster_order[lineup_index];
     selection.eligible[outgoing_roster] = false;
-    uint8_t team = side ? tipoff->session->right_team :
-                          tipoff->session->left_team;
+    uint8_t team = team_id_for_context(tipoff, side);
     for (uint8_t roster = 0; roster < NBA_MATCH_ROSTER_SIZE; ++roster)
         if (!nba_player_gameplay_position(
                 tipoff->assets, team, roster,
@@ -9085,7 +9103,7 @@ bool nba_tipoff_try_tip_contact(NbaTipoff *tipoff) {
         in.ball_x=fp_integer_word(tipoff->ball.x_fp);in.ball_y=fp_integer_word(tipoff->ball.y_fp);
         in.ball_z=fp_integer_word(tipoff->ball.z_fp);in.ball_vz=tipoff->ball.velocity_z;
         uint16_t upper,lower;uint8_t direction=actor->direction;
-        uint8_t team=slot>=5?tipoff->session->right_team:tipoff->session->left_team;
+        uint8_t team=team_id_for_context(tipoff, slot / 5u);
         if(!actor_animation_resources(tipoff,actor,direction,&upper,&lower) ||
            !nba_player_animation_contact_height(tipoff->assets,team,actor->roster_slot,upper,lower,direction,&in.head_height))continue;
         for(unsigned point=0;point<2;++point) {
@@ -9236,6 +9254,10 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
     for (unsigned i = 0; i < 3u; ++i)
         telemetry->play_selector_raw[i] = tipoff->play_selector_raw[i];
     telemetry->rng_state_raw = tipoff->rng.state;
+    /* Historical protocol names are retained until a coordinated schema
+     * migration. These are native `$4711` home and `$4791` visitor words;
+     * they are not screen-left/screen-right. The HUD uses the opposite
+     * display order. Do not silently swap this native projection. */
     telemetry->score_left_raw = tipoff->session->score[0];
     telemetry->score_right_raw = tipoff->session->score[1];
     telemetry->period_raw_0926 = tipoff->period_raw_0926;
@@ -9468,8 +9490,7 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
         if (live && out->draw_upper_resource_raw != NBA_GAMEPLAY_UNKNOWN_WORD &&
             out->draw_lower_resource_raw != NBA_GAMEPLAY_UNKNOWN_WORD) {
             uint8_t team_side = actor >= 5u;
-            uint8_t team = team_side ? tipoff->session->right_team :
-                                       tipoff->session->left_team;
+            uint8_t team = team_id_for_context(tipoff, team_side);
             NbaPlayerSpriteDiagnostics appearance = {0};
             bool appearance_valid = nba_player_sprite_diagnose_resources(
                 tipoff->assets, team, state->roster_slot, team_side,
@@ -9575,7 +9596,7 @@ void nba_tipoff_render(const NbaTipoff *tipoff, NbaRenderer *ren) {
     if (!tipoff || !tipoff->is_initialized || !ren) return;
     const uint8_t *gameplay_vram = NULL, *gameplay_cgram = NULL;
     if (!nba_assets_gameplay_ppu_input(
-            tipoff->assets, tipoff->session->right_team,
+            tipoff->assets, team_id_for_context(tipoff, 0u),
             &gameplay_vram, &gameplay_cgram)) return;
     int crop_x,crop_y;
     nba_court_viewport(tipoff->camera_x,tipoff->camera_y,&crop_x,&crop_y);
@@ -9623,8 +9644,7 @@ void nba_tipoff_render(const NbaTipoff *tipoff, NbaRenderer *ren) {
         uint8_t team_side = actor >= 5u;
         uint8_t uniform_side = team_side;
         uint8_t slot = tipoff->actors[actor].roster_slot;
-        uint8_t team = team_side ? tipoff->session->right_team :
-                                   tipoff->session->left_team;
+        uint8_t team = team_id_for_context(tipoff, team_side);
         uint8_t state=tipoff->actors[actor].animation_state;
         int jump=0; /* screen_y already contains actual actor Z. */
         uint8_t direction=actor_draw_direction(tipoff, actor);

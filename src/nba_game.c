@@ -84,10 +84,10 @@ static void nba_game_debug_lines(const NbaGame *game, NbaDebugLines *out) {
 
     if (game->state == NBA_STATE_GAME_SETUP && game->scene.setup.is_initialized) {
         const NbaSetupScreen *s = &game->scene.setup;
-        uint16_t mode = s->config->main_values[0];
-        uint16_t style = s->config->main_values[1];
-        uint16_t level = s->config->main_values[2];
-        uint16_t quarter = s->config->main_values[3];
+        uint16_t mode = s->working_main[0];
+        uint16_t style = s->working_main[1];
+        uint16_t level = s->working_main[2];
+        uint16_t quarter = s->working_main[3];
         snprintf(out->line[out->count++], NBA_DEBUG_LINE_SIZE,
                  "PG:%s ROW:%s MR:%02d", nba_debug_setup_page_name(s->page),
                  nba_debug_setup_row_name(s->row), s->menu_row);

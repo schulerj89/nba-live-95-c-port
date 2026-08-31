@@ -5,21 +5,26 @@
 #include "nba_assets.h"
 #include "nba_renderer.h"
 #include "nba_session.h"
+#include "nba_menu_input.h"
+
+/* Strict NBSPPU3 asset validation; rejects malformed input before a scene
+ * handoff changes live VRAM. Exposed for focused asset-integrity probes. */
+bool nba_setup_screen_validate_publications(const uint8_t *trace, size_t size,
+                                            uint32_t expected_frames);
 
 /**
  * NBA Live '95 Game Setup screen.
  *
- * Every address and constant below was taken from the running ROM rather than
- * inferred: the routine set came from a live Mesen execution trace of the
- * screen (tools/mesen_decomp_trace.lua -> .analysis/setup_capture/
- * setup_exec_addrs.txt), and the PPU/scroll figures from a per-frame register
- * log (tools/mesen_scroll_log.lua).
+ * Native ownership below is checked against instruction bytes and callers.
+ * Executing concurrently is not evidence of ownership: older documentation
+ * mislabeled the $80:A2BF audio-loop tail as the graphics constructor.
+ * See docs/rules-reentry-resource-audit.md for evidence and remaining gaps.
  *
  * Routines observed executing while the screen is live (bank $80 unless noted):
- *   $80:A2BF  screen build / layer + scroll setup
- *   $80:A3B8  per-frame update driving the backdrop scroll
- *   $80:A62D  option row state
- *   $80:A77C  option value dispatch
+ *   $81:BA8E  main Setup constructor ($81:CF62 builds Rules)
+ *   $81:F9F1  frame task; $87:89D5 advances the backdrop counter
+ *   $81:BDA8  main Up row branch (Down: $81:BDD5)
+ *   $81:BDEA  main Left value branch (Right: $81:BE2D)
  *   $80:A9E3  APU command write   ($2140-$2143)
  *   $80:AA7B  APU handshake       ($2140-$2143)
  *   $80:AACD  APU command queue   ($2140-$2143)
@@ -28,11 +33,11 @@
  *   $80:C62B  ROM decompressor used to build the layer tile data
  */
 
-/* Executed-routine addresses (live trace, not inferred) */
-#define SNES_ADDR_SETUP_BUILD          0x80A2BF
-#define SNES_ADDR_SETUP_FRAME_UPDATE   0x80A3B8
-#define SNES_ADDR_SETUP_ROW_STATE      0x80A62D
-#define SNES_ADDR_SETUP_OPTION_DISPATCH 0x80A77C
+/* Native routine/branch addresses; these are annotations, not C dispatch IDs. */
+#define SNES_ADDR_SETUP_BUILD          0x81BA8E
+#define SNES_ADDR_SETUP_FRAME_UPDATE   0x81F9F1
+#define SNES_ADDR_SETUP_ROW_STATE      0x81BDA8
+#define SNES_ADDR_SETUP_OPTION_DISPATCH 0x81BDEA
 #define SNES_WRAM_SETUP_MODE           0x7E16FB
 #define SNES_WRAM_SETUP_STYLE          0x7E16FD
 #define SNES_WRAM_SETUP_LEVEL          0x7E16FF
@@ -52,7 +57,7 @@
 #define NBA_SETUP_BG3_TILEMAP   0x0000   /* 32x64, menu text canvas         */
 #define NBA_SETUP_BG3_CHR       0x8000   /* 2bpp                            */
 
-/* Steady-state scroll values ($80:A3B8), verified per frame */
+/* Steady-state scroll values; BG2 counter is owned by $87:89D5. */
 #define NBA_SETUP_BG1_HSCROLL   512
 #define NBA_SETUP_BG1_VSCROLL   1023
 #define NBA_SETUP_BG2_HSCROLL   0
@@ -70,7 +75,7 @@
 #define NBA_SETUP_FADE_FRAMES       15
 
 /* $80:E600 hands control to the next state after the title fade. The ROM then
- * holds forced blank for frames 1638..1742 while $80:A2BF builds the three
+ * holds forced blank for frames 1638..1742 while the Setup constructor builds the three
  * layers. Frame 1743 is the first visible Setup entrance frame. */
 #define NBA_SETUP_FORCED_BLANK_FRAMES 105
 
@@ -83,7 +88,7 @@
 #define NBA_SETUP_BG3_SCROLL_STEP     14
 
 /* Game Setup -> Team Select exit captured at Mesen frames 400..452.  The
- * shared $80:A3B8 sequencer first removes BG3, then separates BG1/BG2 under
+ * shared $80:EBF9/$80:EB27 exit sequence first removes BG3, then separates BG1/BG2 under
  * the master-brightness ramp before $80:DBF6 enters $82:809A. */
 #define NBA_SETUP_TEAM_EXIT_BG3_FRAMES 15
 #define NBA_SETUP_TEAM_EXIT_SLIDE_FRAME 21
@@ -151,7 +156,7 @@ typedef enum {
 } NbaSetupTransition;
 
 /* Directed edges are distinct because the ROM gives each one its own PPU
- * trace and cadence, even when the same $80:A3B8 sequencer drives them. */
+ * trace and cadence, even when the same native exit/entrance routines drives them. */
 typedef enum {
     NBA_SETUP_TRANSITION_ROUTE_NONE = 0,
     NBA_SETUP_TRANSITION_MAIN_TO_RULES,
@@ -180,8 +185,22 @@ typedef struct {
     NbaSetupAction action;
 } NbaSetupUpdateResult;
 
+/* Read-only logical entry/exit observations of translated adjustment
+ * dispatches. Optional instrumentation cannot replace configuration/input. */
 typedef struct {
-    uint8_t vram[0x10000];  /* mutable $80:A2BF entrance VRAM + DMA trace */
+    uint32_t native_pc;
+    uint16_t command, row, value, maximum, controller;
+    uint16_t previous_input, pending_input, repeat_input;
+    uint16_t repeat_delay, repeat_speed, repeat_flag;
+    uint16_t working_count;
+    uint16_t working[NBA_SETUP_RULE_COUNT];
+    NbaGameConfig config;
+} NbaSetupAdjustmentSnapshot;
+typedef void (*NbaSetupAdjustmentObserver)(void *context,
+                                           const NbaSetupAdjustmentSnapshot *snapshot);
+
+typedef struct {
+    uint8_t vram[0x10000];  /* mutable $81:BA8E entrance VRAM + DMA trace */
     uint8_t cgram[0x200];   /* mutable entrance CGRAM + DMA trace          */
     const uint8_t *ppu_trace;
     size_t ppu_trace_size;
@@ -257,6 +276,11 @@ typedef struct {
     size_t rules_return_trace_size;
     uint8_t transition_vram[0x10000];
     uint8_t transition_cgram[0x200];
+    /* Native font buffers are prepared separately from their DMA publication.
+     * Scope0 is Rules' first nine rows; scope1 is its complete canvas/Main. */
+    uint8_t transition_target_vram[0x10000];
+    uint8_t transition_font_mask[2][0x10000];
+    uint8_t active_transition_trace_version;
     const uint8_t *active_transition_base_vram;
     const uint8_t *active_transition_base_cgram;
     uint16_t transition_base_tilemap[3];
@@ -270,8 +294,12 @@ typedef struct {
     int active_transition_frame_count;
     const uint8_t *main_value_vram[NBA_SETUP_MAIN_VALUE_COUNT][4];
     NbaGameConfig *config; /* persistent session-owned configuration */
+    uint16_t working_main[NBA_SETUP_MAIN_VALUE_COUNT]; /* $7E:16FB on Main */
     uint16_t working_rules[NBA_SETUP_RULE_COUNT];
     uint16_t working_options[NBA_SETUP_OPTION_COUNT];
+    NbaMenuInput menu_input;
+    NbaSetupAdjustmentObserver adjustment_observer;
+    void *adjustment_observer_context;
     bool is_initialized;
 } NbaSetupScreen;
 
@@ -280,6 +308,13 @@ void nba_setup_screen_init(NbaSetupScreen *s, const NbaAssetPack *assets,
 NbaSetupUpdateResult nba_setup_screen_update(NbaSetupScreen *s,
                                              const NbaInput *input);
 int  nba_setup_screen_row_band_top(NbaSetupRow row);
+/* Build only the thirteen-row Rules value cells in a full raw BG3 canvas.
+ * Row0/1 bars remain OAM-owned; viewport scroll is applied by the renderer. */
+bool nba_setup_screen_apply_rules_value_cells(const NbaSetupScreen *s,
+                                             uint8_t *canvas,
+                                             const uint16_t *rules);
+bool nba_setup_screen_build_main_value_canvas(const NbaSetupScreen *s,
+                                              uint8_t *canvas);
 void nba_setup_screen_render(const NbaSetupScreen *s, NbaRenderer *ren);
 
 #endif /* NBA_SETUP_SCREEN_H */
