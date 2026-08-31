@@ -47,3 +47,6 @@ tools/mesen_setup_spc_resident.lua -text
 # Preserve executed catch capture bytes.
 tools/capture_human_pass_catch.py -text
 tools/mesen_human_pass_catch.lua -text
+# Preserve executed return capture bytes.
+tools/capture_human_pass_return.py -text
+tools/mesen_human_pass_return.lua -text
