@@ -120,3 +120,17 @@ tools/freeze_period_formation.py -text
 tools/period_formation_dependencies_v1.json -text
 tools/period_formation_role_alias_map_v1.json -text
 tools/prepare_period_formation_dependencies.py -text
+
+# Preserve the reviewed draw-order component and verification bytes.
+include/nba_draw_order.h -text
+src/nba_draw_order.c -text
+tools/draw_order_probe.c -text
+tools/build_draw_order_probe.ps1 -text
+tools/capture_draw_order.py -text
+tools/capture_draw_order.lua -text
+tools/draw_order_rom_reference.py -text
+tools/verify_draw_order.py -text
+tools/test_draw_order.py -text
+tools/test_draw_order_protocol.py -text
+tools/freeze_draw_order.py -text
+tools/test_draw_order_independent_cases.py -text

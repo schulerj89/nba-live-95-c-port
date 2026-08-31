@@ -79,7 +79,9 @@ or claiming the existing host representation covers all native states.
   every regulation period from current settings is not the prefix behavior.
 - The12-record draw permutation7E44: initialize through the80:FBE9 sequence,
   then preserve ordinary80:FC80 reverse adjacent passes and exceptional full
-  FBFF sorts. Static actor iteration cannot supply the carried permutation.
+  FBFF sorts. The [standalone draw-order component](draw-order-integration.md)
+  is now accepted; runtime ownership and scheduling remain unwired. Static
+  actor iteration cannot supply the carried permutation.
 - Basket Y3FF3 has an explicit zero writer at86:DBC2. This is initialization
   provenance, not permission to fabricate arbitrary runtime inputs. Basket X
   already has an owner and must not be duplicated or derived after the flip.
