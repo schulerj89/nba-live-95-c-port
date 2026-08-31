@@ -33,3 +33,6 @@ tools/capture_human_pass_action.py -text
 tools/mesen_human_pass_action.lua -text
 tools/capture_human_pass_aligned.py -text
 tools/mesen_human_pass_aligned.lua -text
+# Preserve executed pose capture source identities.
+tools/capture_human_pass_pose.py -text
+tools/mesen_human_pass_pose.lua -text
