@@ -37,8 +37,11 @@ EXPECTED_RGB_SHA256 = {
     128: "160ca9f0c0e602e43fa77116e9693179dbc79ca7121ff7383199c1970948c17e",
     130: "95e6190d88f4cbe4a6edb85ca1d4e8bc24870ff4cd09b3b9b2affd73a5666489",
     146: "047185a6c2ffb0c4f079f0984ebb6f04afeaa3220c651de7812d1e710df310a2",
-    162: "e7f61a0f21ca67bf4f3833ddbaa13c9e5501e04d1fd57f6bf3f54a0dc2d1719f",
-    166: "51ef64c72ae13fc1c37e15a2cf9c3a913ccce788e9547c61f246b75bacdef416",
+    # Independently attributed fresh Arcade/12-minute defaults; old hashes
+    # remain in build/setup-default-attribution-v5/report.json. Each delta is
+    # 1116 pixels in the changed value cells, not a new native timing claim.
+    162: "efc1d965830da3350414ce1ee826956fc918ac4c2ff5308200851a7e8b70882c",
+    166: "8b5c6f85f54ecfa5ee30b67bf3af2eadc99d95bda719cc9c2981fdd53b6c7aff",
 }
 EXPECTED_AUDIO_RMS_EIGHTHS = [
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6123, 4989, 3945,
@@ -245,7 +248,10 @@ EXPECTED_MENU_ASSET_SHA256 = {
     # Regenerated solely from canonical Simulation/3min native raw PPU inputs;
     # no rendered emulator image is included in these production assets.
     144: "34d010c965f58a851c9622553466102c49b1faabde83ac674957d90ee2d51553",
-    145: "e0fc08503583e4ddf9ec917e99ff821f81e47950e52f7c419fdf3bbe9bb5e90d",
+    # Native DMA publications (NBSPPU3), including baseline-zero writes;
+    # independently audited in rules-publications-independent-audit.md and
+    # reproduced by the full extractor in build/full-extraction-v1.
+    145: "954bc211393c084654eadc4b58e3a5984db35cc11ead9cb7a964bd00b692f561",
     146: "1e5c485b7ed12fe444588a5beebd984fa6489598fcb43064187e1617ab0238ce",
     147: "8a95be0e8f109eec61af8385fc022072cffd57c13b13bf94b441a0d273ea8e65",
     148: "b2485adab570e6b133bf54108160ec9423070f041eaa9663cb566fc0e5e30b4e",
@@ -255,24 +261,29 @@ EXPECTED_MENU_ASSET_SHA256 = {
     152: "eb893005c6d675b73d997f32fe2b479a9d1b8b71425f05e606519da09279ff68",
     153: "acc87f5139c463275742a378f966c64cc030b40f9712dc0e7329ddc57e622b31",
     154: "c0f020106386715daa7583eaca351851bf7a4863c2118079ffa7d56bbb2693ec",
-    155: "5df91ebf3bec4fe9fa346f5d808d73871fe18ac0e07cf19864bc88a0533e75b6",
+    155: "8001427cf8ca80638662bf7cb49851bb30e2c6ce93c883c5e0914093e99637c0",
     156: "12d8c001afc6e355654d1965a1fbe7e7c405e028774449f70c3eece17919f43f",
     157: "a93724eda8d5190b1a1fd253812534aa942a68d0654c4608bf029342a111a01f",
 }
+# The seven newly restored native shadow strips alter only y=top+16,
+# by30/33/33/24/19/21/26 pixels. Full47 native canvases and the independent
+# span audit cover the19-line source contract. Controlled old/new attribution
+# is retained in build/main-value-image-attribution-v1/report.json; these are
+# C-only full-image baselines. Native glyph hashes below remain unchanged.
 EXPECTED_MAIN_VALUE_RGB_SHA256 = {
-    (0, 1): "e4204d3c33d0bae2680ad2a2ac2f5cc14ceec6e4bc4e8bee2f35cad05a0efdc9",
-    (0, 2): "96be8085c9ae412d13fb265a992b99a49dad540aa6a7b8f696c0b348a71c0fb4",
-    (0, 3): "2f952c609272ebab6fbc1f8388a1e91671b11001590de6c0a716fbb0ed120ba7",
+    (0, 1): "ea1f305909dba2d3d83d3ae54edb81a934d9873c2480f971ef577713ad71b581",
+    (0, 2): "ac10400e1b0f21a493912f8c64f03fcabbdc2fc2a48d131450d8a5fc1f862683",
+    (0, 3): "282b14b34050edb05fea121848736646fbd7f12ef4dfd96aca4fbb8d595b4830",
     # Independent prediction: old C baseline plus native Custom980's y104
     # shadow strip at the same BG2v30. Exactly26 pixels change; this remains
     # a static C regression, not a full native main-value journey witness.
     (1, 1): "e8f91cea8043243dd2300f9b3e4e4c90a487e3c9c86f0459650eadd3c47c1771",
-    (1, 2): "a59cc2515140ccd18c36b91bbf74177eb27f8eb552f70e2038f41d86a69bfbcc",
-    (2, 1): "0d0eec20edddc55dc5ae41f4595b2b1a30e6c82050b0f14524f4adfe95a8ca04",
-    (2, 2): "5a550fa69536f7dea18be1157c7f55365baa31a37db456203851e7cc5b1e0070",
+    (1, 2): "e39b9287ae34056e58db8ead3567984f8d612297a27b77aa01661d05d6f7839b",
+    (2, 1): "5c0e82ffa2bedab68e8dd9014615df959d3713c2dd36b4f5aa52a5dcff670b52",
+    (2, 2): "d60279d19d68d9fb39783f7acf7c3d27e332b26dfaabe587a78014b42e42d592",
     (3, 1): "e4ae718f8545e18560eebcfebf5e344773bcbda67e04f50b8e194d6671813a91",
     (3, 2): "908bc9d71553bc3809404d8175c59760dfcaad0087eb916a1e0e767ab32ad3a7",
-    (3, 3): "9dfd7625c2fa4673816530a112c54d17ed3127e533375aec3a74565918473ad3",
+    (3, 3): "9baf90891ffbe07f02e1c374d50fdbdd8ac29ab8b8b23248a276bc225ac94a93",
 }
 MESEN_MAIN_VALUE_GLYPH_SHA256 = {
     (0, 1): "dc35ee3889bed4f3c86a90e3a0acbee1a63d9fdf94d0de173f5437dde770268d",
@@ -399,15 +410,17 @@ def check_pack(pack_path):
     if offset != len(assets[92]) or ppu_writes != 3094:
         raise AssertionError("invalid Setup entrance PPU write stream")
     for asset_id, expected_frames, expected_writes in (
-        # Canonical raw witness471..616 contains25370 VRAM+140 CGRAM writes.
-        (145, 146, 25510), (148, 132, 23229),
-        (151, 132, 23070), (155, 132, 25001)
+        # NBSPPU3 preserves actual native publication destinations, including
+        # zero writes absent from the old changed-value-only stream.
+        (145, 146, 132148), (148, 132, 23229),
+        (151, 132, 23070), (155, 132, 103812)
     ):
         trace = assets[asset_id]
-        if trace[:8] != b"NBSPPU2\0":
+        publications = asset_id in (145, 155)
+        if trace[:8] != (b"NBSPPU3\0" if publications else b"NBSPPU2\0"):
             raise AssertionError(f"invalid submenu PPU trace {asset_id}")
         version, frames = struct.unpack_from("<II", trace, 8)
-        if version != 2 or frames != expected_frames:
+        if version != (3 if publications else 2) or frames != expected_frames:
             raise AssertionError(f"unexpected submenu PPU dimensions {asset_id}")
         offset = 16
         writes = 0
@@ -426,7 +439,7 @@ def check_pack(pack_path):
                         char_base & 1 or wide > 1 or tall > 1:
                     raise AssertionError(f"invalid submenu PPU layer state {asset_id}")
             vram_count, cgram_count = struct.unpack_from("<HH", trace, offset + 34)
-            offset += 38 + (vram_count + cgram_count) * 3
+            offset += 38 + vram_count * (4 if publications else 3) + cgram_count * 3
             writes += vram_count + cgram_count
         if offset != len(trace) or writes != expected_writes:
             raise AssertionError(f"invalid submenu PPU write stream {asset_id}")
@@ -449,6 +462,26 @@ def check_pack(pack_path):
         _, _, _, packed_srcn, packed_start, packed_loop = entries[asset_id]
         if (packed_srcn, packed_start, packed_loop) != (srcn, start, loop):
             raise AssertionError(f"Setup SRCN ${srcn:02X} pointer metadata changed")
+
+
+def legacy_options_script(directory, confirm=False):
+    """Real C button route preserving legacy Options A168/Start302 phase.
+
+    Configure during the C entrance's accepted-input interval, then release
+    between every navigation press. No configuration or PPU state is seeded.
+    This preserves an existing C regression phase, not native entry timing.
+    """
+    script = Path(directory) / ("options_return.input" if confirm else "options_open.input")
+    words = [0] * 431
+    for i, word in enumerate((0x400, 0x100, 0x400, 0x400, 0x100, 0x800, 0x800, 0x800)):
+        words[138 + 2 * i] = word
+    for i in range(5):
+        words[157 + 2 * i] = 0x400
+    words[167] = 0x80
+    if confirm:
+        words[301] = 0x1000
+    script.write_text("".join(f"1 {word:04x}\n" for word in words))
+    return script
 
 
 def check_frames(exe, rom, pack):
@@ -491,7 +524,7 @@ def check_frames(exe, rom, pack):
              "--assets", str(missing_main_pack)],
             text=True, capture_output=True, check=True,
         )
-        if "mode=0 style=1 level=0 quarter=0" not in missing_main.stdout or \
+        if "mode=0 style=0 level=0 quarter=3" not in missing_main.stdout or \
                 "DSP menu SFX SRCN $1A" in missing_main.stdout:
             raise AssertionError("missing main value asset used fallback graphics/state")
 
@@ -507,7 +540,9 @@ def check_frames(exe, rom, pack):
             asset_id, asset_offset = struct.unpack_from("<II", stale_tail_raw,
                                                          entry_offset)
             if asset_id == 133:
-                tile_row = (70 + 1) // 8
+                # The first sampled row (71) belongs to an empty tile row.
+                # Use the next tile row, which actually contains Season ink.
+                tile_row = (70 + 5) // 8
                 source_entry = (tile_row * 32 + 144 // 8) * 2
                 stale_entry = (tile_row * 32 + 216 // 8) * 2
                 stale_tail_raw[asset_offset + stale_entry:
@@ -526,8 +561,18 @@ def check_frames(exe, rom, pack):
              "--assets", str(stale_tail_pack), "--dump-frame", str(stale_tail_frame)],
             text=True, capture_output=True, check=True,
         )
-        if hashlib.sha256(Image.open(stale_tail_frame).convert("RGB").tobytes()).hexdigest() != \
-                EXPECTED_MAIN_VALUE_RGB_SHA256[(0, 1)]:
+        # This is a controlled corruption guard, not an old-configuration
+        # screenshot oracle. Compare the identical current input journey
+        # against the pristine pack; native canvas parity is checked separately.
+        clean_tail_frame = Path(directory) / "season_clean_shadow_tail.bmp"
+        subprocess.run(
+            [str(exe), "--headless", "--setup-only", "--setup-main-row", "0",
+             "--setup-main-right", "1", "--frames", "200", "--rom", str(rom),
+             "--assets", str(pack), "--dump-frame", str(clean_tail_frame)],
+            text=True, capture_output=True, check=True,
+        )
+        if Image.open(stale_tail_frame).convert("RGB").tobytes() != \
+                Image.open(clean_tail_frame).convert("RGB").tobytes():
             raise AssertionError("main Setup copied stale pixels beyond Season's shadow span")
 
         asset_debug = Path(directory) / "asset_debug_options_vram.bmp"
@@ -662,9 +707,19 @@ def check_frames(exe, rom, pack):
         # All six HDMA highlight rows plus one wrap back to row zero.
         for down_count, expected_hash in EXPECTED_CURSOR_SHA256.items():
             output = Path(directory) / f"setup_cursor_{down_count}.bmp"
+            # Real held/released native words configure the historical
+            # Simulation/3-minute state before visiting each highlight row.
+            # This is an explicit C input phase, not injected configuration.
+            script = Path(directory) / f"cursor_{down_count}.input"
+            words = [0] * 200
+            for i, word in enumerate((0x400, 0x100, 0x400, 0x400, 0x100, 0x800, 0x800, 0x800)):
+                words[162 + 2 * i] = word
+            for i in range(down_count):
+                words[178 + 2 * i] = 0x400
+            script.write_text("".join(f"1 {word:04x}\n" for word in words))
             subprocess.run(
-                [str(exe), "--headless", "--setup-only", "--setup-down",
-                 str(down_count), "--rom", str(rom), "--assets", str(pack),
+                [str(exe), "--headless", "--setup-only", "--input-script",
+                 str(script), "--rom", str(rom), "--assets", str(pack),
                  "--frames", "200", "--dump-frame", str(output)],
                 text=True, capture_output=True, check=True,
             )
@@ -685,7 +740,7 @@ def check_frames(exe, rom, pack):
         for (row, rights), expected_hash in EXPECTED_MAIN_VALUE_RGB_SHA256.items():
             output = Path(directory) / f"setup_main_{row}_{rights}.bmp"
             result = subprocess.run(
-                [str(exe), "--headless", "--setup-only", "--setup-main-row", str(row),
+                [str(exe), "--headless", "--setup-only", "--setup-simulation-three-minute", "--setup-main-row", str(row),
                  "--setup-main-right", str(rights), "--rom", str(rom),
                  "--assets", str(pack), "--frames", "200", "--dump-frame", str(output)],
                 text=True, capture_output=True, check=True,
@@ -717,7 +772,7 @@ def check_frames(exe, rom, pack):
                                        (2, 2, (0, 1, 0, 0)),
                                        (3, 3, (0, 1, 0, 0))):
             wrap = subprocess.run(
-                [str(exe), "--headless", "--setup-only", "--setup-main-row", str(row),
+                [str(exe), "--headless", "--setup-only", "--setup-simulation-three-minute", "--setup-main-row", str(row),
                  "--setup-main-right", str(maximum + 1), "--rom", str(rom),
                  "--assets", str(pack), "--frames", "200"],
                 text=True, capture_output=True, check=True,
@@ -733,7 +788,7 @@ def check_frames(exe, rom, pack):
         }
         for row, expected in left_states.items():
             left = subprocess.run(
-                [str(exe), "--headless", "--setup-only", "--setup-main-row", str(row),
+                [str(exe), "--headless", "--setup-only", "--setup-simulation-three-minute", "--setup-main-row", str(row),
                  "--setup-main-left", "1", "--rom", str(rom), "--assets", str(pack),
                  "--frames", "200"],
                 text=True, capture_output=True, check=True,
@@ -745,7 +800,7 @@ def check_frames(exe, rom, pack):
                 raise AssertionError(f"main Setup row {row} left cycle changed")
 
         persisted = subprocess.run(
-            [str(exe), "--headless", "--setup-only", "--setup-main-row", "3",
+            [str(exe), "--headless", "--setup-only", "--setup-simulation-three-minute", "--setup-main-row", "3",
              "--setup-main-right", "1", "--setup-menu", "rules",
              "--setup-menu-confirm", "--rom", str(rom), "--assets", str(pack),
              "--frames", "650"],
@@ -755,20 +810,31 @@ def check_frames(exe, rom, pack):
             raise AssertionError("main Setup values did not survive a Rules round trip")
 
         reentered = subprocess.run(
-            [str(exe), "--headless", "--setup-only", "--setup-main-row", "3",
-             "--setup-main-right", "1", "--setup-reenter", "--rom", str(rom),
+            [str(exe), "--headless", "--setup-only", "--setup-simulation-three-minute", "--setup-main-row", "3",
+             "--setup-main-right", "1", "--setup-main-confirm", "--setup-reenter", "--rom", str(rom),
              "--assets", str(pack), "--frames", "200"],
             text=True, capture_output=True, check=True,
         )
         if "[SETUP REENTER] mode=0 style=1 level=0 quarter=1" not in reentered.stdout:
             raise AssertionError("session-owned Setup values were reset on scene re-entry")
 
+        # Main edits are working values until confirmation, just like submenu
+        # edits. A controlled scene re-entry must not commit abandoned input.
+        abandoned = subprocess.run(
+            [str(exe), "--headless", "--setup-only", "--setup-simulation-three-minute",
+             "--setup-main-row", "3", "--setup-main-right", "1", "--setup-reenter",
+             "--rom", str(rom), "--assets", str(pack), "--frames", "200"],
+            text=True, capture_output=True, check=True,
+        )
+        if "[SETUP REENTER] mode=0 style=0 level=0 quarter=3" not in abandoned.stdout:
+            raise AssertionError("uncommitted Main edits leaked across controlled scene re-entry")
+
         mode_routes = ("TEAM_SELECTION", "SEASON", "PLAYOFFS", "LOAD_SERIES")
         for mode, route in enumerate(mode_routes):
             navigation = subprocess.run(
-                [str(exe), "--headless", "--setup-only", "--setup-main-row", "0",
+                [str(exe), "--headless", "--setup-only", "--setup-simulation-three-minute", "--setup-main-row", "0",
                  "--setup-main-right", str(mode), "--setup-main-confirm",
-                 "--rom", str(rom), "--assets", str(pack), "--frames", "230"],
+                 "--rom", str(rom), "--assets", str(pack), "--frames", "250"],
                 text=True, capture_output=True, check=True,
             )
             marker = f"Mode confirmed: mode={mode} route={route}"
@@ -781,8 +847,8 @@ def check_frames(exe, rom, pack):
         for menu, expected_hash in EXPECTED_MENU_RGB_SHA256.items():
             output = Path(directory) / f"setup_{menu}.bmp"
             result = subprocess.run(
-                [str(exe), "--headless", "--setup-only", "--setup-menu", menu,
-                 "--rom", str(rom), "--assets", str(pack), "--frames", "450",
+                [str(exe), "--headless", "--setup-only", "--setup-simulation-three-minute", "--setup-menu", menu,
+                 "--rom", str(rom), "--assets", str(pack), "--frames", "470",
                  "--dump-frame", str(output)],
                 text=True, capture_output=True, check=True,
             )
@@ -805,15 +871,15 @@ def check_frames(exe, rom, pack):
         # native witnesses with fixed input-idle phase alignment.
         for (direction, frame), expected_hash in EXPECTED_SUBMENU_TRANSITION_SHA256.items():
             output = Path(directory) / f"submenu_{direction}_{frame}.bmp"
-            command = [str(exe), "--headless", "--setup-only", "--setup-menu", "rules"]
+            command = [str(exe), "--headless", "--setup-only", "--setup-simulation-three-minute", "--setup-menu", "rules"]
             if direction == "close":
                 command.extend(["--setup-menu-confirm", "--setup-menu-confirm-delay", "212"])
             else:
                 # Same independently fixed input-idle phase alignment as the
                 # complete146-frame gate; this never changes game timing.
-                command.extend(["--setup-menu-delay", "717"])
+                command.extend(["--setup-menu-delay", "713"])
             command.extend(["--rom", str(rom), "--assets", str(pack),
-                            "--frames", str(frame + (717 if direction == "open" else 212)),
+                            "--frames", str(frame + (717 if direction == "open" else 232)),
                             "--dump-frame", str(output)])
             result = subprocess.run(command, text=True, capture_output=True, check=True)
             actual = hashlib.sha256(Image.open(output).convert("RGB").tobytes()).hexdigest()
@@ -828,29 +894,31 @@ def check_frames(exe, rom, pack):
 
         # Options has a shorter ROM-authored BG3 construction than Rules.
         # Keep it independent so a future shared-timing shortcut cannot pass.
+        options_open_script = legacy_options_script(directory)
         for frame, expected_hash in EXPECTED_OPTIONS_OPEN_TRANSITION_SHA256.items():
             output = Path(directory) / f"options_open_{frame}.bmp"
             result = subprocess.run(
-                [str(exe), "--headless", "--setup-only", "--setup-menu", "options",
+                [str(exe), "--headless", "--setup-only", "--input-script", str(options_open_script),
                  "--rom", str(rom), "--assets", str(pack), "--frames", str(frame),
-                 "--dump-frame", str(output)],
+                 "--dump-frame", str(output), "--debug-state"],
                 text=True, capture_output=True, check=True,
             )
             actual = hashlib.sha256(Image.open(output).convert("RGB").tobytes()).hexdigest()
             if actual != expected_hash:
                 raise AssertionError(f"Set Options open transition frame {frame} changed")
-            if frame == 300 and "transition=1/132" not in result.stdout:
+            if frame == 300 and "TR:OPEN TF:132" not in result.stdout:
                 raise AssertionError("Set Options final trace state was released before scanout")
-            if frame == 301 and "transition=0/132" not in result.stdout:
+            if frame == 301 and "TR:NONE TF:132" not in result.stdout:
                 raise AssertionError("Set Options did not release after its 132-frame ROM build")
 
         # Options has its own return capture (asset 151), so prove its directed
         # edge independently of the Rules -> Main trace.
+        options_return_script = legacy_options_script(directory, confirm=True)
         for frame, expected_hash in EXPECTED_OPTIONS_RETURN_TRANSITION_SHA256.items():
             output = Path(directory) / f"options_return_{frame}.bmp"
             subprocess.run(
-                [str(exe), "--headless", "--setup-only", "--setup-menu", "options",
-                 "--setup-menu-confirm", "--rom", str(rom), "--assets", str(pack),
+                [str(exe), "--headless", "--setup-only", "--input-script", str(options_return_script),
+                 "--rom", str(rom), "--assets", str(pack),
                  "--frames", str(frame), "--dump-frame", str(output)],
                 text=True, capture_output=True, check=True,
             )
@@ -862,8 +930,8 @@ def check_frames(exe, rom, pack):
         # It must expose every decoded state with no skipped or duplicated frame.
         trace_csv = Path(directory) / "rules_open_trace.csv"
         traced = subprocess.run(
-            [str(exe), "--headless", "--setup-only", "--setup-menu", "rules",
-             "--rom", str(rom), "--assets", str(pack), "--frames", "320",
+            [str(exe), "--headless", "--setup-only", "--setup-simulation-three-minute", "--setup-menu", "rules",
+             "--rom", str(rom), "--assets", str(pack), "--frames", "340",
              "--setup-transition-trace", str(trace_csv)],
             text=True, capture_output=True, check=True,
         )
@@ -900,7 +968,9 @@ def check_frames(exe, rom, pack):
                     "<HHHHBB", packed_trace, offset + 4 + layer * 10
                 ))
             vram_count, cgram_count = struct.unpack_from("<HH", packed_trace, offset + 34)
-            offset += 38 + (vram_count + cgram_count) * 3
+            # NBSPPU3 adds a publication byte to VRAM writes only; CGRAM
+            # entries retain their original three-byte encoding.
+            offset += 38 + vram_count * 4 + cgram_count * 3
             packed_states.append(state)
         csv_fields = (
             "brightness", "main", "sub",
@@ -940,9 +1010,14 @@ def check_frames(exe, rom, pack):
             "options": {300: 18, 301: 19, 302: 19, 303: 19, 304: 20},
         }.items():
             for frame, expected_bg2v in checkpoints.items():
+                route_args = (
+                    ["--input-script", str(legacy_options_script(directory))]
+                    if menu == "options" else
+                    ["--setup-simulation-three-minute", "--setup-menu", menu]
+                )
                 state = subprocess.run(
-                    [str(exe), "--headless", "--setup-only", "--setup-menu", menu,
-                     "--rom", str(rom), "--assets", str(pack), "--frames", str(frame),
+                    [str(exe), "--headless", "--setup-only", *route_args,
+                     "--rom", str(rom), "--assets", str(pack), "--frames", str(frame if menu == "options" else frame + 20),
                      "--debug-state"],
                     text=True, capture_output=True, check=True,
                 ).stdout
@@ -954,9 +1029,9 @@ def check_frames(exe, rom, pack):
         for (menu, row, rights), expected_hash in EXPECTED_MENU_ACTION_SHA256.items():
             output = Path(directory) / f"setup_{menu}_{row}_{rights}.bmp"
             result = subprocess.run(
-                [str(exe), "--headless", "--setup-only", "--setup-menu", menu,
+                [str(exe), "--headless", "--setup-only", "--setup-simulation-three-minute", "--setup-menu", menu,
                  "--setup-menu-row", str(row), "--setup-menu-right", str(rights),
-                 "--rom", str(rom), "--assets", str(pack), "--frames", "450",
+                 "--rom", str(rom), "--assets", str(pack), "--frames", "470",
                  "--dump-frame", str(output)],
                 text=True, capture_output=True, check=True,
             )
@@ -964,7 +1039,8 @@ def check_frames(exe, rom, pack):
                 raise AssertionError(f"Set {menu.title()} did not play confirm SFX")
             if row and "DSP menu SFX SRCN $1B" not in result.stdout:
                 raise AssertionError(f"Set {menu.title()} did not play move SFX")
-            if rights and "DSP menu SFX SRCN $1A" not in result.stdout:
+            # The real Main configuration already emits two adjustment SFX.
+            if rights and result.stdout.count("DSP menu SFX SRCN $1A") <= 2:
                 raise AssertionError(f"Set {menu.title()} did not play adjust SFX")
 
             actual = hashlib.sha256(Image.open(output).convert("RGB").tobytes()).hexdigest()
@@ -1015,12 +1091,12 @@ def check_frames(exe, rom, pack):
         # accepted press is315, independently of the different entry timing.
         arrow_dir = Path(directory) / "arrow_timer"
         arrow_dir.mkdir()
-        subprocess.run([str(exe), "--headless", "--setup-only", "--setup-menu", "rules",
+        subprocess.run([str(exe), "--headless", "--setup-only", "--setup-simulation-three-minute", "--setup-menu", "rules",
             "--setup-menu-row", "1", "--rom", str(rom), "--assets", str(pack),
-            "--frames", "330", "--dump-sequence-from", "314", "--dump-sequence-dir", str(arrow_dir)],
+            "--frames", "350", "--dump-sequence-from", "334", "--dump-sequence-dir", str(arrow_dir)],
             text=True, capture_output=True, check=True, timeout=30)
         for frame in range(314, 331):
-            pixel = Image.open(arrow_dir / f"frame_{frame:04d}.bmp").convert("RGB").getpixel((24, 191))
+            pixel = Image.open(arrow_dir / f"frame_{frame + 20:04d}.bmp").convert("RGB").getpixel((24, 191))
             expected = (255, 255, 231) if 315 <= frame <= 329 else (132, 115, 0)
             if pixel != expected:
                 raise AssertionError(f"native arrow press lifetime/palette differs at C{frame}")
@@ -1035,9 +1111,9 @@ def check_frames(exe, rom, pack):
         )
         for menu, row, confirm, working, committed in cases:
             command = [
-                str(exe), "--headless", "--setup-only", "--setup-menu", menu,
+                str(exe), "--headless", "--setup-only", "--setup-simulation-three-minute", "--setup-menu", menu,
                 "--setup-menu-row", str(row), "--setup-menu-right", "1",
-                "--rom", str(rom), "--assets", str(pack), "--frames", "450",
+                "--rom", str(rom), "--assets", str(pack), "--frames", "470",
             ]
             if confirm:
                 command.append("--setup-menu-confirm")
@@ -1049,20 +1125,20 @@ def check_frames(exe, rom, pack):
                 raise AssertionError(
                     f"Set {menu.title()} working/commit behavior changed: {result.stdout}"
                 )
-            if "DSP menu SFX SRCN $1A" not in result.stdout:
+            if result.stdout.count("DSP menu SFX SRCN $1A") != 3:
                 raise AssertionError(f"Set {menu.title()} adjustment SFX was not dispatched")
 
         # Bar rows clamp at their endpoints and do not emit command $49 when
         # the requested direction cannot change the value.
         clamp = subprocess.run(
-            [str(exe), "--headless", "--setup-only", "--setup-menu", "rules",
+            [str(exe), "--headless", "--setup-only", "--setup-simulation-three-minute", "--setup-menu", "rules",
              "--setup-menu-right", "1", "--rom", str(rom), "--assets", str(pack),
-             "--frames", "450"],
+             "--frames", "470"],
             text=True, capture_output=True, check=True,
         )
         if "option_row=0 working=45 committed=45" not in clamp.stdout:
             raise AssertionError("Rules slider no longer clamps at 45")
-        if "DSP menu SFX SRCN $1A" in clamp.stdout:
+        if clamp.stdout.count("DSP menu SFX SRCN $1A") != 2:
             raise AssertionError("blocked Rules slider adjustment emitted SFX")
 
         # $82:8DDC -> $87:8C2D applies row 1 immediately. Prove the same
@@ -1070,40 +1146,41 @@ def check_frames(exe, rom, pack):
         sfx_peaks = []
         for row in (0, 1):
             volume_run = subprocess.run(
-                [str(exe), "--headless", "--setup-only", "--setup-menu", "options",
+                [str(exe), "--headless", "--setup-only", "--setup-simulation-three-minute", "--setup-menu", "options",
                  "--setup-menu-row", str(row), "--setup-menu-right", "1",
-                 "--rom", str(rom), "--assets", str(pack), "--frames", "450"],
+                 "--rom", str(rom), "--assets", str(pack), "--frames", "470"],
                 text=True, capture_output=True, check=True,
             )
-            match = re.search(
+            matches = re.findall(
                 r"SRCN \$1A pitch=\$05A8 ADSR1/2=\$8E/\$E0, "
                 r"volume=(\d+)/45 DSPVOL=\$([0-9A-F]{2}) peak=(\d+)",
                 volume_run.stdout,
             )
-            if not match:
+            if len(matches) != 3:
                 raise AssertionError("menu SFX gain telemetry missing")
-            volume, dsp_volume, peak = match.groups()
+            # Select the submenu adjustment after the two Main adjustments.
+            volume, dsp_volume, peak = matches[-1]
             sfx_peaks.append((int(volume), int(dsp_volume, 16), int(peak)))
         if sfx_peaks[0][:2] != (30, 0x40) or sfx_peaks[1][:2] != (31, 0x42) or \
            sfx_peaks[1][2] <= sfx_peaks[0][2]:
             raise AssertionError(f"SFX Volume did not change PCM gain: {sfx_peaks}")
 
-        # Thirteen Down presses wrap the 13-row Rules cursor to row zero.
+        # Native $81:D318 clamps Rules at row12. It does not wrap like Options.
         wrapped = subprocess.run(
-            [str(exe), "--headless", "--setup-only", "--setup-menu", "rules",
+            [str(exe), "--headless", "--setup-only", "--setup-simulation-three-minute", "--setup-menu", "rules",
              "--setup-menu-row", "13", "--rom", str(rom), "--assets", str(pack),
-             "--frames", "450"],
+             "--frames", "470"],
             text=True, capture_output=True, check=True,
         )
-        if "page=1 menu_row=0" not in wrapped.stdout:
-            raise AssertionError("Rules submenu cursor no longer wraps")
+        if "page=1 menu_row=12" not in wrapped.stdout:
+            raise AssertionError("Rules submenu cursor no longer clamps at row12")
 
         # B is consumed but ignored: the working edit remains uncommitted and
         # the page stays open, exactly as the submenu handler does.
         ignored_b = subprocess.run(
-            [str(exe), "--headless", "--setup-only", "--setup-menu", "rules",
+            [str(exe), "--headless", "--setup-only", "--setup-simulation-three-minute", "--setup-menu", "rules",
              "--setup-menu-row", "2", "--setup-menu-right", "1", "--setup-menu-b",
-             "--rom", str(rom), "--assets", str(pack), "--frames", "450"],
+             "--rom", str(rom), "--assets", str(pack), "--frames", "470"],
             text=True, capture_output=True, check=True,
         )
         if "page=1 menu_row=2" not in ignored_b.stdout or \
