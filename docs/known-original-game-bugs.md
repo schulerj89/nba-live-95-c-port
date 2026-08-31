@@ -87,6 +87,7 @@ The listed SPC, period, appearance, role, human-dispatch and catch components ar
 ## Claims deliberately excluded
 
 - The stale captured HUD panel/clock was a port error addressed by the bounded HUD repair. Remaining HUD timing/statistics gaps, the CPU restart failure near frame49,412 in the earlier baseline, and repeated Rules-entry failure are port investigations, not established original-game bugs.
+- The integration build's separate frame41,876 unreleased-pass assertion failure remains unclassified. The actor is in contact mode8 with saved pass mode15; original behavior and test validity still need attribution. It is not counted as an original bug. See [the retained regression result](gameplay-hud-integration.md).
 - The old period helper's missing positive-anchor Y negation was a **port error**. Original `$86:DDE7..DDED` negates Y; v2 correctly restores it.
 - Duplicate host owners for actor `+56` (`target_x` / `special_contact_raw_56`), `+58` (`target_y` / `mode13_variant_raw_58`), and `+60` (`reaction_threshold` / `contact_action_timer_raw_60`) are port state-mapping gaps. Shared original storage alone is not a defect.
 - A scratch pointer retaining its value is not automatically a “farthest-player bug.” The precise comparisons and no-winner behavior above are established; generalized player symptoms and intent are not.

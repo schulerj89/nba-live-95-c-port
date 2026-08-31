@@ -46,9 +46,28 @@ upload timing are also retained. This is not a frame-perfect scanout or full
 CPU/NMI scheduling pass. General verifier mutation certification remains open;
 the acceptance is for the frozen capture and reviewed implemented behavior.
 
-The retained ordinary 63,800-frame C trace completes. The existing long CPU
-regression is being checked against it separately; this repair does not claim
-whole-game regression acceptance or resolve the known period-restart gap.
+The retained ordinary 63,800-frame C trace completes, but the existing long CPU
+regression exits1 with `mode-15 pass metadata diverged`. At frame41,876, actor0
+has an active unreleased pass, control mode8, saved mode15 and animation53
+(`35` hex), outside the test's allowed unreleased-pass poses. The band and saved
+mode comparisons themselves match. `cpu-regression.log` retains the failure;
+`cpu-first-failure.json` identifies the matching trace row. Whether the port's
+contact/pass handling or the assertion needs correction requires original-source
+attribution. Neither was changed to obtain a pass. This is not an established
+original-game bug or proof that the HUD caused it. Restoring the original HUD
+RNG consumer changes the later C trajectory, so the earlier baseline's frame49,412
+period failure is not this run's first reported failure. Whole-game regression
+acceptance and the period-restart gap remain open.
+
+The screenshot agent rebuilt integration commit `9c69275` and published13
+visually inspected views to the ignored primary repository directory
+`.analysis/progress-screenshots/20260831T175206.048318Z`; `latest/index.html`
+points to that completed run. Its executable SHA256 is
+`3b874d2d4c3e5f9c7aac512a1f1e8eabea3ada0e8aa96c850aa0c7168dfa8a80`.
+The2450/2520/2660-frame BMPs match the root runtime probe exactly: Chicago0,
+Orlando2, clock11:32 then11:31, then the panel cleared. All13 PNGs preserve
+their BMP pixels. These are separate scene-entry captures, not a continuous
+title-to-gameplay proof or a measured rendering-rate test.
 
 ## Behavior deliberately left incomplete
 

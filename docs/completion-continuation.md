@@ -572,8 +572,14 @@ comparison. Eight runtime BMPs and native input/output binaries are byte-identic
 to the accepted candidate. The strict native run still fails two08F6 observations
 across one NMI clock-read dependency; fullatomic/scanout timing and native
 paused08DE remain unverified. General verifier mutation certification is open.
-The ordinary63,800-frame C trace completes; its legacy regression is running
-separately. This does not resolve the earlier CPU period failure or Rules reentry.
+The ordinary63,800-frame C trace completes, but its legacy CPU regression fails
+at frame41,876: active unreleased pass on actor0, control mode8/saved mode15,
+animation53, rejected by the allowed pass-pose assertion. The original behavior
+and assertion validity need attribution; neither production code nor the test
+was changed to conceal the failure. The retained log and compact witness are in
+`build/hud-runtime-integration-v1`. Restored HUD RNG consumption changes the later
+trajectory; the older frame49,412 restart failure is separate baseline evidence.
+This does not resolve the period gap or Rules reentry, or establish an original bug.
 
 The asset pipeline in4707a16 produces the same264-entry89442736-byte pack through
 full extraction and a preserving upgrade; all263existing resources are unchanged.
@@ -585,5 +591,12 @@ The source draw-order prerequisite was accepted in1530e75, with fresh root
 native/source/refusal checks; it remains standalone. The original-bugs catalog
 now contains2confirmed defects and8quirks, including the source-only shot-clock
 endpoint rule preserved in the HUD. Main/desktop and the separate read-only
-consultant remain unchanged. The screenshot agent is preparing a new13-view
-gallery from the integration source; existing dated captures remain preserved.
+consultant remain unchanged. The screenshot agent rebuilt commit9c69275 and
+published13visually inspected views in primary ignored
+`.analysis/progress-screenshots/20260831T175206.048318Z`, with `latest/index.html`
+updated after completion. The2450/2520/2660-frame BMPs match root runtime images
+exactly: current scores,11:32to11:31clock movement, then panel clearance. All13
+PNG/BMP pixel comparisons pass; previous dated captures remain unchanged.
+ExeSHA3b874d2d4c3e5f9c7aac512a1f1e8eabea3ada0e8aa96c850aa0c7168dfa8a80;
+packf564c29612928984002ed3f0389d317de639fff122baf61a7bc9ecaef2a6be09.
+These scene-entry captures do not prove continuous boot-to-gameplay or full timing.
