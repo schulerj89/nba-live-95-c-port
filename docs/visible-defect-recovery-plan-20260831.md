@@ -36,20 +36,27 @@ remain open for broader interactive/directional coverage.
 
 | Ticket | Current observed defect | Owner | Required regression and exit |
 |---|---|---|---|
-| F1 | Corrupt/glitching frames on entry to Team Select | `startup_nmi` | Game Setup confirm through settled Team Select, consecutive native and port transition frames and team changes; preserve and comment only transient layers that the original demonstrably shows |
-| F2 | Incorrect transition into Player Setup | `startup_nmi` | Team Select Start through settled Player Setup compared at source transition boundaries; replace the port's frozen fade and 90-frame fully black hold with the native layer exit and 67-frame forced-black interval while retaining the native arrival boundary |
-| F3 | Centered controller cannot confirm CPU-vs-CPU | `startup_nmi` | Move pad0 to native neutral `$166D=1`, press the original confirm input, enter next scene and Tipoff with no human assignment or forced side |
-| F4 | Team presentation and starting lineup cannot be skipped | `startup_nmi` | Press/release edges at every presentation phase; match original permitted skip destinations and handoff without repeated held-input activation |
+| F1 | Corrupt/glitching frames on entry to Team Select | `startup_nmi` | Source/native review at `ba52557` proves the clipped BG3 reveal fragments are original behavior; they are preserved and commented rather than hidden as a port bug |
+| F2 | Incorrect transition into Player Setup | `startup_nmi` | Fixed at `ba52557`: outgoing Team Select layers withdraw independently, forced black begins at the source boundary, and Player Setup retains its destination reveal |
+| F3 | Centered controller cannot confirm CPU-vs-CPU | `startup_nmi` | Fixed and production-routed at `ba52557`: native selection `$166D=1` confirms through Player Intro to Tipoff with zero human assignments; the debug overlay also reports `NEUTRAL` |
+| F4 | Team presentation and starting lineup cannot be skipped | `startup_nmi` | Fixed at `ba52557`: source-backed Start edges skip Matchup, Ratings, and the complete lineup; Left/Right navigate lineup cards and the non-source A shortcut is removed |
 | F5 | Intro/lineup text renders incorrectly | Root | Fixed at `b42350d`: render the ROM strip count from each proportional descriptor width; focused regression passes and independent exact-build screenshots prove `312 TURNER` is now `31 TURNER` and clipped I/M/W glyphs are complete |
 | G1 | Court logo is corrupted | `runtime_graphics` | Multiple home courts and camera positions use source-produced indexed court/logo data; no flattened/captured substitute or broken tile seam |
-| G2 | Jersey/player numbers display malformed values such as `312` | Root for reproduced lineup case; `runtime_graphics` for live jerseys | The roster is 31 and the extra 2 was adjacent-glyph bleed fixed and independently replayed across all ten cards at `b42350d`; separately verify live jersey BCD/tile composition |
-| G3 | Inbound presentation glitches | `runtime_graphics` | Consecutive frames before whistle/dead ball, inbound setup, throw/release/catch and return to live play; no stale sprite, teleport, queue residue or formation flash |
-| G4 | Ball is not at the hand during pass/catch | `runtime_graphics` | Existing CPU-pass scenario plus held, windup, last attached, release, flight and catch frames; compare source hand point and ball OAM origin without changing ball physics/world coordinates |
+| G2 | Jersey/player numbers display malformed values such as `312` | Root for reproduced lineup case; `runtime_graphics` for live jerseys | Lineup bleed is fixed/proven at `b42350d`; `9d5bc10` activates the literal number/body compositor with resource 287, pending final exact-build visual review across live jerseys |
+| G3 | Inbound presentation glitches | `runtime_graphics` | Source timing is preserved and commented; the integrated 850-frame production route passes ready/transfer/retry/release milestones with no host timer shortcut using the resource-287 pack |
+| G4 | Ball is not at the hand during pass/catch | `runtime_graphics` | Fixed by `9d5bc10` plus `a5a551e`: the submitted live body pose and ball attachment both consume literal actor `+$28`; the 20,000-frame probe passes 846 dynamic observations and 368 direction-only offset differences |
 
 Root alone integrates shared `NbaGame`, session, production manifest and final
 asset-pack changes. Text fixes and each agent packet receive independent review
 before merge. Any original quirk discovered during source comparison is kept,
 commented and added to the known-bug catalog; port-only corruption is fixed.
+
+The graphics pair requires the append-only `NBPDRAW1` resource 287. The final
+candidate pack preserves all 264 production payloads and has SHA-256
+`acc4a436c990fd3a7beab9dadab47d40690ccedf912f7db90e283264ed0f299a`.
+Running the attachment-mask patch against the old 264-resource pack is not a
+valid release configuration because that pack leaves the literal compositor
+inactive.
 
 ## Checkpoints
 

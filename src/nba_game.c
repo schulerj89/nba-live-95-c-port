@@ -135,9 +135,11 @@ static void nba_game_debug_lines(const NbaGame *game, NbaDebugLines *out) {
     } else if (game->state == NBA_STATE_PLAYER_SETUP &&
                game->scene.player_setup.is_initialized) {
         const NbaPlayerSetup *s = &game->scene.player_setup;
+        uint16_t selection = s->controller_selection & 0x7fffu;
         snprintf(out->line[out->count++], NBA_DEBUG_LINE_SIZE,
                  "P1:%s TF:%03d STEADY:%04d",
-                 s->player_one_side == NBA_TEAM_SIDE_LEFT ? "LEFT" : "RIGHT",
+                 selection == 0u ? "LEFT" :
+                 selection == 1u ? "NEUTRAL" : "RIGHT",
                  s->transition_frame, s->steady_frame);
         snprintf(out->line[out->count++], NBA_DEBUG_LINE_SIZE,
                  "TEAM L:%02u %-12s", s->session->left_team,

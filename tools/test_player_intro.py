@@ -141,7 +141,7 @@ def main():
         # $81:9756 uses each character's descriptor width. This catches both
         # small-font M/W second strips and narrow one-strip lineup glyphs;
         # the complete frame also locks the native +2,+4 variable-logo offset.
-        if rgb_hash(matchup) != "f717af63770b3fa0ae1b902e2a3f42df3ef955ce6f8144017c849c1935edab40":
+        if rgb_hash(matchup) != "b38c8ea7bc263298722e54f726b4b608ee82607380b452dc22838a066abbc7cc":
             raise AssertionError("ROM-layout visitor/VS/home presentation changed")
 
         ratings = Path(directory) / "ratings.bmp"
