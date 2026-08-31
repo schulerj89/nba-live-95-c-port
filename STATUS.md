@@ -1,21 +1,26 @@
 # Project status
 
-**Completion mission resumed on 2026-08-30.** Main and the desktop build
-retain verified runtime checkpoint A2 `0d3a420`. Preserved WIP `c134f85` is
-being integrated on `work/completion-owner-20260830`; it is not accepted on
-main. See `docs/completion-continuation.md` for current ownership, evidence,
-first failures and next actions. `docs/checkpoint-paused-20260830.md` records
-the historical stop and remains preserved. The game remains incomplete.
+**The full game remains incomplete.** Current execution plan (2026-08-31):
+[full-game completion, owners and release gates](docs/full-game-completion-plan.md).
+Gameplay integration baseline is `d0aa808` on
+`work/completion-owner-20260830`; later prerequisite/plan checkpoints do not
+change the visible runtime. Main and the desktop executable remain separate and
+are not promoted by these checkpoints.
 
-Current completion plan (2026-08-31):
-[delegated implementation and release gates](docs/completion-plan-20260831.md).
-Planning baseline is `f318478`; the bounded HUD repair is integrated, but CPU
-frame41,876 and Rules reentry158 failures remain. Older details below retain
-their historical scope; use the plan and living continuation for current order.
+The HUD, C1 contact/recovery, culling and pass body/direction fixes are integrated.
+The63,800-frame CPU journey and focused guards pass, while the combined suite
+still stops at the existing3480 image expectation. The earlier41876 failure is
+repaired; it is not the current blocker. Repeated Rules timing, normal human play,
+full match lifecycle, retail modes, persistence and complete rendering/audio
+remain open. The exact744809a progress gallery is published and gitignored.
 
-Last updated 2026-08-31. This is a current-state handoff, not a milestone log.
-Use Git history for older checkpoints and run
-`python tools/progress.py --write docs/progress.md` for live measurements.
+Receiver and startup/period/human helper acceptance is not full runtime wiring.
+Use the current plan and `docs/implementation-checkpoints-20260831.md` for scope
+and receipts. Sections below preserve older workstream detail and may describe
+superseded baselines; their percentages and old suite claims are not current
+full-game acceptance. The historical stop remains in
+`docs/checkpoint-paused-20260830.md`. Coverage tooling measures source coverage,
+not product completeness.
 
 ## Active ownership audit and implementation
 

@@ -1,5 +1,9 @@
 # Plan to finish NBA Live '95
 
+This is the earlier planning baseline. The current execution order, accepted
+checkpoints and remaining full-game gates are in
+[the updated full-game completion plan](full-game-completion-plan.md).
+
 Date: 2026-08-31. Planning baseline: integration commit `f318478` on
 `work/completion-owner-20260830`. **The game is not finished.** This plan replaces
 the old next-action ordering; historical audits and frozen evidence remain valid
