@@ -666,6 +666,22 @@ void nba_gameplay_inbound_motion_step(NbaGameplayInboundMotion *motion) {
         motion->movement_blocked, motion->owner_actor_raw_093e);
 }
 
+/* `$87:A5B6` calls `$85:F02D`, whose first slope comparison takes only N.
+ * F34F's extra equality swap is a different routine (e.g. dx=0,dy=1).
+ * Keep this draw-specific correction separate from other gameplay callers. */
+static uint8_t draw_facing_f02d(int16_t dx,int16_t dy) {
+    static const uint8_t map[16]={0,1,2,1,4,3,2,3,0,7,6,7,4,5,6,5};
+    if (!(dx|dy))return 8u;
+    uint16_t x=(uint16_t)dx,y=(uint16_t)dy,key=0u;
+    if(dx<0){x=(uint16_t)(0u-x);key|=8u;}
+    if(dy<0){y=(uint16_t)(0u-y);key|=4u;}
+    if(subtract16_is_negative((uint16_t)(y-1u),x)) {
+        uint16_t swap=x;x=y;y=swap;key|=2u;
+    }
+    if(subtract16_is_negative((uint16_t)(y-1u),(uint16_t)(x*2u)))key|=1u;
+    return map[key];
+}
+
 uint8_t nba_gameplay_draw_direction(const NbaGameplayDrawDirection *input) {
     if (!input) return 0u;
     uint8_t current = input->current_direction & 7u;
@@ -676,17 +692,22 @@ uint8_t nba_gameplay_draw_direction(const NbaGameplayDrawDirection *input) {
         if (input->actor_status & 0x0010u) return (uint8_t)((current + 1u) & 7u);
         return current;
     }
-    if (!input->candidate_valid) return current;
-
-    uint16_t distance = 0u;
-    uint8_t candidate = nba_gameplay_target_direction(
-        input->candidate_dx, input->candidate_dy, &distance);
+    uint16_t candidate;
+    if (input->candidate_valid) {
+        candidate = draw_facing_f02d(input->candidate_dx,input->candidate_dy);
+    } else if (input->upper_state == 20u || input->upper_state == 21u) {
+        /* `$87:A59C-$A5A2`: logical word shift, then the common candidate
+         * gate. Do not mask to three bits: values >=8 retain movement facing. */
+        candidate = input->anchor_direction >> 1;
+    } else {
+        return current;
+    }
     if (candidate >= 8u) return current;
     /* `$87:A5C1-$A5F5`: large quarter-turn differences are eased by two
      * directions; adjacent and wrap-adjacent targets adopt immediately. */
     int16_t delta = (int16_t)candidate - (int16_t)current;
     uint16_t magnitude = (uint16_t)(delta < 0 ? -delta : delta);
-    if (magnitude < 3u || magnitude >= 6u) return candidate;
+    if (magnitude < 3u || magnitude >= 6u) return (uint8_t)candidate;
     return (uint8_t)(((delta & 7) == 5 ? current - 2u : current + 2u) & 7u);
 }
 

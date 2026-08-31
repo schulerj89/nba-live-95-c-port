@@ -2122,17 +2122,20 @@ static uint8_t actor_draw_direction(const NbaTipoff *tipoff,
             fp_integer_word(target->y_fp) - fp_integer_word(actor->y_fp));
     } else if (actor->control_mode == 10u ||
                (actor->control_mode == 14u &&
-                tipoff->possession_actor == (int8_t)actor_index)) {
-        /* `$3EEB+$04/+$08` are the live ball integer words. */
+                tipoff->camera.subject_pointer_0940 !=
+                    (uint16_t)(0x34ebu + actor_index * 0x100u))) {
+        /* `$87:A58A/$A58D` takes the ball branch when this actor does NOT
+         * match the camera subject at0940. Possession is a different owner.
+         * `$3EEB+$04/+$08` are the live ball integer words. */
         input.candidate_valid = true;
         input.candidate_dx = (int16_t)(
             fp_integer_word(tipoff->ball.x_fp) - fp_integer_word(actor->x_fp));
         input.candidate_dy = (int16_t)(
             fp_integer_word(tipoff->ball.y_fp) - fp_integer_word(actor->y_fp));
     }
-    /* The upper-state 20/21 branch feeds a stale DP-$AE word into F02D.
-     * It was not reached by the 2,000-call native CPU capture, so preserve
-     * movement facing until that bug-compatible producer has direct proof. */
+    /* `$87:A59C-$A5A2` uses actor+88 >>1 for upper states20/21 when the
+     * preceding mode/target branches do not apply. It skips F02D entirely;
+     * the old stale-AE comment described a port omission, not a native bug. */
     NbaGameplayDrawPreparationInput preparation = {
         .direction = input,
         .status = actor->actor_status_raw_28,
@@ -2147,6 +2150,25 @@ static uint8_t actor_draw_direction(const NbaTipoff *tipoff,
     NbaGameplayDrawPreparation output;
     nba_gameplay_prepare_player_draw(&preparation, &output);
     return output.direction;
+}
+
+static bool actor_draw_body_resources(const NbaTipoff *tipoff,
+                                      const NbaTipoffActor *actor,
+                                      uint8_t head_direction,
+                                      uint16_t *upper, uint16_t *lower) {
+    /* 87:A4E1/A4E4 and A517/A51A latch actor +2A/+2C into D6/D4 BEFORE
+     * the A52C-A5FA head-facing selection. Both 80:AD92 and camera-subject
+     * 80:AF1E consume those unchanged body resources. Re-resolving the body
+     * using head facing detached the visible hands from the correctly
+     * attached ball (first CPU pass, frame306: 332/1168 became324/1154).
+     * The uninitialized host preview remains outside this live contract. */
+    if (actor->animation_resources_valid) {
+        *upper = actor->upper_animation_resource_raw_2a;
+        *lower = actor->lower_animation_resource_raw_2c;
+        return true;
+    }
+    return actor_animation_resources(tipoff, actor, head_direction,
+                                     upper, lower);
 }
 
 static bool actor_attachment_resources(const NbaTipoff *tipoff,
@@ -9720,7 +9742,7 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
         }
         out->head_resource_raw = NBA_GAMEPLAY_UNKNOWN_WORD;
         uint16_t draw_upper_resource = 0u, draw_lower_resource = 0u;
-        if (live && actor_animation_resources(tipoff, state,
+        if (live && actor_draw_body_resources(tipoff, state,
                 (uint8_t)out->draw_direction_raw,
                 &draw_upper_resource, &draw_lower_resource)) {
             out->draw_upper_resource_raw = draw_upper_resource;
@@ -9905,13 +9927,9 @@ void nba_tipoff_render(const NbaTipoff *tipoff, NbaRenderer *ren) {
         nba_renderer_clear(&object_plane, 0u);
         uint16_t draw_upper_resource = 0u;
         uint16_t draw_lower_resource = 0u;
-        /* `$87:A52C-$A5FA` may choose a presentation direction distinct
-         * from actor +$4E for receivers/passers. Resolve the body resources
-         * through the same direction-aware boundary used by telemetry and
-         * ball-point diagnostics. Drawing cached +$2A/+$2C unconditionally
-         * mixed movement-facing torso/legs with presentation-facing head,
-         * jersey number and flip state. */
-        if (actor_animation_resources(tipoff, &tipoff->actors[actor], direction,
+        /* D4/D6 are the already-published body pose. A5FA selects the head
+         * independently; it does not rotate the torso/legs or ball point. */
+        if (actor_draw_body_resources(tipoff, &tipoff->actors[actor], direction,
                 &draw_upper_resource, &draw_lower_resource)) {
             nba_player_sprite_render_resources(
                 &object_plane, tipoff->assets, team, slot, uniform_side, direction,

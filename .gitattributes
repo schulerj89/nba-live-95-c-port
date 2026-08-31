@@ -231,3 +231,24 @@ tools/regenerate_receiver_prepare_reference.py -text
 tools/test_receiver_prepare_integrity.py -text
 tools/test_receiver_prepare_source.py -text
 tools/verify_receiver_prepare.py -text
+
+# Preserve independently accepted direction deliverable bytes.
+src/nba_gameplay_ai.c -text
+src/nba_tipoff.c -text
+tools/draw_direction_caller_probe.c -text
+tools/build_draw_direction_caller_probe.py -text
+tools/d1_direction_rom_reference_v2.py -text
+tools/test_d1_direction_audit_v2.py -text
+tools/test_draw_direction_protocol.py -text
+docs/draw-direction-correction.md -text
+
+# Preserve independently reviewed ball render deliverables.
+docs/ball-pass-body-resource-correction.md -text
+tools/ball_pass_render_probe.c -text
+tools/build_ball_pass_render_probe.py -text
+tools/capture_ball_pass_draw.py -text
+tools/capture_ball_pass_sequence.py -text
+tools/inspect_ball_pass_source.py -text
+tools/mesen_ball_pass_draw.lua -text
+tools/test_ball_pass_render.py -text
+tools/verify_ball_draw_resources.py -text

@@ -184,3 +184,15 @@ queue or a captured $012C seed. The controllers agent separately fixes the
 reported ball/body alignment; accepted direction work waits for combined visual
 verification. Startup readers need additive protocol repairs for newly found
 terminal-register/boundary-output omissions; frozen source/evidence is retained.
+
+## Combined pass-render correction
+
+`pass-render-integration.md` records the independently reviewed body-resource and
+draw-direction changes, exact composition and fresh combined checks. The reported
+hand/ball separation is corrected by restoring the original body pose, with no
+ball-coordinate or physics changes. All63,800 JSON rows were compared to current
+culling integration; only enumerated draw/appearance fields differ. Body checks,
+original direction cases and contact recovery pass. Full regression and the
+exact-commit screenshot receipt remain separately recorded gates. These port
+defects are explicitly excluded from the original-bug catalog; confirmed
+original behavior remains preserved and commented.
