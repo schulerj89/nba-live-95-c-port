@@ -114,7 +114,9 @@ def main():
             # Native normal-input capture reaches forced black 51 presented
             # frames after the Team Select Start edge (650 -> 701).
             "blank": 229,
-            "background": 327,
+            # Keep the same native reveal phase after moving the destination
+            # boundary three frames earlier (327 -> 324).
+            "background": 324,
             "labels": 355,
             "settled": 378,
         }
