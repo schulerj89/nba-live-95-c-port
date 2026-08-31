@@ -26,9 +26,9 @@ The listed SPC, period, appearance, role, human-dispatch and catch components ar
 
 ### 2. A catch-preparation table index reads executable bytes as a timer
 
-**Trigger and behavior:** the `$86:AF66` receiver-preparation branch with raw pass band `30`. Its lookup reaches `$86:AFC4`, beyond the five data rows, and reads instruction bytes `A6 8E` as word `8EA6`. Adding `24` hex produces timer `8ECA` (36,554), rather than another ordinary table timer. The investigation stops before the following animation child, so it does **not** establish a player becoming stuck or a particular delay in seconds.
+**Trigger and behavior:** the `$86:AF66` receiver-preparation branch with raw pass band `30`. Its lookup reaches `$86:AFC4`, beyond the five data rows, and reads instruction bytes `A6 8E` as word `8EA6`. Adding `24` hex produces timer `8ECA` (36,554), rather than another ordinary table timer. The investigation stops before the following child, so it does **not** establish a player becoming stuck or a particular delay in seconds.
 
-**Original cause and preservation:** `$86:AF6E` indexes table `$AFA6` with the unmodified six-byte band. The comment and six literal results in `nba_human_pass_catch_receiver` retain the opcode-derived value in [nba_human_pass_catch.c](../src/nba_human_pass_catch.c). The component stops before `$86:AF83 → $87:B468`; it does not invent the child's result.
+**Original cause and preservation:** `$86:AF6E` indexes table `$AFA6` with the unmodified six-byte band. The comment and six literal results in `nba_human_pass_catch_receiver` retain the opcode-derived value in [nba_human_pass_catch.c](../src/nba_human_pass_catch.c). The component stops before `$86:AF83 → $86:B468`; it does not invent the child's result.
 
 **Evidence and status:** source-only original-ROM cases cover all six bands, including this overrun. The natural catch captures do not enter this branch. This is an **accepted standalone component**, not enabled human gameplay. See the [independent catch audit](completion-human-pass-catch-independent-audit-v2.md) and [integration status](human-pass-catch-integration.md).
 
