@@ -38,7 +38,10 @@ int main(int argc, char **argv) {
             if (actor->control_mode == 11u && (base == 9u || base == 11u)) {
                 ++dynamic;
                 if (!actor->animation_resources_valid) return 5;
-                uint16_t mirror = actor->direction < 3u ? 0x8000u : 0u;
+                /* Production B649/B66A forwards literal actor +$28. Its
+                 * low body masks are independent of the sign bit that AB48
+                 * republishes from +$52. */
+                uint16_t mirror = actor->actor_status_raw_28;
                 int16_t x = 0, y = 0, z = 0;
                 if (!nba_player_ball_attachment_offsets(
                         &pack, actor->upper_animation_resource_raw_2a,

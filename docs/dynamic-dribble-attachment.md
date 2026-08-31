@@ -11,6 +11,12 @@ resources. The focused Ghidra listings, native wrapper fixtures and generated
 recomp bodies agree on that boundary. They do not rebuild an ordinary dribble
 frame from an independent host tick.
 
+The same wrappers forward literal actor `+$28`. Its sign toggles masks 1/2,
+then the low masks independently mirror the lower and upper attachment
+inputs. Reconstructing only the sign bit from direction discards pose state
+that the live sprite compositor still consumes and can put the ball at a
+different point than the submitted hand.
+
 That distinction matters at `$86:E545-$E592`. A bases-9/11 reversal preserves
 the current resources while it reverses the channel phase; `$87:AD5B-$AEC2`
 publishes the next resources on the next animation cadence pass. C previously
@@ -20,11 +26,13 @@ interval.
 
 ## Production correction
 
-`actor_attachment_resources` now consumes cached, valid `+$2A/+$2C` whenever
-the attachment uses the actor's current direction. Corrupt/uninitialized
-resource state retains the existing asset-pack resolver fallback. No offsets,
-tables, assets, dead-ball ownership rules or pass/shot release gates changed.
-Presentation-only draw direction remains separate from physical attachment.
+`actor_attachment_resources` consumes cached, valid `+$2A/+$2C` whenever the
+attachment uses the actor's current direction, and the attachment/collision
+adapters now forward literal `+$28`. Corrupt/uninitialized resource state
+retains the existing asset-pack resolver fallback. No offset constants,
+tables, assets, dead-ball ownership rules, pass timing or shot release gates
+changed. Presentation-only draw direction remains separate from physical
+attachment.
 
 ## Permanent proof
 
