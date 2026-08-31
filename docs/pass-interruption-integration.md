@@ -42,7 +42,10 @@ failures, running a fresh63,800-frame executable, streaming the retained trace,
 and rejecting five additional erased/redirected identity cases. Receipt:
 `checkpoint-qa-20260831/build/c1-independent-audit.md`, SHA256
 `d5ddd5218980ee804b72d75032d1468a34eb5d75ebecb486f6805b65b09ea3a7`.
-Checkpoint screenshots remain pending until the integrated source is committed.
+Checkpoint screenshots were published from clean integration commit
+`facd818e6e798f6546c00aeaa5dcbb84835a4cf4`; see the dated receipt in
+`implementation-checkpoints-20260831.md`. The thirteen standard views are
+unchanged, and the supplement shows the41875/41876/41908 contact sequence.
 
 ## Limits and next work
 

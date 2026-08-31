@@ -32,8 +32,13 @@ image golden; no golden was changed. Root M0 normal-entry evidence and the
 Season-length/team selector mapping are committed. C2 source/caller work is
 underway. S1 reset/upload/F1 source replay matches its native packet but needs
 verifier repair and the remaining CPU/DMA/resident continuation before fullS1.
-The Max task is read-only on D1 ownership/render integration. Main and desktop
-remain unchanged; whole-game acceptance is still incomplete.
+The Max task returned read-only D1 ownership/render advice, recorded in
+`completion-draw-consultation-20260831.md`. C2 uses the fresh facd818-based
+`c2-receiver-integration-20260831` worktree; root is correcting the identified
+culling branch in `d1-culling-20260831`. Both are pending integration. The
+screenshot agent published the facd818 standard gallery and late-contact
+supplement; exact receipts are in `implementation-checkpoints-20260831.md`.
+Main and desktop remain unchanged; whole-game acceptance is still incomplete.
 
 Explicit user instruction (2026-08-31): preserve every bug present in the
 original game and comment it. Confirm native behavior with ROM/routine/evidence

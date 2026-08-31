@@ -102,3 +102,40 @@ checkpoint, but QA found verifier omissions; a new verifier revision is required
 without changing the frozen source/evidence. FullS1 through03DB remains open.
 The existing Max task is providing read-only advice on D1 draw-order/shared
 render-state integration, with implementation retained in the delegated workers.
+
+## C1 screenshot publication receipt
+
+The screenshot agent published the clean facd818 build after inspecting all13
+standard views and seven supplemental captures, plus two retained pre-HUD
+expected images. Root inspected the contact/recovery images and opened the
+gallery. Standard run `20260831T190716.018342Z` and supplement
+`20260831T190856.946784Z-c1-supplement` remain under the primary repository's
+ignored `.analysis/progress-screenshots`; `latest/index.html` links both.
+All129 local links resolve. No captured image, ROM, asset pack or executable is
+committed. Each image uses a fresh documented scene-entry process, not a
+continuous title-to-match journey or measured display-FPS test.
+
+| Receipt | SHA256 |
+|---|---|
+| Standard manifest |18ba1e264746eb9984af47354234172b49ff8da794b9d30798154541870d5a18|
+| Supplement manifest |c3cda87c26f0639b2f7e5f1d3920890145377fb06e6c80fe80d132a771305452|
+| Fresh40-source screenshot executable |a39b82067d3a398d6ca76c8b32c7c8f18688d575270cb5a5a7756cad15f1eba2|
+| Independent screenshot report |d5d77c33638b2e133830ea7374aecf1f5fdc073b0ac907d95893a8d7f54d9751|
+
+The thirteen standard images are pixel-identical to the prior7002fb1 gallery.
+The supplement shows contact near the right edge and subsequent recovery;
+visible time57.4→56.9 agrees with the independently checked C trace. Images do
+not establish native contact parity. Human controls and missing HUD children
+remain explicit limitations. The initial HTML encoding failure was retained;
+the corrected pages did not change images, logs or manifests.
+
+QA separately supports migration of only the600/1300 C RGB anchors: their old
+images retain the static panel, and all changed pixels lie within
+x32..239,y144..207. No migration is included in this receipt. The other three
+anchors and the complete regression need their own results.
+
+C2 now uses `c2-receiver-integration-20260831`, based on facd818. Root D1 uses
+`d1-culling-20260831` from the same base. Their candidates remain separate from
+accepted integration. S1 verifier revisions preserve frozen code and evidence;
+additional metadata omissions remain under review. Max's read-only D1 advice
+is recorded in `completion-draw-consultation-20260831.md`.
