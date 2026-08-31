@@ -216,3 +216,18 @@ tools/court_culling_probe.c -text
 tools/build_court_culling_probe.py -text
 tools/test_court_culling_source.py -text
 docs/court-culling-correction.md -text
+
+# Preserve accepted receiver child/parent source and capture identities.
+docs/receiver-graphics-queue-dependency.md -text
+docs/receiver-prepare-c2-checkpoint.md -text
+include/nba_receiver_prepare.h -text
+src/nba_receiver_prepare.c -text
+tools/build_receiver_prepare_probe.py -text
+tools/capture_receiver_prepare.py -text
+tools/ghidra/DumpReceiverPrepare.java -text
+tools/mesen_receiver_prepare.lua -text
+tools/receiver_prepare_probe.c -text
+tools/regenerate_receiver_prepare_reference.py -text
+tools/test_receiver_prepare_integrity.py -text
+tools/test_receiver_prepare_source.py -text
+tools/verify_receiver_prepare.py -text

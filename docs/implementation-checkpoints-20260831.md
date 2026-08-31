@@ -166,3 +166,21 @@ integration or a full-game acceptance milestone. The exact fc1e73a gallery is
 now published:19 inspected images, all standard views and late before/after
 pairs unchanged in RGB,132 links verified. Dated identities and the explicit
 clipping limitation are recorded in `court-culling-integration.md`.
+
+## Accepted receiver component and graphics dependency
+
+The 13 independently accepted C2 deliverables are now copied exactly, with fresh
+root native child/parent, controlled arithmetic and verifier checks passing.
+`receiver-prepare-integration.md` records the bounded acceptance and retained
+runner setup failures. No production manifest, gameplay caller or human policy
+changed. Runtime receiver integration still needs the actual catch gate and
+source-owned shared graphics state.
+
+The user's requested Max consultation remains read-only and addresses this queue
+dependency. `completion-graphics-queue-consultation-20260831.md` records the
+partial court decoder/cache cuts, carried cursor history, canonical WRAM aliases
+and required producer/consumer boundaries. It does not justify a fresh court
+queue or a captured $012C seed. The controllers agent separately fixes the
+reported ball/body alignment; accepted direction work waits for combined visual
+verification. Startup readers need additive protocol repairs for newly found
+terminal-register/boundary-output omissions; frozen source/evidence is retained.
