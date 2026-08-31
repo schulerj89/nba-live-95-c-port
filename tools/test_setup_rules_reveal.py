@@ -27,6 +27,13 @@ FIRST, LAST, OFFSET = 546, 616, 303
 # minus C19, multiplied by the observed3-frame/pixel cadence =717 input-idle
 # frames. This is a headless controller-script wait, never a production fade.
 CONTRACTS = {"reveal": (546, 616, 303, 0), "open": (470, 616, -414, 717)}
+# Preserve the historical native fixture and its original C mapping. The real
+# held/release CLI now performs eight configuration taps and four cursor taps.
+# With no idle, A dispatch is C187 instead of167 (shift20). For whole-open,
+# configuration occurs before the long idle; four release frames replace four
+# idle frames, so713 retains the independently fixed A884/BG2v258 boundary.
+CONFIGURED_REVEAL_SHIFT = 20
+CONFIGURED_OPEN_DELAY = 713
 ROM_SHA256 = "2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870"
 STATE_KEYS = ("brightness", "main", "sub", "bg1h", "bg1v", "bg1map", "bg1chr",
               "bg1wide", "bg1tall", "bg2h", "bg2v", "bg2map", "bg2chr",
@@ -153,7 +160,7 @@ def native_witness(directory, contract="reveal"):
                 native_capture=str(directory.resolve()), rows=rows))
 
 
-def read_port_trace(path, contract="reveal"):
+def read_port_trace(path, contract="reveal", port_shift=0):
     _, last, offset, delay = CONTRACTS[contract]
     states = {}
     with Path(path).open(newline="", encoding="ascii") as source:
@@ -171,7 +178,7 @@ def read_port_trace(path, contract="reveal"):
                 raise ValueError("port transition trace skipped, duplicated or reordered a step")
             states[step] = row
             previous = step
-        if list(states) != list(range(167 + delay, last - offset + 1)):
+        if list(states) != list(range(167 + delay + port_shift, last - offset + port_shift + 1)):
             raise ValueError("port transition trace does not contain the fixed contract's complete range")
     return states
 
@@ -198,6 +205,8 @@ def main():
     if args.whole_open and contract != "open":
         parser.error("--whole-open requires the complete open witness")
     first, last, offset, delay = CONTRACTS[contract]
+    port_shift = CONFIGURED_REVEAL_SHIFT if contract == "reveal" else 0
+    input_delay = CONFIGURED_OPEN_DELAY if contract == "open" else 0
     if args.write_fixture:
         if not args.native:
             parser.error("--write-fixture requires --native; C cannot author its oracle")
@@ -221,13 +230,13 @@ def main():
         trace = directory / "transition.csv"
         subprocess.run([str(args.exe.resolve()), "--headless", "--rom", str(args.rom.resolve()),
             "--assets", str(args.pack.resolve()), "--setup-only", "--setup-menu", "rules",
-            "--setup-menu-delay", str(delay),
-            "--frames", str(last - offset), "--dump-sequence-from", str(first - offset),
+            "--setup-simulation-three-minute", "--setup-menu-delay", str(input_delay),
+            "--frames", str(last - offset + port_shift), "--dump-sequence-from", str(first - offset + port_shift),
             "--dump-sequence-dir", temp, "--setup-transition-trace", str(trace)],
             check=True, capture_output=True, text=True, timeout=30)
-        states = read_port_trace(trace, contract)
+        states = read_port_trace(trace, contract, port_shift)
         for row in witness["rows"]:
-            step = row["port_step"]
+            step = row["port_step"] + port_shift
             rgb = Image.open(directory / f"frame_{step:04d}.bmp").convert("RGB").tobytes()
             if digest(rgb) != row["rgb_sha256"]:
                 failures.append(f"native{row['native_frame']}/C{step}: RGB mismatch")

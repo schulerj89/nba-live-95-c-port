@@ -101,7 +101,7 @@ def native_witness(directory, mode):
             rules=list(struct.unpack_from("<13H", ram, 0x17D1))), rows=rows))
 
 
-def read_trace(path):
+def read_trace(path, port_shift=0):
     states = {}
     with Path(path).open(newline="", encoding="ascii") as stream:
         reader = csv.DictReader(stream)
@@ -116,12 +116,14 @@ def read_trace(path):
             validate_ppu_state({key: int(row[key]) for key in (*STATE_KEYS, "forced_blank")})
             actual.append(step)
             states[step] = row
-        if actual != list(range(167, 314)) + list(range(527, 660)):
+        if actual != list(range(167 + port_shift, 314 + port_shift)) + list(range(527 + port_shift, 660 + port_shift)):
             raise ValueError("return telemetry must contain both complete ordered transition ranges")
     return states
 
 
 def check(witness, exe, rom, pack):
+    from test_setup_rules_reveal import CONFIGURED_REVEAL_SHIFT
+    shift = CONFIGURED_REVEAL_SHIFT
     raw = Path(rom).read_bytes()
     if len(raw) % 1024 == 512:
         raw = raw[512:]
@@ -132,15 +134,17 @@ def check(witness, exe, rom, pack):
         directory = Path(temp)
         trace = directory / "trace.csv"
         command = [str(Path(exe).resolve()), "--headless", "--setup-only", "--setup-menu", "rules",
+            "--setup-simulation-three-minute",
             "--setup-menu-confirm", "--setup-menu-row", "2" if custom else "0",
-            "--setup-menu-right", "1" if custom else "0", "--setup-menu-confirm-delay", "209" if custom else "212",
+            # Three explicit release frames replace three legacy idle frames.
+            "--setup-menu-right", "1" if custom else "0", "--setup-menu-confirm-delay", "206" if custom else "212",
             "--rom", str(Path(rom).resolve()), "--assets", str(Path(pack).resolve()),
-            "--frames", "697", "--dump-sequence-from", "527", "--dump-sequence-dir", temp,
+            "--frames", str(697 + shift), "--dump-sequence-from", str(527 + shift), "--dump-sequence-dir", temp,
             "--setup-transition-trace", str(trace), "--debug-state"]
         result = subprocess.run(command, check=True, capture_output=True, text=True, timeout=30)
-        states = read_trace(trace)
+        states = read_trace(trace, shift)
         for row in witness["rows"]:
-            step = row["port_step"]
+            step = row["port_step"] + shift
             rgb = Image.open(directory / f"frame_{step:04d}.bmp").convert("RGB").tobytes()
             if digest(rgb) != row["rgb_sha256"]:
                 raise AssertionError(f"native{row['native_frame']}/C{step}: exact return RGB mismatch")

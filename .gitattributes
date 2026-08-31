@@ -1,2 +1,5 @@
 # This reviewed script's exact bytes are part of native capture provenance.
 tools/mesen_intro_indexed_capture.lua text eol=lf
+# The ball initializer witnesses hash these exact schema bytes. Windows
+# checkout conversion must not invalidate their unchanged native protocol.
+tools/ball_init_fields.def text eol=lf

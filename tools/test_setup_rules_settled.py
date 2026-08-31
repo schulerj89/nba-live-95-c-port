@@ -112,23 +112,27 @@ def read_final_state(stdout):
 
 
 def check(witness, exe, rom, pack):
+    # Input-only configuration/tap migration; original witness mapping retained.
+    from test_setup_rules_reveal import CONFIGURED_REVEAL_SHIFT
+    shift = CONFIGURED_REVEAL_SHIFT
     raw = Path(rom).read_bytes()
     if len(raw) % 1024 == 512:
         raw = raw[512:]
     if digest(raw) != ROM_SHA256:
         raise ValueError("port ROM identity differs from verified native ROM")
     with tempfile.TemporaryDirectory(prefix="nba95-rules-settled-") as temp:
-        first = witness["rows"][0]["port_step"]
+        first = witness["rows"][0]["port_step"] + shift
         command = [str(Path(exe).resolve()), "--headless", "--setup-only", "--setup-menu", "rules",
+            "--setup-simulation-three-minute",
             "--setup-menu-row", str(witness["menu_row"]), "--setup-menu-right", str(witness["menu_rights"]),
             "--rom", str(Path(rom).resolve()), "--assets", str(Path(pack).resolve()),
-            "--frames", "450", "--dump-sequence-from", str(first), "--dump-sequence-dir", temp,
+            "--frames", str(450 + shift), "--dump-sequence-from", str(first), "--dump-sequence-dir", temp,
             "--debug-state"]
         result = subprocess.run(command, check=True, capture_output=True, text=True, timeout=30)
         for row in witness["rows"]:
-            rgb = Image.open(Path(temp) / f"frame_{row['port_step']:04d}.bmp").convert("RGB").tobytes()
+            rgb = Image.open(Path(temp) / f"frame_{row['port_step'] + shift:04d}.bmp").convert("RGB").tobytes()
             if digest(rgb) != row["rgb_sha256"]:
-                raise AssertionError(f"native{row['native_frame']}/C{row['port_step']}: exact RGB mismatch")
+                raise AssertionError(f"native{row['native_frame']}/C{row['port_step'] + shift}: exact RGB mismatch")
         fields, ppu = read_final_state(result.stdout)
         if fields.get("page") != "1" or fields.get("menu_row") != str(witness["menu_row"]) or \
                 fields.get("transition") != "0/146" or fields.get("blank") != "0" or fields.get("gfx") != "1" or \

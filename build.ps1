@@ -88,6 +88,12 @@ if ($Test) {
     if ([string]::IsNullOrEmpty($AssetPack) -or !(Test-Path -LiteralPath $AssetPack)) {
         throw "-Test requires a generated asset pack."
     }
+    & python (Join-Path $Root 'tools\test_headless_input_integrity.py')
+    if ($LASTEXITCODE -ne 0) { throw 'Headless input evidence integrity failed.' }
+    $InputReportDir = Join-Path $BuildDir ('headless-input-' + [guid]::NewGuid().ToString('N'))
+    & python (Join-Path $Root 'tools\test_headless_input.py') --exe $ConsoleExePath `
+        --rom $RomPath --pack $AssetPack --output $InputReportDir
+    if ($LASTEXITCODE -ne 0) { throw 'Headless held/release and native configuration replay failed.' }
     & python (Join-Path $Root 'tools\test_native_verifier_integrity.py')
     if ($LASTEXITCODE -ne 0) { throw 'Native verifier protocol integrity failed.' }
     & python (Join-Path $Root 'tools\test_differential.py')
