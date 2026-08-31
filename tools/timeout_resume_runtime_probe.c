@@ -14,7 +14,9 @@ typedef struct {
 static void seed(NbaTipoff *g, NbaSession *s, uint8_t side, uint16_t count) {
     memset(g, 0, sizeof(*g));
     nba_session_init(s);
-    s->player_one_side = side;
+    /* Test cases are native context0(home)/1(visitor). Frontend ownership
+     * remains UI left0/right1; native pause captures establish the inverse. */
+    s->player_one_side = side ? 0u : 1u;
     s->match.timeouts_remaining[side] = count;
     s->game_clock_ticks = 91u;
     g->session = s;
@@ -72,7 +74,7 @@ static bool side_case(uint8_t side) {
     if (!remains_frozen(&g, &f) ||
         s.match.timeouts_remaining[side] != (uint16_t)((side ? 3u : 2u)-1u) ||
         s.match.timeouts_remaining[side ^ 1u] != NBA_MATCH_INITIAL_TIMEOUTS ||
-        g.context_raw_4933 != side || g.context_raw_4935 != side ||
+        g.context_raw_4933 != side * 5u || g.context_raw_4935 != side * 5u ||
         s.match.pause.state != NBA_MATCH_PAUSE_TIMEOUT_TRANSITION) return false;
     static const uint16_t before[8] =
         {0u,1u,0x0FFFu,0x1000u,0x6FFEu,0x6FFFu,0x7FFFu,0xFFFFu};

@@ -34,3 +34,9 @@ build/ghidra-*
 # Python bytecode
 __pycache__/
 *.pyc
+
+# Local compiler output is not source or acceptance evidence.
+/build-baseline.log
+/build-context.log
+/probe-baseline-build.log
+/probe-context-build.log

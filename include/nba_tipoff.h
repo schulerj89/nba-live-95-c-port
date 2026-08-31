@@ -184,7 +184,9 @@ typedef struct NbaTipoff {
     uint16_t free_throw_clock_mirror_raw_493f;
     uint16_t free_throw_upload_raw_180b;
     uint16_t free_throw_upload_raw_180c;
-    NbaGameplayTeamContext team_context[2]; /* `$46EB/$476B` +$30/+32/+39 */
+    /* Native `$46EB/$476B`: context0 home/right, context1 visitor/left.
+     * Published team IDs drive actor ratings, appearance and uniforms. */
+    NbaGameplayTeamContext team_context[2];
     /* `$85:B83E-$B85D` scans the five $47EB+$40n controller records when
      * team context +$3B requests the alternate mode-11 path. */
     uint16_t mode11_context_raw_3b[2];
