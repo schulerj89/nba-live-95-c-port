@@ -46,7 +46,8 @@ checks through CPU80BC, recorded in `bootstrap-accepted-component-integration.md
 It remains unwired; the actual DMA/03DB continuation is still open. The two
 reviewed600/1300 C image anchors were migrated separately; the full regression
 now reaches its unchanged3480 image failure. Root's D1 culling candidate passed
-independent review and awaits exact-copy integration. The next isolated
+independent review and fresh root integration checks, recorded in
+`court-culling-integration.md`. The next isolated
 `d1-direction-20260831` worktree corrects camera-subject/anchor/F02D draw behavior;
 it has no acceptance yet.
 

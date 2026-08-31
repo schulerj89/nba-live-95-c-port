@@ -136,6 +136,11 @@ void nba_court_project_actor(int16_t actor_x,int16_t actor_y,
         (uint16_t)camera_y-(uint16_t)actor_z);
 }
 
+static bool cull_cmp_negative(uint16_t left,uint16_t right) {
+    /* The original branches on CMP's wrapped N flag, not signed C overflow. */
+    return ((uint16_t)(left-right)&0x8000u)!=0u;
+}
+
 bool nba_court_actor_visible(int16_t screen_x,int16_t projected_y,
     int16_t actor_z,bool human_controlled) {
     /* `$87:A3DF-$A43B`: player culling and controlled-player routing. */
@@ -143,15 +148,17 @@ bool nba_court_actor_visible(int16_t screen_x,int16_t projected_y,
      * for an off-screen indicator. CPU actors instead use the wider rectangle
      * and `$87:A42F` writes -50 to +$6A when culled. This helper owns the
      * player visibility result, not the still-separate indicator draw. */
+    uint16_t sx=(uint16_t)screen_x,depth=(uint16_t)projected_y;
     if(human_controlled)
-        return screen_x>=11 && screen_x<245 &&
-               projected_y>=11 && projected_y<218;
-    if(screen_x < -20 || screen_x>=276 || projected_y < -20)return false;
-    if(projected_y<288)return true;
-    /* `$87:A423-$A42D` gives a high jumping actor one last test after Z is
-     * removed. This path was not reached in the current native trace union,
-     * but the retained ROM quirk is explicit rather than optimized away. */
-    return (int16_t)((uint16_t)projected_y-(uint16_t)actor_z)<288;
+        return cull_cmp_negative(sx,245u) && !cull_cmp_negative(sx,11u) &&
+               cull_cmp_negative(depth,218u) && !cull_cmp_negative(depth,11u);
+    if(!cull_cmp_negative(sx,276u) || cull_cmp_negative(sx,0xffecu))return false;
+    if(cull_cmp_negative(depth,288u) && !cull_cmp_negative(depth,0xffecu))return true;
+    /* `$87:A419-$A42D`: BOTH a depth >=288 and a depth <-20 reach the
+     * depth-minus-Z fallback. Preserve the original low-depth branch,
+     * including depth=-21,Z=0 surviving it, and the wrapped CMP sign.
+     * This is source-derived behavior, not a naturally captured edge case. */
+    return cull_cmp_negative((uint16_t)(depth-(uint16_t)actor_z),288u);
 }
 
 /* `$87:A846-$A97D`: human off-screen controller indicator. The eight edge

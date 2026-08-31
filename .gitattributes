@@ -209,3 +209,10 @@ include/nba_types.h -text
 src/nba_rom.c -text
 src/nba_setup_spc_control.c -text
 src/nba_setup_spc_init.c -text
+
+# Preserve independently reviewed culling source and tests.
+src/nba_court_presentation.c -text
+tools/court_culling_probe.c -text
+tools/build_court_culling_probe.py -text
+tools/test_court_culling_source.py -text
+docs/court-culling-correction.md -text

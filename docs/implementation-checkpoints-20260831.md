@@ -152,3 +152,14 @@ The separately reviewed600/1300 image migration is committed atf5a3bd6. Its full
 rerun passes those images and earlier behavior checks, then stops at3480's
 unchanged expected image. See `hud-two-golden-migration.md`. No other golden or
 behavioral assertion was changed; the complete suite remains failing.
+
+## Wired culling repair
+
+`court-culling-integration.md` records independently accepted source tests and
+fresh root verification of the actual culling helper. The new63,800-frame trace
+matches the candidate exactly; only22visibility fields differ from C1, with all
+other serialized state unchanged. The contact regression still passes. The
+existing panorama exit20 and later3480 image difference remain explicit open
+failures. The screenshot agent will publish the exact committed build, including
+the changed visibility window. This is one D1 correction, not full graphics
+integration or a full-game acceptance milestone.
