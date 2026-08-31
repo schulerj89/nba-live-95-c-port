@@ -977,7 +977,14 @@ def build_graphics_scratch_asset(rom_data):
     return bytes(payload)
 
 
-def create_asset_pack(rom_path, output_path):
+def create_asset_pack(rom_path, output_path, capture_root=None):
+    # Read-only evidence can live in the primary checkout while source/builds
+    # stay isolated in a worktree. Existing per-resource overrides still win.
+    resolved_capture_root = os.path.abspath(capture_root or os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "..", ".analysis"))
+    def capture_path(*parts):
+        return os.path.join(resolved_capture_root, *parts)
+    print(f"[ASSET EXTRACTOR] Capture root (read-only): {resolved_capture_root}")
     print(f"[ASSET EXTRACTOR] Extracting assets from ROM: {rom_path}")
     print(f"[ASSET EXTRACTOR] Output asset pack: {output_path}")
     rom_data = load_verified_rom(rom_path)
@@ -989,9 +996,7 @@ def create_asset_pack(rom_path, output_path):
     # Original indexed intro resources. RGB screenshots are comparison evidence
     # only; this builder loads raw attested memory and direct ROM data.
     from build_intro_indexed import build as build_ea_indexed, build_text
-    intro_resources = os.environ.get("NBA95_INTRO_RESOURCE_DIR") or os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "..", ".analysis",
-        "intro-exact-20260830", "capture-v4")
+    intro_resources = os.environ.get("NBA95_INTRO_RESOURCE_DIR") or capture_path("intro-exact-20260830", "capture-v4")
     ea_indexed, ea_provenance = build_ea_indexed(rom_path, intro_resources)
     intro_text, text_provenance = build_text(rom_path, intro_resources)
     with open(output_path + ".intro-provenance.json", "w", encoding="utf-8") as manifest:
@@ -1126,8 +1131,7 @@ def create_asset_pack(rom_path, output_path):
     # these assets contain no rendered frames and no mixed audio. Mesen is used
     # as a hardware-state dumper: the port renders the ROM's planar tiles and
     # runs the ROM's SPC700 driver/BRR bank itself.
-    title_capture_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                     "..", ".analysis", "title_capture")
+    title_capture_dir = capture_path("title_capture")
 
     def read_required(name, expected_size=None):
         path = os.path.join(title_capture_dir, name)
@@ -1235,8 +1239,7 @@ def create_asset_pack(rom_path, output_path):
     # and map data; the entrance trace below documents the intervening DMAs.
     setup_vram_bytes = b""
     setup_cgram_bytes = b""
-    capture_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                               "..", ".analysis", "setup_capture")
+    capture_dir = capture_path("setup_capture")
     vram_path = os.path.join(capture_dir, "vram.bin")
     cgram_path = os.path.join(capture_dir, "cgram.bin")
     if os.path.exists(vram_path) and os.path.exists(cgram_path):
@@ -1262,8 +1265,7 @@ def create_asset_pack(rom_path, output_path):
         print("    Mesen.exe <rom> tools/mesen_setup_transition_capture.lua")
 
     def read_setup_menu_capture(menu_name, filename, expected_size):
-        path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..",
-                            ".analysis", f"setup_{menu_name}", filename)
+        path = capture_path(f"setup_{menu_name}", filename)
         if not os.path.exists(path):
             raise RuntimeError(f"Missing Set {menu_name.title()} capture: {path}. "
                                "Run tools/mesen_setup_menus_capture.lua first.")
@@ -1274,8 +1276,7 @@ def create_asset_pack(rom_path, output_path):
         return data
 
     def read_capture_directory(directory_name, filename, expected_size):
-        path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..",
-                            ".analysis", directory_name, filename)
+        path = capture_path(directory_name, filename)
         if not os.path.exists(path):
             raise RuntimeError(f"Missing capture: {path}. Run "
                                "tools/capture_assets.ps1 first.")
@@ -1311,12 +1312,10 @@ def create_asset_pack(rom_path, output_path):
         # not native scanout. Options routes retain their historical contract
         # until separately recaptured; do not extend this bounded claim.
         current_scanout = menu_name == "rules"
-        directory = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..",
-                                 ".analysis", f"setup_{menu_name}")
+        directory = capture_path(f"setup_{menu_name}")
         if current_scanout:
             suffix = "setup_rules_publications"
-            directory = os.environ.get(f"NBA95_RULES_{prefix.upper()}_CAPTURE", os.path.join(
-                os.path.dirname(os.path.abspath(__file__)), "..", ".analysis", suffix))
+            directory = os.environ.get(f"NBA95_RULES_{prefix.upper()}_CAPTURE", capture_path(suffix))
             if not os.path.isdir(directory):
                 raise RuntimeError("Rules resource publication capture is required: run "
                     "capture_setup_transition_exact.ps1 -OutputRoot .analysis/setup_rules_publications "
@@ -1412,8 +1411,7 @@ def create_asset_pack(rom_path, output_path):
     setup_return_transition = build_menu_ppu_trace("options", "return", 831, 962)
     rules_return_transition = build_menu_ppu_trace("rules", "return", 831, 962)
 
-    setup_main_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..",
-                                  ".analysis", "setup_main")
+    setup_main_dir = capture_path("setup_main")
     def read_setup_main_capture(filename):
         path = os.path.join(setup_main_dir, filename)
         if not os.path.exists(path):
@@ -1442,9 +1440,7 @@ def create_asset_pack(rom_path, output_path):
     # 1637 (the last visible title-fade frame). Every subsequent mirrored
     # $2140-$2143 write is stamped with `spc.cycle`, so the port can run the
     # original SPC700/BRR driver without a captured or mixed WAV.
-    setup_transition_dir = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "..", ".analysis",
-        "setup_transition")
+    setup_transition_dir = capture_path("setup_transition")
 
     def read_setup_transition(name, expected_size=None):
         path = os.path.join(setup_transition_dir, name)
@@ -1571,9 +1567,7 @@ def create_asset_pack(rom_path, output_path):
     print(f"[ASSET EXTRACTOR] Packed F11 Setup BRR catalog: "
           f"{len(setup_sample_assets)} sources from S-DSP DIR ${setup_dir:04X}")
 
-    team_capture_dir = os.environ.get("NBA95_TEAM_CAPTURE_DIR") or os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "..", ".analysis",
-        "team_select_logos")
+    team_capture_dir = os.environ.get("NBA95_TEAM_CAPTURE_DIR") or capture_path("team_select_logos")
     team_logo_assets = []
     team_vram_assets = []
     team_cgram_assets = []
@@ -1618,8 +1612,7 @@ def create_asset_pack(rom_path, output_path):
      player_pose_layout) = build_player_front_pose(rom_data)
     player_animations = build_player_animation_asset(rom_data)
 
-    player_setup_capture_dir = os.environ.get("NBA95_PLAYER_SETUP_CAPTURE_DIR") or os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "..", ".analysis", "player_setup")
+    player_setup_capture_dir = os.environ.get("NBA95_PLAYER_SETUP_CAPTURE_DIR") or capture_path("player_setup")
     player_setup_payloads = []
     for name, size in (("player_setup_vram.bin", 0x10000),
                        ("player_setup_cgram.bin", 0x200),
@@ -1634,16 +1627,10 @@ def create_asset_pack(rom_path, output_path):
                                f"expected {size} bytes, got {len(payload)}")
         player_setup_payloads.append(payload)
 
-    player_intro_capture_dir = os.environ.get("NBA95_PLAYER_INTRO_CAPTURE_DIR") or os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "..", ".analysis",
-        "player-intro-full-20260823")
-    player_intro_portrait_dir = os.environ.get("NBA95_PLAYER_INTRO_PORTRAIT_DIR") or os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "..", ".analysis",
-        "player_intro_portraits_verified_20260823")
+    player_intro_capture_dir = os.environ.get("NBA95_PLAYER_INTRO_CAPTURE_DIR") or capture_path("player-intro-full-20260823")
+    player_intro_portrait_dir = os.environ.get("NBA95_PLAYER_INTRO_PORTRAIT_DIR") or capture_path("player_intro_portraits_verified_20260823")
     player_intro_away_portrait_dir = os.environ.get(
-        "NBA95_PLAYER_INTRO_AWAY_PORTRAIT_DIR") or os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "..", ".analysis",
-        "player_intro_portraits_away_verified_20260823")
+        "NBA95_PLAYER_INTRO_AWAY_PORTRAIT_DIR") or capture_path("player_intro_portraits_away_verified_20260823")
     player_intro_court, player_intro_portraits = build_player_introduction_assets(
         player_intro_capture_dir, player_intro_away_portrait_dir,
         player_intro_portrait_dir)
@@ -1667,9 +1654,7 @@ def create_asset_pack(rom_path, output_path):
             b"\x10\x00\x10\x00\x00\x02":
         raise RuntimeError("Starting Lineup ROM font descriptor is invalid")
     player_intro_audio_dir = os.environ.get(
-        "NBA95_PLAYER_INTRO_AUDIO_DIR") or os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "..", ".analysis",
-            "player-intro-audio-assets-20260823")
+        "NBA95_PLAYER_INTRO_AUDIO_DIR") or capture_path("player-intro-audio-assets-20260823")
 
     def read_player_intro_audio(name, expected_size=None):
         path = os.path.join(player_intro_audio_dir, name)
@@ -1730,9 +1715,7 @@ def create_asset_pack(rom_path, output_path):
         "<8sI32s6H", b"NBBALL1", 1,
         rom_data[0x0D9C27:0x0D9C27 + 32],
         0x32BF, 0x0DDE, 0x019B, 0x0177, 0x00F1, 0x00AC)
-    tipoff_capture_dir = os.environ.get("NBA95_TIPOFF_CAPTURE_DIR") or os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "..", ".analysis",
-        "camera-source-20260823")
+    tipoff_capture_dir = os.environ.get("NBA95_TIPOFF_CAPTURE_DIR") or capture_path("camera-source-20260823")
     with open(os.path.join(tipoff_capture_dir, "tipoff_0140_vram.bin"), "rb") as f:
         gameplay_vram = f.read()
     with open(os.path.join(tipoff_capture_dir, "tipoff_0140_cgram.bin"), "rb") as f:
@@ -1741,9 +1724,7 @@ def create_asset_pack(rom_path, output_path):
         raise RuntimeError("Invalid settled tip-off PPU state")
     gameplay_goal_palette, gameplay_crowd_tiles = \
         build_gameplay_court_object_assets(tipoff_capture_dir)
-    ppu_input_dir = os.environ.get("NBA95_PPU_INPUT_CAPTURE_DIR") or os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "..", ".analysis",
-        "ppu-scanout-audit-20260828")
+    ppu_input_dir = os.environ.get("NBA95_PPU_INPUT_CAPTURE_DIR") or capture_path("ppu-scanout-audit-20260828")
     with open(os.path.join(ppu_input_dir, "scanout_0989_vram.bin"), "rb") as f:
         gameplay_ppu_vram = f.read()
     with open(os.path.join(ppu_input_dir, "scanout_0989_cgram.bin"), "rb") as f:
@@ -1953,6 +1934,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="NBA Live 95 Asset Extractor")
     parser.add_argument("--rom", required=True, help="Path to SNES ROM (.sfc/.smc)")
     parser.add_argument("--output", default=r"build\nba95_assets.pak", help="Output asset package path")
+    parser.add_argument("--capture-root", help="Read-only root for existing native capture directories (default: repository .analysis)")
     args = parser.parse_args()
 
-    create_asset_pack(args.rom, args.output)
+    create_asset_pack(args.rom, args.output, args.capture_root)
