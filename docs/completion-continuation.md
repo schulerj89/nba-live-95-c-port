@@ -450,3 +450,64 @@ at frame49412, rules-reentry158 mismatches, HUD gaps, hardware scheduling and
 full-game acceptance remain open. Main/desktop and the read-only Max consultant
 are unchanged. Existing implementation agents continue only in their own
 previously authorized worktrees; root owns all commits and integration.
+
+### Accepted entry, roles, control and diagnostic composition
+
+This update supersedes the pending statuses above. `73b04a5` integrates the
+accepted standalone render tail with a fresh build and all four native cases.
+`5cb2331` integrates SPC control v5 after independent acceptance, including
+the direct-page callback constraint. Source-only non-callback API cases keep
+their documented domain. Production SPC/audio is unchanged.
+
+`f9bbd76` integrates the accepted DCA6-to-DD97 entry prefix. Fresh root checks
+pass 786,432 full native words, 90 controlled source cases and 56 corruptions.
+`ab44869` integrates role source v2 and the accepted v3 verifier. Fresh root
+checks pass four native cases / 892 final fields, 116 controlled original-ROM
+cases, 13 API contracts, 17 local protocol corruptions and 12 independent
+malformed outputs. Both remain standalone, outside the game source manifest.
+Their source comments preserve original carried latches, fractions, queues,
+wrapped arithmetic and selection behavior. Old rejected evidence is retained.
+
+Controllers independently accepts root's bounded diagnostic composition with
+verifier v2, freeze `c187b92ab3a393899fa6a4b31f42b69bd6e811378fa2de38d330665aebd1548b`
+(2925 identities). Its fresh 44-source build reproduces all 125 boundaries /
+504,500 owned bytes and complete original C output files. V1's incomplete
+build manifest attestation is rejected. V2 requires exact source/object key
+sets; all 11 invalid manifests and 56 further protocol corruptions reject.
+Before-state-only and carried-marker tests pass. This is still diagnostic
+raw-state glue, not a production raw-WRAM runtime.
+
+Scheduler has separately frozen the canonical typed composition at
+`.analysis/period-formation-freeze-v1.json`, SHA256
+`8265eb8e8e71e6c59186b2a0526d9ea75c02fe96a80ccf18bed5507dde41e244`
+(1594 identities), for independent review. It reports 125 native checkpoints /
+128,500 canonical values, controlled source tests and strict refusals. Each
+overlapping child field has one owner; source alias slots09DA/09DE/09E2 are
+shared. Unmodeled carried scratch and unresolved assignment children stop
+explicitly. Root has not accepted or wired this candidate yet.
+
+Root mapping found that basket X already has a runtime owner:
+`court_presentation.basket_x_3fef`, updated by the original camera presentation
+branch. The adapter must carry that value across the period-two anchor flip;
+it must not derive it from the newly flipped anchor. The persistent 12-record
+draw order and its ordinary FC80 adjacent pass still need runtime ownership.
+Basket Y has an original explicit zero writer at86:DBC2. Further mapping must
+distinguish actual initialization from fabricated default inputs.
+
+Human launch C passes independent natural, controlled and original-opcode
+checks. Its verifier remains rejected because return tag/PC/PS substitutions
+can disagree with entry operand signs. Controllers will repair only the
+verifier in a new packet, retaining the original freeze and rejection cases.
+
+At the user's request, controllers also captured the actual current C build
+into primary `.analysis/progress-screenshots/`. This path is already ignored
+by `.gitignore`; there were no main, desktop or tracked source changes. The
+local `latest/index.html` gallery links ten named views, dated runs, exact
+build/capture manifests and a repeatable capture script. The static score
+panel is labeled as a current port defect, not an original-game quirk.
+The images do not claim separately audited components are production-wired.
+
+The known CPU frame49412 failure, rules-reentry mismatches, HUD replacement,
+hardware scheduling and full-game acceptance remain open. The separate Max
+consultant remains idle and read-only. No production period repair is yet
+claimed complete.
