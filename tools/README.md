@@ -1,5 +1,15 @@
 # Reverse-engineering and asset tools
 
+## Visible defect smoke checkpoints
+
+Use `run_visible_smoke_checkpoints.py` to capture the frontend, lineup,
+court/logo, pass, inbound, broad-direction and player-compositor review matrix
+from one explicitly identified production executable, pack and ROM. It writes
+only to a new ignored `.analysis/progress-screenshots` directory and leaves the
+published `latest` gallery unchanged. See
+[`docs/visible-smoke-checkpoint-harness.md`](../docs/visible-smoke-checkpoint-harness.md)
+for the command, output contract and direct-entry limitations.
+
 The 2026-08-30 [ownership audit](../docs/ownership-plan.md) found that maximum-speed
 Mesen capture can skip PPU rendering and that `takeScreenshot()` may return a
 previous presented frame. For consecutive-frame evidence, use the isolated
