@@ -147,7 +147,9 @@ typedef enum {
     /* NBGAUD1: ROM-decoded gameplay BRR sources used by the live mixer. */
     NBA_ASSET_GAMEPLAY_AUDIO_BANK                = 285,
     NBA_ASSET_GAMEPLAY_HUD          = 286, /* Original indexed HUD; gameplay requires lifecycle v2. */
-    NBA_ASSET_MAX                   = 287
+    /* NBPDRAW1: literal 87:A4F5 head-order / A525 jersey-direction inputs. */
+    NBA_ASSET_PLAYER_DRAW_INPUTS    = 287,
+    NBA_ASSET_MAX                   = 288
 } NbaAssetId;
 
 typedef struct {
@@ -171,6 +173,9 @@ typedef struct {
 bool nba_assets_load(NbaAssetPack *pack, const char *asset_path);
 void nba_assets_free(NbaAssetPack *pack);
 const NbaAssetItem *nba_assets_get(const NbaAssetPack *pack, NbaAssetId id);
+bool nba_assets_player_draw_inputs_valid(const NbaAssetPack *pack);
+bool nba_assets_player_draw_inputs(const NbaAssetPack *pack, uint16_t upper,
+    uint16_t resolved_direction, uint16_t *head_order, uint16_t *number_resource);
 const uint32_t *nba_assets_home_court(const NbaAssetPack *pack, uint8_t home_team);
 const uint32_t *nba_assets_gameplay_home_court(const NbaAssetPack *pack,
                                                 uint8_t home_team);

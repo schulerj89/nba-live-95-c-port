@@ -1912,6 +1912,8 @@ def create_asset_pack(rom_path, output_path, capture_root=None):
     gameplay_audio_bytes.extend(pcm_blob)
     assets.append((285, 0, 0, 0, bytes(gameplay_audio_bytes)))
     assets.append((286, 0, 0, 0, gameplay_hud))
+    from build_player_draw_inputs import build as build_player_draw_inputs
+    assets.append((287, 0, 0, 0, build_player_draw_inputs(rom_data)))
 
     with open(output_path + ".hud-provenance.json", "w", encoding="utf-8") as manifest:
         json.dump(hud_provenance, manifest, indent=2)
