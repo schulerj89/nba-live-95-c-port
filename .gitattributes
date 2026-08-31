@@ -28,3 +28,8 @@ tools/capture_setup_producer_work.py -text
 tools/mesen_setup_producer_work.lua -text
 tools/capture_setup_header_work.py -text
 tools/mesen_setup_header_work.lua -text
+# Preserve executed action/aligned capture source identities.
+tools/capture_human_pass_action.py -text
+tools/mesen_human_pass_action.lua -text
+tools/capture_human_pass_aligned.py -text
+tools/mesen_human_pass_aligned.lua -text
