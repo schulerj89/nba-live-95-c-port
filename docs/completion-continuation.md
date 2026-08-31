@@ -40,6 +40,16 @@ screenshot agent published the facd818 standard gallery and late-contact
 supplement; exact receipts are in `implementation-checkpoints-20260831.md`.
 Main and desktop remain unchanged; whole-game acceptance is still incomplete.
 
+Latest verification supersedes the pending S1-reader status above: the original
+reset/upload/F1 component and verifier v3 passed independent and fresh root
+checks through CPU80BC, recorded in `bootstrap-accepted-component-integration.md`.
+It remains unwired; the actual DMA/03DB continuation is still open. The two
+reviewed600/1300 C image anchors were migrated separately; the full regression
+now reaches its unchanged3480 image failure. Root's D1 culling candidate passed
+independent review and awaits exact-copy integration. The next isolated
+`d1-direction-20260831` worktree corrects camera-subject/anchor/F02D draw behavior;
+it has no acceptance yet.
+
 Explicit user instruction (2026-08-31): preserve every bug present in the
 original game and comment it. Confirm native behavior with ROM/routine/evidence
 before labeling it an original bug; preserve quirks and document them near the

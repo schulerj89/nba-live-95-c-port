@@ -139,3 +139,16 @@ C2 now uses `c2-receiver-integration-20260831`, based on facd818. Root D1 uses
 accepted integration. S1 verifier revisions preserve frozen code and evidence;
 additional metadata omissions remain under review. Max's read-only D1 advice
 is recorded in `completion-draw-consultation-20260831.md`.
+
+## Accepted startup component and narrow image migration
+
+`bootstrap-accepted-component-integration.md` records the independently accepted
+normal reset/upload/F1 source through CPU80BC, all fresh root checks and exact
+byte preservation. This does not wire an incomplete bootstrap into the game.
+The newer DMA child remains separate. Existing v1/v2 verifier failures are kept;
+v3 rejects all12 independently demonstrated corruptions.
+
+The separately reviewed600/1300 image migration is committed atf5a3bd6. Its full
+rerun passes those images and earlier behavior checks, then stops at3480's
+unchanged expected image. See `hud-two-golden-migration.md`. No other golden or
+behavioral assertion was changed; the complete suite remains failing.
