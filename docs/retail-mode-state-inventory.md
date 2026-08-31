@@ -27,7 +27,7 @@ progression, record updates or full terminal-screen behavior.
 Four independently reviewed normal-input captures now establish first entry
 plus300frames, as recorded below. They do not establish cancellation, a match
 result, save/reload or terminal/progression behavior. Those journeys remain next.
-Formats, season lengths, tiebreaks, record screens, roster-management features
+Series formats, tiebreaks, record screens, roster-management features
 and exact Load Series scope remain facts to establish, not values to invent.
 
 ## Reviewed first-entry checkpoint
@@ -70,7 +70,7 @@ write every session field at every menu commit.
 | Original source boundary | Original writes / meaning | Implementation consequence |
 |---|---|---|
 | 81:C3D5..C41D | Saved Custom thresholds53/54 and Boolean bitmap55/56 | Rules Custom persistence is separate from active settings and the global validity transaction |
-| 81:C0BA..C199 | 17A7→SRAM52; active values→48..4F; marker04=DA atC193 | Derive17A7's owner; do not substitute a physical pad or UI side without source proof |
+| 81:C0BA..C199 | Season length17A7→SRAM52; active values→48..4F; marker04=DA atC193 | Preserve the Season selector independently of controller state |
 | 82:8553..8563 | Team Select confirmation writes16B1→50 and16B3→51 as bytes | Team-selection save timing is a separate real caller, not performed byC0BA |
 | 81:C19A..C231 | Validity check or factory initialization; factory Custom becomes45/45/07FC | A missing/invalid save resets the appropriate original fields, not the whole modern session structure |
 | 81:C24B..C395 | Reload/validation and shared completion atC232 | Preserve original validation, conditional stores and downstream caller state |
@@ -84,8 +84,39 @@ Saved Custom is not independently clamped by LoadCustomRules.
 
 Factory initialization writes raw16B1=9,16B3=17 and17A7=2. The current C session
 chooses Chicago/Orlando by host team IDs and a legacy player-one side. Those
-representations require a proven mapping and a matched initialization journey;
-neither a snapshot default nor coincident numeric values prove ownership.
+defaults differ from the original Houston/right and New York/left selectors.
+Do not change the existing gameplay baseline during C1; a matched initialization
+journey and affected menu/gameplay checks belong to the subsequent integration.
+
+### Source ownership established after the first-entry capture
+
+`17A7` is the Season length selector, not a controller-selection field. Original
+81:C576 copies it to161D; C597..C5A3 copies17A5/17A7/17A9 into the three working
+words16FB/16FD/16FF. The C7F9 indexed text lookup uses the second pointer at
+81:C51A, namelyC51E. Its entriesC536/C52D/C524 name26/52/82Games for values0/1/2.
+The84:8194 and8249 callers index848000's words25/51/81;85:8663 increments that
+value before storing156B. This agrees with the text, rather than relying on a
+guess about a three-valued setting. SRAM52 must never receive `player_one_side`
+or `controller_selection[0]`.
+
+Team Select82:80E0..8102 puts16B3 into working16FB (left) and16B1 into16FD
+(right), through1785/1787. The accepted C Team Select uses alphabetical team IDs;
+its team table names9Houston and17New York. The fresh v2 Exhibition capture's
+final working pair17/9 agrees with this source mapping. Saving50/51 therefore
+uses right/left order, the reverse of the visible left/right session fields.
+
+Root checked these exact original ROM byte spans (SHA256):
+
+| Span | Identity |
+|---|---|
+| 84:8000,6bytes (19 00 33 00 51 00) | `8bb6c58dd356fa75452362f664e40f7a04923b864c72beeaf175133d4e3394da` |
+| 82:80E0,35bytes | `f0314832802214b7b51c2ed8299c9f4d7ce6e38f682ee036ad763b6e2a1dc6bc` |
+| 85:865E,13bytes | `6e35ba83d773cbf227b1c29067e9058d96f2af6c57406828dca501b06bcf5299` |
+
+Independent QA checked this ownership mapping against the actual ROM, all
+three span hashes, the text-pointer chain and the captured17/9working pair.
+The earlier accepted configuration contract's description of52 as
+controller-related is superseded here; its frozen evidence is unchanged.
 
 ## Next vertical implementation slices
 
