@@ -6,3 +6,8 @@ tools/ball_init_fields.def text eol=lf
 # Controller schema2 capabilities are tied to this executed runner identity.
 tools/capture_controller_contract.py text eol=lf
 tools/capture_human_dispatch.py text eol=lf
+# FB46 capture revisions include CRLF and mixed-ending source files. Retain
+# their audited bytes exactly; normalizing them would change provenance.
+tools/capture_setup_codec_work.py -text
+tools/mesen_setup_codec_work.lua -text
+tools/mesen_setup_scheduler.lua -text
