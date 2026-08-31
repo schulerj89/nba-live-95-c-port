@@ -62,14 +62,18 @@ def main():
             "--team-only", "--team-confirm", "--frames", 300,
             "--dump-sequence-from", 160, "--dump-sequence-dir", sequence)
         frames = {number: Image.open(sequence / f"frame_{number:04d}.bmp")
-                  for number in (178, 179, 200, 228, 229, 298, 299)}
+                  for number in (178, 179, 200, 228, 229, 295, 296)}
         if changed(frames[178], frames[179]) < 10000:
             raise AssertionError("outgoing Team Select layers did not begin moving")
         if nonblack(frames[200]) == 0 or nonblack(frames[228]) == 0:
             raise AssertionError("outgoing layer owner ended before native +51 boundary")
-        if nonblack(frames[229]) != 0 or nonblack(frames[298]) != 0:
+        # Native Start frame 650 keeps the outgoing owner through 700, holds
+        # exactly 67 fully-black frames 701..767, and first reveals Player
+        # Setup at 768.  The port route starts at 178, so 229..295 and 296 are
+        # the corresponding construction/reveal boundaries.
+        if nonblack(frames[229]) != 0 or nonblack(frames[295]) != 0:
             raise AssertionError("forced-black construction interval changed")
-        if nonblack(frames[299]) == 0:
+        if nonblack(frames[296]) == 0:
             raise AssertionError("Player Setup reveal did not begin at destination boundary")
 
     source = (Path(__file__).parents[1] / "src" / "nba_player_intro.c").read_text(

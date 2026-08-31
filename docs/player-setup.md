@@ -34,9 +34,10 @@ capture pins the visible boundary more tightly: Start at setup frame 650,
 outgoing layer motion at 651-672, brightness withdrawal at 673-700, forced
 black at 701, and the first Player Setup reveal at 768. The C handoff composes
 the ROM-derived Team Select layers through that 51-frame outgoing boundary;
-it does not fade a frozen RGB screenshot. It then preserves the existing
-200-frame destination cadence through opposed background slide, title/label
-reveal, and final object release.
+it does not fade a frozen RGB screenshot. Its corresponding Start/reveal
+frames are 178/296, with 67 fully-black frames at 229-295. It then preserves
+the existing 200-frame destination cadence through opposed background slide,
+title/label reveal, and final object release.
 
 The selected gold plate uses the existing 26-byte Team Select palette-cycle
 asset. Moving Player 1 left or right moves the entire arrow/controller OAM group

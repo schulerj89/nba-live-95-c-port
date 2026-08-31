@@ -242,12 +242,15 @@ void nba_player_setup_render(const NbaPlayerSetup *screen, NbaRenderer *renderer
                                     screen->outgoing_pixels, frame, renderer);
         return;
     }
-    if (frame < 117) {
+    /* Native frames 701..767 are black after the Start edge at 650 and the
+     * first destination pixel appears at +118.  Starting the destination
+     * script at 114 accounts for its first four still-offscreen steps. */
+    if (frame < 114) {
         nba_renderer_clear(renderer, 0xFF000000u);
         return;
     }
 
-    int k = frame - 117;
+    int k = frame - 114;
     int bg1_h = 512, bg2_h = 0, bg3_v = 0, brightness = 15;
     bool show_bg3 = true, show_objects = frame >= NBA_PLAYER_SETUP_TRANSITION_FRAMES;
     if (k < 38) {

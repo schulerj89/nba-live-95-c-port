@@ -24,8 +24,9 @@ begins its brightness/slide reveal at 768.
 The C full capture starts at frame 160 so its persistent framebuffer is valid.
 Start is pressed at 178, the outgoing compositor changes at 179, retains the
 outgoing owner through 228, and is black at 229. Player Setup first appears at
-299. The three-frame difference in total press-to-destination time remains a
-recorded timing difference; it is not hidden as an exact parity claim.
+296. This matches the native +118 press-to-first-pixel boundary exactly and
+preserves the native 67-frame fully-black construction interval (229-295 in
+the C route, corresponding to native frames 701-767).
 
 ## Controls
 
