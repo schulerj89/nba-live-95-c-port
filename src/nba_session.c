@@ -116,5 +116,8 @@ void nba_session_init(NbaSession *session) {
     session->left_team = 3;   /* Chicago */
     session->right_team = 18; /* Orlando */
     session->player_one_side = 1; /* Live Exhibition path defaults to home/right. */
+    /* Fresh native single-pad Player Setup entry, captured at $81:A489. */
+    session->controller_selection[0] = 2;
+    for (unsigned pad = 1; pad < 5; ++pad) session->controller_selection[pad] = 1;
     nba_session_begin_match(session);
 }

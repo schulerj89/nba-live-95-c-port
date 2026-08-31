@@ -34,3 +34,11 @@ build/ghidra-*
 # Python bytecode
 __pycache__/
 *.pyc
+
+# Local compiler output is not source or acceptance evidence.
+/build-controller-v2.log
+/build-controller-v3.log
+/build-controller-v4.log
+/build-controller-v5.log
+/build-controller-v6.log
+/build-controller.log

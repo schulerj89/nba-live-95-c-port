@@ -120,6 +120,17 @@ int main(int argc, char **argv) {
             load_actor(&state.actors[i], raw, ACTOR_BASE + i * ACTOR_STRIDE);
         load_context(&state.team_context[0], raw, 0x46EBu);
         load_context(&state.team_context[1], raw, 0x476Bu);
+        /* The D25A prefix now owns controller transfer; load the actual
+         * captured records/counts/cursors instead of implicit all-zero pads. */
+        for(unsigned pad=0;pad<5;++pad) {
+            uint16_t *record=(uint16_t *)&state.controllers.record[pad];
+            for(unsigned field=0;field<32;++field)
+                record[field]=word(raw,0x47eb+pad*0x40+field*2);
+        }
+        for(unsigned side=0;side<2;++side) {
+            state.controllers.count[side]=word(raw,0x4726+side*0x80);
+            state.controllers.cursor[side]=word(raw,0x4728+side*0x80);
+        }
         state.rng.state = word(raw, 0x07F6u);
         state.match_clock_raw_0928 = word(raw, 0x0928u);
         state.rim_raw_092c = word(raw, 0x092Cu);

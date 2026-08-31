@@ -1,0 +1,221 @@
+"""Compare pass selection and distance; never substitute native AB2D effects."""
+import argparse,collections,copy,hashlib,json,struct,subprocess
+from pathlib import Path
+import mesen_portable
+
+ROM_SHA='2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870'
+MESEN_SHA='d2eb03c2590c648bf329f127ebcfefd70130e7690a9e2ccdba8616faea1fe96b'
+RANGES=[[0,0x100],[0x500,0x500],[0x1600,0x300],[0x3400,0x1600]]
+SOURCE_VERSION={'capture':'31d1b40a80f0f8dc0c8602d49a39a20e4171afe788592cc8c179e63edff03ab9',
+ 'runner':'125501c8e32cacc535f20e0a1a22dbd27c2bf56327780f47ed21c32892ec2492',
+ 'isolation_helper':'1bc6db2d68d836c7c6af180137a3d5e8e4ea454d7cb8a97e9e95cc6312ddc3bb'}
+PCS={'player.entry':(0x81a489,),'court.entry':(0x87a47a,),'pass.entry':(0x84df7a,),
+ 'pass.directional':(0x84dfb2,),'pass.neutral':(0x84e0b5,),'candidate.directional':(0x84e016,),
+ 'candidate.neutral':(0x84e11e,),'pass.callsite':(0x84e098,),'pass.initialize':(0x86ab2d,),
+ 'pass.no_receiver':(0x84e09c,),'pass.resume':(0x84e09c,),'pass.return':(0x84e0b4,),
+ 'metric.entry':(0x85f1c1,),'metric.exit':(0x85f1f3,0x85f1ff,0x85f21c,0x85f228),
+ 'switch.observed':(0x84e141,)}
+RAW_TAGS={'player.entry','court.entry','pass.entry','pass.initialize','pass.no_receiver','pass.resume',
+          'pass.return','metric.entry','metric.exit'}
+GLOBALS=[0x90c,0x90e,0x910,0x936,0x93a,0x93e,0x944,0x946,0x978]
+SAVED_CALLER=[0xb8,0xb6,0xbc,0xba,0xc0,0xbe,0x9c,0x9a]
+
+def need(test,message):
+ if not test:raise ValueError(message)
+def sha(path):return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+def unique(pairs):
+ d={}
+ for k,v in pairs:
+  need(k not in d,'duplicate JSON field '+k);d[k]=v
+ return d
+def read_json(path):return json.loads(Path(path).read_text(),object_pairs_hook=unique)
+def integer(value,lo,hi):return type(value)is int and lo<=value<=hi
+def strict_equal(a,b):
+ if type(a)is not type(b):return False
+ if isinstance(a,dict):return a.keys()==b.keys()and all(strict_equal(a[k],b[k])for k in a)
+ if isinstance(a,list):return len(a)==len(b)and all(strict_equal(x,y)for x,y in zip(a,b))
+ return a==b
+def expected_settings(capture):
+ return {'Debug':{'ScriptWindow':{'AllowIoOsAccess':True,'ScriptTimeout':60,'SaveScriptBeforeRun':False}},
+  'Preferences':{'SingleInstance':False,'PauseWhenInBackground':False,'AutoLoadPatches':False,
+   'OverrideSaveDataFolder':True,'SaveDataFolder':str(capture/'isolated-saves')},
+  'Snes':{'Port1':{'Type':'SnesController'},'Port2':{'Type':'None'},'DisableFrameSkipping':True,
+   'EnableRandomPowerOnState':False,'RamPowerOnState':'AllZeros','ForceFixedResolution':False,
+   'Overscan':{'Top':7,'Bottom':8,'Left':0,'Right':0}},
+  'Video':{'VideoFilter':'None','AspectRatio':'NoStretching','Brightness':0,'Contrast':0,'Hue':0,'Saturation':0,
+   'ScanlineIntensity':0,'UseBilinearInterpolation':False,'ScreenRotation':'None'}}
+def word(m,a):return m[a]|(m[a+1]<<8)
+def words(m,a,n):return [word(m,a+2*i)for i in range(n)]
+def raw(capture,row):
+ data=(capture/row['raw']).read_bytes();need(len(data)==7936,'incomplete sparse raw')
+ memory={};offset=0
+ for base,size in RANGES:
+  memory.update((base+i,v)for i,v in enumerate(data[offset:offset+size]));offset+=size
+ return memory
+
+def attest(capture,rom):
+ m=read_json(capture/'manifest.json')
+ need(set(m)=={'schema','kind','selection','state_injection','rom_patch','sparse_ranges','requested_frames',
+  'arguments','environment','isolation','sources','exit_code','completion','artifacts'},'wrong manifest fields')
+ need(integer(m.get('schema'),1,1)and m.get('kind')=='native human pass boundaries','wrong capture schema')
+ need(m.get('state_injection')is False and m.get('rom_patch')is False,'capture injected state')
+ need(integer(m.get('exit_code'),0,0),'native process failed')
+ need(integer(m.get('selection'),0,2)and m['selection']!=1,'invalid selection')
+ need(integer(m.get('requested_frames'),400,3000),'invalid requested frames')
+ need(m.get('sparse_ranges')==RANGES and all(type(v)is int for r in m['sparse_ranges']for v in r),'changed sparse schema')
+ need(set(m.get('sources',{}))=={'rom','mesen','capture','runner','isolation_helper'},'missing source attestation')
+ private={'mesen':'portable-mesen/Mesen.exe','capture':'capture.lua','runner':'capture_human_pass.py','isolation_helper':'mesen_portable.py'}
+ for key,name in private.items():need(Path(m['sources'][key]['path']).resolve()==capture/name,'nonprivate executed source')
+ need(sha(rom)==ROM_SHA and m['sources']['rom']['sha256']==ROM_SHA and m['sources']['mesen']['sha256']==MESEN_SHA,'wrong original ROM/Mesen')
+ need(m.get('arguments')==[str(capture/'portable-mesen/Mesen.exe'),'--testrunner','--timeout=240',
+                         str(Path(m['sources']['rom']['path']).resolve()),str(capture/'capture.lua')],'changed executed arguments')
+ need(m.get('environment')=={'NBA95_CAPTURE_DIR':capture.as_posix(),'NBA95_PASS_SELECTION':str(m['selection']),
+                            'NBA95_PASS_FRAMES':str(m['requested_frames'])},'changed executed environment')
+ for key,source in m['sources'].items():need(sha(source['path'])==source['sha256'],'changed source '+key)
+ for key,digest in SOURCE_VERSION.items():need(m['sources'][key]['sha256']==digest,'unsupported source version '+key)
+ required={'boundaries.jsonl','capture.lua','capture_complete.txt','capture_human_pass.py','mesen_portable.py',
+           'observed-script-data-folder.txt','initial-mesen-settings.json','stdout.log','stderr.log'}
+ artifacts=m.get('artifacts',{})
+ need(required<=set(artifacts),'missing artifact attestation')
+ for name,a in artifacts.items():
+  need(Path(name).name==name and set(a)=={'bytes','sha256'},'invalid artifact metadata')
+  need(integer(a['bytes'],0,1<<30)and(capture/name).stat().st_size==a['bytes']and sha(capture/name)==a['sha256'],'changed artifact '+name)
+ isolation=m['isolation']
+ need(set(isolation)=={'method','home','save_folder','initial_saves','settings','initial_settings_sha256',
+  'post_settings_verified','observed_script_data_folder','post_settings_sha256','final_saves'},'wrong isolation fields')
+ need(isolation['method']=='private portable executable/settings','wrong isolation method')
+ need(Path(isolation['home']).resolve()==capture/'portable-mesen'and Path(isolation['save_folder']).resolve()==capture/'isolated-saves','nonprivate home/saves')
+ need(isolation['initial_saves']==[]and isolation['post_settings_verified']is True,'missing process isolation')
+ need(sha(capture/'initial-mesen-settings.json')==isolation['initial_settings_sha256'],'changed initial settings')
+ need(sha(capture/'portable-mesen/settings.json')==isolation['post_settings_sha256'],'changed persisted settings')
+ initial=read_json(capture/'initial-mesen-settings.json')
+ need(strict_equal(initial,expected_settings(capture))and strict_equal(initial,isolation['settings']),'changed settings recipe')
+ observed=(capture/'observed-script-data-folder.txt').read_text().strip()
+ need(observed==isolation['observed_script_data_folder']and Path(observed).resolve()==capture/'portable-mesen/LuaScriptData/capture','changed observed Lua home')
+ saves={p.name:sha(p)for p in(capture/'isolated-saves').iterdir()if p.is_file()}
+ need(saves==isolation['final_saves'],'changed final saves')
+ # Verify on a copy: the shared helper records hashes and must not silently
+ # repair the attestation currently under review.
+ checked=mesen_portable.verify(capture,copy.deepcopy(isolation))
+ need(strict_equal(checked,isolation),'isolation verifier changed recorded evidence')
+ need((capture/'capture_complete.txt').read_text()==m['completion'],'changed completion')
+ rows=[json.loads(s,object_pairs_hook=unique)for s in(capture/'boundaries.jsonl').read_text().splitlines()]
+ complete=unique([s.split('=',1)for s in m['completion'].splitlines()])
+ need(set(complete)=={'selection','frames','boundaries','calls'},'invalid completion fields')
+ need(all(v.isdecimal()for v in complete.values()),'nonnumeric completion')
+ need(int(complete['selection'])==m['selection']and int(complete['boundaries'])==len(rows)and
+      m['requested_frames']<=int(complete['frames'])<=m['requested_frames']+1 and int(complete['calls'])>0,'incomplete normal journey')
+ used_raw=set();fields={'index','tag','pc','frame','court','raw','cpu_d','actor','owner','live','offense','direction','candidate','score'}
+ last_frame=last_court=-1
+ for index,row in enumerate(rows,1):
+  need(set(row)==fields,'invalid native event fields')
+  need(type(row['tag'])is str and row['tag']in PCS,'unknown native event')
+  for field in fields-{'tag','raw'}:need(integer(row[field],-1 if field=='court'else 0,0xffffff),'invalid event numeric type')
+  need(row['index']==index and row['pc']in PCS[row['tag']]and row['cpu_d']==0,'invalid boundary/order/DP')
+  need(row['frame']>=last_frame and row['court']>=last_court,'native time reversed');last_frame=row['frame'];last_court=row['court']
+  if row['tag']in RAW_TAGS:
+   name=f'raw_{index:05d}.bin';need(row['raw']==name and name in artifacts,'missing attested raw boundary');used_raw.add(name)
+  else:need(row['raw']=='','unexpected raw boundary')
+ need(set(artifacts)==required|used_raw,'unexpected or unbound artifacts')
+ return m,rows,int(complete['calls'])
+
+def verify(capture,probe,rom,diagnostics):
+ m,rows,native_calls=attest(capture,rom)
+ pending=metric=None;special=collections.Counter();coverage=collections.Counter();routes=collections.Counter()
+ metric_exits=collections.Counter();inputs=[];expected=[];contexts=[];crossings=[];ties=[];switches=0
+ completed=0;child_boundaries=[]
+ def append(mode,entry,end,want):
+  inputs.append(mode+' '+str(capture/entry['raw']));expected.append(want)
+  contexts.append(dict(mode=mode,entry=entry['index'],exit=end['index'],court=entry['court']))
+  if entry['court']!=end['court']:crossings.append(contexts[-1])
+ for row in rows:
+  tag=row['tag']
+  if tag in('player.entry','court.entry'):
+   need(pending is None,'initialization inside pass');special[tag]+=1;state=raw(capture,row)
+   if tag=='player.entry':need(words(state,0x166d,5)==[2,1,1,1,1],'wrong fresh selection state')
+   else:need(word(state,0x166d)==m['selection'],'wrong native court selection')
+   continue
+  if tag=='switch.observed':need(pending is None,'switch nested inside pass');switches+=1;continue
+  if tag=='pass.entry':
+   need(pending is None and special['court.entry']==1,'nested or precourt pass')
+   pending=dict(entry=row,state=raw(capture,row),phase='selection',scan=None,scan_count=0,score=0x640)
+   continue
+  need(pending is not None,'pass event without entry')
+  phase=pending['phase']
+  if tag in('pass.directional','pass.neutral'):
+   need(phase=='selection'and metric is None and pending['scan']in(None,tag),'misordered scan')
+   need(row['candidate']==word(pending['state'],word(pending['state'],0x9e)+4)+pending['scan_count']*0x100,'changed native scan sequence')
+   pending['scan_count']+=1;need(pending['scan_count']<=5,'too many candidate scans');pending['scan']=tag;continue
+  if tag=='metric.entry':
+   need(phase=='selection'and metric is None and pending['scan']=='pass.neutral','misordered metric entry')
+   metric=(row,raw(capture,row));continue
+  if tag=='metric.exit':
+   need(phase=='selection'and metric is not None,'unpaired metric exit')
+   append('metric',metric[0],row,dict(distance=word(raw(capture,row),0xaa)))
+   metric_exits[row['pc']]+=1;metric=None;continue
+  if tag.startswith('candidate.'):
+   need(phase=='selection'and metric is None and pending['scan']=='pass.'+tag.split('.')[1],'misordered candidate')
+   if row['score']==pending['score']:ties.append(dict(entry=pending['entry']['index'],event=row['index'],scan=pending['scan']))
+   pending['score']=row['score'];continue
+  if tag=='pass.callsite':
+   need(phase=='selection'and metric is None and pending['scan_count']==5,'incomplete pass scan')
+   pending['phase']='callsite';continue
+  if tag in('pass.initialize','pass.no_receiver'):
+   route=int(tag=='pass.initialize')
+   need(phase==('callsite'if route else'selection')and metric is None and pending['scan_count']==5,'invalid selection boundary')
+   entry,state=pending['entry'],pending['state'];end=raw(capture,row)
+   want=dict(route=route,score=word(end,0xba),handoff_words=[word(end,0xaa),word(end,0x8e)]if route else[],
+    actor_words=words(end,0x34eb,11*128),controller_words=words(end,0x47eb,160),
+    context_words=words(end,0x46eb,128),global_words=[word(end,a)for a in GLOBALS])
+   append('pass',entry,row,want);routes[route]+=1
+   actor=word(state,0x96);need(0x34eb<=actor<0x3eeb and(actor-0x34eb)%0x100==0,'invalid actor pointer')
+   gamephase='tip'if word(state,0x936)==0x81 else'inbound'if word(state,0x936)==0x82 else'live'
+   side='offense'if word(state,actor+0x6e)==word(state,0x93a)else'defense'
+   coverage[(pending['scan'],gamephase,side,entry['direction'])]+=1
+   pending['phase']='child'if route else'restoring'
+   if route:pending['child_entry']=row['index']
+   continue
+  if tag=='pass.resume':
+   need(phase=='child'and metric is None,'unexpected initializer resume');raw(capture,row)
+   child_boundaries.append(dict(entry=pending['child_entry'],exit=row['index'],replayed=False))
+   pending['phase']='restoring';continue
+  need(tag=='pass.return'and phase=='restoring'and metric is None,'bad pass return')
+  returned=raw(capture,row)
+  need(all(word(pending['state'],a)==word(returned,a)for a in SAVED_CALLER),'original pass epilogue did not restore saved words')
+  completed+=1;pending=None
+ need(pending is None and metric is None and completed==native_calls and sum(routes.values())==native_calls,'missing pass calls')
+ need(special==collections.Counter({'player.entry':1,'court.entry':1}),'missing native initialization')
+ need(all(any(k[0]==scan for k in coverage)for scan in('pass.neutral','pass.directional'))and sum(metric_exits.values())>0,'missing pass/metric coverage')
+ run=subprocess.run([str(probe)],input='\n'.join(inputs)+'\n',text=True,capture_output=True,timeout=60)
+ diagnostics.with_suffix('.probe-stdout.txt').write_text(run.stdout);diagnostics.with_suffix('.probe-stderr.txt').write_text(run.stderr)
+ need(run.returncode==0,f'probe failed {run.returncode}: {run.stderr}')
+ lines=run.stdout.splitlines();need(len(lines)==len(expected),'wrong C result count')
+ failures=[];compared=0
+ for i,(line,want)in enumerate(zip(lines,expected)):
+  actual=json.loads(line,object_pairs_hook=unique);need(actual.keys()==want.keys(),'wrong C fields')
+  for key,value in want.items():
+   if isinstance(value,list):
+    need(type(actual[key])is list and len(actual[key])==len(value),'wrong C vector shape');pairs=enumerate(zip(actual[key],value))
+   else:pairs=[(None,(actual[key],value))]
+   for slot,(got,v)in pairs:
+    compared+=1
+    if type(got)is not int or got!=v:failures.append(dict(**contexts[i],field=key,slot=slot,expected=v,actual=got))
+ return dict(kind='DF7A receiver selection plus F1C1 distance; AB2D not replayed',passed=not failures,
+  manifest_sha256=sha(capture/'manifest.json'),probe_sha256=sha(probe),rom_sha256=sha(rom),verifier_sha256=sha(__file__),
+  calls=native_calls,metric_calls=sum(metric_exits.values()),metric_exit_coverage=dict(metric_exits),compared_values=compared,
+  routes=dict(routes),frame_crossings=crossings,native_equal_score_replacements=ties,
+  initializer_boundaries_observed_not_replayed=child_boundaries,switch_calls_observed_not_replayed=switches,
+  coverage=[dict(scan=k[0],phase=k[1],side=k[2],direction=k[3],calls=v)for k,v in coverage.items()],failures=failures)
+
+def main():
+ p=argparse.ArgumentParser()
+ for name in('capture','probe','rom','output'):p.add_argument('--'+name,type=Path,required=True)
+ a=p.parse_args();need(not a.output.exists(),'preserve earlier report')
+ need(all(not a.output.with_suffix(s).exists()for s in('.probe-stdout.txt','.probe-stderr.txt')),'preserve earlier probe output')
+ try:report=verify(a.capture.resolve(),a.probe.resolve(),a.rom.resolve(),a.output)
+ except Exception as error:a.output.write_text(json.dumps(dict(passed=False,error=str(error)),indent=2)+'\n');raise
+ a.output.write_text(json.dumps(report,indent=2)+'\n');print(json.dumps({k:v for k,v in report.items()if k not in('coverage','failures','initializer_boundaries_observed_not_replayed')}))
+ if report['failures']:print(json.dumps(report['failures'][:10]));raise SystemExit(1)
+
+if __name__=='__main__':main()
+

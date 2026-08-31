@@ -100,13 +100,13 @@ int main(int argc, char **argv) {
             unsigned context = side ? 0x476Bu : 0x46EBu;
             state.team_context[side].anchor_x_raw_0a =
                 (int16_t)word(raw, context + 0x0Au);
-            state.mode11_context_raw_3b[side] = word(raw, context + 0x3Bu);
+            state.controllers.count[side] = word(raw, context + 0x3Bu);
         }
         for (unsigned control = 0; control < 5u; ++control) {
             unsigned record = 0x47EBu + control * 0x40u;
-            state.mode11_control_group_raw[control] =
+            state.controllers.record[control].group =
                 (int16_t)word(raw, record);
-            state.mode11_control_flags_raw[control] = word(raw, record + 8u);
+            state.controllers.record[control].held = word(raw, record + 8u);
         }
         state.offense_side = word(raw, 0x009Eu) == 0x476Bu;
         unsigned slot = word(raw, 0x00C2u);

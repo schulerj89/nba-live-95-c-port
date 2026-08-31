@@ -18,6 +18,20 @@ static const NbaAssetItem *player_setup_asset(const NbaPlayerSetup *screen,
     return item && item->data && item->size == size ? item : NULL;
 }
 
+static void player_setup_publish_controller_label(NbaPlayerSetup *screen) {
+    /* $81:B748-B75E calls A2B8 to clear the row buffer, then A1E7 to
+     * publish it. Native row1: $192A=0037, $193A=0140, $194A=934E,
+     * $1972=4000 -> VRAM byte8370,320 bytes. This clears glyph data,
+     * not a rectangle of rendered pixels or the persistent BG3 tilemap.
+     * Selected row bytes equal the pack's ROM-derived glyph publication. */
+    if ((screen->controller_selection & 0x7fffu) == 1) {
+        memset(screen->scene_vram + 0x8370,0,0x140);
+    } else {
+        const NbaAssetItem *vram=player_setup_asset(screen,NBA_ASSET_PLAYER_SETUP_VRAM,0x10000u);
+        memcpy(screen->scene_vram + 0x8370,(const uint8_t *)vram->data+0x8370,0x140);
+    }
+}
+
 bool nba_player_setup_init(NbaPlayerSetup *screen, const NbaAssetPack *assets,
                            NbaSession *session, const uint32_t *outgoing_pixels) {
     if (!screen || !assets || !session) return false;
@@ -26,6 +40,7 @@ bool nba_player_setup_init(NbaPlayerSetup *screen, const NbaAssetPack *assets,
     screen->session = session;
     /* The live Exhibition path enters with Player 1 assigned to home/right. */
     screen->player_one_side = (NbaTeamSide)session->player_one_side;
+    screen->controller_selection = session->controller_selection[0];
     screen->outgoing_pixels = (uint32_t *)malloc(
         (size_t)NBA_SNES_WIDTH * NBA_SNES_HEIGHT * sizeof(uint32_t));
     if (!screen->outgoing_pixels) return false;
@@ -54,6 +69,7 @@ bool nba_player_setup_init(NbaPlayerSetup *screen, const NbaAssetPack *assets,
         return false;
     }
     memcpy(screen->scene_vram, base_vram->data, 0x10000u);
+    player_setup_publish_controller_label(screen);
     /* $82:863C uses the home-team pointer from $80:D0E2 to rebuild these
      * twenty-five BG2 tiles. Team Select's raw per-team VRAM assets preserve
      * the exact result, including each logo's grayscale/dither treatment. */
@@ -90,16 +106,36 @@ NbaPlayerSetupSound nba_player_setup_update(NbaPlayerSetup *screen,
     screen->steady_frame++;
     if (!input) return NBA_PLAYER_SETUP_SOUND_NONE;
 
-    /* $81:B62C-$B719 rebuilds the controller ownership row after a change. */
-    if (input->pressed & (NBA_BTN_LEFT | NBA_BTN_RIGHT)) {
-        NbaTeamSide requested = (input->pressed & NBA_BTN_LEFT) ?
-                                NBA_TEAM_SIDE_LEFT : NBA_TEAM_SIDE_RIGHT;
-        if (requested != screen->player_one_side) {
-            screen->player_one_side = requested;
-            screen->session->player_one_side = (uint8_t)requested;
-            return NBA_PLAYER_SETUP_SOUND_MOVE;
-        }
+    /* $81:A7AB-A7CF: L/R toggles the alternate eight-way direction table
+     * only for an assigned pad. The original processes this before arrows. */
+    bool changed = false;
+    uint16_t selection = screen->controller_selection & 0x7fffu;
+    if ((input->pressed & (NBA_BTN_L | NBA_BTN_R)) && selection != 1) {
+        screen->session->controller_flags[0] ^= 0x8000u;
+        changed = true;
     }
+    /* $81:A7D0-A843: Left wins a simultaneous Left/Right word; decrement
+     * or increment one position, retaining the selection high bit. */
+    if (input->pressed & (NBA_BTN_LEFT | NBA_BTN_RIGHT)) {
+        uint16_t requested = selection;
+        if (input->pressed & NBA_BTN_LEFT) {
+            if (requested > 0) --requested;
+        } else if (requested < 2) ++requested;
+        if (requested != selection) {
+            screen->controller_selection = (screen->controller_selection & 0x8000u) | requested;
+            screen->session->controller_selection[0] = screen->controller_selection;
+            player_setup_publish_controller_label(screen);
+            /* Legacy UI compatibility has no neutral value. Gameplay must
+             * consume controller_selection, not infer a team from this. */
+            if (requested != 1) {
+                screen->player_one_side = requested == 0 ? NBA_TEAM_SIDE_LEFT : NBA_TEAM_SIDE_RIGHT;
+                screen->session->player_one_side = (uint8_t)screen->player_one_side;
+            }
+            changed = true;
+        }
+        return changed ? NBA_PLAYER_SETUP_SOUND_MOVE : NBA_PLAYER_SETUP_SOUND_NONE;
+    }
+    if (changed) return NBA_PLAYER_SETUP_SOUND_MOVE;
     if (input->pressed & NBA_BTN_START) {
         screen->confirm_requested = true;
         return NBA_PLAYER_SETUP_SOUND_CONFIRM;
@@ -238,8 +274,9 @@ void nba_player_setup_render(const NbaPlayerSetup *screen, NbaRenderer *renderer
     if (source_offset == 14) source_offset = 0;
     memcpy(selected_cgram + 0x142, (const uint8_t *)cycle->data + source_offset, 14);
 
-    int left_palette = screen->player_one_side == NBA_TEAM_SIDE_LEFT ? 2 : 1;
-    int right_palette = screen->player_one_side == NBA_TEAM_SIDE_RIGHT ? 2 : 1;
+    uint16_t selection = screen->controller_selection & 0x7fffu;
+    int left_palette = selection == 0 ? 2 : 1;
+    int right_palette = selection == 2 ? 2 : 1;
     for (int index = 20; index >= 6; --index)
         player_setup_draw_object(renderer, vram,
             right_palette == 2 ? selected_cgram : base_cgram,
@@ -256,8 +293,10 @@ void nba_player_setup_render(const NbaPlayerSetup *screen, NbaRenderer *renderer
 
     /* Capture group 47..51 is the arrow/controller. Move the complete group
      * together, matching the redraw path instead of leaving stale pieces. */
-    int controller_offset = screen->player_one_side == NBA_TEAM_SIDE_LEFT ? -132 : 0;
-    for (int index = 51; index >= 47; --index)
+    /* Natural native OAM: first controller tile x40(left),109(neutral),
+     * 174(right). The neutral choice omits the arrow tile (pack index47). */
+    int controller_offset = selection == 0 ? -134 : selection == 1 ? -65 : 0;
+    for (int index = 51; index >= (selection == 1 ? 48 : 47); --index)
         player_setup_draw_object(renderer, vram, base_cgram, oam,
                                  index, -1, controller_offset);
 }
