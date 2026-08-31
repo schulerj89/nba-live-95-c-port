@@ -12,6 +12,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", default=ROOT / "docs/feature-capture-matrix.json", type=Path)
     parser.add_argument("--output", default=ROOT / "docs/feature-capture-matrix.md", type=Path)
+    parser.add_argument("--capture-root", default=ROOT / ".analysis", type=Path)
     args = parser.parse_args()
     data = json.loads(args.input.read_text(encoding="utf-8"))
     features = data["features"]
@@ -27,7 +28,11 @@ def main():
         if any(row[key] not in LEVELS for key in dimensions):
             raise SystemExit(f"Invalid evidence level for {row['id']}")
         for evidence in row["evidence"]:
-            if not (ROOT / evidence).exists():
+            relative = Path(evidence)
+            evidence_path = (args.capture_root.joinpath(*relative.parts[1:])
+                             if relative.parts and relative.parts[0] == ".analysis"
+                             else ROOT / relative)
+            if not evidence_path.exists():
                 raise SystemExit(f"Missing evidence for {row['id']}: {evidence}")
     estimate = sum(row["weight"] * row["completion"] for row in features) / 100
     lines = [

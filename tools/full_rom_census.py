@@ -48,9 +48,9 @@ def contains(intervals, address):
     return index >= 0 and intervals[index][0] <= address <= intervals[index][1]
 
 
-def load_exec():
+def load_exec(capture_root=None):
     rows = []
-    for path in (ROOT / ".analysis").rglob("exec_*.txt"):
+    for path in (Path(capture_root) if capture_root is not None else ROOT / ".analysis").rglob("exec_*.txt"):
         for line in path.read_text(errors="replace").splitlines():
             match = re.fullmatch(r"([0-9A-Fa-f]{6})-([0-9A-Fa-f]{6})", line.strip())
             if match:
@@ -154,7 +154,7 @@ def merge_calls(args):
 
 def report(args):
     out = Path(args.out)
-    executed, verified = load_exec(), load_verified()
+    executed, verified = load_exec(args.capture_root), load_verified()
     banks, all_starts = [], set()
     for bank in CANONICAL_BANKS:
         path = out / "listings" / f"bank_{bank:02X}_instructions.tsv"
@@ -238,6 +238,7 @@ def main():
     p.set_defaults(run=prepare)
     p = sub.add_parser("merge"); p.add_argument("--out", required=True); p.set_defaults(run=merge_calls)
     p = sub.add_parser("report"); p.add_argument("--out", required=True)
+    p.add_argument("--capture-root", type=Path, default=ROOT / ".analysis")
     p.add_argument("--write-md", required=True); p.add_argument("--write-json", required=True)
     p.set_defaults(run=report)
     args = parser.parse_args(); args.run(args)

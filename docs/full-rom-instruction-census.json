@@ -4,7 +4,7 @@
   "inputs": {
     "text_hash_policy": "UTF-8 with LF newlines",
     "verified_routines_sha256": "1671ccc1962ddb4a8696c45708d593b7d9a2a26ff24b5f2d327f3dd74afb30ad",
-    "census_tool_sha256": "d546a7d9c2b5de447594f0d0c5994fdca74111551947611e3d2d09c470e19860",
+    "census_tool_sha256": "cd0f0e749b69d0d6d6f57519c5a3b690bdaf7ad230adfa291ae1b60cdc34e225",
     "evidence_policy_sha256": "83069658610c442f6ec3861ffd73d586b5fdf2ee88f075474423cc8af242dd87"
   },
   "totals": {

@@ -2,6 +2,7 @@ param(
     [string]$RomPath = '',
     [string]$AssetPack = '',
     [string]$CaptureRoot = '',
+    [string]$RecompRoot = '',
     [string]$OutputExe = '',
     [switch]$ExtractAssets,
     [switch]$Run,
@@ -21,6 +22,11 @@ $NativeCaptureRoot = if ([string]::IsNullOrWhiteSpace($CaptureRoot)) {
     Join-Path $Root '.analysis'
 } else {
     [IO.Path]::GetFullPath($CaptureRoot)
+}
+$NativeRecompRoot = if ([string]::IsNullOrWhiteSpace($RecompRoot)) {
+    Join-Path (Split-Path $Root -Parent) 'NBA-Live-95-Recomp'
+} else {
+    [IO.Path]::GetFullPath($RecompRoot)
 }
 
 New-Item -ItemType Directory -Force -Path $BuildDir | Out-Null
@@ -680,7 +686,8 @@ if ($Test) {
         --native (Join-Path $NativeCaptureRoot 'intro-exact-20260830\capture-v4') `
         --actual $IntroTextOutput --report (Join-Path $BuildDir 'intro-text-parity.json')
     if ($LASTEXITCODE -ne 0) { throw 'Intro text native raster comparison failed.' }
-    & python (Join-Path $Root "tools\test_project_census.py")
+    & python (Join-Path $Root "tools\test_project_census.py") `
+        --capture-root $NativeCaptureRoot --recomp $NativeRecompRoot
     if ($LASTEXITCODE -ne 0) {
         throw "Project census regression tests failed with exit code $LASTEXITCODE"
     }

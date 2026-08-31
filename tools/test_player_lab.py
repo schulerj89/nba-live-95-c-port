@@ -377,14 +377,15 @@ def main():
         raise AssertionError("invalid Player Lab team was accepted")
     wrapped = run(args.exe, args.rom, args.pack, "--player-lab", "--player-team", 28,
                   "--player-roster", 11, "--player-team-right", 1,
-                  "--player-roster-down", 1, "--frames", 2)
+                  # Two automatic taps include their intervening release.
+                  "--player-roster-down", 1, "--frames", 3)
     if wrapped.returncode or "team=00" not in wrapped.stdout or \
        "roster=00" not in wrapped.stdout:
         raise AssertionError("Player Lab team/roster navigation did not wrap")
     cycled = run(args.exe, args.rom, args.pack, "--player-lab",
                   "--player-animation", 3, "--player-direction", 6,
                   "--player-animation-right", 1,
-                  "--player-direction-right", 1, "--frames", 2)
+                  "--player-direction-right", 1, "--frames", 3)
     if cycled.returncode or "animation=$04" not in cycled.stdout or \
        "direction=7" not in cycled.stdout:
         raise AssertionError("Player Lab animation/direction cycling failed")

@@ -1,5 +1,6 @@
 """Regression checks for checked-in ROM census and feature matrix artifacts."""
 
+import argparse
 import json
 import subprocess
 import sys
@@ -91,6 +92,11 @@ def verify_evidence_ranges(entries):
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--capture-root", type=Path, default=ROOT / ".analysis")
+    parser.add_argument("--recomp", type=Path, default=ROOT.parent / "NBA-Live-95-Recomp")
+    args = parser.parse_args()
+    progress_args = ["--capture-root", str(args.capture_root), "--recomp", str(args.recomp)]
     with tempfile.TemporaryDirectory() as temp:
         lf, crlf, changed = (Path(temp) / name for name in ("lf", "crlf", "changed"))
         lf.write_bytes(b"native evidence\nsecond line\n")
@@ -105,22 +111,23 @@ def main():
     verify_evidence_ranges(entries)
 
     progress = subprocess.run(
-        [sys.executable, str(ROOT / "tools/progress.py")], cwd=ROOT,
+        [sys.executable, str(ROOT / "tools/progress.py"), *progress_args], cwd=ROOT,
         check=True, capture_output=True, text=True)
     require("[PROGRESS]" in progress.stdout,
             "progress evidence report did not complete")
-    if any((ROOT / ".analysis").rglob("exec_*.txt")):
+    if any(args.capture_root.rglob("exec_*.txt")):
         with tempfile.TemporaryDirectory() as temp:
             live_progress = Path(temp) / "progress.md"
             subprocess.run([
                 sys.executable, str(ROOT / "tools/progress.py"),
-                "--write", str(live_progress)
+                "--write", str(live_progress), *progress_args
             ], cwd=ROOT, check=True, capture_output=True, text=True)
             require(live_progress.read_text(encoding="utf-8") ==
                     (ROOT / "docs/progress.md").read_text(encoding="utf-8"),
                     "checked-in progress.md is stale")
 
-    subprocess.run([sys.executable, str(ROOT / "tools/feature_capture_matrix.py")],
+    subprocess.run([sys.executable, str(ROOT / "tools/feature_capture_matrix.py"),
+                    "--capture-root", str(args.capture_root)],
                    cwd=ROOT, check=True)
     matrix = json.loads((ROOT / "docs/feature-capture-matrix.json").read_text())
     require(sum(row["weight"] for row in matrix["features"]) == 100,
@@ -146,7 +153,7 @@ def main():
             "verified starts exceed the decoded universe")
     require(totals["decoded_bytes"] + totals["undecoded_bytes"] == totals["rom_bytes"],
             "decoded and undecoded byte totals do not cover the ROM")
-    listings = ROOT / ".analysis/full-rom-census/listings"
+    listings = args.capture_root / "full-rom-census/listings"
     if any(listings.glob("bank_*_instructions.tsv")):
         with tempfile.TemporaryDirectory() as temp:
             live_md = Path(temp) / "census.md"
@@ -154,6 +161,7 @@ def main():
             subprocess.run([
                 sys.executable, str(ROOT / "tools/full_rom_census.py"),
                 "report", "--out", str(listings.parent),
+                "--capture-root", str(args.capture_root),
                 "--write-md", str(live_md), "--write-json", str(live_json)
             ], cwd=ROOT, check=True, capture_output=True, text=True)
             require(live_md.read_text(encoding="utf-8") ==

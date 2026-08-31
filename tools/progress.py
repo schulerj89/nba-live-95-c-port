@@ -12,7 +12,7 @@ Nothing here is hand-maintained: re-run after capturing, porting, or
 verifying and the numbers move on their own.
 
 Usage:
-    python tools/progress.py [--recomp <path>] [--write docs/progress.md]
+    python tools/progress.py [--capture-root <path>] [--recomp <path>] [--write docs/progress.md]
 """
 
 import argparse
@@ -131,11 +131,13 @@ def main():
     parser.add_argument("--recomp",
                         default=str(ROOT.parent / "NBA-Live-95-Recomp"))
     parser.add_argument("--write", help="also write a markdown report here")
+    parser.add_argument("--capture-root", type=Path, default=ROOT / ".analysis",
+                        help="read-only directory containing exec capture ranges")
     parser.add_argument("--gaps", type=int, default=10,
                         help="largest undocumented executed regions to list")
     args = parser.parse_args()
 
-    executed = load_executed(ROOT / ".analysis")
+    executed = load_executed(args.capture_root)
     ported, points = load_provenance(ROOT / "src")
     verified, verified_entries = load_verified(ROOT / "docs")
     recomp_functions = load_recomp_functions(Path(args.recomp))
@@ -157,6 +159,8 @@ def main():
              "provenance comments, docs/verified-routines.json, and the "
              "recomp function set. Do not edit by hand.", ""]
     exec_total = total(executed)
+    def captured_percent(count, digits=1):
+        return f"{100 * count / exec_total:.{digits}f}%" if exec_total else "N/A"
     lines += [
         "## Captured-address coverage (banks the captures observed)", "",
         "Counts address positions in the captured exec intervals. Some captures "
@@ -164,11 +168,11 @@ def main():
         "These are not a disassembled instruction census, byte-accurate "
         "execution coverage, or a whole-game completion percentage.", "",
         "| metric | address positions | % of captured |", "|---|---|---|",
-        f"| executed (denominator) | {exec_total} | 100.0% |",
+        f"| executed (denominator) | {exec_total} | {captured_percent(exec_total)} |",
         f"| documented by port provenance | {total(covered)} | "
-        f"{100 * total(covered) / exec_total:.1f}% |",
+        f"{captured_percent(total(covered))} |",
         f"| verified against ground truth | {total(verified_executed)} | "
-        f"{100 * total(verified_executed) / exec_total:.1f}% |", "",
+        f"{captured_percent(total(verified_executed))} |", "",
         "## Per bank", "", "| bank | executed | documented | % |", "|---|---|---|---|"]
     banks = sorted({s >> 16 for s, _ in executed})
     for bank in banks:
@@ -193,11 +197,14 @@ def main():
     report = "\n".join(lines) + "\n"
 
     print(f"[PROGRESS] executed={exec_total} "
-          f"documented={total(covered)} ({100 * total(covered) / exec_total:.1f}%) "
+          f"documented={total(covered)} ({captured_percent(total(covered))}) "
           f"verified={total(verified_executed)} "
-          f"({100 * total(verified_executed) / exec_total:.2f}%) "
+          f"({captured_percent(total(verified_executed), 2)}) "
           f"provenance_points={len(points)} "
           f"recomp_fns={len(recomp_functions)}/{len(recomp_ported)} ported")
+    if not exec_total:
+        print("[PROGRESS] No executed ranges available; captured percentages are N/A. "
+              "Supply --capture-root to use existing evidence.")
     if args.write:
         Path(args.write).write_text(report, encoding="utf-8")
         print(f"[PROGRESS] wrote {args.write}")

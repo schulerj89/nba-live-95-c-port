@@ -9,7 +9,7 @@ Counts address positions in the captured exec intervals. Some captures record in
 | metric | address positions | % of captured |
 |---|---|---|
 | executed (denominator) | 29438 | 100.0% |
-| documented by port provenance | 29091 | 98.8% |
+| documented by port provenance | 29101 | 98.9% |
 | verified against ground truth | 11529 | 39.2% |
 
 ## Per bank
@@ -19,7 +19,7 @@ Counts address positions in the captured exec intervals. Some captures record in
 | $00 | 30 | 30 | 100.0% |
 | $80 | 7836 | 7836 | 100.0% |
 | $81 | 2855 | 2855 | 100.0% |
-| $82 | 1988 | 1641 | 82.5% |
+| $82 | 1988 | 1651 | 83.0% |
 | $83 | 1053 | 1053 | 100.0% |
 | $84 | 206 | 206 | 100.0% |
 | $85 | 5345 | 5345 | 100.0% |
@@ -45,5 +45,5 @@ Counts address positions in the captured exec intervals. Some captures record in
 | $82:F9EA-$82:F9ED | 4 |
 | $82:FA08-$82:FA0B | 4 |
 | $82:EFED-$82:EFEF | 3 |
-| $82:F8B7-$82:F8B9 | 3 |
 | $82:F8C9-$82:F8CB | 3 |
+| $82:F8EE-$82:F8F0 | 3 |
