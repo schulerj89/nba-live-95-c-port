@@ -61,3 +61,6 @@ include/period_support.h -text
 src/period_support.c -text
 tools/period_support_probe.c -text
 tools/period_support_source_domain.py -text
+# Preserve executed initializer capture identities.
+tools/capture_setup_spc_init.py -text
+tools/mesen_setup_spc_init.lua -text
