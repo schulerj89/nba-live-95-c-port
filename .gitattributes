@@ -1,0 +1,14 @@
+
+# Preserve exact bytes in the 2026-08-31 worktree snapshot.
+docs/audio-event-consumption.md -text
+include/nba_audio_events.h -text
+src/nba_audio_events.c -text
+tests/fixtures/audio-events-native-witnesses.json -text
+tools/audio_events_probe.c -text
+tools/build_audio_events_probe.ps1 -text
+tools/capture_audio_contract.py -text
+tools/mesen_audio_contract.lua -text
+tools/normalize_audio_events.py -text
+tools/test_audio_events_probe.py -text
+tools/test_audio_events_verifier.py -text
+tools/verify_audio_events.py -text
