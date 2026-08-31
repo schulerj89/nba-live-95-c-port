@@ -23,8 +23,8 @@
 #define NBA_INTRO_STAGE1_FRAMES         33        /* motion 0..32; A resets at 33 */
 #define NBA_INTRO_STAGE2_FRAMES         34        /* motion 33..66; SPORTS resets at 67 */
 #define NBA_INTRO_STAGE3_FRAMES         33        /* motion 67..99; Stage 4 at 100 */
-#define NBA_INTRO_STAGE4_FRAMES         203       /* preserve $82:F15C's 303-frame total */
-#define NBA_INTRO_TOTAL_FRAMES          303       /* 5.050s total */
+#define NBA_INTRO_STAGE4_FRAMES         203       /* Legacy dispatcher duration; not native hold proof. */
+#define NBA_INTRO_TOTAL_FRAMES          303       /* Whole intro hold/audio/handoff still pending. */
 
 #define NBA_INTRO_ZOOM_FRAMES           22        /* $000C increments after duplicated $0001 */
 #define NBA_INTRO_FLASH_FRAMES          8         /* Eight waits in $82:F4C4 */
@@ -33,17 +33,8 @@
 #define NBA_INTRO_MODE7_STEP            0x000C    /* Added once per frame by $82:F584-$F594 */
 
 /* Top-level EA Intro Renderer */
-void nba_ea_intro_render(const NbaAssetPack *assets, NbaRenderer *ren, float timer);
+void nba_ea_intro_render(const NbaAssetPack *assets, NbaRenderer *ren, uint32_t motion_frame);
 
-/* Modular Stage Renderers */
-void nba_ea_intro_render_stage1(const NbaAssetPack *assets, NbaRenderer *ren, float local_t,
-                               int start_x, int start_y, uint32_t width, uint32_t height);
-void nba_ea_intro_render_stage2(const NbaAssetPack *assets, NbaRenderer *ren, float local_t,
-                               int start_x, int start_y, uint32_t width, uint32_t height);
-void nba_ea_intro_render_stage3(const NbaAssetPack *assets, NbaRenderer *ren, float local_t,
-                               int start_x, int start_y, uint32_t width, uint32_t height);
-void nba_ea_intro_render_stage4(const NbaAssetPack *assets, NbaRenderer *ren,
-                               int local_frame, int start_x, int start_y,
-                               uint32_t width, uint32_t height);
+bool nba_ea_intro_payload_valid(const uint8_t *data, size_t size);
 
 #endif /* NBA_EA_INTRO_H */

@@ -1,0 +1,22 @@
+
+# Preserve exact bytes in the 2026-08-31 worktree snapshot.
+include/nba_assets.h -text
+include/nba_ea_intro.h -text
+nba95_sources.txt -text
+src/nba_assets.c -text
+src/nba_ea_intro.c -text
+src/nba_game.c -text
+tools/extract_assets.py -text
+tools/test_core_safety.py -text
+tools/test_intro_sequence.py -text
+include/nba_intro_text.h -text
+include/nba_rom_font.h -text
+src/nba_intro_text.c -text
+src/nba_rom_font.c -text
+tools/build_intro_indexed.py -text
+tools/ghidra/DumpIntroText.java -text
+tools/intro_capture_resources.py -text
+tools/intro_resource_validate_probe.c -text
+tools/intro_text_probe.c -text
+tools/test_intro_indexed.py -text
+tools/verify_intro_text.py -text

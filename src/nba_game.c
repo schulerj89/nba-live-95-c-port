@@ -1,4 +1,5 @@
 #include "nba_game.h"
+#include "nba_intro_text.h"
 #include "nba_font.h"
 #include "nba_audio.h"
 #include "nba_snes_ppu.h"
@@ -369,17 +370,6 @@ bool nba_game_enter_state(NbaGame *game, NbaGameState state) {
     return true;
 }
 
-/* SNES INIDISP master-brightness levels are linear values from 0 through 15. */
-static uint32_t nba_game_master_brightness_color(uint32_t color, int brightness) {
-    if (brightness >= 15) return color;
-    if (brightness <= 0) return color & 0xFF000000u;
-
-    uint32_t r = ((color >> 16) & 0xFFu) * (uint32_t)brightness / 15u;
-    uint32_t g = ((color >> 8) & 0xFFu) * (uint32_t)brightness / 15u;
-    uint32_t b = (color & 0xFFu) * (uint32_t)brightness / 15u;
-    return (color & 0xFF000000u) | (r << 16) | (g << 8) | b;
-}
-
 static int nba_game_license_brightness(uint32_t state_frame) {
     int fade_frame = (int)state_frame - NBA_LICENSE_FRAMES;
     return fade_frame <= 0 ? 15 : 15 - fade_frame;
@@ -411,6 +401,14 @@ bool nba_game_init(NbaGame *game, const char *rom_path, const char *assets_path)
     /* Load asset pack if provided via parameter */
     if (assets_path && assets_path[0] != '\0' &&
         !nba_assets_load(&game->assets, assets_path)) {
+        nba_audio_shutdown(&game->audio);
+        return false;
+    }
+
+    if (!nba_assets_get(&game->assets, NBA_ASSET_EA_INDEXED) ||
+        !nba_assets_get(&game->assets, NBA_ASSET_INTRO_TEXT)) {
+        fprintf(stderr, "[GAME] Asset pack lacks indexed intro resources; rebuild it with tools/extract_assets.py.\n");
+        nba_assets_free(&game->assets);
         nba_audio_shutdown(&game->audio);
         return false;
     }
@@ -588,7 +586,9 @@ void nba_game_tick(NbaGame *game, float delta_time) {
                 }
             }
 
-            /* Step through the authentic 4 assembly stages (5.05s total hold) or advance on button press */
+            /* Legacy dispatcher duration/input remains pending native hold,
+             * audio and resource-handoff translation; renderer parity below
+             * does not validate this timing contract. */
             if (game->input.pressed & (NBA_BTN_START | NBA_BTN_A | NBA_BTN_B)) {
                 nba_game_enter_state(game, NBA_STATE_TITLE_SEQUENCE);
             } else if (game->state_frame >= NBA_INTRO_TOTAL_FRAMES) {
@@ -761,40 +761,11 @@ void nba_game_tick(NbaGame *game, float delta_time) {
 
 /**
  * Offset/Address/Size: 0x007EE6 | $80:FEE6 | size: N/A (timing routine)
- * Purpose: Renders the extracted NBA / NBPA legal bitmap with the ROM's master-brightness ramp.
+ * Purpose: Renders original packed font/strings/palette through $81:9FDF/$A163.
  */
 void nba_game_render_nba_legal_notice(NbaGame *game) {
-    if (!game) return;
-    NbaRenderer *ren = &game->renderer;
-
-    nba_renderer_clear(ren, 0xFF000000); /* Solid Black */
-
-    const NbaAssetItem *item = nba_assets_get(&game->assets, NBA_ASSET_NBA_LEGAL_NOTICE);
-    if (item && item->data) {
-        uint32_t col_white = nba_game_master_brightness_color(
-            0xFFFFFFFF, nba_game_legal_brightness(game->state_frame));
-        const uint8_t *bitmap = (const uint8_t *)item->data;
-        int start_y = (int)item->flags; /* Stored start_y in flags */
-
-        for (uint32_t r = 0; r < item->height; r++) {
-            int py = start_y + r;
-            if (py < 0 || py >= NBA_SNES_HEIGHT) continue;
-
-            for (int b = 0; b < 32; b++) {
-                uint8_t byte_val = bitmap[r * 32 + b];
-                if (!byte_val) continue;
-
-                for (int bit = 0; bit < 8; bit++) {
-                    if (byte_val & (0x80 >> bit)) {
-                        int px = b * 8 + bit;
-                        if (px >= 0 && px < NBA_SNES_WIDTH) {
-                            ren->pixels[py * NBA_SNES_WIDTH + px] = col_white;
-                        }
-                    }
-                }
-            }
-        }
-    }
+    if (game) nba_intro_text_render(&game->assets, &game->renderer, true,
+                                    nba_game_legal_brightness(game->state_frame));
 }
 
 /**
@@ -804,8 +775,7 @@ void nba_game_render_nba_legal_notice(NbaGame *game) {
  */
 void nba_game_render_ea_intro(NbaGame *game) {
     if (!game) return;
-    nba_ea_intro_render(&game->assets, &game->renderer,
-                        (float)game->state_frame / 60.0f);
+    nba_ea_intro_render(&game->assets, &game->renderer, game->state_frame);
 }
 
 /**
@@ -827,49 +797,10 @@ void nba_game_render(NbaGame *game) {
             nba_renderer_clear(ren, col_black);
             break;
 
-        case NBA_STATE_NINTENDO_LICENSE: {
-            nba_renderer_clear(ren, col_black);
-
-            uint32_t license_white = nba_game_master_brightness_color(
-                col_white, nba_game_license_brightness(game->state_frame));
-
-            const NbaAssetItem *item = nba_assets_get(&game->assets, NBA_ASSET_NINTENDO_LICENSE);
-            if (item && item->data) {
-                const uint8_t *bitmap = (const uint8_t *)item->data;
-                int start_x = (NBA_SNES_WIDTH - (int)item->width) / 2;
-                int start_y = (NBA_SNES_HEIGHT - (int)item->height) / 2;
-
-                for (uint32_t r = 0; r < item->height; r++) {
-                    int py = start_y + r;
-                    if (py < 0 || py >= NBA_SNES_HEIGHT) continue;
-
-                    for (int b = 0; b < 16; b++) {
-                        uint8_t byte_val = bitmap[r * 16 + b];
-                        if (!byte_val) continue;
-
-                        for (int bit = 0; bit < 8; bit++) {
-                            if (byte_val & (0x80 >> bit)) {
-                                int px = start_x + (b * 8 + bit);
-                                if (px >= 0 && px < NBA_SNES_WIDTH) {
-                                    ren->pixels[py * NBA_SNES_WIDTH + px] = license_white;
-                                }
-                            }
-                        }
-                    }
-                }
-            } else {
-                /* Fallback to embedded font helper */
-                int start_x = (NBA_SNES_WIDTH - 128) / 2;
-                int start_y = (NBA_SNES_HEIGHT - 11) / 2;
-                nba_font_render_licensed_by_nintendo(
-                    ren->pixels, NBA_SNES_WIDTH,
-                    start_x, start_y,
-                    license_white,
-                    1
-                );
-            }
+        case NBA_STATE_NINTENDO_LICENSE:
+            nba_intro_text_render(&game->assets, ren, false,
+                                  nba_game_license_brightness(game->state_frame));
             break;
-        }
 
         case NBA_STATE_NBA_LEGAL_NOTICE:
             nba_game_render_nba_legal_notice(game);

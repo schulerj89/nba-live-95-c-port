@@ -1,4 +1,6 @@
 #include "nba_assets.h"
+#include "nba_ea_intro.h"
+#include "nba_intro_text.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -178,6 +180,10 @@ static bool asset_metadata_valid(uint32_t id, uint32_t size, uint32_t width,
                height <= NBA_SNES_HEIGHT && x <= NBA_SNES_WIDTH - width &&
                y <= NBA_SNES_HEIGHT - height && required == size;
     }
+    if (id == NBA_ASSET_EA_INDEXED)
+        return size == 71674u && width == 0u && height == 0u && flags == 0u;
+    if (id == NBA_ASSET_INTRO_TEXT)
+        return size == 4568u && width == 0u && height == 0u && flags == 0u;
     switch ((NbaAssetId)id) {
         case NBA_ASSET_NINTENDO_LICENSE:
             return width == 128u && height == 11u && size == 176u && flags == 0u;
@@ -360,6 +366,13 @@ bool nba_assets_load(NbaAssetPack *pack, const char *asset_path) {
     pack->item_count = asset_count;
 
     pack->is_loaded = true;
+    const NbaAssetItem *ea = nba_assets_get(pack, NBA_ASSET_EA_INDEXED);
+    if (ea && !nba_ea_intro_payload_valid(ea->data, ea->size))
+        return asset_load_error(pack, "EA indexed resource header is invalid");
+    const NbaAssetItem *intro_text = nba_assets_get(pack, NBA_ASSET_INTRO_TEXT);
+    if (intro_text && !nba_intro_text_payload_valid(intro_text->data, intro_text->size))
+        return asset_load_error(pack, "Intro font/string resource header is invalid");
+
     const NbaAssetItem *formations = nba_assets_get(
         pack, NBA_ASSET_GAMEPLAY_FORMATIONS);
     if (formations && !formation_payload_valid(

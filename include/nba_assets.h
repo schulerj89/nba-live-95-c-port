@@ -38,6 +38,9 @@ typedef enum {
     NBA_ASSET_EA_A_FIXED_SEQUENCE   = 73,
     /* $82:F52E's two $80:8FA3 draws of the $82:F6D8 Mode 7 tilegroup. */
     NBA_ASSET_EA_SPORTS_LAYER       = 74,
+    /* Indexed ROM resources; supersede legacy bitmap IDs 1-6 and 70-74. */
+    NBA_ASSET_EA_INDEXED           = 75,
+    NBA_ASSET_INTRO_TEXT           = 76,
     NBA_ASSET_TITLE_VRAM            = 80,
     NBA_ASSET_TITLE_CGRAM           = 81,
     NBA_ASSET_TITLE_PPU_TRACE       = 82,
