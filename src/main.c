@@ -6,10 +6,71 @@
 #include "nba_audio.h"
 #include "nba_spc.h"
 #include "nba_snes_ppu.h"
+#include "nba_menu_input.h"
 
 extern int win32_run_game(const char *rom_path, const char *assets_path,
                           bool title_only, bool setup_only, bool team_only,
                           bool player_setup_only);
+
+typedef struct {
+    unsigned frames;
+    uint32_t buttons;
+} HeadlessInputWord;
+
+/* Input evidence uses native twelve-button words, not host enum values.
+ * Each line is a duration and a hexadecimal held word. Adjacent identical
+ * words remain held: only an explicit zero word produces a release. */
+static bool load_headless_input(const char *path, HeadlessInputWord *words,
+                                unsigned capacity, unsigned *count) {
+    FILE *file = NULL;
+#ifdef _MSC_VER
+    if (fopen_s(&file, path, "rb") != 0) file = NULL;
+#else
+    file = fopen(path, "rb");
+#endif
+    if (!file) {
+        fprintf(stderr, "[HEADLESS] Failed to open input script: %s\n", path);
+        return false;
+    }
+    char line[128];
+    unsigned line_number = 0, total = 0;
+    bool valid = true;
+    *count = 0;
+    while (fgets(line, sizeof(line), file)) {
+        char duration[32], value[32], extra, *end;
+        ++line_number;
+        if (!strchr(line, '\n') && !feof(file)) { valid = false; break; }
+        const char *start = line + strspn(line, " \t\r\n");
+        if (!*start || *start == '#') continue;
+#ifdef _MSC_VER
+        int fields = sscanf_s(start, "%31s %31s %c", duration, (unsigned)sizeof(duration),
+                              value, (unsigned)sizeof(value), &extra, 1u);
+#else
+        int fields = sscanf(start, "%31s %31s %c", duration, value, &extra);
+#endif
+        if (fields != 2 ||
+            duration[0] < '0' || duration[0] > '9' ||
+            !strchr("0123456789abcdefABCDEF", value[0])) { valid = false; break; }
+        unsigned long frames = strtoul(duration, &end, 10);
+        if (*end || !frames || frames > 2000000u || total + frames > 2000000u) {
+            valid = false; break;
+        }
+        unsigned long native = strtoul(value, &end, 16);
+        if (*end || native > 0xFFF0u || (native & 15u) || *count == capacity) {
+            valid = false; break;
+        }
+        uint32_t host = 0;
+        for (unsigned bit = 0; bit < 12u; ++bit)
+            if (native & (0x8000u >> bit)) host |= 1u << bit;
+        words[*count].frames = (unsigned)frames;
+        words[(*count)++].buttons = host;
+        total += (unsigned)frames;
+    }
+    if (ferror(file) || !*count) valid = false;
+    if (fclose(file) != 0) valid = false;
+    if (!valid) fprintf(stderr, "[HEADLESS] Invalid input script %s at line %u.\n", path, line_number);
+    return valid;
+}
 
 static uint64_t trace_fnv1a64(const void *data, size_t size) {
     const uint8_t *bytes = (const uint8_t *)data;
@@ -69,6 +130,8 @@ int main(int argc, char *argv[]) {
     const char *gameplay_trace_path = NULL;
     const char *ppu_trace_path = NULL;
     const char *dump_sequence_dir = NULL;
+    const char *input_script_path = NULL;
+    const char *input_trace_path = NULL;
     int dump_sequence_from = 1;
     int menu_sfx_srcn = 0x1B;
     bool is_headless = false;
@@ -112,6 +175,7 @@ int main(int argc, char *argv[]) {
     bool setup_reenter = false;
     bool setup_menu_confirm = false;
     bool setup_menu_b = false;
+    bool setup_simulation_three_minute = false;
     bool timing_debug = false;
     bool debug_state = false;
     int debug_every = 0;
@@ -266,6 +330,20 @@ int main(int argc, char *argv[]) {
             spc_self_test = true;
         } else if (strcmp(argv[i], "--setup-menu") == 0 && i + 1 < argc) {
             setup_menu = argv[++i];
+        } else if (strcmp(argv[i], "--input-script") == 0) {
+            if (i + 1 >= argc || strncmp(argv[i + 1], "--", 2) == 0) {
+                fprintf(stderr, "[HEADLESS] --input-script requires a file path.\n");
+                return 1;
+            }
+            input_script_path = argv[++i];
+        } else if (strcmp(argv[i], "--input-trace") == 0) {
+            if (i + 1 >= argc || strncmp(argv[i + 1], "--", 2) == 0) {
+                fprintf(stderr, "[HEADLESS] --input-trace requires a file path.\n");
+                return 1;
+            }
+            input_trace_path = argv[++i];
+        } else if (strcmp(argv[i], "--setup-simulation-three-minute") == 0) {
+            setup_simulation_three_minute = true;
         } else if (strcmp(argv[i], "--setup-menu-row") == 0 && i + 1 < argc) {
             setup_menu_row = atoi(argv[++i]);
         } else if (strcmp(argv[i], "--setup-menu-right") == 0 && i + 1 < argc) {
@@ -533,6 +611,10 @@ int main(int argc, char *argv[]) {
         bool setup_main_confirm_done = false;
         bool setup_main_a_done = false;
         bool setup_main_done = setup_main_row < 0;
+        unsigned setup_config_step = 0;
+        static HeadlessInputWord input_words[8192];
+        unsigned input_word_count = 0, input_word_index = 0, input_word_frame = 0;
+        FILE *input_trace_file = NULL;
         bool team_toggle_done = false;
         bool team_category_done = team_category < 0;
         int team_up_done = 0;
@@ -548,6 +630,60 @@ int main(int argc, char *argv[]) {
             if (strcmp(argv[i], "--enter-setup") == 0) enter_setup = true;
             if (strcmp(argv[i], "--title-press") == 0 && i + 1 < argc) title_press_frame = atoi(argv[++i]);
             if (strcmp(argv[i], "--setup-down") == 0 && i + 1 < argc) setup_down_count = atoi(argv[++i]);
+        }
+
+        bool automatic_navigation = enter_setup || setup_down_count || setup_menu ||
+            setup_main_row >= 0 || setup_simulation_three_minute || team_demo ||
+            team_up || team_down || team_right || team_left || team_category >= 0 ||
+            team_side_toggle || team_confirm || player_setup_left || player_setup_confirm ||
+            player_lab_team_right || player_lab_roster_down || player_lab_animation_right ||
+            player_lab_direction_right || gameplay_step_count;
+        if ((setup_menu && (setup_main_confirm || setup_main_a)) ||
+            (setup_down_count && (setup_menu || setup_main_row >= 0 || setup_simulation_three_minute)) ||
+            (title_press_frame >= 0 && automatic_navigation)) {
+            fprintf(stderr, "[HEADLESS] Conflicting automatic button scripts; use one explicit --input-script for combined journeys.\n");
+            nba_game_shutdown(&game);
+            return 1;
+        }
+
+        if (input_script_path) {
+            if (enter_setup || title_press_frame >= 0 || setup_down_count || setup_menu ||
+                setup_main_row >= 0 || setup_simulation_three_minute || team_demo ||
+                team_up || team_down || team_right || team_left || team_category >= 0 ||
+                team_side_toggle || team_confirm || player_setup_left || player_setup_confirm ||
+                player_lab_team_right || player_lab_roster_down || player_lab_animation_right ||
+                player_lab_direction_right || gameplay_step_count) {
+                fprintf(stderr, "[HEADLESS] --input-script cannot be mixed with automatic button scripts.\n");
+                nba_game_shutdown(&game);
+                return 1;
+            }
+            if (!load_headless_input(input_script_path, input_words, 8192u, &input_word_count)) {
+                nba_game_shutdown(&game);
+                return 1;
+            }
+        }
+        if (setup_simulation_three_minute && !start_at_setup && !enter_setup) {
+            fprintf(stderr, "[HEADLESS] Configuration navigation requires --setup-only or --enter-setup.\n");
+            nba_game_shutdown(&game);
+            return 1;
+        }
+        if (input_trace_path) {
+#ifdef _MSC_VER
+            if (fopen_s(&input_trace_file, input_trace_path, "wb") != 0) input_trace_file = NULL;
+#else
+            input_trace_file = fopen(input_trace_path, "wb");
+#endif
+            if (!input_trace_file) {
+                fprintf(stderr, "[HEADLESS] Failed to open input trace: %s\n", input_trace_path);
+                nba_game_shutdown(&game);
+                return 1;
+            }
+            fprintf(input_trace_file, "step,held,pressed,released,native,state,page,row,working_mode,working_style,working_level,working_quarter,committed_mode,committed_style,committed_level,committed_quarter,previous,pending,delay,speed,fast");
+            for (unsigned i = 0; i < NBA_SETUP_RULE_COUNT; ++i) fprintf(input_trace_file, ",rules%u", i);
+            for (unsigned i = 0; i < NBA_SETUP_OPTION_COUNT; ++i) fprintf(input_trace_file, ",options%u", i);
+            for (unsigned i = 0; i < NBA_SETUP_RULE_COUNT; ++i) fprintf(input_trace_file, ",custom%u", i);
+            for (unsigned i = 0; i < NBA_SETUP_RULE_COUNT; ++i) fprintf(input_trace_file, ",working%u", i);
+            fputc('\n', input_trace_file);
         }
 
         if (timing_debug && debug_hud_page == 0) debug_hud_page = 1;
@@ -669,191 +805,219 @@ int main(int argc, char *argv[]) {
                 printf("[SHOT DEBUG] CONTROLLED INPUT frame=%d actor=%d; native B625 -> B979 -> 9DA6\n",
                        frame+1,gameplay_actor);
             }
-            game.input.pressed = 0;
-
-            if (game.player_lab.is_active) {
-                if (player_team_right_done < player_lab_team_right) {
-                    game.input.pressed = NBA_BTN_RIGHT;
-                    player_team_right_done++;
-                } else if (player_roster_down_done < player_lab_roster_down) {
-                    game.input.pressed = NBA_BTN_DOWN;
-                    player_roster_down_done++;
-                } else if (player_animation_right_done < player_lab_animation_right) {
-                    game.input.pressed = NBA_BTN_R;
-                    player_animation_right_done++;
-                } else if (player_direction_right_done < player_lab_direction_right) {
-                    game.input.pressed = NBA_BTN_X;
-                    player_direction_right_done++;
-                }
-            }
-            if (game.gameplay_debugger.is_active &&
-                game.gameplay_debugger.is_paused &&
-                gameplay_steps_done < gameplay_step_count) {
-                game.input.pressed = NBA_BTN_X;
-                gameplay_steps_done++;
-            }
-
-            if (enter_setup) {
-                if (game.state == NBA_STATE_TITLE_SEQUENCE) {
-                    game.input.pressed = NBA_BTN_START; /* skip the title video */
-                }
-            }
-
-            /* --title-press N: press Start once on frame N, mirroring the
-             * Mesen experiment used to time $80:E5C7's hold and fade. */
-            if (title_press_frame >= 0 && frame == title_press_frame) {
-                game.input.pressed = NBA_BTN_START;
-            }
-
-            /* --setup-down N: step the Game Setup cursor down N rows, one press
-             * every 8 frames once the screen has settled. */
-            if (setup_down_count > 0 && game.state == NBA_STATE_GAME_SETUP &&
-                game.scene.setup.frame > NBA_SETUP_ENTER_FRAMES) {
-                int since = game.scene.setup.frame - NBA_SETUP_ENTER_FRAMES;
-                if (since % 8 == 1 && (since / 8) < setup_down_count) {
-                    game.input.pressed = NBA_BTN_DOWN;
-                }
-            }
-
-            /* Deterministic controller script for Rules/Options regressions.
-             * One new press is issued per frame, after $80:A3B8 has settled.
-             * Optional input delay aligns a declared native idle/background
-             * phase; it does not change production transition timing. */
-            if (setup_menu_done && setup_menu_returns_completed + 1 < setup_menu_visits &&
-                game.state == NBA_STATE_GAME_SETUP &&
-                game.scene.setup.page == NBA_SETUP_PAGE_MAIN &&
-                game.scene.setup.transition == NBA_SETUP_TRANSITION_NONE &&
-                !game.scene.setup.transition_release_pending) {
-                /* Reuse the real returned screen/configuration; never reinitialize
-                 * the scene or patch its cursor/scroll/resource state for a test. */
-                if (setup_menu_revisit_waited < setup_menu_revisit_delay) {
-                    setup_menu_revisit_waited++;
+            uint32_t raw_buttons = 0u;
+            /* The mandatory release is already an idle frame in Team Select's
+             * --team-action-gap contract; do not count it twice. */
+            if (!input_script_path && game.input.held != 0u &&
+                game.state == NBA_STATE_TEAM_SELECT &&
+                game.scene.team_select.transition_frame >= NBA_TEAM_TRANSITION_FRAMES &&
+                team_action_wait > 0) --team_action_wait;
+            /* Automatic commands are taps. Spend the next frame released before
+             * advancing any command counter; otherwise repeated DOWN words are
+             * a native hold, not multiple presses. Explicit scripts below retain
+             * their exact whole-word durations, including simultaneous buttons. */
+            if (!input_script_path && game.input.held == 0u) {
+                if (setup_simulation_three_minute && setup_config_step < 8u &&
+                    game.state == NBA_STATE_GAME_SETUP) {
+                    static const uint32_t configure[] = { NBA_BTN_DOWN, NBA_BTN_RIGHT,
+                        NBA_BTN_DOWN, NBA_BTN_DOWN, NBA_BTN_RIGHT,
+                        NBA_BTN_UP, NBA_BTN_UP, NBA_BTN_UP };
+                    if (game.scene.setup.frame >= NBA_SETUP_BG3_SETTLE_FRAME)
+                        raw_buttons = configure[setup_config_step++];
                 } else {
-                    setup_menu_returns_completed++;
-                    setup_menu_done = setup_menu_opened = false;
-                    setup_menu_moves_done = setup_menu_right_done = 0;
-                    setup_menu_confirm_waited = setup_menu_revisit_waited = 0;
-                }
-            }
-            if (setup_menu && !setup_menu_done &&
-                game.state == NBA_STATE_GAME_SETUP &&
-                game.scene.setup.frame >= NBA_SETUP_BG3_SETTLE_FRAME + setup_menu_delay) {
-                NbaSetupRow target = strcmp(setup_menu, "rules") == 0 ?
-                                     NBA_SETUP_ROW_RULES : NBA_SETUP_ROW_OPTIONS;
-                if (!setup_menu_opened) {
-                    if (game.scene.setup.row != target) {
-                        game.input.pressed = NBA_BTN_DOWN;
-                    } else {
-                        game.input.pressed = NBA_BTN_A;
-                        setup_menu_opened = true;
+                    if (game.player_lab.is_active) {
+                        if (player_team_right_done < player_lab_team_right) {
+                            raw_buttons = NBA_BTN_RIGHT;
+                            player_team_right_done++;
+                        } else if (player_roster_down_done < player_lab_roster_down) {
+                            raw_buttons = NBA_BTN_DOWN;
+                            player_roster_down_done++;
+                        } else if (player_animation_right_done < player_lab_animation_right) {
+                            raw_buttons = NBA_BTN_R;
+                            player_animation_right_done++;
+                        } else if (player_direction_right_done < player_lab_direction_right) {
+                            raw_buttons = NBA_BTN_X;
+                            player_direction_right_done++;
+                        }
                     }
-                } else if (game.scene.setup.page != NBA_SETUP_PAGE_MAIN &&
-                           game.scene.setup.transition == NBA_SETUP_TRANSITION_NONE) {
-                    if (setup_menu_moves_done < setup_menu_row) {
-                        game.input.pressed = NBA_BTN_DOWN;
-                        setup_menu_moves_done++;
-                    } else if (setup_menu_right_done < setup_menu_right) {
-                        game.input.pressed = NBA_BTN_RIGHT;
-                        setup_menu_right_done++;
-                    } else if ((setup_menu_confirm || setup_menu_b) &&
-                               setup_menu_confirm_waited < setup_menu_confirm_delay) {
-                        /* Input-script idle, not an added game transition wait. */
-                        setup_menu_confirm_waited++;
-                    } else if (setup_menu_b) {
-                        game.input.pressed = NBA_BTN_B;
-                        setup_menu_done = true;
-                    } else if (setup_menu_confirm) {
-                        game.input.pressed = NBA_BTN_START;
-                        setup_menu_done = true;
-                    } else {
-                        setup_menu_done = true;
+                    if (game.gameplay_debugger.is_active &&
+                        game.gameplay_debugger.is_paused &&
+                        gameplay_steps_done < gameplay_step_count) {
+                        raw_buttons = NBA_BTN_X;
+                        gameplay_steps_done++;
+                    }
+
+                    if (enter_setup) {
+                        if (game.state == NBA_STATE_TITLE_SEQUENCE) {
+                            raw_buttons = NBA_BTN_START; /* skip the title video */
+                        }
+                    }
+
+                    /* --title-press N: press Start once on frame N, mirroring the
+                     * Mesen experiment used to time $80:E5C7's hold and fade. */
+                    if (title_press_frame >= 0 && frame == title_press_frame) {
+                        raw_buttons = NBA_BTN_START;
+                    }
+
+                    /* --setup-down N: step the Game Setup cursor down N rows, one press
+                     * every 8 frames once the screen has settled. */
+                    if (setup_down_count > 0 && game.state == NBA_STATE_GAME_SETUP &&
+                        game.scene.setup.frame > NBA_SETUP_ENTER_FRAMES) {
+                        int since = game.scene.setup.frame - NBA_SETUP_ENTER_FRAMES;
+                        if (since % 8 == 1 && (since / 8) < setup_down_count) {
+                            raw_buttons = NBA_BTN_DOWN;
+                        }
+                    }
+
+                    /* Deterministic controller script for Rules/Options regressions.
+                     * Each pulse has a real release frame, after $80:A3B8 has settled.
+                     * Optional input delay aligns a declared native idle/background
+                     * phase; it does not change production transition timing. */
+                    if (setup_menu_done && setup_menu_returns_completed + 1 < setup_menu_visits &&
+                        game.state == NBA_STATE_GAME_SETUP &&
+                        game.scene.setup.page == NBA_SETUP_PAGE_MAIN &&
+                        game.scene.setup.transition == NBA_SETUP_TRANSITION_NONE &&
+                        !game.scene.setup.transition_release_pending) {
+                        /* Reuse the real returned screen/configuration; never reinitialize
+                         * the scene or patch its cursor/scroll/resource state for a test. */
+                        if (setup_menu_revisit_waited < setup_menu_revisit_delay) {
+                            setup_menu_revisit_waited++;
+                        } else {
+                            setup_menu_returns_completed++;
+                            setup_menu_done = setup_menu_opened = false;
+                            setup_menu_moves_done = setup_menu_right_done = 0;
+                            setup_menu_confirm_waited = setup_menu_revisit_waited = 0;
+                        }
+                    }
+                    if (setup_menu && setup_main_done && !setup_menu_done &&
+                        game.state == NBA_STATE_GAME_SETUP &&
+                        game.scene.setup.frame >= NBA_SETUP_BG3_SETTLE_FRAME + setup_menu_delay) {
+                        NbaSetupRow target = strcmp(setup_menu, "rules") == 0 ?
+                                             NBA_SETUP_ROW_RULES : NBA_SETUP_ROW_OPTIONS;
+                        if (!setup_menu_opened) {
+                            if (game.scene.setup.row != target) {
+                                raw_buttons = NBA_BTN_DOWN;
+                            } else {
+                                raw_buttons = NBA_BTN_A;
+                                setup_menu_opened = true;
+                            }
+                        } else if (game.scene.setup.page != NBA_SETUP_PAGE_MAIN &&
+                                   game.scene.setup.transition == NBA_SETUP_TRANSITION_NONE) {
+                            if (setup_menu_moves_done < setup_menu_row) {
+                                raw_buttons = NBA_BTN_DOWN;
+                                setup_menu_moves_done++;
+                            } else if (setup_menu_right_done < setup_menu_right) {
+                                raw_buttons = NBA_BTN_RIGHT;
+                                setup_menu_right_done++;
+                            } else if ((setup_menu_confirm || setup_menu_b) &&
+                                       setup_menu_confirm_waited < setup_menu_confirm_delay) {
+                                /* Input-script idle, not an added game transition wait. */
+                                setup_menu_confirm_waited++;
+                            } else if (setup_menu_b) {
+                                raw_buttons = NBA_BTN_B;
+                                setup_menu_done = true;
+                            } else if (setup_menu_confirm) {
+                                raw_buttons = NBA_BTN_START;
+                                setup_menu_done = true;
+                            } else {
+                                setup_menu_done = true;
+                            }
+                        }
+                    }
+                    if (!setup_main_done && game.state == NBA_STATE_GAME_SETUP &&
+                        game.scene.setup.page == NBA_SETUP_PAGE_MAIN &&
+                        game.scene.setup.frame >= NBA_SETUP_BG3_SETTLE_FRAME) {
+                        if ((int)game.scene.setup.row != setup_main_row) {
+                            raw_buttons = NBA_BTN_DOWN;
+                        } else if (setup_main_right_done < setup_main_right) {
+                            raw_buttons = NBA_BTN_RIGHT;
+                            setup_main_right_done++;
+                        } else if (setup_main_left_done < setup_main_left) {
+                            raw_buttons = NBA_BTN_LEFT;
+                            setup_main_left_done++;
+                        } else if (setup_main_confirm && !setup_main_confirm_done) {
+                            raw_buttons = NBA_BTN_START;
+                            setup_main_confirm_done = true;
+                        } else if (setup_main_a && !setup_main_a_done) {
+                            raw_buttons = NBA_BTN_A;
+                            setup_main_a_done = true;
+                        } else {
+                            setup_main_done = true;
+                        }
+                    }
+                    if (game.state == NBA_STATE_TEAM_SELECT &&
+                        game.scene.team_select.transition_frame >= NBA_TEAM_TRANSITION_FRAMES) {
+                        NbaTeamSelect *team = &game.scene.team_select;
+                        if (team_demo) {
+                            int at = team->steady_frame;
+                            if (at == 30 || at == 60 || at == 130 || at == 160)
+                                raw_buttons = NBA_BTN_RIGHT;
+                            else if (at == 100)
+                                raw_buttons = NBA_BTN_A;
+                        } else if (team_action_wait > 0) {
+                            team_action_wait--;
+                        } else if (team_up_done < team_up) {
+                            raw_buttons = NBA_BTN_UP;
+                            team_up_done++;
+                            team_action_wait = team_action_gap;
+                        } else if (team_down_done < team_down) {
+                            raw_buttons = NBA_BTN_DOWN;
+                            team_down_done++;
+                            team_action_wait = team_action_gap;
+                        } else if (!team_category_done) {
+                            if ((int)team->selector !=
+                                (int)NBA_TEAM_SELECT_SCORING + team_category) {
+                                raw_buttons = NBA_BTN_DOWN;
+                                team_action_wait = team_action_gap;
+                            } else {
+                                team_category_done = true;
+                            }
+                        } else if (team_side_toggle && !team_toggle_done) {
+                            raw_buttons = NBA_BTN_A;
+                            team_toggle_done = true;
+                            team_action_wait = team_action_gap;
+                        } else if (team_right_done < team_right) {
+                            raw_buttons = NBA_BTN_RIGHT;
+                            team_right_done++;
+                            team_action_wait = team_action_gap;
+                        } else if (team_left_done < team_left) {
+                            raw_buttons = NBA_BTN_LEFT;
+                            team_left_done++;
+                            team_action_wait = team_action_gap;
+                        } else if (team_confirm && !team_confirm_done) {
+                            raw_buttons = NBA_BTN_START;
+                            team_confirm_done = true;
+                        }
+                    }
+                    if (game.state == NBA_STATE_PLAYER_SETUP &&
+                        game.scene.player_setup.transition_frame >=
+                            NBA_PLAYER_SETUP_TRANSITION_FRAMES) {
+                        if (player_setup_left && !player_setup_left_done) {
+                            raw_buttons = NBA_BTN_LEFT;
+                            player_setup_left_done = true;
+                        } else if (player_setup_confirm &&
+                                   !game.scene.player_setup.confirm_requested) {
+                            raw_buttons = NBA_BTN_START;
+                        }
+                    }
+                    if (player_setup_confirm && !player_intro_confirm_done &&
+                        game.state == NBA_STATE_PLAYER_INTRO &&
+                        game.scene.player_intro.phase == NBA_PLAYER_INTRO_LINEUPS &&
+                        game.scene.player_intro.lineup_card == 9 &&
+                        game.scene.player_intro.phase_frame >= NBA_PLAYER_INTRO_CARD_FRAMES) {
+                        raw_buttons = NBA_BTN_START;
+                        player_intro_confirm_done = true;
                     }
                 }
             }
-            if (!setup_main_done && game.state == NBA_STATE_GAME_SETUP &&
-                game.scene.setup.page == NBA_SETUP_PAGE_MAIN &&
-                game.scene.setup.frame >= NBA_SETUP_BG3_SETTLE_FRAME) {
-                if ((int)game.scene.setup.row != setup_main_row) {
-                    game.input.pressed = NBA_BTN_DOWN;
-                } else if (setup_main_right_done < setup_main_right) {
-                    game.input.pressed = NBA_BTN_RIGHT;
-                    setup_main_right_done++;
-                } else if (setup_main_left_done < setup_main_left) {
-                    game.input.pressed = NBA_BTN_LEFT;
-                    setup_main_left_done++;
-                } else if (setup_main_confirm && !setup_main_confirm_done) {
-                    game.input.pressed = NBA_BTN_START;
-                    setup_main_confirm_done = true;
-                } else if (setup_main_a && !setup_main_a_done) {
-                    game.input.pressed = NBA_BTN_A;
-                    setup_main_a_done = true;
-                } else {
-                    setup_main_done = true;
+            if (input_script_path && input_word_index < input_word_count) {
+                raw_buttons = input_words[input_word_index].buttons;
+                if (++input_word_frame == input_words[input_word_index].frames) {
+                    ++input_word_index;
+                    input_word_frame = 0u;
                 }
             }
-            if (game.state == NBA_STATE_TEAM_SELECT &&
-                game.scene.team_select.transition_frame >= NBA_TEAM_TRANSITION_FRAMES) {
-                NbaTeamSelect *team = &game.scene.team_select;
-                if (team_demo) {
-                    int at = team->steady_frame;
-                    if (at == 30 || at == 60 || at == 130 || at == 160)
-                        game.input.pressed = NBA_BTN_RIGHT;
-                    else if (at == 100)
-                        game.input.pressed = NBA_BTN_A;
-                } else if (team_action_wait > 0) {
-                    team_action_wait--;
-                } else if (team_up_done < team_up) {
-                    game.input.pressed = NBA_BTN_UP;
-                    team_up_done++;
-                    team_action_wait = team_action_gap;
-                } else if (team_down_done < team_down) {
-                    game.input.pressed = NBA_BTN_DOWN;
-                    team_down_done++;
-                    team_action_wait = team_action_gap;
-                } else if (!team_category_done) {
-                    if ((int)team->selector !=
-                        (int)NBA_TEAM_SELECT_SCORING + team_category) {
-                        game.input.pressed = NBA_BTN_DOWN;
-                        team_action_wait = team_action_gap;
-                    } else {
-                        team_category_done = true;
-                    }
-                } else if (team_side_toggle && !team_toggle_done) {
-                    game.input.pressed = NBA_BTN_A;
-                    team_toggle_done = true;
-                    team_action_wait = team_action_gap;
-                } else if (team_right_done < team_right) {
-                    game.input.pressed = NBA_BTN_RIGHT;
-                    team_right_done++;
-                    team_action_wait = team_action_gap;
-                } else if (team_left_done < team_left) {
-                    game.input.pressed = NBA_BTN_LEFT;
-                    team_left_done++;
-                    team_action_wait = team_action_gap;
-                } else if (team_confirm && !team_confirm_done) {
-                    game.input.pressed = NBA_BTN_START;
-                    team_confirm_done = true;
-                }
-            }
-            if (game.state == NBA_STATE_PLAYER_SETUP &&
-                game.scene.player_setup.transition_frame >=
-                    NBA_PLAYER_SETUP_TRANSITION_FRAMES) {
-                if (player_setup_left && !player_setup_left_done) {
-                    game.input.pressed = NBA_BTN_LEFT;
-                    player_setup_left_done = true;
-                } else if (player_setup_confirm &&
-                           !game.scene.player_setup.confirm_requested) {
-                    game.input.pressed = NBA_BTN_START;
-                }
-            }
-            if (player_setup_confirm && !player_intro_confirm_done &&
-                game.state == NBA_STATE_PLAYER_INTRO &&
-                game.scene.player_intro.phase == NBA_PLAYER_INTRO_LINEUPS &&
-                game.scene.player_intro.lineup_card == 9 &&
-                game.scene.player_intro.phase_frame >= NBA_PLAYER_INTRO_CARD_FRAMES) {
-                game.input.pressed = NBA_BTN_START;
-                player_intro_confirm_done = true;
-            }
+            nba_game_input_update(&game.input, raw_buttons);
             NbaSetupTransitionRoute route_before =
                 game.state == NBA_STATE_GAME_SETUP ?
                     game.scene.setup.transition_route :
@@ -862,6 +1026,37 @@ int main(int argc, char *argv[]) {
             bool release_before = transition_before &&
                 game.scene.setup.transition_release_pending;
             nba_game_tick(&game, (float)(1.0 / tick_rate));
+            if (input_trace_file) {
+                bool setup = game.state == NBA_STATE_GAME_SETUP;
+                const NbaSetupScreen *s = setup ? &game.scene.setup : NULL;
+                const NbaMenuControllerInput *c = setup ? &s->menu_input.controller[0] : NULL;
+                fprintf(input_trace_file,
+                        "%d,%u,%u,%u,%u,%d,%d,%d,%d,%d,%d,%d,%u,%u,%u,%u,%d,%d,%d,%d,%d",
+                        frame + 1, game.input.held, game.input.pressed, game.input.released,
+                        nba_menu_input_native_buttons(game.input.held), (int)game.state,
+                        setup ? (int)s->page : -1,
+                        setup ? (s->page == NBA_SETUP_PAGE_MAIN ? (int)s->row : s->menu_row) : -1,
+                        setup ? s->working_main[0] : -1, setup ? s->working_main[1] : -1,
+                        setup ? s->working_main[2] : -1, setup ? s->working_main[3] : -1,
+                        game.session.config.main_values[0], game.session.config.main_values[1],
+                        game.session.config.main_values[2], game.session.config.main_values[3],
+                        c ? c->previous : -1, c ? c->pending : -1,
+                        c ? c->delay : -1, c ? c->speed : -1, c ? c->fast : -1);
+                for (unsigned i = 0; i < NBA_SETUP_RULE_COUNT; ++i)
+                    fprintf(input_trace_file, ",%u", game.session.config.rules[i]);
+                for (unsigned i = 0; i < NBA_SETUP_OPTION_COUNT; ++i)
+                    fprintf(input_trace_file, ",%u", game.session.config.options[i]);
+                for (unsigned i = 0; i < NBA_SETUP_RULE_COUNT; ++i)
+                    fprintf(input_trace_file, ",%u", game.session.config.custom_rules[i]);
+                const uint16_t *working = setup ?
+                    (s->page == NBA_SETUP_PAGE_MAIN ? s->working_main :
+                     s->page == NBA_SETUP_PAGE_RULES ? s->working_rules : s->working_options) : NULL;
+                unsigned working_count = setup ? (s->page == NBA_SETUP_PAGE_MAIN ? 4u :
+                    s->page == NBA_SETUP_PAGE_RULES ? NBA_SETUP_RULE_COUNT : NBA_SETUP_OPTION_COUNT) : 0u;
+                for (unsigned i = 0; i < NBA_SETUP_RULE_COUNT; ++i)
+                    fprintf(input_trace_file, ",%d", i < working_count ? working[i] : -1);
+                fputc('\n', input_trace_file);
+            }
             if (gameplay_trace_file && game.state == NBA_STATE_TIPOFF) {
                 nba_gameplay_telemetry_write_jsonl(gameplay_trace_file,
                                                    &game.gameplay_telemetry);
@@ -905,6 +1100,12 @@ int main(int argc, char *argv[]) {
             setup_trace_file = NULL;
             printf("[HEADLESS] Wrote %d Setup transition rows to: %s\n",
                    setup_trace_rows, setup_transition_trace_path);
+        }
+
+        if (input_trace_file && fclose(input_trace_file) != 0) {
+            fprintf(stderr, "[HEADLESS] Failed to finish input trace.\n");
+            nba_game_shutdown(&game);
+            return 1;
         }
         if (gameplay_trace_file) {
             if (fclose(gameplay_trace_file) != 0) {
@@ -963,10 +1164,17 @@ int main(int argc, char *argv[]) {
         }
 
         if (setup_menu) {
+            if (game.state != NBA_STATE_GAME_SETUP) {
+                fprintf(stderr, "[HEADLESS] Cannot report requested submenu after leaving Game Setup (state %d).\n", (int)game.state);
+                nba_game_shutdown(&game);
+                return 1;
+            }
             const NbaSetupScreen *s = &game.scene.setup;
             int menu_count = strcmp(setup_menu, "rules") == 0 ?
                              NBA_SETUP_RULE_COUNT : NBA_SETUP_OPTION_COUNT;
-            int report_row = setup_menu_row % menu_count;
+            int report_row = strcmp(setup_menu, "rules") == 0 ?
+                (setup_menu_row < menu_count ? setup_menu_row : menu_count - 1) :
+                setup_menu_row % menu_count;
             printf("[SETUP TEST] page=%d menu_row=%d transition=%d/%d blank=%d gfx=%d "
                    "rules0=%u/%u options0=%u/%u "
                    "option_row=%d working=%u committed=%u main_row=%d main=%u/%u/%u/%u",
@@ -989,14 +1197,16 @@ int main(int argc, char *argv[]) {
             printf("\n");
         }
         if (setup_main_row >= 0) {
+            const uint16_t *main = game.state == NBA_STATE_GAME_SETUP ?
+                game.scene.setup.working_main : game.session.config.main_values;
             printf("[SETUP MAIN TEST] row=%d mode=%u style=%u level=%u quarter=%u action=%d\n",
                    game.state == NBA_STATE_GAME_SETUP ? (int)game.scene.setup.row :
                        setup_main_row,
-                   game.session.config.main_values[0],
-                   game.session.config.main_values[1],
-                   game.session.config.main_values[2],
-                   game.session.config.main_values[3],
+                   main[0], main[1], main[2], main[3],
                    (int)game.last_setup_action);
+            printf("[SETUP COMMITTED] main=%u/%u/%u/%u\n",
+                   game.session.config.main_values[0], game.session.config.main_values[1],
+                   game.session.config.main_values[2], game.session.config.main_values[3]);
         }
         if (setup_reenter) {
             if (!nba_game_enter_state(&game, NBA_STATE_GAME_SETUP)) {
