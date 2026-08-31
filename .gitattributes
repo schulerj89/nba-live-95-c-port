@@ -23,3 +23,8 @@ tools/mesen_human_pass_init.lua -text
 # Controlled layout captures pin their executed source bytes.
 tools/capture_inbound_layout.py -text
 tools/mesen_inbound_layout.lua -text
+# Standalone producer/header capture provenance pins these executed bytes.
+tools/capture_setup_producer_work.py -text
+tools/mesen_setup_producer_work.lua -text
+tools/capture_setup_header_work.py -text
+tools/mesen_setup_header_work.lua -text
