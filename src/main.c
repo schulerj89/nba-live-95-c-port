@@ -1067,11 +1067,13 @@ int main(int argc, char *argv[]) {
             }
             bool transition_after = game.state == NBA_STATE_GAME_SETUP &&
                 game.scene.setup.transition_route != NBA_SETUP_TRANSITION_ROUTE_NONE;
+            bool rendered_frame = false;
             if (setup_trace_file &&
                 (transition_after || (transition_before && !release_before))) {
                 NbaSetupTransitionRoute route = transition_after ?
                     game.scene.setup.transition_route : route_before;
                 nba_game_render(&game);
+                rendered_frame = true;
                 write_setup_transition_trace_row(setup_trace_file, frame + 1,
                                                  route, &game);
                 setup_trace_rows++;
@@ -1080,17 +1082,26 @@ int main(int argc, char *argv[]) {
                 printf("[DEBUG SAMPLE] stepped=%d\n", frame + 1);
                 nba_game_debug_print(&game);
             }
-            if (dump_sequence_dir && frame + 1 >= dump_sequence_from) {
+            /* Some source presentation paths intentionally retain the prior
+             * rendered framebuffer while changing brightness or adding the
+             * next layer.  Render every stepped frame whenever a sequence is
+             * requested, including the unsaved warmup before `from`; starting
+             * the renderer at the first saved frame otherwise turns a valid
+             * mid-transition image into black. */
+            if (dump_sequence_dir) {
                 char sequence_path[1024];
-                nba_game_render(&game);
-                snprintf(sequence_path, sizeof(sequence_path), "%s/frame_%04d.bmp",
-                         dump_sequence_dir, frame + 1);
-                if (!nba_renderer_save_bmp(&game.renderer, sequence_path)) {
-                    fprintf(stderr, "[HEADLESS] Failed sequence frame: %s\n", sequence_path);
-                    if (setup_trace_file) fclose(setup_trace_file);
-                    if (gameplay_trace_file) fclose(gameplay_trace_file);
-                    nba_game_shutdown(&game);
-                    return 1;
+                if (!rendered_frame)
+                    nba_game_render(&game);
+                if (frame + 1 >= dump_sequence_from) {
+                    snprintf(sequence_path, sizeof(sequence_path), "%s/frame_%04d.bmp",
+                             dump_sequence_dir, frame + 1);
+                    if (!nba_renderer_save_bmp(&game.renderer, sequence_path)) {
+                        fprintf(stderr, "[HEADLESS] Failed sequence frame: %s\n", sequence_path);
+                        if (setup_trace_file) fclose(setup_trace_file);
+                        if (gameplay_trace_file) fclose(gameplay_trace_file);
+                        nba_game_shutdown(&game);
+                        return 1;
+                    }
                 }
             }
         }
