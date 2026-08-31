@@ -2,10 +2,15 @@
 import argparse
 import hashlib
 import json
-from pathlib import Path
+from pathlib import Path,PureWindowsPath
+import re
 
 from differential_compare import object_without_duplicates
-from verify_ppu_brightness import validate_settings,SAMPLE_POINTS
+from verify_ppu_brightness import validate_settings,SAMPLE_POINTS,same_settings
+
+ROM_SHA256='2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870'
+MANIFEST_WITNESSES=Path(__file__).resolve().parents[1]/'tests/fixtures/setup-config-manifest-witnesses.json'
+MANIFEST_WITNESSES_SHA256='dc6bbc1cc202807aebd9f780395bd46f4ee0ecac54425d2deac517f557d8b34b'
 
 FIELDS=tuple(sorted(('kind','pc','frame','setup_frame','action','main','working',
     'rules','options','sram48_56','sram_marker','row','value','maximum','controller',
@@ -38,6 +43,107 @@ def integer(value,lo=0,hi=65535):
         raise ValueError('invalid native configuration integer')
 
 
+def canonical_bytes(value):
+    return json.dumps(value,sort_keys=True,separators=(',',':')).encode('utf-8')
+
+
+def manifest_witnesses():
+    """A separately retained, reviewed copy binds provenance as well as rows.
+
+    Changing fixture metadata and its local hashes cannot silently relabel a
+    controlled/failed capture. A new accepted native corpus requires review of
+    this registry too. These are native source identities, never C goldens.
+    """
+    raw=MANIFEST_WITNESSES.read_bytes()
+    if hashlib.sha256(raw).hexdigest()!=MANIFEST_WITNESSES_SHA256:
+        raise ValueError('native manifest witness registry changed')
+    data=json.loads(raw,object_pairs_hook=object_without_duplicates)
+    if data.get('schema')!='nba95-setup-native-manifest-witnesses-v1':
+        raise ValueError('unsupported native manifest witness registry')
+    return {row['name']:row for row in data['journeys']}
+
+
+def validate_manifest(manifest,name,*,bind=False):
+    """Validate provenance in BOTH raw capture and permanent replay paths."""
+    if type(manifest) is not dict or manifest.get('classification')!=\
+            'natural controller-only configuration journey' or any(
+            manifest.get(key) is not False for key in
+            ('cpu_state_injection','rom_patch','wram_injection','sram_injection')):
+        raise ValueError('incorrect native journey provenance')
+    if manifest.get('journey') not in ('presets','rules','options','load','held','main','input','faces'):
+        raise ValueError('unknown native journey classification')
+    for key,expected in (('default_input_pulse_frames',3),('ordinary_action_period',60),
+                         ('transition_action_period',260)):
+        if type(manifest.get(key)) is not int or manifest[key]!=expected:
+            raise ValueError('invalid native input schedule metadata')
+    # The six original captures did not serialize ExitCode. Do not manufacture
+    # a0: admit ONLY their independently pinned legacy manifests, whose hashed
+    # runners publish the final manifest after the successful exit guard.
+    witness=None
+    if bind or 'process_exit_code' not in manifest:
+        witness=manifest_witnesses().get(name)
+        if witness is None or hashlib.sha256(canonical_bytes(manifest)).hexdigest()!=\
+                witness['canonical_manifest_sha256'] or manifest!=witness['manifest']:
+            raise ValueError('native manifest differs from retained original witness')
+    if 'process_exit_code' in manifest:
+        if type(manifest['process_exit_code']) is not int or manifest['process_exit_code']!=0:
+            raise ValueError('native capture process exit was not0')
+    elif witness.get('exit_evidence')!='legacy_runner_success_path_only_no_recorded_exit_code':
+        raise ValueError('missing native process exit evidence')
+    sources=manifest.get('sources')
+    required={'rom','mesen','script','runner','settings','actions.json','action-states.jsonl','events.jsonl'}
+    if type(sources) is not dict or not required<=sources.keys():
+        raise ValueError('missing native source identities')
+    for key,source in sources.items():
+        if type(key) is not str or type(source) is not dict or set(source)!={'path','sha256'} or \
+                type(source['path']) is not str or not PureWindowsPath(source['path']).is_absolute() or \
+                type(source['sha256']) is not str or not re.fullmatch('[0-9a-f]{64}',source['sha256']):
+            raise ValueError('invalid native source identity')
+    if sources['rom']['sha256']!=ROM_SHA256:raise ValueError('wrong native ROM identity')
+    isolation=manifest.get('isolation',{})
+    if type(isolation) is not dict or isolation.get('method')!=\
+            'private portable executable/settings' or isolation.get('post_settings_verified') is not True:
+        raise ValueError('unverified portable Mesen home')
+    directory=PureWindowsPath(sources['script']['path']).parent
+    home=directory/'portable-mesen';saves=directory/'isolated-saves'
+    for key,expected in (('home',home),('save_folder',saves)):
+        if type(isolation.get(key)) is not str or PureWindowsPath(isolation[key])!=expected:
+            raise ValueError('native private directory mismatch')
+    observed=isolation.get('observed_script_data_folder')
+    if type(observed) is not str or not PureWindowsPath(observed).is_relative_to(home/'LuaScriptData'):
+        raise ValueError('native observed home outside private directory')
+    if PureWindowsPath(sources['mesen']['path'])!=home/'Mesen.exe' or \
+            PureWindowsPath(sources['settings']['path'])!=home/'settings.json':
+        raise ValueError('native executable/settings outside private home')
+    settings=isolation.get('settings',{})
+    if type(settings) is not dict or not same_settings(settings.get('Debug'),
+            {'ScriptWindow':{'AllowIoOsAccess':True,'ScriptTimeout':60,'SaveScriptBeforeRun':False}}) or \
+            not same_settings(settings.get('Preferences'),{'SingleInstance':False,
+                'PauseWhenInBackground':False,'AutoLoadPatches':False,'OverrideSaveDataFolder':True,
+                'SaveDataFolder':isolation['save_folder']}):
+        raise ValueError('unverified native capture preferences')
+    validate_settings(settings.get('Video'),settings.get('Snes'),SAMPLE_POINTS,[256,239])
+    arguments=manifest.get('arguments')
+    if type(arguments) is not list or len(arguments)!=4 or arguments[:2]!=['--testrunner','--timeout=240'] or \
+            any(type(v) is not str for v in arguments) or \
+            PureWindowsPath(arguments[2].strip('"'))!=PureWindowsPath(sources['rom']['path']) or \
+            PureWindowsPath(arguments[3].strip('"'))!=PureWindowsPath(sources['script']['path']):
+        raise ValueError('native executable arguments disagree with sources')
+    for key in ('initial_save_files','final_save_files'):
+        entries=manifest.get(key)
+        if type(entries) is not list or len(entries)>1:
+            raise ValueError('invalid native save provenance')
+        for source in entries:
+            expected={'path','sha256'}|({'size'} if key=='final_save_files' else set())
+            if type(source) is not dict or set(source)!=expected or \
+                    type(source['path']) is not str or not PureWindowsPath(source['path']).is_absolute() or \
+                    type(source['sha256']) is not str or not re.fullmatch('[0-9a-f]{64}',source['sha256']) or \
+                    (key=='final_save_files' and (type(source['size']) is not int or source['size']!=8192)):
+                raise ValueError('invalid native save identity')
+    if manifest['initial_save_files'] and manifest['journey']!='load':
+        raise ValueError('unexpected native reload prestate')
+
+
 def validate_row(row):
     if type(row) is not dict or set(row)!=set(FIELDS):
         raise ValueError('missing/extra native configuration fields')
@@ -63,11 +169,16 @@ def validate(actions,states,events):
     for action in actions:
         if type(action) is not dict or set(action)!={'key','label','wait','hold'}:
             raise ValueError('invalid native action schema')
-        if action['key'] not in ('none','up','down','left','right','a','b','start') or \
+        keys=action['key'].split('+') if type(action['key']) is str else []
+        if not keys or len(set(keys))!=len(keys) or any(key not in
+                ('none','up','down','left','right','a','b','start','x','y','l','r','select') for key in keys) or \
+                ('none' in keys and len(keys)!=1) or \
                 type(action['label']) is not str or not action['label']:
             raise ValueError('invalid native controller action')
         integer(action['hold'],hi=1000);integer(action['wait'],lo=1,hi=1000)
-        if action['hold']>=action['wait']:raise ValueError('action has no release interval')
+        # Equal durations intentionally preserve a held word across action
+        # boundaries. No release frame may be invented by the C adapter.
+        if action['hold']>action['wait']:raise ValueError('hold exceeds action duration')
     if len(states)!=1+2*len(actions):raise ValueError('missing native action boundaries')
     for row in states+events:validate_row(row)
     initial=states[0]
@@ -103,10 +214,7 @@ def validate(actions,states,events):
 def capture(path):
     directory=Path(path).resolve();manifest=read_json(directory/'manifest.json')
     if not (directory/'capture_complete.txt').is_file():raise ValueError('incomplete capture')
-    if manifest['classification']!='natural controller-only configuration journey' or \
-            any(manifest.get(key) is not False for key in
-                ('cpu_state_injection','rom_patch','wram_injection','sram_injection')):
-        raise ValueError('incorrect native journey provenance')
+    validate_manifest(manifest,directory.name)
     isolation=manifest['isolation']
     if isolation['method']!='private portable executable/settings' or \
             isolation.get('post_settings_verified') is not True:
@@ -118,6 +226,7 @@ def capture(path):
     for source in manifest['sources'].values():
         if sha(source['path'])!=source['sha256']:raise ValueError('native source changed')
     settings=read_json(manifest['sources']['settings']['path'])
+    if settings!=isolation['settings']:raise ValueError('native stored settings differ from manifest')
     validate_settings(settings['Video'],settings['Snes'],SAMPLE_POINTS,[256,239])
     actions=read_json(directory/'actions.json')
     states=read_lines(directory/'action-states.jsonl');events=read_lines(directory/'events.jsonl')
@@ -169,6 +278,7 @@ def read_compact(path):
             raise ValueError('invalid/duplicate native journey')
         names.add(encoded['name'])
         journey={key:value for key,value in encoded.items() if key not in ('states','events')}
+        validate_manifest(journey['native_manifest'],journey['name'],bind=True)
         for key,file in (('states','action-states.jsonl'),('events','events.jsonl')):
             rows=[]
             for values in encoded[key]:

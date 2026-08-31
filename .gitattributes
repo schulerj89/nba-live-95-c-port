@@ -1,0 +1,32 @@
+
+# Preserve exact bytes in the 2026-08-31 worktree snapshot.
+docs/setup-config-native-contract.md -text
+include/nba_session.h -text
+include/nba_setup_screen.h -text
+nba95_sources.txt -text
+src/nba_session.c -text
+src/nba_setup_screen.c -text
+tools/capture_setup_config.ps1 -text
+tools/ghidra/DumpSetupConfiguration.java -text
+tools/mesen_setup_config.lua -text
+tools/normalize_setup_config.py -text
+tools/setup_config_runtime_probe.c -text
+tools/test_setup_config_evidence.py -text
+tools/test_setup_config_runtime_verifier.py -text
+tools/verify_setup_config_runtime.py -text
+docs/setup-config-implementation.md -text
+include/nba_menu_input.h -text
+src/nba_menu_input.c -text
+tests/fixtures/setup-config-faces-native-witnesses.json -text
+tests/fixtures/setup-config-input-native-witnesses.json -text
+tests/fixtures/setup-config-main-visual-native-witnesses.json -text
+tests/fixtures/setup-config-manifest-witnesses.json -text
+tools/main_canvas_probe.c -text
+tools/menu_input_regression.c -text
+tools/rules_canvas_probe.c -text
+tools/run_mesen_isolated.py -text
+tools/run_setup_config_checks.ps1 -text
+tools/test_setup_config_adjustments.py -text
+tools/test_setup_value_canvas.py -text
+tools/verify_setup_config_adjustments.py -text
+tools/verify_setup_main_canvas.py -text

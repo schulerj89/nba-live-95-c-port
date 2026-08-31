@@ -1,13 +1,50 @@
 #include "nba_session.h"
 #include <string.h>
 
-const uint16_t nba_default_main_values[NBA_SETUP_MAIN_VALUE_COUNT] = { 0, 1, 0, 0 };
+/* `$81:C19A-$C231`, InitializeOrLoadConfiguration: a genuinely fresh native
+ * save defaults to Exhibition/Arcade/Rookie/12 minutes. Earlier C defaults
+ * came from a configured Simulation/3-minute capture, not factory state.
+ * Native witnesses: docs/setup-config-native-contract.md. */
+const uint16_t nba_default_main_values[NBA_SETUP_MAIN_VALUE_COUNT] = { 0, 0, 0, 3 };
 const uint16_t nba_default_rules[NBA_SETUP_RULE_COUNT] = {
-    45, 45, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0
 };
 const uint16_t nba_default_options[NBA_SETUP_OPTION_COUNT] = {
     30, 30, 2, 1, 0, 0, 0
 };
+const uint16_t nba_default_custom_rules[NBA_SETUP_RULE_COUNT] = {
+    45, 45, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0
+};
+
+/* `$81:BFAA-$C00A`, ApplySelectedStyle: change active Rules immediately,
+ * while Main's edited Style is still working state at $16FD. Committing
+ * Main is a separate caller boundary. Any nonzero/non-Custom native value
+ * takes the Simulation branch; UI cycling itself restricts values to0..2. */
+void nba_config_apply_style(NbaGameConfig *config, uint16_t working_style) {
+    if (!config) return;
+    if (working_style == 2u) {
+        /* `$81:C398-$C3D3`, LoadCustomRules. Selecting another preset does
+         * not overwrite this separately stored Custom profile. */
+        memcpy(config->rules, config->custom_rules, sizeof(config->rules));
+    } else if (working_style == 0u) {
+        memcpy(config->rules, nba_default_rules, sizeof(config->rules));
+    } else {
+        config->rules[0] = config->rules[1] = 45u;
+        for (unsigned i = 2u; i < NBA_SETUP_RULE_COUNT; ++i)
+            config->rules[i] = 1u;
+    }
+}
+
+/* `$81:D516-$D537` commits all13 words and calls SaveCustomRules
+ * (`$81:C3D5-$C41D`) when the adjustment dispatcher marked Style Custom.
+ * This models the separately retained profile; global save validity and
+ * disk serialization remain a distinct match-confirm transaction. */
+void nba_config_commit_rules(NbaGameConfig *config, const uint16_t *working_rules) {
+    if (!config || !working_rules) return;
+    memcpy(config->rules, working_rules, sizeof(config->rules));
+    if (config->main_values[1] == 2u)
+        memcpy(config->custom_rules, working_rules, sizeof(config->custom_rules));
+}
 
 /* `$86:DBDC-$DBE5` indexes `$86:E38A` with setup value `$17B1`. */
 uint16_t nba_match_regulation_clock(uint16_t quarter_length_setting) {
@@ -73,6 +110,8 @@ void nba_session_init(NbaSession *session) {
            sizeof(nba_default_main_values));
     memcpy(session->config.rules, nba_default_rules, sizeof(nba_default_rules));
     memcpy(session->config.options, nba_default_options, sizeof(nba_default_options));
+    memcpy(session->config.custom_rules, nba_default_custom_rules,
+           sizeof(nba_default_custom_rules));
     session->left_team = 3;   /* Chicago */
     session->right_team = 18; /* Orlando */
     session->player_one_side = 1; /* Live Exhibition path defaults to home/right. */

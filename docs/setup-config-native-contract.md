@@ -1,12 +1,11 @@
 # Native Setup configuration contract
 
-This is a native-derived translation contract, not a claim that the C port
-already implements it. The transition checkpoint separately repaired the
-narrow Rules-adjustment-to-Custom side effect, including clamped values, and
-its native Main-row0 return. `docs/closure-digest-attribution.md` records that
-controlled-prestate production-caller proof. Defaults, presets, saved Custom,
-working-versus-committed Main and Rules-cursor discrepancies remain failures
-until their real callers and downstream state are repaired and replayed.
+This is the native-derived translation contract. The configuration candidate
+implements factory defaults, presets, session Custom storage, separate Main
+working/committed values, cursor policies and native input repeat through real
+menu callers. See `docs/setup-config-implementation.md` for its exact replay
+scope and independent-audit status. Disk saving, gameplay/audio consumers and
+complete transition timing are not established by these menu proofs.
 
 ## Evidence
 
@@ -85,7 +84,10 @@ working until Options entry commits `[0,0,1,0]`; returning restores that block.
 This is `.analysis/setup-config-native-20260830/main-v3`, with recorded exit0.
 Main-v1/v2 retained complete raw outputs but their PowerShell launcher lacked
 a readable process exit code, so neither is accepted evidence. The current
-launcher retains the process handle and records exit status before checking it.
+launcher used for those accepted runs retained the process handle and recorded
+exit status. New `faces-v1` and `main-v4` runs instead use Python subprocess
+with an explicit per-job environment and a verified private portable home;
+they never mutate process-global capture variables while other captures run.
 
 ## Working, committed and saved boundaries
 
@@ -133,9 +135,9 @@ Every OFF value is reached through the real menu. B-ignore, Start commit and
 reentry are recorded. This proves UI/state semantics, not gameplay effects.
 
 Rules cursor movement **clamps** at0 and12. Fresh input observes0→0 on Up and
-12→12 on Down; `$81:D3E3-$D3E6` and `$81:D43B-$D43E` agree. The C port's shared
-submenu wrap implementation and the regression expecting Rules to wrap are
-wrong. Options wraps at0/6 (`$82:8D6A`, `$82:8D85`). Do not replace both menus
+12→12 on Down; `$81:D3E3-$D3E6` and `$81:D43B-$D43E` agree. The previous C shared
+submenu wrap implementation and the regression expecting Rules to wrap were
+wrong; the candidate now clamps Rules. Options wraps at0/6 (`$82:8D6A`, `$82:8D85`). Do not replace both menus
 with a single wrap policy.
 
 Held-input evidence is separate from individual presses. `$81:AB58-$AC03`
@@ -146,7 +148,23 @@ Options then add an extra three units before the ordinary one-unit adjustment.
 The natural held-input callback offsets are0,32,43,53,62,70,77,83,88, then every5
 frames; the last transition switches±1 to±4. `held-v2` captures180-frame holds,
 full input timer values, clamp behavior and native before/after routine state.
-The C pressed-edge-only menu adjustment lacks this original repeat behavior.
+The candidate replaces the former C pressed-edge-only adjustment with this
+producer and its full-word pending consumer `$81:AC04-$AC52`. Rules row redraw
+`$81:D59B-$D5AB` sets acceleration for bar rows, even after a clamped Up press.
+Options Up/Down explicitly clear acceleration at `$82:8D44/$8D77`. Native
+release clears previous/fast/auxiliary state but preserves delay/speed/pending;
+a changed nonzero held word preserves fast. These differences are now compared
+at native entry/exit and exact input-frame offsets, rather than only after holds.
+
+Main directions also compare whole words, but its remaining buttons use a
+different contract: `$81:BE57` tests mask`$C0F0` (B/Y/A/X/L/R), and `$81:BEC7`
+opens selected Rules/Options on any word containing those buttons. Therefore
+B, Y, X, L, R, A+Start and B+Right can open Rules from Main. Exact Start at
+`$81:BF18` confirms a match from any Main row. In Rules/Options, B and combined
+words are ignored. Fresh `faces-v1` observes all seven openings and Start from
+Main's Rules row; `input-v1` observes mixed words and holds without release.
+Hidden button sequences involving `$07FC/$17C3/$17C5` are inventoried but are
+not part of this configuration candidate's accepted behavior.
 
 ## Disk/SRAM persistence
 

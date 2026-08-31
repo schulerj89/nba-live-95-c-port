@@ -5,6 +5,7 @@
 #include "nba_assets.h"
 #include "nba_renderer.h"
 #include "nba_session.h"
+#include "nba_menu_input.h"
 
 /**
  * NBA Live '95 Game Setup screen.
@@ -180,6 +181,20 @@ typedef struct {
     NbaSetupAction action;
 } NbaSetupUpdateResult;
 
+/* Read-only logical entry/exit observations of translated adjustment
+ * dispatches. Optional instrumentation cannot replace configuration/input. */
+typedef struct {
+    uint32_t native_pc;
+    uint16_t command, row, value, maximum, controller;
+    uint16_t previous_input, pending_input, repeat_input;
+    uint16_t repeat_delay, repeat_speed, repeat_flag;
+    uint16_t working_count;
+    uint16_t working[NBA_SETUP_RULE_COUNT];
+    NbaGameConfig config;
+} NbaSetupAdjustmentSnapshot;
+typedef void (*NbaSetupAdjustmentObserver)(void *context,
+                                           const NbaSetupAdjustmentSnapshot *snapshot);
+
 typedef struct {
     uint8_t vram[0x10000];  /* mutable $80:A2BF entrance VRAM + DMA trace */
     uint8_t cgram[0x200];   /* mutable entrance CGRAM + DMA trace          */
@@ -270,8 +285,12 @@ typedef struct {
     int active_transition_frame_count;
     const uint8_t *main_value_vram[NBA_SETUP_MAIN_VALUE_COUNT][4];
     NbaGameConfig *config; /* persistent session-owned configuration */
+    uint16_t working_main[NBA_SETUP_MAIN_VALUE_COUNT]; /* $7E:16FB on Main */
     uint16_t working_rules[NBA_SETUP_RULE_COUNT];
     uint16_t working_options[NBA_SETUP_OPTION_COUNT];
+    NbaMenuInput menu_input;
+    NbaSetupAdjustmentObserver adjustment_observer;
+    void *adjustment_observer_context;
     bool is_initialized;
 } NbaSetupScreen;
 
@@ -280,6 +299,13 @@ void nba_setup_screen_init(NbaSetupScreen *s, const NbaAssetPack *assets,
 NbaSetupUpdateResult nba_setup_screen_update(NbaSetupScreen *s,
                                              const NbaInput *input);
 int  nba_setup_screen_row_band_top(NbaSetupRow row);
+/* Build only the thirteen-row Rules value cells in a full raw BG3 canvas.
+ * Row0/1 bars remain OAM-owned; viewport scroll is applied by the renderer. */
+bool nba_setup_screen_apply_rules_value_cells(const NbaSetupScreen *s,
+                                             uint8_t *canvas,
+                                             const uint16_t *rules);
+bool nba_setup_screen_build_main_value_canvas(const NbaSetupScreen *s,
+                                              uint8_t *canvas);
 void nba_setup_screen_render(const NbaSetupScreen *s, NbaRenderer *ren);
 
 #endif /* NBA_SETUP_SCREEN_H */

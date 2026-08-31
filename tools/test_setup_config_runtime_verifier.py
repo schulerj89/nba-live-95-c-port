@@ -20,10 +20,7 @@ class ConfigurationReplayProtocolTests(unittest.TestCase):
         cls.native=[cls.journey['states'][0]]+cls.journey['states'][2::2]
         # Protocol double copied from actual ROM observations. It is not a C
         # parity proof: only rejection/coverage behavior is tested here.
-        cls.rows=[dict(action=i,scene=4,page=0,row=0,
-                       **{field:copy.deepcopy(row[field])
-                          for field in ('main','rules','options')})
-                  for i,row in enumerate(cls.native)]
+        cls.rows=verifier.native_projections(cls.journey)
 
     def output(self,rows):
         return '\n'.join('CONFIG_STATE '+json.dumps(row) for row in rows)
@@ -35,7 +32,7 @@ class ConfigurationReplayProtocolTests(unittest.TestCase):
     def test_every_owned_word_at_every_boundary_is_compared(self):
         checked=0
         for action in range(len(self.rows)):
-            for field in ('main','rules','options'):
+            for field in ('main','rules','options','custom','working'):
                 for word in range(len(self.rows[action][field])):
                     rows=copy.deepcopy(self.rows)
                     rows[action][field][word]^=1
@@ -44,7 +41,25 @@ class ConfigurationReplayProtocolTests(unittest.TestCase):
                     self.assertEqual((issues[0]['action'],issues[0]['field'],issues[0]['index']),
                                      (action,field,word))
                     checked+=1
-        self.assertEqual(checked,24*len(self.rows))
+        self.assertEqual(checked,sum(37+len(row['working']) for row in self.rows))
+
+    def test_wrong_scene_page_and_cursor_fail(self):
+        for action in range(len(self.rows)):
+            for field in ('scene','page','row'):
+                rows=copy.deepcopy(self.rows)
+                rows[action][field]^=1
+                issues=verifier.compare(self.journey,rows)
+                self.assertTrue(any(issue['action']==action and issue['field']==field for issue in issues))
+
+    def test_unproven_match_handoff_fails(self):
+        journey=copy.deepcopy(self.journey)
+        journey['events']=[e for e in journey['events'] if e['pc']!=0x81bf59]
+        with self.assertRaises(ValueError):verifier.native_projections(journey)
+
+    def test_action_labels_do_not_choose_expected_page(self):
+        journey=copy.deepcopy(self.journey)
+        for action in journey['actions']:action['label']='incorrect_label'
+        self.assertEqual(verifier.native_projections(journey),self.rows)
 
     def test_missing_extra_reordered_or_duplicate_rows_fail(self):
         for kind in ('missing','extra','reordered','duplicate'):

@@ -12,9 +12,12 @@
 #define NBA_MATCH_INITIAL_TIMEOUTS   7
 
 typedef struct {
-    uint16_t main_values[NBA_SETUP_MAIN_VALUE_COUNT]; /* $7E:16FB working block */
+    uint16_t main_values[NBA_SETUP_MAIN_VALUE_COUNT]; /* $7E:17AB committed block */
     uint16_t rules[NBA_SETUP_RULE_COUNT];             /* $7E:17D1 commit block  */
     uint16_t options[NBA_SETUP_OPTION_COUNT];         /* $7E:17B5 commit block  */
+    /* Separate native SRAM profile $70:0053-$0056, decoded to word values.
+     * Session storage alone is not a claim that host disk saving is wired. */
+    uint16_t custom_rules[NBA_SETUP_RULE_COUNT];
 } NbaGameConfig;
 
 typedef enum {
@@ -86,6 +89,10 @@ typedef struct {
 extern const uint16_t nba_default_main_values[NBA_SETUP_MAIN_VALUE_COUNT];
 extern const uint16_t nba_default_rules[NBA_SETUP_RULE_COUNT];
 extern const uint16_t nba_default_options[NBA_SETUP_OPTION_COUNT];
+extern const uint16_t nba_default_custom_rules[NBA_SETUP_RULE_COUNT];
+
+void nba_config_apply_style(NbaGameConfig *config, uint16_t working_style);
+void nba_config_commit_rules(NbaGameConfig *config, const uint16_t *working_rules);
 
 void nba_session_init(NbaSession *session);
 /* Start a new Exhibition match while preserving session configuration,
