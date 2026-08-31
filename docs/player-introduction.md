@@ -63,6 +63,13 @@ register snapshot, SPC state, and 5,560-frame cycle-timed DSP program. Asset
 Asset 270 is the larger `$A6:BB16` 16x16 Starting Lineup font descriptor.
 The C runtime synthesizes the BRR samples and does not store a mixed song WAV.
 
+Both descriptors are proportional. `$81:9756` reads one or two 8-pixel strips
+according to the character width at descriptor `+$106+code`; the nominal asset
+width is not a fixed strip count. The runtime preserves that distinction so
+small-font `M`/`W` glyphs retain their right strip and narrow large-font glyphs
+such as `I` do not borrow pixels from the following glyph. This was a port
+renderer defect, not an original-game bug.
+
 ## Regression
 
 `tools/test_player_intro.py` locks the visual assets, all 290 portrait keys,

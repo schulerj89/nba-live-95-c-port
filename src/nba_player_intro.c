@@ -256,8 +256,8 @@ static int rom_font_width(const NbaPlayerIntro *screen, NbaAssetId asset_id,
  * from descriptor+$106+character. Frame 2100 BG3 palette 0 establishes
  * colors 1/2/3 as black/$5294 gray/$7FFF white. */
 static void rom_font_text(const NbaPlayerIntro *screen, NbaRenderer *ren,
-                          NbaAssetId asset_id, int glyph_width,
-                          int x, int y, const char *value) {
+                          NbaAssetId asset_id, int x, int y,
+                          const char *value) {
     static const uint32_t colors[4] = {
         0, 0xFF000000u, 0xFFA5A5A5u, 0xFFFFFFFFu
     };
@@ -265,12 +265,19 @@ static void rom_font_text(const NbaPlayerIntro *screen, NbaRenderer *ren,
     if (!font) return;
     for (const unsigned char *p = (const unsigned char *)value; *p; ++p) {
         unsigned character = *p & 0x7Fu;
+        unsigned glyph_width = font[0x106u + character];
         uint16_t offset = (uint16_t)(font[6u + character * 2u] |
                                     ((uint16_t)font[7u + character * 2u] << 8));
-        size_t glyph_size = (size_t)(glyph_width / 8) * 32u;
+        /* $81:9756 consumes as many 8-pixel strips as this character's
+         * proportional descriptor width requires.  The two packed fonts do
+         * not have fixed strip counts: for example, the small M/W glyphs use
+         * two strips while the large I glyph uses one.  Treating the asset's
+         * nominal width as a per-character width clipped the former and read
+         * the following glyph into the latter. */
+        unsigned tiles_x = (glyph_width + 7u) / 8u;
+        size_t glyph_size = (size_t)tiles_x * 32u;
         if ((size_t)offset + glyph_size > 0x1000u) continue;
-        int tiles_x = glyph_width / 8;
-        for (int tile = 0; tile < tiles_x; ++tile) {
+        for (unsigned tile = 0; tile < tiles_x; ++tile) {
             const uint8_t *glyph = font + offset + (size_t)tile * 32u;
             for (int dy = 0; dy < 16; ++dy) for (int tx = 0; tx < 8; ++tx) {
                 int bit = 7 - tx;
@@ -286,35 +293,31 @@ static void rom_font_text(const NbaPlayerIntro *screen, NbaRenderer *ren,
 }
 
 static void rom_font_centered(const NbaPlayerIntro *screen, NbaRenderer *ren,
-                              NbaAssetId asset_id, int glyph_width,
-                              int y, const char *value) {
-    rom_font_text(screen, ren, asset_id, glyph_width,
+                              NbaAssetId asset_id, int y,
+                              const char *value) {
+    rom_font_text(screen, ren, asset_id,
                   (256 - rom_font_width(screen, asset_id, value)) / 2,
                   y, value);
 }
 
 static void presentation_text(const NbaPlayerIntro *screen, NbaRenderer *ren,
                               int x, int y, const char *value) {
-    rom_font_text(screen, ren, NBA_ASSET_PLAYER_INTRO_FONT, 8,
-                  x, y, value);
+    rom_font_text(screen, ren, NBA_ASSET_PLAYER_INTRO_FONT, x, y, value);
 }
 
 static void presentation_centered(const NbaPlayerIntro *screen,
                                   NbaRenderer *ren, int y, const char *value) {
-    rom_font_centered(screen, ren, NBA_ASSET_PLAYER_INTRO_FONT, 8,
-                      y, value);
+    rom_font_centered(screen, ren, NBA_ASSET_PLAYER_INTRO_FONT, y, value);
 }
 
 static void lineup_text(const NbaPlayerIntro *screen, NbaRenderer *ren,
                         int x, int y, const char *value) {
-    rom_font_text(screen, ren, NBA_ASSET_STARTING_LINEUP_FONT, 16,
-                  x, y, value);
+    rom_font_text(screen, ren, NBA_ASSET_STARTING_LINEUP_FONT, x, y, value);
 }
 
 static void lineup_centered(const NbaPlayerIntro *screen, NbaRenderer *ren,
                             int y, const char *value) {
-    rom_font_centered(screen, ren, NBA_ASSET_STARTING_LINEUP_FONT, 16,
-                      y, value);
+    rom_font_centered(screen, ren, NBA_ASSET_STARTING_LINEUP_FONT, y, value);
 }
 
 static void draw_matchup(const NbaPlayerIntro *screen, NbaRenderer *ren) {

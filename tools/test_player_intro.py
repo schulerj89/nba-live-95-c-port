@@ -138,7 +138,9 @@ def main():
             audio, 2965333, EXPECTED_AUDIO_RMS,
             [921799, 34924, 13747, 8129, 19548, 1564, 290],
             [3760, 3760], 1.0, 25000, 27000)
-        if rgb_hash(matchup) != "55fee4c1f2ba099b0682abd830beda56b144c5c1cade00914dde760ecaf25973":
+        # $81:9756 uses each character's descriptor width. This catches both
+        # small-font M/W second strips and narrow one-strip lineup glyphs.
+        if rgb_hash(matchup) != "4ec7cb249dddeb8284a48a071cbd191bb46729af282f9b21e657a9b77cbb6b80":
             raise AssertionError("ROM-layout visitor/VS/home presentation changed")
 
         ratings = Path(directory) / "ratings.bmp"
@@ -160,7 +162,7 @@ def main():
         if "SCN:PLAYER_INTRO" not in output or "CARD:01/10" not in output or \
            "ROM LOOP:$87:BE92" not in output:
             raise AssertionError("Player Setup did not hand off to the lineup state")
-        if rgb_hash(frame) != "40a35ddd7b828401c2cf9702ce973bf57e7761117c27912bef7675276cbe1d7b":
+        if rgb_hash(frame) != "9c12be7194bbc1170760360d669b87cf5dc5abf4de1be3ff8a7ce9b31651b099":
             raise AssertionError("first Starting Lineup frame changed")
 
         output = run(exe, "--headless", "--rom", rom, "--assets", pack,
@@ -181,7 +183,7 @@ def main():
                      "--team-confirm", "--player-setup-confirm", "--frames", 1600,
                      "--dump-frame", away_frame, "--debug-state")
         if "TEAM L:08 R:18" not in output or "CARD:01/10" not in output or \
-           rgb_hash(away_frame) != "0150574f6ccb502d45747766dcbbaf8c755bd0af2ebafc9156d62296866dfec9":
+           rgb_hash(away_frame) != "f6afbc9a3ca46bacbbd2608364e795223c71d1f7f08190398c735d97142b754b":
             raise AssertionError("non-default visitor portrait selection changed")
 
         home_frame = Path(directory) / "san_antonio_home.bmp"
@@ -190,7 +192,7 @@ def main():
                      "--player-setup-confirm", "--frames", 3600,
                      "--dump-frame", home_frame, "--debug-state")
         if "TEAM L:03 R:23" not in output or "CARD:06/10" not in output or \
-           rgb_hash(home_frame) != "0674f5cb327859fb972ff6a6e3a5ad2f9f29d2d97cd5b212f08eae7a2adfaec5":
+           rgb_hash(home_frame) != "5214a6f3a18745a5cd6f39450d10676539ed1ae980b4282404648864c1f76e42":
             raise AssertionError("non-default home portrait selection changed")
 
     print("Player Introduction regression checks passed")
