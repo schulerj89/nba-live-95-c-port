@@ -11,3 +11,7 @@ tools/capture_human_dispatch.py text eol=lf
 tools/capture_setup_codec_work.py -text
 tools/mesen_setup_codec_work.lua -text
 tools/mesen_setup_scheduler.lua -text
+# Switch capture provenance also pins the original CRLF runner/helper bytes.
+tools/capture_human_switch.py -text
+tools/mesen_human_switch.lua -text
+tools/mesen_portable.py -text

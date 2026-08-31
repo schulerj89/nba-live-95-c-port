@@ -76,11 +76,17 @@ uint8_t nba_gameplay_target_direction(int16_t dx, int16_t dy,
     uint16_t x = (uint16_t)dx, y = (uint16_t)dy;
     if (dx < 0) { x = (uint16_t)(0u - x); key |= 8u; }
     if (dy < 0) { y = (uint16_t)(0u - y); key |= 4u; }
-    if ((int16_t)(uint16_t)(y - 1u) <= (int16_t)x) {
+    /* Preserve F37D/F399's wrapped CMP sign tests. Comparing separately
+     * signed operands changes the original result when subtraction overflows.
+     * F37D also accepts equality; F399 does not. For dx=$8000,dy=1 the
+     * original swaps and returns direction6/distance$8000. This full-word
+     * edge is source-verified; ordinary-court reachability is not established. */
+    uint16_t y_minus_one = (uint16_t)(y - 1u);
+    if (y_minus_one == x || subtract16_is_negative(y_minus_one, x)) {
         uint16_t swap = x; x = y; y = swap; key |= 2u;
     }
     uint16_t doubled_x = (uint16_t)(x << 1);
-    if ((int16_t)(uint16_t)(y - 1u) < (int16_t)doubled_x) key |= 1u;
+    if (subtract16_is_negative((uint16_t)(y - 1u), doubled_x)) key |= 1u;
     if (distance) *distance = (uint16_t)(y + (doubled_x >> 3));
     return direction_map[key];
 }
