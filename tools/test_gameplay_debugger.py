@@ -20,7 +20,11 @@ from PIL import Image
 # Re-reviewed after exact `$86:F1B0-$F2C9` parent timing corrected actor
 # positions. The selected actor marker, nine visible pre-possession players,
 # ball, center court, debug HUD and telemetry text remain complete/readable.
-EXPECTED_LAB_RGB = "d6e5e07757e57bcaa961ac650283d829f4d157a8fae75e26a73380ac71072015"
+# Canonical home/visitor context and sorted lineup ranks change the team
+# appearance, positions and rank text. Matched old/canonical tipoff builds
+# reproduce every old/new pixel: docs/gameplay-lab-image-attribution.md.
+# This C-only anchor does not accept the preexisting static scoreboard gap.
+EXPECTED_LAB_RGB = "d52fd6308d82e0a60ecfcdf86648dd331c40da5c1c2e20b37c67225c0cb1dc6f"
 
 
 def run(command, label):

@@ -29,3 +29,11 @@ tipoff image expectation stopped it. The updated complete tipoff test passes
 separately. The later CPU trace still fails a camera observation assertion and
 requires investigation. No full-suite, human-play, scheduler-phase or whole-game
 completion is claimed. Production main and the desktop executable are unchanged.
+
+The subsequent Gameplay Lab image checkpoint is also independently accepted.
+Its original/final AST differs only in one RGB expectation, with comments
+explaining the canonical team/rank attribution. Matched old/canonical source
+builds reproduce every old/new pixel. The complete debugger test passes and
+the stale scoreboard remains an explicit port gap. See
+`completion-gameplay-lab-image-independent-audit.md` for the final verdict;
+the frozen pre-review attribution note remains unchanged.
