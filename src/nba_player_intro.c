@@ -395,6 +395,10 @@ static void draw_ratings(const NbaPlayerIntro *screen, NbaRenderer *ren) {
     const NbaTeamRecord *home = nba_team_record(screen->session->right_team);
     draw_team_plate(screen, ren, screen->session->left_team, 38, 20);
     draw_team_plate(screen, ren, screen->session->right_team, 174, 20);
+    /* The original ratings scene leaves the home court fully visible. On
+     * Orlando, the dark center oval therefore crosses behind BALL CONTROL;
+     * normal native frame 2300 shows the same overlap. Preserve that artwork
+     * quirk instead of moving the source-owned row or erasing the court. */
     for (int row = 0; row < 5; ++row) {
         int y = 80 + row * 20;
         int pose = (screen->phase_frame / 12 + row) % 6;
