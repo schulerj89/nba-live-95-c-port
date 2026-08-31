@@ -264,6 +264,11 @@ if ($Test) {
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name controller_contract_audit_probe
     & (Join-Path $BuildDir 'controller_contract_audit_probe.exe') $RomPath
     if ($LASTEXITCODE -ne 0) { throw 'Controller original-ROM direction/quirk guards failed.' }
+    # This separate component build does not enable production human input.
+    $HumanComponentBuild = Join-Path $BuildDir 'human-dispatch-test'
+    & (Join-Path $Root 'tools\build_human_dispatch_probe.ps1') -OutputDirectory $HumanComponentBuild
+    & (Join-Path $HumanComponentBuild 'human_motion_quirk_probe.exe')
+    if ($LASTEXITCODE -ne 0) { throw 'Original human movement quirks changed.' }
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name complete_shot_vector_probe
     & python (Join-Path $Root 'tools\verify_complete_shot_vectors.py') `
         --normalized --vectors (Join-Path $Root 'tests\fixtures\complete-shot-witnesses.json') `

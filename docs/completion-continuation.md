@@ -182,3 +182,25 @@ the exact-offset counterfactual reproduces the old whole image. Human remains
 disabled. The separate human-stage audit found an original carried-X pointer
 quirk that its movement wrapper did not yet preserve; that stage is rejected
 pending repair, not integrated. Scheduler codec review is queued separately.
+
+The bounded human-stage repair now has independent acceptance. It preserves
+the original carried-X controller-relative timer bug, with PCs and a natural
+L+X witness documented in source. All764650 native values,25 verifier-integrity
+cases,12 independent alias cases and14 source-contract guards pass a fresh
+auditor build. The old v1 rejection remains recorded; see
+docs/completion-human-dispatch-repair-independent-audit.md and
+docs/human-dispatch-repair.md. The14 quirk guards are now included in build-Test
+through a separate component build; this does not add the module to the
+production source manifest or enable human gameplay. Original-game bugs must
+be kept and commented when established by evidence; unexplained port failures
+must not be reclassified as original bugs.
+
+The legacy Setup monolith migration now passes the previous frame162/default,
+Main shadow-strip, real-button configuration, Main commit persistence, Rules
+publication trace and Options route/cadence checks. The previous blocked Rules
+slider SFX assertion counted the two real Main configuration adjustments.
+The migrated check now requires exactly those two sounds on a blocked slider
+and a third sound on a successful submenu adjustment; volume checks select
+that third sound. The whole monolith passes in
+build/setup-monolith-migration-v6.log. No native fixture was changed.
+Full-suite and Rules reentry failures are still unresolved.

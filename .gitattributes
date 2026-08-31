@@ -5,3 +5,4 @@ tools/mesen_intro_indexed_capture.lua text eol=lf
 tools/ball_init_fields.def text eol=lf
 # Controller schema2 capabilities are tied to this executed runner identity.
 tools/capture_controller_contract.py text eol=lf
+tools/capture_human_dispatch.py text eol=lf
