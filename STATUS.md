@@ -1,5 +1,11 @@
 # Project status
 
+**Paused at the user's request on 2026-08-30.** Main and the desktop build
+retain verified runtime checkpoint A2 `0d3a420`. Newer work is preserved in
+pushed WIP commit `c134f85` on `work/ownership-stop-20260830`; it is not merged.
+See `docs/checkpoint-paused-20260830.md` for what works, exact test scope,
+known failures and continuation paths. The game remains incomplete.
+
 Last updated 2026-08-30. This is a current-state handoff, not a milestone log.
 Use Git history for older checkpoints and run
 `python tools/progress.py --write docs/progress.md` for live measurements.
