@@ -252,3 +252,9 @@ tools/inspect_ball_pass_source.py -text
 tools/mesen_ball_pass_draw.lua -text
 tools/test_ball_pass_render.py -text
 tools/verify_ball_draw_resources.py -text
+
+# Preserve accepted base bootstrap boundary verifier repair.
+tools/bootstrap_boundary_protocol_v2.py -text
+tools/verify_bootstrap_v4.py -text
+tools/test_bootstrap_boundary_v4.py -text
+tools/test_bootstrap_guard_regressions_v2.py -text

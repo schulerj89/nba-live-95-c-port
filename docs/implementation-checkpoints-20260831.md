@@ -204,3 +204,13 @@ nine pass ball projections are unchanged. `pass-render-integration.md` records
 dated manifests and the independent screenshot receipt. The full CPU regression
 still stops at the same pre-existing3480 image after the earlier behavior and
 600/1300 checks; no golden was changed. Main/desktop remain unpromoted.
+
+## Base startup verifier integrity repair
+
+`bootstrap-boundary-v4-integration.md` records four exact accepted verifier/test
+files, fresh root8-source replay,11new+21protocol+12profile corruption rejections,
+and all seven execution artifacts unchanged. The v4 reader replaces v3 as the
+80BC acceptance entry point; old false-acceptance evidence remains retained.
+No C or production behavior changed. The separate first-fill component now has
+bounded independent acceptance with its new reader; reset-table source and
+later NMI work remain separate reviews, not runtime integration claims.

@@ -1,5 +1,9 @@
 # Accepted reset/upload/F1 component checkpoint
 
+Current verification uses [the additive v4 boundary repair](bootstrap-boundary-v4-integration.md).
+The original v3 reader below is retained as historical evidence; subsequent QA
+found terminal-register and stdout gaps that v4 closes without changing execution.
+
 The source component and repaired verifier are accepted through the explicit
 CPU80:80BC stop before8A57. Root copied the27 reviewed files and rebuilt and
 verified them in `build/bootstrap-accepted-root-v3`. This is a standalone
@@ -42,7 +46,8 @@ extra final blank line is retained rather than changing its accepted identity.
 -All21protocol and12profile negative cases reject, with both positive baselines.
 -The unchanged independent nine trace/summary and three boundary-metadata
   corruptions reject, with positive baselines. Earlier failed verifiers remain
-  historical files; `verify_bootstrap_v3.py` is the accepted entry point.
+  historical files; `verify_bootstrap_v3.py` was this checkpoint's entry point.
+  The current entry point is now `verify_bootstrap_v4.py` as noted above.
 
 Fresh root probe SHA256:
 9c443d76eae40a3413ad8819acb12a5296a8f9d61d2dd78e56bf640f44d843ec.
@@ -60,8 +65,9 @@ CPU port boundaries, not a fitted offset. The first three IPL instructions
 predate the observer; hidden staged inputs and complete DSP evolution are not
 individually observed. No native state is used to seed this C constructor.
 
-The newer first-fill/DMA candidate is excluded from this checkpoint and remains
-under independent review. Do not turn the80BC refusal into successful license
+The newer first-fill/DMA component is excluded from this root checkpoint. Its
+frozen source plus the new fill-v2 verifier now has bounded independent acceptance;
+root integration remains separate. Do not turn the80BC refusal into successful license
 entry. The eventual persistent owner must keep one canonical WRAM bus across
 scenes: graphics queue0100..02FF, head35/tail37/budget39, RNG07F6 and overlapping
 direct-page bytes need borrowed views with endian-safe accessors. A value-based
