@@ -43,6 +43,17 @@ production screenshots display the same logo shapes as their normal-route
 native captures. Chicago's long horizontal bull graphic and Orlando's dark
 blue oval are therefore preserved original art, not defects to redraw.
 
+## Pregame crowd-band correction
+
+The gameplay animated-crowd limitation above does not apply to the static
+Player Introduction background. The old pregame decoder emitted palette color
+zero as opaque even though SNES background color index zero is transparent.
+Assets 260 and 271 now show the native CGRAM[0] backdrop at those pixels. The
+Orlando top 16 rows have zero differing pixels against native frame 2550, and
+an independent frame-2300 mask matches all 9,696 safe crowd pixels. Native BG1
+is enabled but wins no pixels in that witness. Gameplay asset 283 and its
+broader crowd-producer limitation remain unchanged.
+
 Run the focused attribution check with:
 
 ```powershell
