@@ -1,5 +1,6 @@
 #include "nba_gameplay_hud.h"
 #include "nba_rom_font.h"
+#include "nba_gameplay_ai.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -14,7 +15,7 @@ static const HudRegion regions[4] = {
     {26,22,4,2,0x3F,0}, {11,16,14,5,0x47,0x80},
     {25,16,5,5,0x8D,0x4E0}, {11,22,15,2,0xA6,0x670}
 };
-static const unsigned section_sizes[9] = {1008,30,172,928,288,838,66,44,38};
+static const unsigned section_sizes[10] = {1008,30,172,928,288,838,66,44,38,418};
 
 static uint16_t word(const uint8_t *p) {
     return (uint16_t)(p[0] | ((uint16_t)p[1] << 8));
@@ -27,18 +28,33 @@ static void put_word(uint8_t *p, uint16_t value) {
 }
 static const uint8_t *resource(const NbaAssetPack *assets, unsigned section) {
     const NbaAssetItem *item=nba_assets_get(assets,NBA_ASSET_GAMEPLAY_HUD);
-    if (!item || !item->data || item->size < 88u || section >= 9u) return NULL;
+    if (!item || !item->data || item->size < 88u) return NULL;
     const uint8_t *data=item->data;
-    if (memcmp(data,"NBHUD001",8) || dword(data+8)!=1u || dword(data+12)!=9u)
+    unsigned count=dword(data+12),version=dword(data+8);
+    if (memcmp(data,"NBHUD001",8) ||
+        !((version==1u && count==9u) || (version==2u && count==10u)) ||
+        section>=count || item->size<16u+count*8u)
         return NULL;
-    size_t next=88u;
-    for(unsigned i=0;i<9u;++i) {
+    size_t next=16u+count*8u;
+    for(unsigned i=0;i<count;++i) {
         if(dword(data+16u+i*8u)!=next ||
            dword(data+20u+i*8u)!=section_sizes[i] ||
            next > item->size || section_sizes[i] > item->size-next) return NULL;
         next+=section_sizes[i];
     }
     if(next!=item->size)return NULL;
+    /* Fixed resource sections must not turn attacker/malformed dimensions
+     * into a larger read. Validate every map before initialization/mutation. */
+    for(unsigned i=6u;i<count;++i) {
+        const uint8_t *map=data+dword(data+16u+i*8u);
+        unsigned maps=i==9u?11u:1u;
+        for(unsigned j=0u;j<maps;++j) {
+            const uint8_t *m=map+j*38u;
+            unsigned width=i==6u?6u:i==7u?19u:4u;
+            unsigned height=i==6u?5u:i==7u?1u:4u;
+            if(word(m)!=width || word(m+2u)!=height || word(m+4u)!=0x304u)return NULL;
+        }
+    }
     return data+dword(data+16u+section*8u);
 }
 
@@ -236,11 +252,211 @@ static bool tilemap(uint8_t *map,const uint8_t *source,unsigned x,unsigned y) {
     return true;
 }
 
+bool nba_gameplay_hud_lifecycle_assets_valid(const NbaAssetPack *assets) {
+    /* Legacy v1 remains valid for its frozen leaf tests, but cannot support
+     * the production BA5E child. Check the complete v2 payload up front. */
+    return resource(assets,9u)!=NULL;
+}
+
+static bool clear_panel(NbaGameplayHud *hud,const NbaGameplayHudInput *input) {
+    /* $83:EBDB-ED46: this is the map/palette projection. Substitution and
+     * shared task1850 bookkeeping remain their existing explicit owners. */
+    if ((int16_t)input->dispatch_mode_raw_0960<0 &&
+        input->presentation_kind_raw_08e8==1u) {
+        if(input->clock_raw_0928<3600u) {
+            memset(hud->visible_map+0x480u,0,0x1B4u); /* ED04:0640/00DA words */
+            memset(hud->visible_map+0x640u,0,0x34u);  /* ED15:0720/001A words */
+            hud->clear_raw_08ee=0u;
+        } else {
+            memset(hud->visible_map+0x480u,0,0x200u); /* ED47/ED5D kind1 */
+            hud->clear_raw_08ee=0xFFFFu;
+        }
+        return true;
+    }
+    if((int16_t)input->dispatch_mode_raw_0960<0) {
+        static const uint16_t kinds[7]={6,10,13,27,31,35,39};
+        static const uint16_t starts[7]={0x660,0x6C0,0x620,0x660,0x6A0,0x660,0x6A0};
+        static const uint16_t counts[7]={0xE0,0x80,0x120,0xE0,0xA0,0xE0,0xA0};
+        /* Literal $83:ED47/ED5D entries1..7. These clear the actual
+         * selected overlay even when its drawing child is still pending. */
+        for(unsigned i=0;i<7u;++i)if(input->presentation_kind_raw_08e8==kinds[i]) {
+            memset(hud->visible_map+(starts[i]-0x400u)*2u,0,counts[i]*2u);
+            hud->clear_raw_08ee=0xFFFFu;return true;
+        }
+        switch(input->presentation_kind_raw_08e8) {
+            case 17:case 22: /* actual contact/substitution continuation */
+                hud->pending_routine=0x83EC60u;return false;
+            default:break;
+        }
+    }
+    memset(hud->visible_map+0x80u,0,0x600u); /* ECEF:0440/0300 words */
+    hud->clear_raw_08ee=0xFFFFu;
+    return true;
+}
+
+static bool shot_clock(NbaGameplayHud *hud,const NbaAssetPack *assets,
+                       const NbaGameplayHudInput *input) {
+    uint16_t value=input->shot_clock_raw_092c;
+    unsigned frame=0;
+    if(value!=0u && (int16_t)value>=0) {
+        if(value>=input->clock_raw_0928)return true;
+        /* Original endpoint quirk at $87:BA6D/BA72: increments BEFORE
+         * subtraction and repeats for zero. In particular 60 displays2. */
+        do { ++frame;value=(uint16_t)(value-60u); } while((int16_t)value>=0);
+    }
+    if(frame==hud->clock_frame_raw_08f4)return true;
+    const uint8_t *maps=resource(assets,9u);
+    if(!maps || frame>=11u)return false; /* caller's <600 domain */
+    hud->clock_frame_raw_08f4=(uint16_t)frame;
+    return tilemap(hud->visible_map,maps+frame*38u,2u,20u);
+}
+
+void nba_gameplay_hud_timer_tick(int16_t *timer) {
+    /* $85:EDAC-EDB6 is separate from CC1A. Zero is retained here so that
+     * CC1A performs the signed transition and calls EBDB exactly once. */
+    if(timer && *timer>0)--*timer;
+}
+
+bool nba_gameplay_hud_dispatch(NbaGameplayHud *hud,const NbaAssetPack *assets,
+                               NbaGameplayHudInput *input) {
+    static const uint32_t children[44]={ /* original long table $83:CC7B */
+        0x83EBDB,0x83D0AD,0x83D157,0x83D1B1,0x83D1FD,0x83D2E0,
+        0x83D333,0x83D3AD,0x83D407,0x83D8DA,0x83D910,0x83D973,
+        0x83D9F7,0x83E81D,0x83D3AD,0x83E897,0x83E99E,0x83DA12,
+        0x83DA8C,0x83DD7F,0x83DDEF,0x83DF07,0x83DF3D,0x83DA8C,
+        0x83DFCE,0x83E060,0x83E0BE,0x83E0F4,0x83E157,0x83E1C7,
+        0x83E38D,0x83E3C3,0x83E426,0x83E496,0x83E563,0x83E599,
+        0x83E5FC,0x83E66C,0x83E7E7,0x83E9D4,0x83EA37,0x83EAA7,
+        0x83EBA2,0x83DBA2};
+    if(!hud || !hud->initialized || !input)return false;
+    if((int16_t)input->dispatch_mode_raw_0960>=0)return true;
+    if((int16_t)input->presentation_timer_raw_08de>=0) {
+        --input->presentation_timer_raw_08de;
+        if((int16_t)input->presentation_timer_raw_08de<0) {
+            bool ok=clear_panel(hud,input);
+            input->presentation_sequence_raw_08e6=0xFFFFu;
+            if(!ok)return false;
+            hud->pending_routine=0u;hud->unsupported_child_pending=false;
+        } else if((int16_t)input->presentation_sequence_raw_08e6>=0) {
+            /* An untranslated child has no invented return/poststate.
+             * The host keeps playing and ticking the canonical timer, but
+             * cannot step to another overlay child until retirement. */
+            if(hud->unsupported_child_pending)return false;
+            unsigned seq=input->presentation_sequence_raw_08e6;
+            if(seq>=44u) { hud->pending_routine=0x83CC43u;return false; }
+            ++input->presentation_sequence_raw_08e6;
+            if(seq>=6u) {
+                hud->pending_routine=children[seq];hud->unsupported_child_pending=true;
+                return false;
+            }
+            return nba_gameplay_hud_publish(hud,assets,children[seq],input);
+        } else if(input->presentation_kind_raw_08e8!=1u)return true;
+    }
+    if((int16_t)input->presentation_timer_raw_08de>=0 || input->clock_raw_0928<3600u)
+        if(!clock_update(hud,assets,input))return false;
+    /* CC6F/CC72 uses subtraction's N flag, not unsigned magnitude. */
+    if((int16_t)input->presentation_timer_raw_08de<0 &&
+       (int16_t)(uint16_t)(input->shot_clock_raw_092c-600u)<0)
+        return shot_clock(hud,assets,input);
+    return true;
+}
+
+bool nba_gameplay_hud_request_score(NbaGameplayHud *hud,const NbaAssetPack *assets,
+                                    NbaGameplayHudInput *input) {
+    if(!hud || !hud->initialized || !input)return false;
+    if((int16_t)input->requester_raw_095e>=0) {
+        /* CE36-CE73's synchronous human/pause request. The host pause
+         * caller is a separate integration boundary; this leaf is usable. */
+        if((int16_t)input->presentation_timer_raw_08de>=0) {
+            input->presentation_gate_raw_08e2=0u; /* EBD8 before EBDB */
+            if(!clear_panel(hud,input))return false;
+        }
+        input->presentation_timer_raw_08de=300u;
+        hud->assist_raw_493d=0xFFFFu;hud->clock_mirror_raw_08f6=0xFFFFu;
+        input->presentation_sequence_raw_08e6=input->presentation_kind_raw_08e8=1u;
+        ++input->presentation_gate_raw_08e2; /* $83:CE5C, wrapping word */
+        for(unsigned i=0;i<5u;++i) {
+            static const uint32_t pc[5]={0x83D0ADu,0x83D157u,0x83D1B1u,0x83D1FDu,0x83D2E0u};
+            if(!nba_gameplay_hud_publish(hud,assets,pc[i],input))return false;
+        }
+        hud->pending_routine=0u;hud->unsupported_child_pending=false;return true;
+    }
+    /* CE84-CEB6 preserves Arcade's skipped advertisement selector1.
+     * ROM task[EE]+28 upload is explicitly pending, never drawn from guesses. */
+    do { ++hud->advertisement_counter_raw_4941; }
+    while((hud->advertisement_counter_raw_4941&3u)==1u && input->style_raw_17ab!=2u);
+    hud->advertisement_upload_pending=true;
+    if((int16_t)input->presentation_timer_raw_08de>=0)return true;
+    if(!nba_gameplay_hud_publish(hud,assets,0x87BACBu,input))return false;
+    input->presentation_timer_raw_08de=300u;
+    uint16_t selected=1u;
+    bool statistics=false;
+    if(input->clock_raw_0928>=1800u) {
+        if((int16_t)(uint16_t)(input->period_raw_0926-3u)>=0 &&
+           input->clock_raw_0928<7200u && hud->late_statistics_raw_4931==0u) {
+            hud->late_statistics_raw_4931=13u;selected=13u;statistics=true;
+        }
+        else if(hud->phase_raw_08e4!=0u) {
+            if(hud->phase_raw_08e4==1u && input->period_raw_0926==2u) {
+                selected=10u;statistics=true;
+            }
+            else if(input->presentation_kind_raw_08e8==1u) {
+                /* $83:CF21/CF7A/CFB3 call the shared CEFD rejection loop.
+                 * Keep all rejected draws and the AA store, even when the
+                 * selected statistics drawing child remains untranslated. */
+                NbaGameplayRng rng={input->rng_raw_07f6};
+                uint16_t random;
+                do {
+                    hud->scratch_raw_00aa=(uint16_t)(nba_gameplay_rng_next(&rng)&0x7FFFu);
+                    random=hud->scratch_raw_00aa&0x7Fu;
+                } while(random>=100u);
+                input->rng_raw_07f6=rng.state;
+                if(random>=70u) {
+                    uint16_t category=hud->shot_category_raw_4939,index=0u;
+                    if((int16_t)(uint16_t)(category-2u)<0) {
+                        index=random<80u?6u:random<90u?7u:8u;
+                        selected=6u;statistics=true;
+                    } else if(random<75u) {
+                        if((int16_t)hud->assist_raw_493d>=0) {
+                            index=9u;selected=6u;statistics=true;
+                        }
+                    } else if(random<90u) {
+                        index=(uint16_t)((category==2u?0u:3u)+(random-75u)/5u);
+                        selected=6u;statistics=true;
+                    } else { selected=39u;statistics=true; }
+                    if(statistics && selected==6u)hud->statistics_index_raw_08ec=index;
+                }
+            }
+        }
+    }
+    input->presentation_sequence_raw_08e6=input->presentation_kind_raw_08e8=selected;
+    if(statistics)hud->statistics_kind_raw_08ea=selected; /* CF6C, not CFD5 */
+    ++hud->phase_raw_08e4;input->phase_raw_08e4=hud->phase_raw_08e4;
+    hud->assist_raw_493d=0xFFFFu;hud->pending_routine=0u;hud->unsupported_child_pending=false;
+    return true;
+}
+
 bool nba_gameplay_hud_publish(NbaGameplayHud *hud,const NbaAssetPack *assets,
                               uint32_t native_routine,NbaGameplayHudInput *input) {
     if(!hud || !hud->initialized || !input)return false;
     bool ok=false;
     switch(native_routine) {
+        case 0x87B99Au:
+            /* Pause/timeout return $86:84DB/$858E, unlike new-game init:
+             * preserve working canvas/text, generatedCHR, phase/counters,
+             * category and assist. Only these original owners are reset. */
+            hud->clear_raw_08ee=hud->clock_mirror_raw_08f6=0xFFFFu;
+            hud->clock_frame_raw_08f4=0xFFFFu;hud->canvas_state_raw_7a70=0u;
+            input->presentation_timer_raw_08de=0xFFFFu;
+            input->presentation_sequence_raw_08e6=0xFFFFu;
+            memset(hud->visible_map,0,sizeof(hud->visible_map));
+            hud->pending_routine=0u;hud->unsupported_child_pending=false;
+            ok=true;break;
+        case 0x87BA54u:
+            input->presentation_sequence_raw_08e6=0xFFFFu;
+            hud->clear_raw_08ee=0xFFFFu;ok=true;break;
+        case 0x83EBDBu:ok=clear_panel(hud,input);break;
+        case 0x87BA5Eu:ok=shot_clock(hud,assets,input);break;
         case 0x83D0ADu:layout(hud);ok=true;break;
         case 0x83D157u:ok=names(hud,assets,input);break;
         case 0x83D1B1u:ok=scores(hud,assets,input);break;

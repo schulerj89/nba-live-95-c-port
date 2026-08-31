@@ -140,3 +140,15 @@ tools/capture_gameplay_hud.py -text
 tools/mesen_gameplay_hud.lua -text
 tools/build_gameplay_hud_assets.py -text
 tools/build_gameplay_hud_lifecycle_assets.py -text
+
+# Preserve accepted HUD runtime/probe sources and historical formation header.
+include/nba_assets.h -text
+include/nba_gameplay_hud.h -text
+include/nba_tipoff.h -text
+src/nba_gameplay_hud.c -text
+src/nba_tipoff.c -text
+tools/hud_lifecycle_contract_probe.c -text
+tools/hud_native_lifecycle_probe.c -text
+tools/hud_runtime_probe.c -text
+tools/verify_gameplay_hud_lifecycle.py -text
+tools/period_formation_dependencies_v1/nba_assets.h -text

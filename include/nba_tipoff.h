@@ -12,6 +12,7 @@
 #include "nba_gameplay_ball.h"
 #include "nba_gameplay_effect.h"
 #include "nba_gameplay_foul.h"
+#include "nba_gameplay_hud.h"
 #include "nba_gameplay_free_throw.h"
 #include "nba_shot_launch.h"
 #include "nba_shot_state.h"
@@ -172,6 +173,11 @@ typedef struct NbaTipoff {
     NbaCourtStream court_stream;
     NbaGameplayRng rng;
     NbaGameplayFoulState fouls;
+    NbaGameplayHud hud;
+    uint16_t hud_clock_snapshot_raw_092a;
+    uint16_t hud_clock_gate_raw_492b;
+    uint16_t hud_requester_raw_095e;
+    uint16_t hud_dispatch_mode_raw_0960;
     uint16_t team_pose_contact_count_raw[2]; /* team context +$50 */
     uint16_t defensive_pose_count_raw_1868; /* `$86:E39A` successful selects */
     uint16_t deferred_shot_foul_phase_raw_0a02;

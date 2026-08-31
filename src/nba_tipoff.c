@@ -70,6 +70,75 @@ static uint8_t team_id_for_context(const NbaTipoff *tipoff, unsigned context) {
     return (uint8_t)tipoff->team_context[context].strategy_team_raw_00;
 }
 
+static NbaGameplayHudInput hud_input(const NbaTipoff *t) {
+    NbaGameplayHudInput in={0};
+    for(unsigned i=0;i<2u;++i) {
+        in.teams[i]=t->team_context[i].strategy_team_raw_00;
+        in.scores[i]=t->session->score[i];
+    }
+    in.period_raw_0926=t->period_raw_0926;
+    in.phase_raw_08e4=t->hud.phase_raw_08e4;
+    in.clock_raw_0928=t->match_clock_raw_0928;
+    in.clock_snapshot_raw_092a=t->hud_clock_snapshot_raw_092a;
+    in.clock_gate_raw_492b=t->hud_clock_gate_raw_492b;
+    in.presentation_timer_raw_08de=(uint16_t)t->fouls.whistle_timer_raw_08de;
+    in.presentation_kind_raw_08e8=t->fouls.whistle_state_mirror_raw_08e8;
+    in.presentation_sequence_raw_08e6=t->fouls.whistle_state_raw_08e6;
+    in.dead_ball_busy_raw_09b4=t->dead_ball_dispatch_busy_raw_09b4;
+    in.event_bits_raw_13e7=t->rim_raw_13e7;
+    in.dispatch_mode_raw_0960=t->hud_dispatch_mode_raw_0960;
+    in.requester_raw_095e=t->hud_requester_raw_095e;
+    in.shot_clock_raw_092c=t->rim_raw_092c;
+    in.style_raw_17ab=t->session->config.main_values[0];
+    in.presentation_gate_raw_08e2=t->fouls.presentation_gate_raw_08e2;
+    in.rng_raw_07f6=t->rng.state;
+    return in;
+}
+
+static void hud_store(NbaTipoff *t,const NbaGameplayHudInput *in) {
+    /* Shared timer/event fields stay canonical in the preexisting owners.
+     * BBE9 can signal expiry; never discard or HUD-locally shadow that write. */
+    t->fouls.whistle_timer_raw_08de=(int16_t)in->presentation_timer_raw_08de;
+    t->fouls.whistle_state_mirror_raw_08e8=in->presentation_kind_raw_08e8;
+    t->fouls.whistle_state_raw_08e6=in->presentation_sequence_raw_08e6;
+    t->fouls.presentation_gate_raw_08e2=in->presentation_gate_raw_08e2;
+    t->dead_ball_dispatch_busy_raw_09b4=in->dead_ball_busy_raw_09b4;
+    t->rim_raw_13e7=in->event_bits_raw_13e7;
+    t->rng.state=in->rng_raw_07f6;
+}
+
+static void hud_report_incomplete(NbaTipoff *t,bool complete) {
+    if(complete || !t->hud.pending_routine ||
+       t->hud.reported_pending_routine==t->hud.pending_routine)return;
+    t->hud.reported_pending_routine=t->hud.pending_routine;
+    fprintf(stderr,"[HUD] Untranslated original overlay child $%06X (kind=%u); gameplay continues, no substituted panel\n",
+        t->hud.pending_routine,t->fouls.whistle_state_mirror_raw_08e8);
+}
+
+static void hud_request_score(NbaTipoff *t) {
+    if(!t->hud.initialized)return; /* standalone gameplay leaf self-tests */
+    NbaGameplayHudInput in=hud_input(t);
+    bool complete=nba_gameplay_hud_request_score(&t->hud,t->assets,&in);
+    hud_store(t,&in);
+    hud_report_incomplete(t,complete);
+}
+
+static void hud_dispatch(NbaTipoff *t) {
+    if(!t->hud.initialized)return;
+    NbaGameplayHudInput in=hud_input(t);
+    bool complete=nba_gameplay_hud_dispatch(&t->hud,t->assets,&in);
+    hud_store(t,&in);
+    hud_report_incomplete(t,complete);
+}
+
+static void hud_publish(NbaTipoff *t,uint32_t pc) {
+    if(!t->hud.initialized)return;
+    NbaGameplayHudInput in=hud_input(t);
+    bool complete=nba_gameplay_hud_publish(&t->hud,t->assets,pc,&in);
+    hud_store(t,&in);
+    hud_report_incomplete(t,complete);
+}
+
 /* Actor +16 remains canonical for gameplay consumers. The controller module
  * receives/returns a projection only at an ownership mutation boundary. */
 static void controller_read_actors(NbaTipoff *t) {
@@ -3954,6 +4023,9 @@ static void cpu_release_rom_shot(NbaTipoff *tipoff, unsigned slot) {
     tipoff->free_throw_flight_timer_raw_0930=s.timeout_0930;
     tipoff->shot_actor_raw_09c8=(int16_t)s.last_owner; tipoff->rim_raw_096a=s.initial_value;
     tipoff->shot_value_raw=s.value; tipoff->shot_inner_veto_raw=s.inner_veto!=0;
+    /* $86:9DFB and three-point overrideA5AA retain the attempted value
+     * separately from094C, which the make path later clears. */
+    tipoff->hud.shot_category_raw_4939=s.value;
     tipoff->shot_chance_raw=(uint8_t)s.chance; tipoff->shot_miss_index_raw=(uint8_t)s.miss_index;
     tipoff->catch_actor_record_raw_0910=s.ball_record;
     if(tipoff->fouls.shooting_foul_raw_09bc && !in.free_throw_0978)
@@ -3969,6 +4041,7 @@ static void cpu_finish_rom_close_shot(NbaTipoff *tipoff, unsigned slot) {
     tipoff->shot_origin_x = fp_round(actor->x_fp);
     tipoff->shot_origin_y = fp_round(actor->y_fp);
     tipoff->shot_value_raw = 2u;
+    tipoff->hud.shot_category_raw_4939=2u; /* $86:A9F7 */
     tipoff->rim_raw_096a = 2u;
     tipoff->shot_inner_veto_raw = false;
     tipoff->shot_miss_index_raw = 0xFFu;
@@ -4866,6 +4939,10 @@ static void score_made_basket(NbaTipoff *tipoff) {
     unsigned scoring_side = tipoff->offense_side & 1u;
     unsigned inbound_side = scoring_side ^ 1u;
     uint16_t shot_value = tipoff->shot_value_raw;
+    /* $85:A1BC-A1C7 reads the scoring context+43. A negative assist
+     * leaves493D alone; do not replace that original retained-state rule. */
+    uint16_t assist=tipoff->team_context[scoring_side].previous_dead_ball_actor_raw_43;
+    if((int16_t)assist>=0)tipoff->hud.assist_raw_493d=assist;
 
     /* $85:A081-$A0EA precedes both effect RNG and the score increment. */
     NbaShotMomentum momentum = {0};
@@ -4965,6 +5042,7 @@ static void score_made_basket(NbaTipoff *tipoff) {
             (void)nba_gameplay_rng_next(&tipoff->rng);
     }
     tipoff->rim_raw_13e7 |= 0x0004u;
+    hud_request_score(tipoff); /* $85:A346 -> $83:CE36, after score/event stores */
     tipoff->shot_result_resolved = true;
     tipoff->ball.owner_actor = -1;
     tipoff->possession_actor = -1;
@@ -5240,6 +5318,12 @@ static void cpu_process_pending_event(NbaTipoff *tipoff) {
      * Keep that order even though the current consumer does not own the
      * coordinate words; later event branches may make the dependency visible. */
     cpu_finalize_dead_ball_inbound(tipoff);
+    if(tipoff->fouls.whistle_active_raw_09b6==0u) {
+        /* $85:9437/9440 precede the foul consumer's timer/kind replacement. */
+        hud_publish(tipoff,0x87BACBu);
+        if(tipoff->fouls.whistle_timer_raw_08de>=0)
+            hud_publish(tipoff,0x83EBDBu);
+    }
     (void)nba_gameplay_foul_consume_pending(
         &tipoff->fouls, tipoff->camera_side_group_raw,
         &tipoff->rim_raw_13e7, &tipoff->inbound_ready_raw, false);
@@ -8229,6 +8313,10 @@ static void cpu_update_camera(NbaTipoff *tipoff) {
     in.alternate_08bc = tipoff->camera_alternate_raw_08bc;
     in.alternate_mode_08cc = tipoff->camera_alternate_mode_raw_08cc;
     in.live_state = tipoff->live_state_raw;
+    /* $87:95DB -> $85:8E1C: A9D0 resolves/copies the subject, CC10
+     * dispatches one HUD child, then 9192 updates camera. No render-time
+     * publication, fixed3/4-frame delay, or extra per-frame child flushing. */
+    hud_dispatch(tipoff);
     nba_gameplay_camera_step(camera,&in); /* `$85:9192`: full raw camera input. */
     tipoff->camera_x = tipoff->camera.x;
     tipoff->camera_y = tipoff->camera.y;
@@ -8364,6 +8452,8 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
                                       &ppu_vram, &ppu_cgram));
     NBA_TIPOFF_REQUIRE("court stream map", nba_assets_get(assets, NBA_ASSET_GAMEPLAY_COURT_MAP));
     NBA_TIPOFF_REQUIRE("tipoff ball asset", nba_assets_get(assets, NBA_ASSET_TIPOFF_BALL));
+    NBA_TIPOFF_REQUIRE("complete original HUD lifecycle resource286",
+        nba_gameplay_hud_lifecycle_assets_valid(assets));
 #undef NBA_TIPOFF_REQUIRE
     memset(tipoff, 0, sizeof(*tipoff));
     tipoff->assets = assets;
@@ -8387,6 +8477,13 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
     tipoff->graphics_scratch.rng=tipoff->rng.state;
     for(unsigned i=0;i<3;++i)tipoff->graphics_scratch.slots[i].record=0xffffu;
     nba_gameplay_foul_init(&tipoff->fouls);
+    if(!nba_gameplay_hud_init(&tipoff->hud,assets)) {
+        fprintf(stderr,"[HUD] Required original indexed resource286 missing/invalid\n");
+        return false;
+    }
+    /* $87:B99A-B9A9 owns shared08DE/08E6 too, not only HUD-private words. */
+    tipoff->fouls.whistle_timer_raw_08de=-1;
+    tipoff->fouls.whistle_state_raw_08e6=0xFFFFu;
     static const uint8_t context_actor_order[2][5] = {
         {0x10u, 0x0Eu, 0x0Au, 0x12u, 0x0Cu},
         {0x04u, 0x06u, 0x08u, 0x00u, 0x02u}
@@ -8615,6 +8712,13 @@ static void match_pause_enter(NbaTipoff *tipoff) {
     pause->transition_ticks_remaining = 0u;
     pause->state = NBA_MATCH_PAUSE_MENU;
     tipoff->live_state_raw = 0x0080u;
+    tipoff->fouls.presentation_gate_raw_08e2=0u; /* $86:834D-8352 */
+    /* $86:835D calls CE36 after the live-state80 store. Start came from
+     * physical pad0, so requester095E is0 (not the team's context index).
+     * This refreshes actual scores even when the temporary panel expired.
+     * Existing pause holds continue to return before clock/actor updates. */
+    tipoff->hud_requester_raw_095e=0u;
+    hud_request_score(tipoff);
 }
 
 static void match_pause_begin_resume(NbaTipoff *tipoff) {
@@ -8649,6 +8753,11 @@ static void match_pause_step(NbaTipoff *tipoff, const NbaInput *input) {
         if (pause->transition_ticks_remaining > 0u)
             --pause->transition_ticks_remaining;
         if (pause->transition_ticks_remaining != 0u) return;
+        /* $86:84DB/84DF and858E/8592 restore the court HUD on the
+         * timeout/resume routes. B99A preserves the old working canvas and
+         * generatedCHR; hud_init would incorrectly reset other game state. */
+        hud_publish(tipoff,0x87B99Au);
+        hud_publish(tipoff,0x87BA54u);
         if (pause->state == NBA_MATCH_PAUSE_TIMEOUT_TRANSITION) {
             pause->state = NBA_MATCH_PAUSE_MENU_AFTER_TIMEOUT;
             pause->selection = NBA_MATCH_PAUSE_SELECT_RESUME;
@@ -9044,6 +9153,12 @@ void nba_tipoff_update(NbaTipoff *tipoff, const NbaInput *input) {
         return;
     }
     tipoff->pad_held_raw = input ? nba_controller_native_buttons(input->held) : 0u;
+    /* Neutral CPU path $87:9087-908D / formation9622-9628. Input pause is
+     * handled above; human dispatch and substitutions remain separate gates. */
+    if(tipoff->cpu_vs_cpu) {
+        tipoff->hud_requester_raw_095e=0xFFFFu;
+        tipoff->hud_dispatch_mode_raw_0960=0xFFFFu;
+    }
     /* `$13E7` is an outer-frame event bitfield. Acquisition's bit $0010 is
      * observable for one completed frame, then the next outer pass clears it. */
     tipoff->rim_raw_13e7 &= 0xFFEFu;
@@ -9069,10 +9184,9 @@ void nba_tipoff_update(NbaTipoff *tipoff, const NbaInput *input) {
         tipoff->scratch_0046=tipoff->graphics_scratch.scratch_0046;
         tipoff->scratch_0047=tipoff->scratch_0046>>8;
     }
-    /* `$85:EDB3`: presentation timer and master tick advance on every
-     * outer update, independent of actor scheduling or gameplay state. */
-    tipoff->fouls.whistle_timer_raw_08de = (int16_t)(uint16_t)(
-        (uint16_t)tipoff->fouls.whistle_timer_raw_08de - 1u);
+    /* $85:EDAC-EDB6: NMI skips negative AND zero. CC10 owns the additional
+     * dispatch decrement and zero-to-negative clear transition. */
+    nba_gameplay_hud_timer_tick(&tipoff->fouls.whistle_timer_raw_08de);
     /* Native state controls clocks; no frame220 enable or reset. */
     if (tipoff->tip_contact_actor>=0) {
         NbaShotClock clock={tipoff->live_state_raw,tipoff->period_raw_0926,
@@ -9091,6 +9205,7 @@ void nba_tipoff_update(NbaTipoff *tipoff, const NbaInput *input) {
         tipoff->elapsed_clock_raw_13f9=clock.elapsed_clock;
         tipoff->elapsed_shot_clock_raw_13f7=clock.elapsed_shot_clock;
     }
+    tipoff->hud_clock_snapshot_raw_092a=tipoff->match_clock_raw_0928; /* $87:94A5 */
     if (nba_tipoff_step_match_lifecycle(tipoff)) return;
     bool advancing_tip=tipoff->tip_contact_actor>=0;
     if (!advancing_tip) {
@@ -9139,6 +9254,13 @@ void nba_tipoff_update(NbaTipoff *tipoff, const NbaInput *input) {
             tipoff->deferred_shot_foul_phase_raw_0a02 = 2u;
         /* `$87:92A5-$95E6` performs dead-ball setup before `$85:93F5`
          * consumes the pending event later in the same outer pass. */
+        /* $87:9578-9580 consumes the reset notification, not the running
+         * shot clock. Without this owner the last icon survives possession
+         * resets even when the new clock is above CC10's600 threshold. */
+        if(tipoff->shot_clock_mirror_raw_09c6!=0u) {
+            tipoff->shot_clock_mirror_raw_09c6=0u;
+            hud_publish(tipoff,0x87BACBu);
+        }
         cpu_process_pending_event(tipoff);
         /* `$83:ECB0-$ED46`: automatic foul-out continuation is attempted
          * only after the foul has entered the genuine dead-ball consumer.
@@ -9709,6 +9831,15 @@ void nba_tipoff_render(const NbaTipoff *tipoff, NbaRenderer *ren) {
     if (!nba_assets_gameplay_ppu_input(
             tipoff->assets, team_id_for_context(tipoff, 0u),
             &gameplay_vram, &gameplay_cgram)) return;
+    /* Captured court input contains a historical score panel. Replace only
+     * source-owned BG3 map/CHR/palette with the live indexed HUD before any
+     * Mode1 layer samples it. The port is single-threaded; never mutate the
+     * asset pack or preserve stale captured WEST2/ORLANDO0 presentation. */
+    static uint8_t hud_vram[0x10000],hud_cgram[0x200];
+    memcpy(hud_vram,gameplay_vram,sizeof(hud_vram));
+    memcpy(hud_cgram,gameplay_cgram,sizeof(hud_cgram));
+    if(!nba_gameplay_hud_apply(&tipoff->hud,tipoff->assets,hud_vram,hud_cgram))return;
+    gameplay_vram=hud_vram;gameplay_cgram=hud_cgram;
     int crop_x,crop_y;
     nba_court_viewport(tipoff->camera_x,tipoff->camera_y,&crop_x,&crop_y);
     uint32_t backdrop = nba_snes_cgram_color(gameplay_cgram, 0, 15, 0, 0, 0);

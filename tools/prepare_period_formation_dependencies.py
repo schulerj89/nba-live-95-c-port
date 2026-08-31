@@ -1,7 +1,8 @@
 """Recreate the reviewed private source closure from this checkout, not objects.
 
 Historical paths in the pinned manifest are provenance only. They are never
-opened: keys select only this repository's include/ and src/ files.
+opened: keys select this repository's include/ and src/ files, except the
+explicitly archived asset header retained from before the HUD integration.
 """
 import hashlib
 import json
@@ -36,7 +37,13 @@ def main():
         if (len(relative.parts) != 2 or relative.parts[0] not in ("src", "include")
                 or relative.suffix not in (".c", ".h")):
             raise ValueError("Unexpected dependency path")
-        data = (ROOT / relative).read_bytes()
+        source = ROOT / relative
+        if key == "include/nba_assets.h":
+            # Even its old WIP comment is part of the accepted byte identity.
+            # Use an explicit tracked archive for this standalone component;
+            # the live game continues to compile the current include/ header.
+            source = ROOT / "tools/period_formation_dependencies_v1/nba_assets.h"
+        data = source.read_bytes()
         if digest(data) != identity["sha256"]:
             raise ValueError("Source differs from reviewed dependency: " + key)
         if relative.name in payloads:

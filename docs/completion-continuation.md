@@ -554,3 +554,36 @@ The failed anonymous-union build remains local. Original root code is untouched.
 Launch verifier repair is paused behind the requested HUD fix. The separate
 Max consultant remains idle/read-only; no additional agent was successfully
 created. Screenshot history and its latest gallery remain local and ignored.
+
+### Bounded HUD repair integrated
+
+The independently accepted HUD source is now applied to the integration
+branch. `gameplay-hud-integration.md` records exact scope, source freeze and
+root rebuilds. The stale captured score panel is replaced by original indexed
+working state; current scores/teams, visible clock updates, panel expiry,
+pause refresh/return and final-minute display are covered. The source-derived
+CE36 selector retains shared RNG consumption and original statistics choices.
+Untranslated statistics/ad/foul-clear children remain explicit port gaps.
+
+Freeze60f9d3157369b0dfb19068424c0099ec6655ad1b0a34e27fd987c061755249c8
+retains13,697identities. Root fresh40/40/40/9-source `/W4 /WX` builds pass the
+runtime, full-word timer/clock/resource guards and bounded746-case native
+comparison. Eight runtime BMPs and native input/output binaries are byte-identical
+to the accepted candidate. The strict native run still fails two08F6 observations
+across one NMI clock-read dependency; fullatomic/scanout timing and native
+paused08DE remain unverified. General verifier mutation certification is open.
+The ordinary63,800-frame C trace completes; its legacy regression is running
+separately. This does not resolve the earlier CPU period failure or Rules reentry.
+
+The asset pipeline in4707a16 produces the same264-entry89442736-byte pack through
+full extraction and a preserving upgrade; all263existing resources are unchanged.
+The default/override capture path and exact capture-tool line endings are now
+documented. An archived exact asset header preserves the older formation
+component's30-file dependency closure after the live header's WIP comment changed.
+
+The source draw-order prerequisite was accepted in1530e75, with fresh root
+native/source/refusal checks; it remains standalone. The original-bugs catalog
+now contains2confirmed defects and8quirks, including the source-only shot-clock
+endpoint rule preserved in the HUD. Main/desktop and the separate read-only
+consultant remain unchanged. The screenshot agent is preparing a new13-view
+gallery from the integration source; existing dated captures remain preserved.

@@ -1,5 +1,11 @@
 # Native gameplay score panel and clock
 
+Historical WIP investigation follows. The later bounded score/clock/pause
+repair is now enabled on the integration branch; see
+[current integration scope](gameplay-hud-integration.md). Native publication
+timing, unfinished statistics/advertisements and the limitations below are
+not promoted to a complete HUD pass.
+
 Status: child resource/formatting translation in progress. The production
 caller, publication queue, full lifecycle and frame timing are **not yet
 wired or verified**. Do not describe the HUD or gameplay as complete.
