@@ -142,11 +142,15 @@ EXPECTED_RGB = {
     # framing and some actor/HUD overlap remain explicit presentation gaps.
     # Independent native fixtures protect the changed state contracts; these
     # images lock only the inspected C output. See docs/native-edge-parity.md.
-    600: "a823728a4a07c766002b0344a705ef294dd6a3e8cc9e43ca22b6648e4365aad2",
-    1300: "cc9a671614933d0dce313c94036552c18e0655643ac40b293a3767a8109413fb",
-    3480: "b3f44864a8f40b5362d0489a115ce4d8aa02a25ca4887acd9a498954b74ed4c3",
-    6932: "9a9e5807af5ce7323307dcc8c61e7386feeda5dd9b754ddc2719a04af8e03829",
-    6954: "0a3d3e5b4bf1e2d175376eee54e15c59e201271339d49d4cac05f48c6cbcf864",
+    # Matched source controls attribute these updates to canonical team/rank
+    # initialization and the original C39C layout1 branch. Every old/new pixel
+    # is reproduced; see docs/cpu-oracle-attribution.md. The static scoreboard
+    # remains an unaccepted port gap, not an original-game bug.
+    600: "9667d6ab5e12b2288d1b86322c13a1a5352dc31ba99ac31d72842da1b3a71264",
+    1300: "7b639465715269c8b25569da4eca00d8a3f7377d018700923ebcdab1c4ed6831",
+    3480: "fa0f172faddd535d9532fd3828cfc49731e36b53dcc27c3ddc781614160448ae",
+    6932: "1184c50a1e87e762b491f10c842e5e9405a7d81f45a1e1cbce62d83afec6dd02",
+    6954: "2423194db5a9fc31e24b4bff0ca2733484630654c157310b6a01d3bfaebfa759",
 }
 
 
@@ -167,12 +171,14 @@ def native_inbound_target(layout, source_x, source_y, side_anchor):
     """C37D target at a fresh 9B88 snapshot, before later ball movement."""
     if layout == 0:
         x, y, direction = (394, -64, 6) if side_anchor < 0 else (-394, 64, 2)
-    elif layout < 0:
+    # C39C CMP #2 / BNE / BPL sends layout1 through the C50B edge
+    # constructor. Layout4 alone takes C450; preserve its native 404 case.
+    elif layout < 0 or layout == 1:
         x = -394 if source_x < 0 else 394
         y = max(-160, min(160, source_y))
         direction = 2 if source_x < 0 else 6
-    elif layout in (1, 2, 3, 4):
-        if layout in (1, 4):
+    elif layout in (2, 3, 4):
+        if layout == 4:
             # C477 reads live integer $3EEF, not presentation $3FEF.
             # 9B88 has just copied that same integer word into $09B0.
             x = (-40 if side_anchor < 0 else 40) if \
