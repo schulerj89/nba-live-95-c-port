@@ -147,8 +147,12 @@ EXPECTED_RGB = {
     # initialization and the original C39C layout1 branch. Every old/new pixel
     # is reproduced; see docs/cpu-oracle-attribution.md. The static scoreboard
     # remains an unaccepted port gap, not an original-game bug.
-    600: "9667d6ab5e12b2288d1b86322c13a1a5352dc31ba99ac31d72842da1b3a71264",
-    1300: "7b639465715269c8b25569da4eca00d8a3f7377d018700923ebcdab1c4ed6831",
+    # The two600/1300 anchors below were separately migrated2026-08-31
+    # after accepted HUD lifecycle repair: only the old static-panel
+    # rectangle changes. See docs/hud-two-golden-migration.md for old
+    # hashes and independent review. The other three anchors are unchanged.
+    600: "b555afbcbfeb868b1a56b255ea15259214d9d9c49044d294b34c7d34c400853f",
+    1300: "4a778fc91a809ea99e723b0054d21f499ca64beef1fb2964781ed779f8d70a01",
     3480: "fa0f172faddd535d9532fd3828cfc49731e36b53dcc27c3ddc781614160448ae",
     6932: "1184c50a1e87e762b491f10c842e5e9405a7d81f45a1e1cbce62d83afec6dd02",
     6954: "2423194db5a9fc31e24b4bff0ca2733484630654c157310b6a01d3bfaebfa759",
