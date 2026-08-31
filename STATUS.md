@@ -1,10 +1,11 @@
 # Project status
 
-**Paused at the user's request on 2026-08-30. This is a WIP branch.**
-See `docs/ownership-stop-wip.md` for its integrated checks, known headless
-input-driver failure, unwired HUD/audio modules and unpassed release gates.
-The verified desktop/main runtime remains A2 `0d3a420`; do not promote this
-branch or interpret the older status below as combined acceptance.
+**Completion mission resumed on 2026-08-30.** Main and the desktop build
+retain verified runtime checkpoint A2 `0d3a420`. Preserved WIP `c134f85` is
+being integrated on `work/completion-owner-20260830`; it is not accepted on
+main. See `docs/completion-continuation.md` for current ownership, evidence,
+first failures and next actions. `docs/checkpoint-paused-20260830.md` records
+the historical stop and remains preserved. The game remains incomplete.
 
 Last updated 2026-08-30. This is a current-state handoff, not a milestone log.
 Use Git history for older checkpoints and run
