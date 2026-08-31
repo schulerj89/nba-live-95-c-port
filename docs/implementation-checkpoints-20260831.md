@@ -196,3 +196,11 @@ original direction cases and contact recovery pass. Full regression and the
 exact-commit screenshot receipt remain separately recorded gates. These port
 defects are explicitly excluded from the original-bug catalog; confirmed
 original behavior remains preserved and commented.
+
+The744809a checkpoint is pushed and its exact-build gallery is published:
+33inspected images,195valid local links,13standard views unchanged from the
+culling checkpoint, plus before/after pass and later-pose comparisons. All
+nine pass ball projections are unchanged. `pass-render-integration.md` records
+dated manifests and the independent screenshot receipt. The full CPU regression
+still stops at the same pre-existing3480 image after the earlier behavior and
+600/1300 checks; no golden was changed. Main/desktop remain unpromoted.

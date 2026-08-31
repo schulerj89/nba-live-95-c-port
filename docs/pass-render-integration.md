@@ -111,3 +111,31 @@ piece order; it must not invent missing input owners. The queue dependency is
 documented in `completion-graphics-queue-consultation-20260831.md`. Full timing,
 receiver/human integration, complete modes and save handling remain unfinished.
 The main branch and desktop executable are not promoted by this checkpoint.
+
+## Exact committed screenshot receipt
+
+The screenshot agent rebuilt clean commit `744809a9d2ad548f83dedd9dffabce09e3cbda11`
+from all40 production sources and112 bound identities, then directly inspected
+33 images:13 standard views and20 before/after supplemental views. All195 local
+links resolve. Primary ignored `.analysis/progress-screenshots/latest/index.html`
+now points to that checkpoint; every previous dated run remains intact.
+
+| Artifact | Identity |
+|---|---|
+| Standard run | `20260831T202823.851515Z` |
+| Standard manifest SHA256 | `e5dcdb90f6aa2a0b1ad234e304952c28e033e813d16a225804b0e7241cd3943b` |
+| Pass supplement | `20260831T203004.002173Z-pass-supplement` |
+| Supplement manifest SHA256 | `702f2d1ec57f91f25e279d7381449245b705936ed8b0fceb82adbb26822f397d` |
+| Fresh screenshot executable SHA256 | `c22556c30347bd1b69eafd17323c926ab4ce8bd857cdaff873d28095260beacf` |
+| Independent receipt SHA256 | `8c2d462e4d4fb5190736ae78bb058e6047e7a65c155470a7083faa9515021d36` |
+
+All13 standard views are pixel-identical to the prior culling checkpoint. The
+combined supplemental differences at306/308/312/318/320/332/346 are respectively
+506/630/641/688/699/225/594 pixels;304/350 are unchanged and the later6954 pair
+changes957 pixels. These combined counts differ from the earlier ball-only
+candidate because the reviewed head-direction correction is also present.
+All nine pass ball projections remain identical, and committed images match the
+reviewed combined candidate. PNG previews are lossless copies of the attested
+BMP pixels. Captures use documented fresh scene-entry processes, not a
+continuous boot-to-match or measured display-FPS test. No image, executable,
+asset pack or ROM is committed.
