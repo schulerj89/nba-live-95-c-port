@@ -150,6 +150,18 @@ static void setup_apply_rom_text_delta(uint8_t *canvas, const uint8_t *base,
  * changes on other rows. The native Custom return differs from Simulation
  * in exactly200 bytes; this cell projection reproduces all200 independently
  * observed differences without importing another row's state. */
+/* Captured $81:9FD4 glyph+shadow extents measured from x138. Clear the
+ * entire old cell, but do not import unrelated pixels beyond the selected
+ * word. These widths bound the existing captured-glyph projection; they
+ * are not a substitute for translating the native proportional font writer.
+ * See the native Main canvas gate and Season poisoned-tail regression. */
+static const uint8_t setup_main_value_span[4][4] = {
+    {67, 48, 60, 75}, /* Exhibition, Season, Playoffs, Load Series */
+    {47, 71, 49,  0}, /* Arcade, Simulation, Custom */
+    {45, 52, 59,  0}, /* Rookie, Starter, All-Star */
+    {65, 65, 65, 70}, /* 3, 5, 8, 12 minutes */
+};
+
 static void setup_apply_main_value_cells(const NbaSetupScreen *s, uint8_t *canvas) {
     /* Adjacent rows have18px pitch and19px shadows. Work upwards so a
      * source cell's preceding-row shadow is replaced by that row's actual
@@ -161,17 +173,17 @@ static void setup_apply_main_value_cells(const NbaSetupScreen *s, uint8_t *canva
         if (!source) continue;
         int top = nba_setup_screen_row_band_top((NbaSetupRow)row);
         for (int y = top; y < top + 19; ++y) {
-            int py = y + 1; /* SNES BG sampling starts at vertical scroll+1. */
             for (int x = 138; x < 248; ++x) {
-                int map = ((py / 8) * 32 + x / 8) * 2;
-                uint16_t entry = (uint16_t)(source[map] | ((uint16_t)source[map + 1] << 8));
-                int sx = (entry & 0x4000) ? 7 - (x & 7) : (x & 7);
-                int sy = (entry & 0x8000) ? 7 - (py & 7) : (py & 7);
-                unsigned address = NBA_SETUP_BG3_CHR + (entry & 0x3FF) * 16 + sy * 2;
-                uint8_t mask = (uint8_t)(1u << (7 - sx));
-                for (unsigned plane = 0; plane < 2; ++plane)
-                    canvas[address + plane] = (uint8_t)((canvas[address + plane] & ~mask) |
-                                                        (source[address + plane] & mask));
+                NbaSnesBgPixel pixel;
+                unsigned color = 0u;
+                if (x < 138 + setup_main_value_span[row][value] &&
+                    nba_snes_sample_bg(source, NBA_SETUP_BG3_TILEMAP,
+                        NBA_SETUP_BG3_CHR, 2, false, true, 0, 0, x, y, &pixel))
+                    color = pixel.color_index;
+                /* Source and destination maps own distinct tile addresses.
+                 * In particular, clearing beyond the word must never use a
+                 * source tail tile that aliases an in-span glyph tile. */
+                setup_write_bg3_cell_pixel(canvas, x, y, color);
             }
         }
     }
@@ -1405,7 +1417,7 @@ static void setup_render_main_values(const NbaSetupScreen *s, NbaRenderer *ren,
          * Upwards ordering is the same overlap contract as the raw canvas. */
         setup_restore_bg2_rect(s, ren, s->vram, s->cgram, 138, top, 110, 19);
         (void)setup_copy_rom_text_span(source_vram, s->cgram, ren,
-                                       138, source_top, 110, 19,
+                                       138, source_top, setup_main_value_span[row][value], 19,
                                        138, top, s->brightness,
                                        row == (int)s->row);
     }

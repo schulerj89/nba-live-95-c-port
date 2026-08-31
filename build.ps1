@@ -515,6 +515,13 @@ if ($Test) {
             --mode $ReturnMode --pack $AssetPack --exe $ConsoleExePath --rom $RomPath
         if ($LASTEXITCODE -ne 0) { throw "Consecutive native Rules return failed: $ReturnMode" }
     }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name main_canvas_probe
+    if ($LASTEXITCODE -ne 0) { throw 'Main canvas probe compilation failed.' }
+    $SpanReportDir = Join-Path $BuildDir ('main-span-' + [guid]::NewGuid().ToString('N'))
+    & python (Join-Path $Root 'tools\test_setup_main_span.py') `
+        --exe $ConsoleExePath --probe (Join-Path $BuildDir 'main_canvas_probe.exe') `
+        --rom $RomPath --pack $AssetPack --output $SpanReportDir
+    if ($LASTEXITCODE -ne 0) { throw 'Main source span RGB/raw-canvas regression failed.' }
     & python (Join-Path $Root "tools\test_setup_transition.py") `
         --pack $AssetPack --exe $ConsoleExePath --rom $RomPath
     if ($LASTEXITCODE -ne 0) {

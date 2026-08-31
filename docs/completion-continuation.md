@@ -103,3 +103,43 @@ Independent controlled2x2 legacy/current Tipoff versus fresh/legacy configuratio
 attribution is underway in completion-auditor. No golden changed; no gates skipped.
 Root is preserving this accepted input checkpoint on the integration branch,
 then continuing configuration/transition regression migration and gameplay work.
+
+Accepted input checkpoint is committed/pushed as77788abb3e26a0b5f2755248d52e67167d9d141e
+on work/completion-owner-20260830 only. Primary main remains caa9134.
+
+Later owner work (not yet accepted as a combined checkpoint): full asset extraction
+using explicit retained capture root reproduces the saved candidate pack exactly,
+SHA256951f82331c4bb6ce8f381da519ee8bfdf517bf8c13f2cd6f20cfa9c34d5ed4df;
+only IDs145/155 differ from main, and HUD286 remains absent. See
+build/full-extraction-v1/equivalence.json. Mode1 independent source/config/pack
+attribution permits only the five C-only count updates; native trajectory/HUD
+parity remains unproved. See docs/completion-mode1-attribution-audit.md.
+
+Main text source bounds restored with unchanged47 native canvases and147 opening
+frames; see docs/setup-main-span-restoration.md. Legacy Setup frame162 default
+hash migration remains pending. Full suitev3 passes Mode1 and subsequent gameplay55/65
+gates, then fails court_runtime_probe; exact cause is under investigation.
+No failing gate was skipped or promoted to original-game behavior.
+
+Scheduler primitives are independently accepted and committed/pushed as
+ab27be9abd93c27f4a95a192543868dc69d98ee7 on the integration branch only;
+the module is not production-wired. See docs/scheduler-integration-checkpoint.md
+and docs/setup-scheduler-consultation-plan.md. Max consultation is complete:
+codec component work is resolved, audio/SPC continuation and end-to-end epochs
+are not. Reuse the single consultant task only for a qualifying future blocker.
+
+Main span freezev1 was rejected by independent review for a newly introduced
+16-byte raw-canvas alias defect. Revised freezev2 uses destination-owned map
+addresses and passes the18independent cases plus47native canvases,730configs,
+57391input frames and1770adjustments. See docs/completion-main-span-independent-audit.md.
+The early frame162 difference is not yet attributed solely to defaults:
+the value overlay colors the selected logical row while the HDMA band stays
+in screen coordinates during scroll. Do not refresh that golden before fixing
+and verifying the compositor contract.
+
+Court regression fixture now publishes its explicitly changed home identity to
+the initialized native context; all812views/29teams/16kcallerframes/4periods pass.
+New-match fixture now compares native home0/visitor1 pause side with the mapped
+legacy UI side; two return journeys and unchanged startup projection pass.
+Production was unchanged for these fixture corrections. Full suitev5 continues
+past those gates; a complete suite pass is not yet claimed.
