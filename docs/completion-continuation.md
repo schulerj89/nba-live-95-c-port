@@ -600,3 +600,19 @@ PNG/BMP pixel comparisons pass; previous dated captures remain unchanged.
 ExeSHA3b874d2d4c3e5f9c7aac512a1f1e8eabea3ada0e8aa96c850aa0c7168dfa8a80;
 packf564c29612928984002ed3f0389d317de639fff122baf61a7bc9ecaef2a6be09.
 These scene-entry captures do not prove continuous boot-to-gameplay or full timing.
+
+### User-requested commit and push checkpoint
+
+The user's request to commit and push everything includes the pending Rules
+reentry test migration and separate archival commits for all nine other dirty
+worktrees. See `worktree-preservation-20260831.md` for exact branch/commit IDs.
+The previously detached team-context audit now has its own preservation branch.
+All641changed archival source/test/document files match their pre-commit bytes;
+ignored evidence remains local. These snapshots include rejected and superseded
+experiments and must not be merged wholesale into the accepted integration.
+
+The Rules reentry test was rerun with the current HUD executable and pack:
+158mismatches remain, first native1176/C893brightness. The migration is now
+committed as unfinished work; native fixtures and comparison assertions are
+unchanged. Main and the desktop executable remain untouched. No full-game
+acceptance is implied by committing and pushing the work.

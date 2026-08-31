@@ -112,6 +112,8 @@ def native_witness(directory):
 
 
 def check(witness, exe, rom, pack):
+    from test_setup_rules_reveal import CONFIGURED_REVEAL_SHIFT
+    shift = CONFIGURED_REVEAL_SHIFT
     raw = Path(rom).read_bytes()
     if len(raw) % 1024 == 512:
         raw = raw[512:]
@@ -122,10 +124,13 @@ def check(witness, exe, rom, pack):
         path = Path(temp)
         trace = path / "trace.csv"
         subprocess.run([str(Path(exe).resolve()), "--headless", "--setup-only", "--setup-menu", "rules",
-            "--setup-menu-visits", "2", "--setup-menu-revisit-delay", "132", "--setup-menu-row", "2",
-            "--setup-menu-right", "1", "--setup-menu-confirm", "--setup-menu-confirm-delay", "209",
-            "--rom", str(Path(rom).resolve()), "--assets", str(Path(pack).resolve()), "--frames", "1327",
-            "--dump-sequence-from", "798", "--dump-sequence-dir", temp, "--setup-transition-trace", str(trace)],
+            "--setup-simulation-three-minute",
+            # Four cursor release frames replace four between-visit idle frames;
+            # three row/value releases replace three before-Start idle frames.
+            "--setup-menu-visits", "2", "--setup-menu-revisit-delay", "128", "--setup-menu-row", "2",
+            "--setup-menu-right", "1", "--setup-menu-confirm", "--setup-menu-confirm-delay", "206",
+            "--rom", str(Path(rom).resolve()), "--assets", str(Path(pack).resolve()), "--frames", str(1327 + shift),
+            "--dump-sequence-from", str(798 + shift), "--dump-sequence-dir", temp, "--setup-transition-trace", str(trace)],
             check=True, capture_output=True, text=True, timeout=30)
         with trace.open(newline="", encoding="ascii") as stream:
             reader = csv.DictReader(stream)
@@ -140,10 +145,11 @@ def check(witness, exe, rom, pack):
                 validate_ppu_state({key: int(row[key]) for key in (*STATE_KEYS, "forced_blank")})
                 order.append(step)
                 states[step] = row
-            if order != list(range(167, 314)) + list(range(527, 660)) + list(range(797, 944)) + list(range(1157, 1290)):
+            expected_order = list(range(167, 314)) + list(range(527, 660)) + list(range(797, 944)) + list(range(1157, 1290))
+            if order != [step + shift for step in expected_order]:
                 raise ValueError("C reentry trace lacks the four exact complete ranges")
         for row in witness["rows"]:
-            frame, step = row["native_frame"], row["port_step"]
+            frame, step = row["native_frame"], row["port_step"] + shift
             rgb = Image.open(path / f"frame_{step:04d}.bmp").convert("RGB").tobytes()
             if digest(rgb) != row["rgb_sha256"]:
                 failures.append(f"native{frame}/C{step}: RGB")
