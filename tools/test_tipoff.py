@@ -30,8 +30,18 @@ EXPECTED_FRAMES = {
     # Re-reviewed after native five-position matchup pairing and side-specific
     # jersey-number composition. Formation, launch and live frames retain ten
     # complete players, the ball, court/goal bounds and unobstructed HUD.
-    90: ("TIP PH:FORMATION", "176c32401147f2222163c745e7e5555fd1604722230d6ad533ebf0bfb89f7b97"),
-    170: ("TIP PH:POSSESSION", "95a0a41026b80983219d57bd2c4b310dfa9f72d32299ff9580fcc4bc7aea2764"),
+    # Commit 9c69275 source-binds the visible scoreboard clock/panel lifecycle
+    # and therefore changes every anchor from the pre-HUD hashes. Optional,
+    # source-backed NBPDRAW1 resource 287 then changes only the literal player
+    # compositor at formation/possession. See checksum-guard-attribution.md.
+    90: ("TIP PH:FORMATION", {
+        "fallback": "576f1a252b9f73060bd1d1023045587e391dd4b1b220aaa1a22d9c6ec7b047a3",
+        "literal": "814957ebbb1717ae86f370e9a32a90d35e58dca28fec95ebd5039f7f00c148f9",
+    }),
+    170: ("TIP PH:POSSESSION", {
+        "fallback": "f24ba01e30a5b3b62d586f2786305e1ba3195ceda7e6d5894543b49b4ae86034",
+        "literal": "95ecfc14520f73d92370d7dddad460866f96227df3b2c562dfef16f7ee1885a4",
+    }),
     # `$86:CF38` receiver reach now permits `$86:D365` possession at frame186.
     # Live frame re-reviewed after the exact direction-specific AD92 torso /
     # number queue ordering; formation/possession anchors do not overlap the
@@ -42,8 +52,13 @@ EXPECTED_FRAMES = {
     # Re-reviewed after exact `$86:F1B0-$F2C9` actor-parent timing stopped
     # publishing derived movement one actor pass early. The live frame retains
     # ten complete players, ball, center court and an unobstructed HUD.
-    220: ("TIP PH:LIVE", "97f3f4ff835de26b8ba76e3c3f44c6e224999690301c91a30d77efd05f4eb326"),
+    220: ("TIP PH:LIVE", {
+        "fallback": "45ee1c3fb42eb88322c0d1d9effa80c746256a80d4da536b68a2ca3e5cfd336e",
+        "literal": "45ee1c3fb42eb88322c0d1d9effa80c746256a80d4da536b68a2ca3e5cfd336e",
+    }),
 }
+EXPECTED_PLAYER_DRAW_HASH = \
+    "2c561159b63e56e5e42a4d461a1f03bee65c1f7b94fcc5ee933349cbc66bff9f"
 
 
 def pack_assets(path):
@@ -61,6 +76,22 @@ def pack_assets(path):
     return assets
 
 
+def player_draw_configuration(assets):
+    item = assets.get(287)
+    if item is None:
+        if len(assets) != 264:
+            raise AssertionError("fallback pack is not the reviewed 264-item configuration")
+        return "fallback"
+    payload, width, height, flags = item
+    if len(assets) != 265 or (len(payload), width, height, flags) != \
+            (2144, 0, 0, 0) or payload[:8] != b"NBPDRAW1" or \
+            struct.unpack_from("<6I", payload, 8) != \
+            (1, 2096, 32, 8, 2128, 2144) or \
+            hashlib.sha256(payload).hexdigest() != EXPECTED_PLAYER_DRAW_HASH:
+        raise AssertionError("literal player-draw resource 287 changed")
+    return "literal"
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--pack", required=True)
@@ -68,6 +99,7 @@ def main():
     parser.add_argument("--rom", required=True)
     args = parser.parse_args()
     assets = pack_assets(Path(args.pack))
+    draw_configuration = player_draw_configuration(assets)
     for asset_id, expected in EXPECTED_ASSETS.items():
         payload, width, height, flags = assets[asset_id]
         size, expected_width, expected_height, expected_flags, digest = expected
@@ -109,7 +141,7 @@ def main():
         raise AssertionError("Orlando ROM court panorama changed")
 
     with tempfile.TemporaryDirectory() as directory:
-        for frame, (phase, expected_hash) in EXPECTED_FRAMES.items():
+        for frame, (phase, expected_hashes) in EXPECTED_FRAMES.items():
             output = Path(directory) / f"tipoff_{frame:04d}.bmp"
             result = subprocess.run([
                 args.exe, "--headless", "--rom", args.rom, "--assets", args.pack,
@@ -121,8 +153,9 @@ def main():
                     "BALL M:" not in result.stdout:
                 raise AssertionError(result.stdout + result.stderr)
             digest = hashlib.sha256(Image.open(output).convert("RGB").tobytes()).hexdigest()
-            if digest != expected_hash:
-                raise AssertionError(f"tip-off frame {frame} changed: {digest}")
+            if digest != expected_hashes[draw_configuration]:
+                raise AssertionError(
+                    f"tip-off frame {frame} changed for {draw_configuration} pack: {digest}")
 
         result = subprocess.run([
             args.exe, "--headless", "--rom", args.rom, "--assets", args.pack,
