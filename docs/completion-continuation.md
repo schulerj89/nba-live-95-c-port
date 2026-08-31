@@ -222,3 +222,164 @@ both clean/headered extractions pass; the next legacy debug-state assumption
 is repaired through real buttons, reproducing both old BMP hashes exactly.
 See docs/controller-regression-driver-migration.md. Full suitev9 is running;
 no full-suite pass or Rules reentry repair is claimed.
+
+Continuation checkpoints97c59c9,45dd555,659b4c1 are now committed/pushed on the
+integration branch. Setup monolith migration has independent acceptance; the
+PlayerLab driver now gives two actions three press/release/press frames while
+preserving its images. CaptureRoot/RecompRoot arguments make worktree reports
+consume the intended read-only evidence. Census totals/verified credit did
+not increase; only the census tool identity changed. Primary/main and desktop
+remain untouched.
+
+Independently accepted switch repair1c3c60f preserves original wrapped F34F
+comparisons and rejects all prior verifier corruptions. Root fresh results:
+576 arithmetic guards,68480 native switch values,35 local/38 independent
+integrity cases. Human pass selector/initializer checkpoint90045f3 is also
+committed/pushed:42766 selector/metric and216466 initializer values,62/69 local
+and39/39 independent integrity cases,609 independent initializer source cases.
+These new components are not in the production manifest; human remains gated.
+The original pointer/overflow/suffix/animation-lock quirks remain source-commented.
+
+Full suitev10 failed fresh Arcade/12-minute endurance at46450; a private old-
+F34F build reproduces the same stall, excluding the accepted arithmetic fix as
+its cause. Root found a separate port dispatcher defect: C39C CMP#2's N flag
+routes layout1 toC50B, but C had grouped1 with4 atC450. Nine fresh original-ROM
+boundaries (one natural, eight explicitly controlled) verify54 target/play/RNG
+words; the old helper fails exactly five layout1 cases. Failed capture attempts
+are retained and rejected. The corrected source passes unchanged63800-frame
+endurance, period1/post12026; no blanket target clamp is added, and layout4
+retains its native404 case. See docs/inbound-layout-repair.md. Independent
+review of freeze build/inbound-layout-freeze-v2.json is pending.
+
+Fullv11 stops at changed C-only Mode1 counts. Private pre-fix-helper/matching
+startup-check relink reproduces all old counts; telemetry is identical through
+505 and first differs only in layout1 target/play/RNG fields at506. The updated
+C census retains every57344-pixel assertion; no native fixture changes. Fullv12
+then fails a controlled shot-assistance coverage window: the first unforced
+basket now occurs at2356, after the fixture had reset to a long clock. Renewing
+its controlled late-clock window until assistance is observed preserves all
+per-frame oracles and16000 frames; fatigue-on/off cases pass with one assisted
+make. This fixture-only change awaits review. Fullv13 is running; no full-suite
+pass is claimed. Rules reentry still has158 mismatches and remains uncommitted.
+
+Producer/header source work has fresh positive comparisons, but their first
+verifiers accept impossible native chronology/PC metadata. Their v1 freezes
+and rejection reports are retained; scheduler is preparing v2 verifiers.
+Do not integrate or claim acceptance yet. AC50/B00B action11 is frozen pending
+review, and the controller agent is continuing AD0E/F473 in new files.
+
+The user reaffirmed that the separate Max task is for complex consultation,
+not delegated implementation. Its record was checked: source/trace inspection
+and in-memory diagnostic calculations only; no file changes, implementation,
+commits, or takeover. The single consultation is complete and idle, and no
+new request has been sent. Existing implementation/audit subagents remain
+separate from that read-only consultant. Preserve this distinction.
+
+The inbound source/Mode1 composite, strict v2 verifier and shot fixture have
+independent acceptance and are committed as9f5b47c. Fullv13 passed those gates
+and stopped at three old C-only gameplay85 hashes. Fresh matched-source
+controls reproduce all old hashes; a configuration/team-context matrix and
+pre-layout/current source comparison attribute the new three trajectories.
+Only comments/three expected values change, preserving all48000 frames and
+semantic guards. New standalone run passes; independent audit is queued.
+See docs/gameplay85-regression-attribution.md and root freeze
+build/gameplay85-regression-freeze-v1.json,627identities.
+
+Producer/header v2 composites now have independent acceptance. Root checked
+all51+49 freeze references, copied36 new source/audit files, compiled both
+probes fresh and reproduced155750+126 states,40003+66 writes,27726+8206 DMA
+bytes, both13Python/11C contracts, both9local/5independent mutation suites,
+and10 shared protocol tests. Committed342f171; standalone only, no production
+scheduler or DMA/phase acceptance. See producer-header-integration-checkpoint.
+
+Fullv14 passes gameplay85 and the Rules Custom caller, then stops in closure
+initialization. A private earlier run first found its four consecutive Down
+frames were one held word (code12); the released-frame test repair was applied
+before v14 compiled that probe. The resulting code60 exposes a separate port
+startup defect: Philadelphia home has no original profile3E>=85, but the
+synthetic boosted-pass self-test required one from the selected home team.
+A local session copy using the known Orlando fixture preserves all lifecycle
+assertions and original ratings. Old initialization fails29/841 pairs; new
+initializes841/841, and all812 common complete owned states are byte-identical.
+That repair and new all-team gate are frozen pending review. The revised
+closure reaches6000 gameplay frames twice but its aggregate C digest remains
+unaccepted pending separate attribution. Fullv14 is not a full-suite pass.
+
+Controller action/aligned source slices pass positive native comparisons,
+but independent audit rejected their original stderr protocols. Separate v2
+verifier-only freezes repair that without changing source/native fixtures;
+reviews continue. New AF1D pose/attachment work is separate. Sound prefix
+reaches44 explicit pending SPC reads and two sequencer stops; independent
+audit is queued, and scheduler is deriving normal initialization/upload.
+Human play remains gated. Rules reentry retains158 unresolved mismatches.
+
+The later independently accepted startup/closure/gameplay85/tipoff attribution
+is committed through dcb1eb8. All841 team-pair initializations pass, with the812
+common owned states unchanged. GameplayLab attribution364493f and the bounded
+human pose component d143411 are accepted. Actor execution telemetry8c97b5f
+records actual completed passes instead of inferring them during the period
+wait. Across63800 rows, only1189 scheduler records change;31,305 actual actor
+passes agree and all841 initializer states remain unchanged. Camera wait and
+shot/scheduler fixture guards pass. These results do not establish native
+hardware phase or whole-period timing.
+
+The five CPU image hashes and three layout assertions now have independent
+source attribution and are committed64f38d4. All prior controls and25 image
+comparisons were retained. The current CPU test correctly stops at frame49412:
+the resumed period still has the wrong inbounder/formation. That is an actual
+port failure and has not been hidden by changing the test. No fullv16 suite
+has passed or been claimed. Rules reentry still has158 mismatches.
+
+Sound prefix/init/resident composites58cbc46 are independently accepted as
+standalone components. Fresh root comparisons cover3673 CPU prefix states,
+7055 CPU initialization states,182 SPC resident states, their ordered accesses,
+full snapshots and transfer bytes. Normal CPU/SPC startup integration, clock
+visibility, timers/DSP and hardware phase are still incomplete. The separate
+SPC initializer/control C source passed independent ROM comparisons, but v3
+verifiers accepted malformed pending/source metadata. Their unchanged v3
+rejection remains recorded; scheduler has supplied separate v4 verifier freezes
+for review. Production nba_spc/audio behavior is unchanged.
+
+The catch component d007929 matches31788 natural values,93 local integrity
+cases and24 independent cases; its corrected audit inventories287 identities.
+The saved-frame return a7915e8 matches189100 values across25 calls and rejects
+112 local/25 independent corruptions. Mode15 release daf35d3 now matches
+2878464 values across517 calls/30 origins, with126 local/44 independent
+integrity rejections. All have fresh root builds and bounded independent
+source reviews. They remain outside the normal human-play gate. Launch99C4
+is separate active work; the last right-side release cleanup is explicitly
+unfinished at the captured endpoint. Root retry command mistakes are retained
+in the respective integration directories, without changing accepted inputs.
+
+Accepted commits through daf35d3 are pushed to work/completion-owner-20260830.
+Primary/main and the desktop executable remain unchanged. The separate Max
+consultant has stayed idle and read-only; it has not implemented any of these
+changes. Existing controller/scheduler implementation agents and the reviewer
+continue in their previously authorized worktrees.
+
+Period repair now has ten isolated native expiry captures,336 full128KiB WRAM
+snapshots and573 frozen identities, recorded in
+build/period-restart-native-freeze-v1.json. Expiry uses only the declared six
+WRAM seed words after real menu input and natural court ownership/readiness;
+there are no ROM, PC, stack, formation or ready-latch injections. The original
+period branch bypasses the new-game bulk clear. Consequently09BA and09B0/B2
+survive; actor coordinate fractions also survive, and the formation loop writes
+pair index0..4 to+A6 on both teams. These original quirks must remain and be
+commented. The old foul-inbound parent is inappropriate for period restart.
+
+The first standalone period-parent freeze passed28420 native typed words but
+was independently rejected: opening/OT positive-anchor formation omitted the
+source Y negation, and its verifier admitted decimal/entry-register metadata
+corruption. That is a port mistake, not an original bug. Scheduler is preparing
+separate v2 source and verifier files; frozen v1 and its failed expectations
+remain unchanged. It is not integrated into production.
+
+Root's unwired period AAB2 projection passes forty native child calls and5200
+actor/RNG/owner-pointer words,14 protocol rejections and9 domain refusals. It
+is frozen for review at build/period-appearance-freeze-v1.json (931identities).
+The separate assignment/sort/attachment candidate passes eleven native calls
+and34126 bytes,17 protocol/metadata rejections and9 domain refusals. Its freeze
+is build/period-support-freeze-v1.json (856identities). The latter composes real
+BC9B/cancel/install/AEC3/B649/B66A operations without native poststate seeding.
+Neither candidate is accepted or wired yet. BC07 role suffix, video child,
+integrated restart and whole-game/native phase remain outstanding.
