@@ -2214,7 +2214,12 @@ static bool actor_ball_attachment_offsets(const NbaTipoff *tipoff,
         int16_t *offset_z) {
     uint8_t direction = actor->direction < 8u ? actor->direction : 0u;
     uint16_t upper_resource = 0u, lower_resource = 0u;
-    uint16_t mirror_flags = direction < 3u ? 0x8000u : 0u;
+    /* `$87:B649/$87:B66A` pass actor `+$28` through to `$87:B832`.
+     * Its sign toggles masks 1/2, and the low masks may independently mirror
+     * the upper and lower attachment inputs. Rebuilding only bit 15 from
+     * direction loses those live pose masks and can detach the ball from the
+     * submitted hand even while the sprite compositor uses the exact word. */
+    uint16_t mirror_flags = actor->actor_status_raw_28;
     return actor_attachment_resources(
         tipoff, actor, direction, &upper_resource, &lower_resource) &&
         nba_player_ball_attachment_offsets(
@@ -2283,7 +2288,7 @@ static bool cpu_actor_pose_points(const NbaTipoff *tipoff, unsigned actor_index,
     const NbaTipoffActor *actor = &tipoff->actors[actor_index];
     uint8_t direction = actor->direction < 8u ? actor->direction : 0u;
     uint16_t upper_resource = 0u, lower_resource = 0u;
-    uint16_t mirror_flags = direction < 3u ? 0x8000u : 0u;
+    uint16_t mirror_flags = actor->actor_status_raw_28;
     if (!actor_animation_resources(tipoff, actor, direction,
                                    &upper_resource, &lower_resource))
         return false;
@@ -9755,7 +9760,8 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
         out->actor_base = (uint16_t)(0x34EBu + actor * 0x100u);
         out->id_raw = (uint16_t)actor;
         out->action_raw = live ? state->behavior_timer : NBA_GAMEPLAY_UNKNOWN_WORD;
-        out->flags_raw = 0;
+        out->flags_raw = live ? state->actor_status_raw_28 :
+                         NBA_GAMEPLAY_UNKNOWN_WORD;
         uint16_t upper_resource = 0u, lower_resource = 0u;
         if (live && actor_animation_resources(tipoff, state, state->direction,
                 &upper_resource, &lower_resource)) {

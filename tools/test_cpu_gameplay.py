@@ -1523,7 +1523,7 @@ def main():
             upper_x = signed8(animation[upper_x_table + upper])
             upper_y = signed8(animation[upper_y_table + upper])
             upper_z = signed8(animation[upper_z_table + upper])
-            flags = 0x8000 if actor["direction"] < 3 else 0
+            flags = raw["flags"]
             if flags & 0x8000:
                 flags ^= 3
             if flags & 2:

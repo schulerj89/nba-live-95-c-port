@@ -261,7 +261,9 @@ static void draw_team_plate(const NbaPlayerIntro *screen, NbaRenderer *ren,
     for (int index = 20; index >= 6; --index)
         draw_plate_object(ren, vram->data, animated_cgram, oam->data,
                           index, x, y);
-    draw_logo(screen, ren, team, x, y, 48, 56);
+    /* $83:F8A0/F8A3 and $83:F8D8/F8DB place each variable logo
+     * two pixels right and four down from its fixed gold plate origin. */
+    draw_logo(screen, ren, team, x + 2, y + 4, 48, 56);
 }
 
 static const uint8_t *rom_font(const NbaPlayerIntro *screen,

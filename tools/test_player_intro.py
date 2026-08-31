@@ -139,8 +139,9 @@ def main():
             [921799, 34924, 13747, 8129, 19548, 1564, 290],
             [3760, 3760], 1.0, 25000, 27000)
         # $81:9756 uses each character's descriptor width. This catches both
-        # small-font M/W second strips and narrow one-strip lineup glyphs.
-        if rgb_hash(matchup) != "4ec7cb249dddeb8284a48a071cbd191bb46729af282f9b21e657a9b77cbb6b80":
+        # small-font M/W second strips and narrow one-strip lineup glyphs;
+        # the complete frame also locks the native +2,+4 variable-logo offset.
+        if rgb_hash(matchup) != "f717af63770b3fa0ae1b902e2a3f42df3ef955ce6f8144017c849c1935edab40":
             raise AssertionError("ROM-layout visitor/VS/home presentation changed")
 
         ratings = Path(directory) / "ratings.bmp"
@@ -151,8 +152,8 @@ def main():
         run(exe, "--headless", "--rom", rom, "--assets", pack,
             "--player-setup-only", "--player-setup-confirm",
             "--frames", 812, "--dump-frame", ratings_next)
-        if rgb_hash(ratings) != "a358ee549b0f06d5ddf3d98ea2a4cf8016501fd1ad113c4ee990cd665eca1eae" or \
-           rgb_hash(ratings_next) != "956729d5656ffa97e46d2c27e54859f155ef2463053577eb8b5b986ea2ba548b":
+        if rgb_hash(ratings) != "067a5aee23f30c662096f97e202032a70f775b655815735777538d3ef5f65e51" or \
+           rgb_hash(ratings_next) != "ca6b7ed973d7b4801243f2bf9cfaac79f0ac7c91045b50f4904dd240250ee389":
             raise AssertionError("rating-ball thresholds, placement, or 12-frame animation changed")
 
         frame = Path(directory) / "lineup.bmp"
