@@ -1,0 +1,86 @@
+# Known original-game bugs and preserved quirks
+
+This catalog records original NBA Live 95 behavior that the port deliberately retains. It separates demonstrated arithmetic/indexing defects from unusual behavior whose purpose is unknown. **It is not a list of bugs that players can currently encounter in the port.** Most entries are preserved in audited standalone components that have not been enabled in normal gameplay.
+
+Reviewed on 2026-08-31 against owner commit `dc10166f18f505af0259c981a59f525e4ead663e`. The original USA ROM is SHA-256 `2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870`. This is a bounded catalog of investigated behavior, not an exhaustive ROM audit.
+
+“Native” below means execution of the original ROM in the recorded emulator. A **controlled native** case changes declared test inputs; a **source-only** case checks original instructions with diagnostic inputs and does not prove normal gameplay reaches them. None of these labels establishes developer intent, audible symptoms, or complete game parity.
+
+| Category | Entries | Current preservation status |
+|---|---:|---|
+| Confirmed arithmetic/indexing defects | 2 | One accepted standalone component; one unintegrated candidate whose source review passed but verifier packet was rejected |
+| Original quirks retained, not classified as defects | 7 | Accepted standalone components, with the evidence limits below |
+| Excluded or unresolved claims | Listed at the end | Not counted as original-game bugs |
+
+The listed SPC, period, appearance, role, human-dispatch and catch components are absent from `nba95_sources.txt` at the reviewed commit. The launch candidate resides in the controller worktree. Existing production code may implement related routines, but the bounded acceptance reported here must not be transferred to a different implementation without verification.
+
+## Confirmed arithmetic/indexing defects
+
+### 1. A negative multiply can be one unit too small
+
+**Trigger and behavior:** opposite-sign operands whose magnitude product has low word `FFFF`. For example, `255 × -257` returns `FFFF0000` (-65,536) instead of `FFFF0001` (-65,535). This is a concrete arithmetic error. No visible pass trajectory or normal-game occurrence of those exact operands has been established.
+
+**Original cause and preservation:** `$85:F7A5/F7A8` complements the low word and branches past its increment when the complement is zero. The correct bank is **85**, not 86. `nba_human_pass_launch_multiply` explicitly reproduces and comments on that decrement in the [launch candidate](../../completion-controllers/src/nba_human_pass_launch.c).
+
+**Evidence and status:** independently checked original-ROM arithmetic and a declared controlled-native operand case establish the result. Natural launch captures do not establish this edge. The candidate source passed review, but its verification packet was rejected because four forged multiply-return routes were accepted. It is **unintegrated and not an accepted final packet**; preserving the defect in candidate C does not remove that rejection. See the [independent launch audit](../../completion-auditor/docs/completion-human-pass-launch-independent-audit.md).
+
+### 2. A catch-preparation table index reads executable bytes as a timer
+
+**Trigger and behavior:** the `$86:AF66` receiver-preparation branch with raw pass band `30`. Its lookup reaches `$86:AFC4`, beyond the five data rows, and reads instruction bytes `A6 8E` as word `8EA6`. Adding `24` hex produces timer `8ECA` (36,554), rather than another ordinary table timer. The investigation stops before the following animation child, so it does **not** establish a player becoming stuck or a particular delay in seconds.
+
+**Original cause and preservation:** `$86:AF6E` indexes table `$AFA6` with the unmodified six-byte band. The comment and six literal results in `nba_human_pass_catch_receiver` retain the opcode-derived value in [nba_human_pass_catch.c](../src/nba_human_pass_catch.c). The component stops before `$86:AF83 → $87:B468`; it does not invent the child's result.
+
+**Evidence and status:** source-only original-ROM cases cover all six bands, including this overrun. The natural catch captures do not enter this branch. This is an **accepted standalone component**, not enabled human gameplay. See the [independent catch audit](completion-human-pass-catch-independent-audit-v2.md) and [integration status](human-pass-catch-integration.md).
+
+## Original quirks retained, without a demonstrated defect classification
+
+### 3. Sound initialization leaves one upper-RAM byte untouched
+
+**Trigger and behavior:** the resident sound initializer clears `$0870..08FE`, then `$0900..FFFF`, leaving `$08FF` unchanged. If that byte already contains a nonzero value, it survives. No audible consequence or intended use of the surviving byte has been established, so this omission is not promoted here to a confirmed player-facing bug.
+
+**Preservation and evidence:** the count calculation at SPC `$03A3..03B5` uses `FF-70 = 8F`, and the `$03BC..03C0` loop omits the final byte. The corresponding subtraction is commented in [nba_setup_spc_init.c](../src/nba_setup_spc_init.c). This uploaded code maps ROM `$00:C687..CB76` to ARAM `$0380..086F`. Nonzero source-only tests, including an independent original-ROM diagnostic, prove preservation of `$08FF`; the all-zero native fixture cannot distinguish a missing write from a write of zero. See the [source description](setup-spc-init-source-work.md), [independent source audit](completion-spc-init-control-independent-audit.md), and [accepted initializer status](spc-initializer-integration.md). **Standalone; unresolved hardware/DSP continuations remain.**
+
+### 4. A period restart preserves old ready state, dead-ball coordinates and player fractions
+
+**Trigger and behavior:** continuing to another period rebuilds formation positions without doing the new-game bulk clear. The existing inbound-ready word `$09BA` and dead-ball coordinates `$09B0/$09B2` survive. Player sub-unit XYZ fractions also survive even while integer positions and velocities are reset. This does not establish that retaining them causes a broken inbound or a visible positioning error.
+
+**Preservation and evidence:** `$87:9797 → 8C86 → $86:DCA6` bypasses the separate new-game `$86:DA3F..DA47` clear. `$86:DF4B..DFB1` does not clear player fraction words; `$85:C37D` does not clear the ready/dead-ball words. Both exclusions are commented in [nba_period_restart_v2.c](../src/nba_period_restart_v2.c). Controlled-expiry native captures, reached through normal cold boot/menu input, witness naturally carried ready `1` remaining `1`, and a separate ready `0` case remaining `0`; ready itself was not seeded. Nonzero fraction preservation also has source-only tests. See [source and capture scope](period-restart-source-helper-v2.md), [native attribution](period-restart-native-attribution.md), and [accepted parent audit](completion-period-restart-v2-independent-audit.md). **Standalone parent; whole restart integration is separate.**
+
+### 5. Formation writes the same pair index into both teams
+
+**Trigger and behavior:** formation assigns actor field `+$A6` the values `0,1,2,3,4` for each team. It does not write zero to every actor and does not write the unique ten-player ID there. The purpose of this field is not inferred here.
+
+**Preservation and evidence:** `$86:E053` returns to `$DDA7`, skipping `$DDA4`'s initial zero load; `$DDA9/$DDAC` store the carried pair index. The source comment in [nba_period_restart_v2.c](../src/nba_period_restart_v2.c) retains this behavior. Native parent comparisons and original-ROM formation cases support it; see the [parent source explanation](period-restart-source-helper-v2.md) and [accepted audit](completion-period-restart-v2-independent-audit.md). **Standalone parent; no player-visible defect claimed.**
+
+### 6. Alternate lower-body animation still uses the canonical phase-count table
+
+**Trigger and behavior:** on the bounded stationary CPU appearance path, an actor using alternate lower-body animation cadence still checks its lower phase against canonical table `$84:C218` when the lower state changes. The validation and cadence tables therefore need not be the same. A resulting visual glitch has not been demonstrated.
+
+**Preservation and evidence:** original `$87:B630` selects `$84:C218`, while `$87:AB5F` selects alternate cadence. The explicit comment in [period_appearance.c](../src/period_appearance.c) prevents silently changing the count table. Independent source-only cases cover both lower tables and carried states; forty native period calls support the bounded appearance path but do not independently witness every alternate-table consequence. See the [source audit](completion-period-appearance-independent-audit.md) and [final verifier acceptance](completion-period-appearance-support-verifier-acceptance.md). **Accepted standalone CPU appearance child.**
+
+### 7. Airborne human movement can update a controller-relative word instead of the player's boost timer
+
+**Trigger and behavior:** after the earlier movement gates, nonzero full-word player height and a negative wrapped `live_state - 0080` result can leave the player's boost timer unchanged while decrementing `controller_pointer + 72` hex. That address can lie beyond the selected 64-byte controller record. We retain the proven address behavior; its intended purpose is unknown. Existing investigation notes call it the carried-X bug, but this catalog does not infer broader memory corruption or gameplay symptoms.
+
+**Preservation and evidence:** `$87:91D7` loads the controller pointer; `$91EB` can bypass `$91ED`'s actor reload. `$85:A850 → AAE8` then bypasses another reload, so `$85:AB06/AB13` reads/writes the controller-relative word. [nba_human_dispatch.c](../src/nba_human_dispatch.c) comments on the route and exposes that word separately. A no-seed original-ROM L+X capture witnesses player boost `5` retained in three calls; distinct nonzero controller-word changes and fifth-pad addressing have separate controlled source tests. See the [repair explanation](human-dispatch-repair.md) and [independent acceptance](completion-human-dispatch-repair-independent-audit.md). **Accepted standalone human stage; normal human play remains disabled.**
+
+### 8. Role geometry keeps its coarse and wrapped direction rules
+
+**Trigger and behavior:** the role geometry routine maps relative vector `(0,1)` to direction `1` with distance `0`. A zero-vector direction `8` leaves both actors' existing pairing-direction words (`+86`) unchanged; these are not their displayed facing words. Extreme 16-bit coordinates retain wraparound, including negating `8000` back to `8000`. These are quantization and storage rules, not proof of an unintended visible turn or distance error.
+
+**Preservation and evidence:** `$85:F34F`, especially `$F37F`'s equality branch and `$F394`'s truncated shift, is translated literally in the commented `pair_geometry` function in [nba_period_roles.c](../src/nba_period_roles.c). `$85:BC79` preserves the pairing directions on direction `8`. Independent original-ROM controlled cases exercise the edge rules; the four native period captures cover a narrower early-return route. See the [role source audit](completion-period-roles-v2-independent-audit.md) and its [final verifier acceptance](completion-period-roles-v3-acceptance.md). **Accepted standalone period-domain role component.**
+
+### 9. Role selection retains carried scratch, distinct tie rules and cadence state
+
+**Trigger and behavior:** the initial focal scan replaces its candidate only on the original wrapped strict-lower comparison. If nobody wins, the old scratch pointer `$92` survives. A later fallback promotes the **last** equal eligible candidate instead. Early cadence returns preserve rebuild state; they do not mean “reset the planner.” Selection therefore depends on scan order and carried state, not just a fresh nearest-player calculation.
+
+**Preservation and evidence:** [nba_period_roles.c](../src/nba_period_roles.c) comments on `$BCDF..BCE1`'s carried-pointer publication and `$BCED..BD06`'s cadence path. [nba_period_roles_v2.c](../src/nba_period_roles_v2.c) preserves `$C086`'s last-equal choice. Native captures witness the early-return cadence behavior; deeper selection and edge cases have controlled original-ROM coverage. Unrepresented record reads and assignment children stop explicitly. See the [source audit](completion-period-roles-v2-independent-audit.md), [final acceptance](completion-period-roles-v3-acceptance.md), and [integration scope](period-roles-integration.md). **Standalone; no claim of general live-play planner parity.**
+
+## Claims deliberately excluded
+
+- The current static HUD panel/clock problem, CPU restart failure near frame 49,412, and repeated Rules-entry failure are port investigations, not established original-game bugs.
+- The old period helper's missing positive-anchor Y negation was a **port error**. Original `$86:DDE7..DDED` negates Y; v2 correctly restores it.
+- Duplicate host owners for actor `+56` (`target_x` / `special_contact_raw_56`), `+58` (`target_y` / `mode13_variant_raw_58`), and `+60` (`reaction_threshold` / `contact_action_timer_raw_60`) are port state-mapping gaps. Shared original storage alone is not a defect.
+- A scratch pointer retaining its value is not automatically a “farthest-player bug.” The precise comparisons and no-winner behavior above are established; generalized player symptoms and intent are not.
+- Verifier acceptance of malformed metadata, discarded SPC output latches in port code, and snapshot-based initialization would be port/tooling defects. They are not original-game behavior to preserve.
+- This catalog does not claim freezes are complete game fixes, that controlled edge cases occur naturally, or that standalone preservation is already enabled in the current executable.
