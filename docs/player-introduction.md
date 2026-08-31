@@ -82,7 +82,7 @@ renderer defect, not an original-game bug.
 
 ## Regression
 
-`tools/test_player_intro.py` locks the visual assets, native BG1 crowd/basket
+`tools/test_player_intro.py` locks the visual assets, native BG2/backdrop crowd
 crop, all 290 portrait keys, ROM font format, SPC/DSP asset dimensions, a
 phase-tolerant runtime-audio fingerprint, Player Setup handoff, first-card
 frame, visitor/home boundary, and final-card cadence. `tools/test_frontend_route.py` drives the real

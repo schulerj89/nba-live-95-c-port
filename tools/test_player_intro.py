@@ -27,7 +27,7 @@ EXPECTED_ASSETS = {
 }
 
 # Native normal-route frame 2550 contains no BG3/OBJ pixels in the top 16
-# rows. Its RGB crop therefore locks the BG1 crowd/basket layer in the packed
+# rows. Its RGB crop therefore locks the BG2/backdrop crowd band in the packed
 # Orlando pregame background without treating a screenshot as extraction input.
 EXPECTED_ORLANDO_TOP_RGB = \
     "6b4cda12034520a700e01fd6135f3e9d993e4a518801a94d0b59fbc2b8388c0d"
@@ -112,7 +112,7 @@ def main():
         courts[24 + 18 * frame_size:24 + 19 * frame_size], "raw", "BGRA")
     if hashlib.sha256(orlando.convert("RGB").crop((0, 0, 256, 16)).tobytes()).hexdigest() \
             != EXPECTED_ORLANDO_TOP_RGB:
-        raise AssertionError("Orlando pregame background lost native BG1 crowd/basket")
+        raise AssertionError("Orlando pregame background lost native BG2/backdrop crowd band")
 
     for asset_id, (size, digest) in EXPECTED_ASSETS.items():
         payload, width, height, flags = assets[asset_id]
