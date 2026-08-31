@@ -1,0 +1,14 @@
+
+# Preserve exact bytes in the 2026-08-31 worktree snapshot.
+include/nba_session.h -text
+include/nba_tipoff.h -text
+src/nba_session.c -text
+src/nba_tipoff.c -text
+tools/active_appearance_runtime_probe.c -text
+tools/foul_out_substitution_runtime_probe.c -text
+tools/timeout_resume_runtime_probe.c -text
+docs/team-context-independent-audit.md -text
+docs/team-context-initializer.md -text
+tools/first_court_identity_probe.c -text
+tools/test_first_court_identity_verifier.py -text
+tools/verify_first_court_identity.py -text
