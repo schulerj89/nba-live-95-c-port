@@ -116,7 +116,7 @@ def check_asset_loader(exe, directory, full_pack):
     return valid_path
 
 
-def check_rom_identity(exe, rom_path, valid_pack, directory):
+def check_rom_identity(exe, rom_path, valid_pack, directory, capture_root=None):
     rom = rom_path.read_bytes()
     headered_path = directory / "headered.sfc"
     headered_path.write_bytes(bytes(512) + rom)
@@ -145,12 +145,13 @@ def check_rom_identity(exe, rom_path, valid_pack, directory):
         raise AssertionError("asset extractor accepted the wrong ROM hash")
 
     extractor = Path(__file__).resolve().parent / "extract_assets.py"
+    capture_args = ["--capture-root", str(capture_root)] if capture_root else []
     extracted = []
     for label, candidate in (("clean", rom_path), ("headered", headered_path)):
         output = directory / f"{label}.pak"
         result = subprocess.run(
             [sys.executable, str(extractor), "--rom", str(candidate),
-             "--output", str(output)],
+             "--output", str(output), *capture_args],
             text=True, capture_output=True, check=False,
         )
         require_success(result, f"{label} ROM asset extraction")
@@ -162,7 +163,7 @@ def check_rom_identity(exe, rom_path, valid_pack, directory):
     require_failure(
         subprocess.run(
             [sys.executable, str(extractor), "--rom", str(wrong_path),
-             "--output", str(rejected_output)],
+             "--output", str(rejected_output), *capture_args],
             text=True, capture_output=True, check=False,
         ),
         "wrong ROM asset extraction",
@@ -206,10 +207,21 @@ def check_debug_telemetry(exe, rom, pack, directory):
         run(exe, "--headless", "--debug-hud-page", 3),
         "invalid debug HUD page",
     )
+    # Reach the old Simulation/5-minute HUD state through real buttons. The
+    # two old BMP hashes are reproduced exactly; this is a C debug regression,
+    # not native entrance timing evidence. Every press has a release frame.
+    words = [0] * 170
+    for index, word in enumerate((0x400, 0x100, 0x400, 0x400, 0x100, 0x800, 0x800, 0x800)):
+        words[138 + index * 2] = word
+    for index in range(3):
+        words[154 + index * 2] = 0x400
+    words[160] = 0x100
+    script = directory / "debug_setup.input"
+    script.write_text("".join(f"1 {word:04x}\n" for word in words))
     frame = directory / "debug_setup.bmp"
     result = run(
         exe, "--headless", "--setup-only", "--rom", rom, "--assets", pack,
-        "--frames", 170, "--setup-main-row", 3, "--setup-main-right", 1,
+        "--frames", 170, "--input-script", script,
         "--debug-state", "--debug-every", 85, "--timing-debug",
         "--dump-frame", frame,
     )
@@ -237,7 +249,7 @@ def check_debug_telemetry(exe, rom, pack, directory):
     detail_frame = directory / "debug_setup_detail.bmp"
     detail = run(
         exe, "--headless", "--setup-only", "--rom", rom, "--assets", pack,
-        "--frames", 170, "--setup-main-row", 3, "--setup-main-right", 1,
+        "--frames", 170, "--input-script", script,
         "--debug-hud-page", 2, "--dump-frame", detail_frame,
     )
     require_success(detail, "compact F10 Setup-detail HUD")
@@ -302,6 +314,7 @@ def main():
     parser.add_argument("--pack", required=True, type=Path)
     parser.add_argument("--exe", required=True, type=Path)
     parser.add_argument("--rom", required=True, type=Path)
+    parser.add_argument("--capture-root", type=Path)
     args = parser.parse_args()
 
     result = run(args.exe, "--spc-self-test")
@@ -312,7 +325,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix="nba95-core-safety-") as temp:
         directory = Path(temp)
         valid_pack = check_asset_loader(args.exe, directory, args.pack)
-        check_rom_identity(args.exe, args.rom, valid_pack, directory)
+        check_rom_identity(args.exe, args.rom, valid_pack, directory, args.capture_root)
         check_host_rate_equivalence(args.exe, args.rom, args.pack, directory)
         check_asset_debug_cli(args.exe, args.pack)
         check_debug_telemetry(args.exe, args.rom, args.pack, directory)

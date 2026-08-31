@@ -70,10 +70,24 @@ static int run_pair(const NbaAssetPack *assets, uint8_t away, uint8_t home,
     hashes[1] = frame_hash(&renderer);
     press(&input, NBA_BTN_LEFT);
     if (nba_player_setup_update(&setup, &input) != NBA_PLAYER_SETUP_SOUND_MOVE ||
-        session.player_one_side != NBA_TEAM_SIDE_LEFT) return 21;
+        session.controller_selection[0] != 1) return 21;
+    /* Native $81:A7D0-$A843 moves one slot per press: right -> neutral ->
+     * left. The legacy UI side has no neutral value; assert canonical state. */
+    nba_player_setup_update(&setup, NULL);
+    press(&input, NBA_BTN_LEFT);
+    if (nba_player_setup_update(&setup, &input) != NBA_PLAYER_SETUP_SOUND_MOVE ||
+        session.controller_selection[0] != 0 ||
+        session.player_one_side != NBA_TEAM_SIDE_LEFT) return 24;
+    nba_player_setup_update(&setup, NULL);
     press(&input, NBA_BTN_RIGHT);
     if (nba_player_setup_update(&setup, &input) != NBA_PLAYER_SETUP_SOUND_MOVE ||
-        session.player_one_side != NBA_TEAM_SIDE_RIGHT) return 22;
+        session.controller_selection[0] != 1) return 22;
+    nba_player_setup_update(&setup, NULL);
+    press(&input, NBA_BTN_RIGHT);
+    if (nba_player_setup_update(&setup, &input) != NBA_PLAYER_SETUP_SOUND_MOVE ||
+        session.controller_selection[0] != 2 ||
+        session.player_one_side != NBA_TEAM_SIDE_RIGHT) return 25;
+    nba_player_setup_update(&setup, NULL);
     press(&input, NBA_BTN_START);
     if (nba_player_setup_update(&setup, &input) !=
             NBA_PLAYER_SETUP_SOUND_CONFIRM || !setup.confirm_requested)

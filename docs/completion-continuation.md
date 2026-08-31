@@ -204,3 +204,21 @@ and a third sound on a successful submenu adjustment; volume checks select
 that third sound. The whole monolith passes in
 build/setup-monolith-migration-v6.log. No native fixture was changed.
 Full-suite and Rules reentry failures are still unresolved.
+
+The accepted human repair is committed/pushed as e76babe. Capture-root extraction
+support is b0d6c7c, and independently accepted FB46/FB30 source-work components
+are fceb788. All are on the integration branch only; production source manifests
+and normal human gate remain unchanged. The codec owner check passes112814+
+36418 native instruction states/durations,28218+9935 write positions,20 complete
+payloads,16+18 Python tests,12+14 C contracts and both independent six-case
+corruption suites. See docs/codec-integration-checkpoint.md. Producer helpers
+and forward NMI/audio/SPC timing are still separate work.
+
+Full suitev7 found an obsolete one-press Player Setup assumption; its fixture
+now explicitly checks right/neutral/left and passes three full matchup/lineup
+journeys. Full suitev8 passes the Setup monolith and then fails the core safety
+test's missing local capture path. With the explicit read-only capture root,
+both clean/headered extractions pass; the next legacy debug-state assumption
+is repaired through real buttons, reproducing both old BMP hashes exactly.
+See docs/controller-regression-driver-migration.md. Full suitev9 is running;
+no full-suite pass or Rules reentry repair is claimed.

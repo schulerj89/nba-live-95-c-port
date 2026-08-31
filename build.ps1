@@ -1,6 +1,7 @@
 param(
     [string]$RomPath = '',
     [string]$AssetPack = '',
+    [string]$CaptureRoot = '',
     [string]$OutputExe = '',
     [switch]$ExtractAssets,
     [switch]$Run,
@@ -16,6 +17,11 @@ $Root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $BuildDir = Join-Path $Root "build"
 $ObjDir = Join-Path $BuildDir "obj"
 $DefaultAssetPack = Join-Path $BuildDir "nba95_assets.pak"
+$NativeCaptureRoot = if ([string]::IsNullOrWhiteSpace($CaptureRoot)) {
+    Join-Path $Root '.analysis'
+} else {
+    [IO.Path]::GetFullPath($CaptureRoot)
+}
 
 New-Item -ItemType Directory -Force -Path $BuildDir | Out-Null
 New-Item -ItemType Directory -Force -Path $ObjDir | Out-Null
@@ -24,7 +30,7 @@ New-Item -ItemType Directory -Force -Path $ObjDir | Out-Null
 if ($ExtractAssets -or (![string]::IsNullOrEmpty($RomPath) -and (Test-Path $RomPath) -and !(Test-Path $DefaultAssetPack) -and [string]::IsNullOrEmpty($AssetPack))) {
     Write-Host "Extracting assets from ROM to: $DefaultAssetPack..." -ForegroundColor Cyan
     $ExtractorScript = Join-Path $Root "tools\extract_assets.py"
-    & python $ExtractorScript --rom $RomPath --output $DefaultAssetPack
+    & python $ExtractorScript --rom $RomPath --output $DefaultAssetPack --capture-root $NativeCaptureRoot
     if ($LASTEXITCODE -ne 0) {
         throw "Asset extraction failed with exit code $LASTEXITCODE"
     }
@@ -201,7 +207,7 @@ if ($Test) {
         throw 'Bank $80 gameplay presentation/resource/timing service gate failed.'
     }
     $Gameplay55AssetArgs = @('--pack', $AssetPack)
-    $Gameplay55NativeDir = Join-Path $Root '.analysis\ppu-runtime-final-20260829'
+    $Gameplay55NativeDir = Join-Path $NativeCaptureRoot 'ppu-runtime-final-20260829'
     if (Test-Path -LiteralPath (Join-Path $Gameplay55NativeDir 'scanout_0989_vram.bin')) {
         $Gameplay55AssetArgs += @('--native-dir', $Gameplay55NativeDir)
     }
@@ -539,7 +545,7 @@ if ($Test) {
         throw "Game Setup transition regression tests failed with exit code $LASTEXITCODE"
     }
     & python (Join-Path $Root "tools\test_core_safety.py") `
-        --pack $AssetPack --exe $ConsoleExePath --rom $RomPath
+        --pack $AssetPack --exe $ConsoleExePath --rom $RomPath --capture-root $NativeCaptureRoot
     if ($LASTEXITCODE -ne 0) {
         throw "Core safety regression tests failed with exit code $LASTEXITCODE"
     }
@@ -659,11 +665,11 @@ if ($Test) {
     }
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name intro_resource_validate_probe
     & python (Join-Path $Root 'tools\test_intro_indexed.py') `
-        --native (Join-Path $Root '.analysis\intro-exact-20260830\capture-v4') `
+        --native (Join-Path $NativeCaptureRoot 'intro-exact-20260830\capture-v4') `
         --rom $RomPath --probe (Join-Path $BuildDir 'intro_resource_validate_probe.exe')
     if ($LASTEXITCODE -ne 0) { throw 'Intro resource integrity tests failed.' }
     & python (Join-Path $Root 'tools\test_intro_frame_provenance.py') `
-        --native (Join-Path $Root '.analysis\intro-exact-20260830\capture-v4')
+        --native (Join-Path $NativeCaptureRoot 'intro-exact-20260830\capture-v4')
     if ($LASTEXITCODE -ne 0) { throw 'Independent intro frame provenance integrity failed.' }
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name intro_text_probe
     $IntroTextOutput = Join-Path $BuildDir 'intro-text-rgb'
@@ -671,7 +677,7 @@ if ($Test) {
     & (Join-Path $BuildDir 'intro_text_probe.exe') $AssetPack $IntroTextOutput
     if ($LASTEXITCODE -ne 0) { throw 'Intro text raster probe failed.' }
     & python (Join-Path $Root 'tools\verify_intro_text.py') `
-        --native (Join-Path $Root '.analysis\intro-exact-20260830\capture-v4') `
+        --native (Join-Path $NativeCaptureRoot 'intro-exact-20260830\capture-v4') `
         --actual $IntroTextOutput --report (Join-Path $BuildDir 'intro-text-parity.json')
     if ($LASTEXITCODE -ne 0) { throw 'Intro text native raster comparison failed.' }
     & python (Join-Path $Root "tools\test_project_census.py")

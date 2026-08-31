@@ -19,3 +19,12 @@ This is extraction reproducibility, not asset-pipeline completion. Captured PPU
 schedules, remaining captured glyph resources and DSP trace playback retain
 their previously documented limitations. The primary pack and desktop binary
 are unchanged.
+
+`build.ps1 -CaptureRoot PATH` now passes the same read-only root to extraction,
+the extraction safety test and the existing native gameplay/intro checks.
+Omitting it retains the repository `.analysis` default. The core safety test
+still extracts both clean and copier-headered ROMs and compares all resulting
+bytes, and still rejects the deliberately modified ROM. The first isolated
+full-suite attempt failed because this test tried to read absent local capture
+files; `build/core-safety-capture-root-v1.log` subsequently reached the unrelated
+legacy debug-state assertion, proving both extraction cases completed.
