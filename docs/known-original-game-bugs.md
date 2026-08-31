@@ -9,7 +9,7 @@ Initial review on 2026-08-31 against owner commit `dc10166f18f505af0259c981a59f5
 | Category | Entries | Current preservation status |
 |---|---:|---|
 | Confirmed arithmetic/indexing defects | 2 | One accepted standalone component; one unintegrated candidate whose source review passed but verifier packet was rejected |
-| Original quirks retained, not classified as defects | 8 | Seven entries in accepted standalone components; one in the bounded integration-branch HUD repair |
+| Original quirks retained, not classified as defects | 10 | Seven entries in accepted standalone components; one in the bounded integration-branch HUD repair; two visible production artwork/transition quirks |
 | Excluded or unresolved claims | Listed at the end | Not counted as original-game bugs |
 
 The listed SPC, period, appearance, role, human-dispatch and catch components are absent from `nba95_sources.txt` at the reviewed commit. The launch candidate resides in the controller worktree. Existing production code may implement related routines, but the bounded acceptance reported here must not be transferred to a different implementation without verification.
@@ -83,6 +83,52 @@ The listed SPC, period, appearance, role, human-dispatch and catch components ar
 **Original source and preservation:** `$87:BA6D` increments the graphic index before `$BA6F` subtracts60, and `$BA72` repeats when the result is zero as well as positive. The original `$87:BA9F` pointer table selects numeral maps `$AF:ED1B` for frame1 and `$AF:EC83` for frame2. The `shot_clock` function's `$87:BA6D/BA72` comment preserves that rule in [nba_gameplay_hud.c](../src/nba_gameplay_hud.c). **Enabled in the integration branch's bounded HUD repair; full HUD timing remains unverified.** See [integration scope](gameplay-hud-integration.md).
 
 **Evidence limits:** an independent source-only diagnostic executes the actual original bytes for602 boundary/domain cases. The map glyphs use original indexed characters matching the captured first-court VRAM. Existing lifecycle captures contain no `$87:BA5E/BA9E` observations or raw60 input, so they do not establish this endpoint occurring during ordinary play. See the [source-check evidence](../../completion-scheduler/build/original-bug-catalog-v1/shot-clock-evidence.json) and [bounded draft/report](../../completion-scheduler/build/original-bug-catalog-v1/shot-clock-quirk-draft.md). No emulator capture was added for this entry.
+
+### 11. Some center-court logo artwork looks separated or unusually long
+
+**Trigger and behavior:** Chicago's center graphic includes a long horizontal
+bull shape and a separate-looking white/red mark. Orlando uses a dark blue oval
+with a comparatively small central mark. At some camera positions these can
+look like a split or corrupt logo. They are original team court artwork, not a
+host-drawn overlay and not classified here as a gameplay bug.
+
+**Preservation and evidence:** gameplay center court is part of the original
+148x52 BG2 map at `$A0:8006`, streamed by `$85:8EE6-$85:90C3`; team graphics
+are selected by `$84:E55D-$84:E57A`. Independent ROM decompression, existing
+normal-route native PPU captures, and production pack asset284 match with zero
+tile or court-palette differences for Chicago and Orlando. The complete map is
+also byte-exact, and the production renderer passes 812 indexed viewports
+across all29 teams. See the [court-logo complaint audit](court-logo-complaint-audit.md).
+**Visible production quirk; retained as original artwork.**
+
+**Evidence limits:** this result establishes the map, court-owned graphics and
+palette bytes, plus production selection of home teams3/18. It does not claim
+that every animated crowd tile or player/goal composition pixel is static or
+identical; those layers have separate ownership. The Player Introduction's
+variable logos are also separate objects. Their source-backed `+2,+4` gold
+plate offset corrected a port placement error and is not part of this quirk.
+
+### 12. Team Select briefly exposes clipped name/rank rows during its reveal
+
+**Trigger and behavior:** while Team Select enters, portions of its BG3 team
+name/ranking rows appear clipped and slide into place before logo objects are
+released. A still image can resemble corrupted menu text. Consecutive normal
+input frames show the same transient on the original hardware path, so the port
+keeps it as a transition quirk instead of hiding the pixels.
+
+**Preservation and evidence:** the normal-power-on capture reaches Team Select
+at `$82:809A`, remains forced black through setup frame518, then reveals the
+scene at519. The clipped rows occur inside the source-owned vertical release;
+names/logos settle around570-575. The production renderer comment and
+`nba_team_select_render` retain those BG3 rows, while the deterministic frontend
+test protects the later per-layer exit. See the [frontend route checkpoint](frontend-route-checkpoint.md).
+**Visible production transition quirk; retained without defect classification.**
+
+**Evidence limits:** the consecutive capture proves the transient exists on the
+ordinary original route and the source control flow identifies its scene owner.
+It does not establish developer intent or exact whole-frame parity for every
+entrance pixel. Abrupt team-name changes after a deliberate Left/Right selector
+press are normal selection updates and are not a separate bug entry.
 
 ## Claims deliberately excluded
 
