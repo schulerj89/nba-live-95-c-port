@@ -5,7 +5,9 @@ the native instruction census: feature completion is a weighted engineering
 estimate, while capture/Ghidra/recomp/differential columns describe evidence
 strength. `strong` does not mean a feature is complete.
 
-**Current weighted whole-game estimate: 55.50%**
+**Historical weighted planning estimate: 55.50%**
+
+The 2026-08-30 ownership audit does not endorse these inherited completion estimates as current proof. Missing option consumers, human gameplay, retail modes and unreliable historical consecutive-frame captures are recorded in docs/ownership-plan.md and its workstream inventories. No whole-game completion percentage is accepted as a release gate.
 
 | feature | weight | completion | native | Ghidra | recomp | differential | tests |
 |---|---:|---:|---|---|---|---|---|
@@ -25,15 +27,15 @@ strength. `strong` does not mean a feature is complete.
 
 ### Boot, legal, EA intro, title and credits
 
-Finish frame/pixel equivalence for a few presentation boundaries.
+Reverify consecutive-frame boundaries with synchronous non-skipped Mesen output and isolated save state; historical screenshot timing and broad routine-address claims are insufficient.
 
 Evidence: [`docs/ea-intro.md`](../docs/ea-intro.md), [`docs/title-to-setup-transition.md`](../docs/title-to-setup-transition.md), [`docs/post-ea-title-audio.md`](../docs/post-ea-title-audio.md)
 
 ### Game Setup, Rules and Options
 
-Broaden transition and option-combination visual witnesses.
+Fix resource-state timing, native raster IRQ visibility, changed-value transitions, Style presets/Custom propagation, and all runtime option consumers. Six rules and multiple audio/presentation settings have no production reader.
 
-Evidence: [`docs/game-setup-screen.md`](../docs/game-setup-screen.md), [`docs/game-setup-audio.md`](../docs/game-setup-audio.md)
+Evidence: [`docs/game-setup-screen.md`](../docs/game-setup-screen.md), [`docs/game-setup-audio.md`](../docs/game-setup-audio.md), [`docs/options-test-ownership-audit.md`](../docs/options-test-ownership-audit.md)
 
 ### Team select, player setup and introductions
 
@@ -55,9 +57,9 @@ Evidence: [`docs/foul-classifier-differential.md`](../docs/foul-classifier-diffe
 
 ### Clock, quarters, timeout, substitutions and end game
 
-Pixel-exact break/final scenes, substitution orchestration, and persistence modes.
+Pixel-exact break/final scenes, all pause/substitution choices and persistence modes. Second-match reset now has a native startup projection plus separate C return journeys; lifecycle terminal-word replay is repaired but does not prove timing or complete callers.
 
-Evidence: [`STATUS.md`](../STATUS.md), [`docs/match-lifecycle.md`](../docs/match-lifecycle.md), [`docs/match-lifecycle-native-expiry.md`](../docs/match-lifecycle-native-expiry.md)
+Evidence: [`STATUS.md`](../STATUS.md), [`docs/match-lifecycle.md`](../docs/match-lifecycle.md), [`docs/match-lifecycle-native-expiry.md`](../docs/match-lifecycle-native-expiry.md), [`docs/new-match-reset.md`](../docs/new-match-reset.md), [`docs/lifecycle-verifier-audit.md`](../docs/lifecycle-verifier-audit.md)
 
 ### Human offense, defense and inbound control
 

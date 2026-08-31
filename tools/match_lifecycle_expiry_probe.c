@@ -10,31 +10,6 @@ typedef struct {
     bool final;
 } Case;
 
-static bool fixture_contains_cases(const char *path) {
-    FILE *file = fopen(path, "rb");
-    if (!file) return false;
-    if (fseek(file, 0, SEEK_END) != 0) { fclose(file); return false; }
-    long size = ftell(file);
-    if (size <= 0 || fseek(file, 0, SEEK_SET) != 0) {
-        fclose(file); return false;
-    }
-    char *text = (char *)malloc((size_t)size + 1u);
-    if (!text) { fclose(file); return false; }
-    bool ok = fread(text, 1u, (size_t)size, file) == (size_t)size;
-    fclose(file);
-    text[size] = '\0';
-    static const char *required[] = {
-        "\"name\": \"q1\"", "\"name\": \"halftime\"",
-        "\"name\": \"regulation_tie\"",
-        "\"name\": \"regulation_final\"", "\"$87:8EB2\"",
-        "\"$87:95E9\"", "\"$87:976E\"", "\"$87:979D\""
-    };
-    for (unsigned i = 0; ok && i < sizeof(required) / sizeof(required[0]); ++i)
-        ok = strstr(text, required[i]) != NULL;
-    free(text);
-    return ok;
-}
-
 static void seed(NbaTipoff *game, NbaSession *session, const Case *c) {
     memset(game, 0, sizeof(*game));
     nba_session_init(session);
@@ -126,9 +101,8 @@ static bool horn_gate_cases(void) {
            game.period_raw_0926 == 1u;
 }
 
-/* End-to-end control-flow witness starting two writer ticks before the horn.
- * The writer itself is independently covered by shot_state_vector_probe; this
- * intentionally composes its observable countdown with the lifecycle gate. */
+/* C-only composition check. The two decrements below bypass the production
+ * clock writer; this is not an end-to-end native caller witness. */
 static bool two_tick_handoff_cases(void) {
     NbaSession session;
     NbaTipoff game;
@@ -161,9 +135,45 @@ static bool two_tick_handoff_cases(void) {
     return session.match.flow_state == NBA_MATCH_FLOW_FINAL;
 }
 
+/* Only input fields enter this projection. Expected words stay in the Python
+ * verifier and can never influence the production result. The native capture
+ * seeds clock=1 before EDC6; this adapter begins after its decrement, at the
+ * expiry gate with clock=0. Presentation timing/stamina are separate C tests. */
+static int project(void) {
+    char line[128], extra;
+    unsigned period, left, right, setting, count = 0;
+    while (fgets(line, sizeof(line), stdin)) {
+        if (sscanf(line, "%u %u %u %u %c", &period, &left, &right,
+                   &setting, &extra) != 4 || period > 4u || left > 65535u ||
+            right > 65535u || setting > 3u) return 2;
+        Case c = {"projection", (uint16_t)period, (uint16_t)left,
+                  (uint16_t)right, 0, 0, 0, false};
+        NbaSession session;
+        NbaTipoff game;
+        seed(&game, &session, &c);
+        session.config.main_values[3] = (uint16_t)setting;
+        if (!nba_tipoff_step_match_lifecycle(&game)) return 3;
+        if (session.match.flow_state == NBA_MATCH_FLOW_PERIOD_PRESENTATION_PENDING) {
+            /* Skip presentation only for the bounded terminal-word projection.
+             * No claim is made about the number of video frames consumed. */
+            session.match.presentation_ticks_remaining = 1u;
+            if (!nba_tipoff_step_match_lifecycle(&game) ||
+                !nba_tipoff_step_match_lifecycle(&game) ||
+                session.match.flow_state != NBA_MATCH_FLOW_LIVE) return 4;
+        } else if (session.match.flow_state != NBA_MATCH_FLOW_POSTGAME_PRESENTATION_PENDING) {
+            return 5;
+        }
+        printf("%u %u %u\n", game.period_raw_0926,
+               game.match_clock_raw_0928, game.dead_ball_dispatch_busy_raw_09b4);
+        ++count;
+    }
+    return count && !ferror(stdin) ? 0 : 2;
+}
+
 int main(int argc, char **argv) {
-    if (argc != 2 || !fixture_contains_cases(argv[1])) {
-        fprintf(stderr, "usage: match_lifecycle_expiry_probe <fixture.json>\n");
+    if (argc == 2 && !strcmp(argv[1], "--project")) return project();
+    if (argc != 2 || strcmp(argv[1], "--self-test")) {
+        fprintf(stderr, "usage: match_lifecycle_expiry_probe --project|--self-test\n");
         return 2;
     }
     static const Case cases[] = {
@@ -186,6 +196,6 @@ int main(int argc, char **argv) {
         fprintf(stderr, "two-tick lifecycle handoff mismatch\n");
         return 5;
     }
-    puts("match lifecycle expiry: 4 native outcomes + horn gate + two-tick handoff PASS");
+    puts("C-only lifecycle regression: 4 outcomes + horn gate + manual two-tick handoff PASS");
     return 0;
 }

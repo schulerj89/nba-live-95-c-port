@@ -1,4 +1,9 @@
-"""Regression checks for the ROM-driven title -> Game Setup handoff."""
+"""Deterministic C regressions for Setup; bounded native Rules witness separate.
+
+Most historical hashes below are C output baselines, not independent ROM
+equivalence. Only the explicitly sourced Rules reveal frames and independent
+asset/audio witnesses carry their documented native evidence.
+"""
 
 import argparse
 import csv
@@ -13,6 +18,9 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 from audio_fingerprint import assert_wav_fingerprint, wav_fingerprint
+from test_setup_rules_reveal import strict_json, validate_witness
+from test_setup_rules_settled import validate as validate_settled_witness
+from test_setup_rules_return import validate as validate_return_witness
 
 
 EXPECTED_RGB_SHA256 = {
@@ -20,8 +28,11 @@ EXPECTED_RGB_SHA256 = {
     # 105 releases $80:A2BF. 125/128 guard the formerly corrupt wrapped
     # construction cells; 130 is pixel-exact with Mesen transition frame 132.
     104: "2cbbeef1249170a43854962fa5b19fba628470c70beb9ce23e15a0f05cb891f2",
-    105: "a916ad913f486038f1811c8d15b8e7bc539476d7d49e37a45eb2e44f2289e2f8",
-    118: "6fdb16a76df0a6724650a250ecb0932ca7f78dd831ede75a28acca03ebe2a6fb",
+    # Bounded brightness-only updates independently predicted from native
+    # RGB555 conversion and audited against all57,344 pixels. This does not
+    # promote the whole initial Setup entrance to native parity.
+    105: "2cbbeef1249170a43854962fa5b19fba628470c70beb9ce23e15a0f05cb891f2",
+    118: "9047943a549bdc15fc77e61b8d34e93c14728d367185c3ab9d0733be907f50b0",
     125: "17b0b585205691998a2e9c5238ed919f874a90094afd8e51cd8025a4309377f5",
     128: "160ca9f0c0e602e43fa77116e9693179dbc79ca7121ff7383199c1970948c17e",
     130: "95e6190d88f4cbe4a6edb85ca1d4e8bc24870ff4cd09b3b9b2affd73a5666489",
@@ -80,7 +91,9 @@ EXPECTED_CURSOR_SHA256 = {
     6: "e3ec329dc39626391b9315e7ff60bf4c60b9a31b23d903bdcdca22ac5738fc65",
 }
 EXPECTED_MENU_RGB_SHA256 = {
-    "rules": "eef4fe78eae51de875169e8cab4d9caedfeb0125d8f2c085a463e53676a70d8f",
+    # Native hold753/C450 after exact reveal + continued IRQ viewport and
+    # idle arrow palette. The companion gate checks every617..753 RGB frame.
+    "rules": "5282ebb046c621a3225df8c96b2b40b5908021bba0b2f0650e9be76d59bbbb9b",
     "options": "8f3e34fc6934d7313e486f6cb6e5c3793bd2e0aa6b28e2e5e0e91d3b8f30e246",
 }
 EXPECTED_MENU_ACTION_SHA256 = {
@@ -96,6 +109,13 @@ EXPECTED_MENU_ACTION_SHA256 = {
     ("options", 5, 1): "c2fbb4088093941e70e592d107993334c7b076395a5611f0c87f3552432996d2",
     ("options", 6, 1): "9471a8171fa543c5b570b0d5ffc85430038579908ae16f7c670d46631c9c2f26",
 }
+# These selected Rules snapshots now come from independent natural native UI
+# journeys at753/C450. Input timings differ; this is settled-state/pixel proof,
+# not equivalence of the navigation/scroll animation between button presses.
+for _menu_row, _rights in ((2, 1), (7, 0), (9, 0), (12, 0)):
+    _ui_witness = validate_settled_witness(strict_json((Path(__file__).resolve().parents[1] /
+        f"tests/fixtures/setup-rules-row{_menu_row}-native.json").read_text()))
+    EXPECTED_MENU_ACTION_SHA256[("rules", _menu_row, _rights)] = _ui_witness["rows"][0]["rgb_sha256"]
 EXPECTED_SUBMENU_TRANSITION_SHA256 = {
     ("open", 198): "6ef0efca4c6ffc9f65ef9d9b663719ab7a77614a587a9613e8204d671e3cb889",
     ("open", 219): "2cbbeef1249170a43854962fa5b19fba628470c70beb9ce23e15a0f05cb891f2",
@@ -103,11 +123,10 @@ EXPECTED_SUBMENU_TRANSITION_SHA256 = {
     # These checkpoints sit inside $80:A2BF's formerly exposed VRAM build.
     ("open", 234): "2cbbeef1249170a43854962fa5b19fba628470c70beb9ce23e15a0f05cb891f2",
     ("open", 242): "2cbbeef1249170a43854962fa5b19fba628470c70beb9ce23e15a0f05cb891f2",
-    # Pixel-exact Mesen frames 549/581/589. These catch transient layer-map
-    # mistakes that previously exposed partially built VRAM as garbage.
+    # Legacy values within native546..616 are replaced below by the strict
+    # synchronous native witness. The old async screenshot proof was invalid.
     ("open", 246): "2cbbeef1249170a43854962fa5b19fba628470c70beb9ce23e15a0f05cb891f2",
-    # Pixel-exact consecutive Mesen entrance frames. These lock the endFrame
-    # register state to the following scanout instead of one frame early.
+    # Historical C baselines retained here for readability of the migration.
     ("open", 258): "173954d6e9c0b1deb1336065c077478e5df1fdfa7dd6b58c438d55ec1012200e",
     ("open", 259): "5fe120f6cd620bcc6149486dac74a39501450a0ffacc5d2c517ce95fef74b56e",
     ("open", 262): "923709f429d1eee5dba16739b9a9353969a8f3ef7cbd80f8ac5bade00f506b61",
@@ -119,7 +138,8 @@ EXPECTED_SUBMENU_TRANSITION_SHA256 = {
     ("open", 299): "d44b1b0d7f8661abc80ca824d7ee8844541778829adad255921e011979859a5c",
     ("open", 307): "50d8ff6af090c3da9634c71474242799c546164844cff3e9417f4a5029aaf8e5",
     ("open", 313): "dc47df3afd364178ea855980c1f9218f9e68530c2f4b3315678ab8e865b9f79b",
-    ("open", 314): "6d8a554e4012faca94fc2c6ad017ee9af72305f36ad1e74d39ff68eaaac30996",
+    # Native617 verifies the first frame after the packed trace is released.
+    ("open", 314): "a975fcd258efba3f923f35e76ea80c479f01dccdd72864badc6c4cfa7f740cd5",
     # These early-return checkpoints straddle the map/CHR construction DMA.
     # They must remain clean outgoing-page scanout, never raw tile memory.
     ("close", 319): "65f8b285fa51bfcdab3c3a0ddee180d3668535eea7554a4eba39f58238d18bda",
@@ -135,8 +155,31 @@ EXPECTED_SUBMENU_TRANSITION_SHA256 = {
     ("close", 424): "85c0f2bf5b2e75e5ad1ec233e654f70ae13841b76a769e3e4c27e42d27d7affb",
     ("close", 450): "c238e0e8750eaffac37606ab71bb7201ce4fc81cf1447d28940f260b98446ce6",
 }
+_RULES_WITNESS = validate_witness(strict_json((Path(__file__).resolve().parents[1] /
+    "tests/fixtures/setup-rules-reveal-native.json").read_text()))
+for _row in _RULES_WITNESS["rows"]:
+    _key = ("open", _row["port_step"])
+    if _key in EXPECTED_SUBMENU_TRANSITION_SHA256:
+        EXPECTED_SUBMENU_TRANSITION_SHA256[_key] = _row["rgb_sha256"]
+_RULES_OPEN_WITNESS = validate_witness(strict_json((Path(__file__).resolve().parents[1] /
+    "tests/fixtures/setup-rules-open-native.json").read_text()))
+for _row in _RULES_OPEN_WITNESS["rows"]:
+    _key = ("open", _row["port_step"] - 717)
+    if _key in EXPECTED_SUBMENU_TRANSITION_SHA256:
+        EXPECTED_SUBMENU_TRANSITION_SHA256[_key] = _row["rgb_sha256"]
+_RULES_RETURN_WITNESS = validate_return_witness(strict_json((Path(__file__).resolve().parents[1] /
+    "tests/fixtures/setup-rules-return-hold-native.json").read_text()))
+for _row in _RULES_RETURN_WITNESS["rows"]:
+    # Native Start830/C527 uses212 extra input-idle frames versus the legacy
+    # C script's Start315. Preserve logical keys; expected pixels come only
+    # from the native return witness, never from the modified implementation.
+    _key = ("close", _row["port_step"] - 212)
+    if _key in EXPECTED_SUBMENU_TRANSITION_SHA256:
+        EXPECTED_SUBMENU_TRANSITION_SHA256[_key] = _row["rgb_sha256"]
 EXPECTED_OPTIONS_OPEN_TRANSITION_SHA256 = {
-    198: "c269ee7e887b7359b1510590450e6b08a52b6f2b36ac49cf80cd2ea11da016e9",
+    # Independent controlled-native brightness table predicts every changed
+    # pixel from the preserved pre-change image (options-open audit).
+    198: "8205aad58eab156a3e3729fab183c4c5348e86cbc77176dc09ed2d216d343be7",
     219: "2cbbeef1249170a43854962fa5b19fba628470c70beb9ce23e15a0f05cb891f2",
     259: "923709f429d1eee5dba16739b9a9353969a8f3ef7cbd80f8ac5bade00f506b61",
     263: "3f96e4fed79121d9caae851d45bc7c7af7b084c14f260b0660a7fcf41c829589",
@@ -156,7 +199,9 @@ EXPECTED_OPTIONS_RETURN_TRANSITION_SHA256 = {
     322: "c29ac2a0ecf74a04e17d3b75872ee76519c11053a474daea8898bac85f4e76d3",
     323: "c29ac2a0ecf74a04e17d3b75872ee76519c11053a474daea8898bac85f4e76d3",
     324: "cc267eeed6208dd3ef155933f0b6e313fed9c204b1a2e20c075a83c4f7d203cc",
-    343: "7fba1877ba87210d01e19a94949947321851165d899d8e36226709b46401e66b",
+    # Same independently verified brightness-only derivation; this does not
+    # certify the legacy Options return scheduler/trace as ROM-equivalent.
+    343: "40db00f19ac4a86382405788ba6732a3423ac8947a88c7c76c9a91a15aa6aeff",
     355: "2cbbeef1249170a43854962fa5b19fba628470c70beb9ce23e15a0f05cb891f2",
     367: "2cbbeef1249170a43854962fa5b19fba628470c70beb9ce23e15a0f05cb891f2",
     423: "6a6d9555e98d595b096bde43038040808a49a474bf987c6f5cbcc9caea494976",
@@ -165,7 +210,8 @@ EXPECTED_OPTIONS_RETURN_TRANSITION_SHA256 = {
 MESEN_MENU_PRIMITIVE_SHA256 = {
     "rules_bar": "6a08a0e635e0d0ae5c24cafbaf3507fd16ce61c0f3adc0c282a8b620b36f48c8",
     "options_bar": "bda182a61baf1f225317538bd3e4d4ddae969498ae47fd40794504342a8708cb",
-    "down_arrow": "e317f78198cf0dcd1d56b6e97da7117a9ea9722d1df421029b875e78d926b16f",
+    # Native idle palette3; the old palette2 witness was a recent press.
+    "down_arrow": "92409e5622a90c322305da2be37e4e34cd4fd895ad008131dbf24e49de94631b",
 }
 EXPECTED_MENU_SFX_SHA256 = {
     120: "da27ef1aacd1e96b71b40e6b0baacd0a8fa4f02ddae8754d3fc620602670eaae",
@@ -193,8 +239,10 @@ EXPECTED_MENU_ASSET_SHA256 = {
     141: "ed829c237970e861f130a6b7966ee0ef911623cd39d56c142238ec95432d2102",
     142: "e01ff3a82d09d77d018ed79f2b54fd7620f975b523c680690d15efeea8b6adfa",
     143: "1e5c485b7ed12fe444588a5beebd984fa6489598fcb43064187e1617ab0238ce",
-    144: "6342436ee7e704b2ad719c98b84e0685e87c2131dbf53b6230f225e40b16d490",
-    145: "a445a12fd7d330d86ffc41ac2a42ec5b4b211a9c61fa2dbf23991e8a6ce6f33a",
+    # Regenerated solely from canonical Simulation/3min native raw PPU inputs;
+    # no rendered emulator image is included in these production assets.
+    144: "34d010c965f58a851c9622553466102c49b1faabde83ac674957d90ee2d51553",
+    145: "e0fc08503583e4ddf9ec917e99ff821f81e47950e52f7c419fdf3bbe9bb5e90d",
     146: "1e5c485b7ed12fe444588a5beebd984fa6489598fcb43064187e1617ab0238ce",
     147: "8a95be0e8f109eec61af8385fc022072cffd57c13b13bf94b441a0d273ea8e65",
     148: "b2485adab570e6b133bf54108160ec9423070f041eaa9663cb566fc0e5e30b4e",
@@ -203,8 +251,8 @@ EXPECTED_MENU_ASSET_SHA256 = {
     151: "149925f90253de9d279723359ce56a4cb8c601d176b642c8366fc465409b882e",
     152: "eb893005c6d675b73d997f32fe2b479a9d1b8b71425f05e606519da09279ff68",
     153: "acc87f5139c463275742a378f966c64cc030b40f9712dc0e7329ddc57e622b31",
-    154: "d3fa496f57f7bfaca0780582175b06e1c897efdb4583210f8dbb7c81d05cba65",
-    155: "a36d0f44fa4437716a2230a7e61664a14439cdfbbd377a227bbc686fd1af7aed",
+    154: "c0f020106386715daa7583eaca351851bf7a4863c2118079ffa7d56bbb2693ec",
+    155: "5df91ebf3bec4fe9fa346f5d808d73871fe18ac0e07cf19864bc88a0533e75b6",
     156: "12d8c001afc6e355654d1965a1fbe7e7c405e028774449f70c3eece17919f43f",
     157: "a93724eda8d5190b1a1fd253812534aa942a68d0654c4608bf029342a111a01f",
 }
@@ -212,7 +260,10 @@ EXPECTED_MAIN_VALUE_RGB_SHA256 = {
     (0, 1): "e4204d3c33d0bae2680ad2a2ac2f5cc14ceec6e4bc4e8bee2f35cad05a0efdc9",
     (0, 2): "96be8085c9ae412d13fb265a992b99a49dad540aa6a7b8f696c0b348a71c0fb4",
     (0, 3): "2f952c609272ebab6fbc1f8388a1e91671b11001590de6c0a716fbb0ed120ba7",
-    (1, 1): "e6607c9e642194429b9e8de48359e82325ea18b08da7e98619f9d77bc3838a0f",
+    # Independent prediction: old C baseline plus native Custom980's y104
+    # shadow strip at the same BG2v30. Exactly26 pixels change; this remains
+    # a static C regression, not a full native main-value journey witness.
+    (1, 1): "e8f91cea8043243dd2300f9b3e4e4c90a487e3c9c86f0459650eadd3c47c1771",
     (1, 2): "a59cc2515140ccd18c36b91bbf74177eb27f8eb552f70e2038f41d86a69bfbcc",
     (2, 1): "0d0eec20edddc55dc5ae41f4595b2b1a30e6c82050b0f14524f4adfe95a8ca04",
     (2, 2): "5a550fa69536f7dea18be1157c7f55365baa31a37db456203851e7cc5b1e0070",
@@ -345,7 +396,8 @@ def check_pack(pack_path):
     if offset != len(assets[92]) or ppu_writes != 3094:
         raise AssertionError("invalid Setup entrance PPU write stream")
     for asset_id, expected_frames, expected_writes in (
-        (145, 146, 25520), (148, 132, 23229),
+        # Canonical raw witness471..616 contains25370 VRAM+140 CGRAM writes.
+        (145, 146, 25510), (148, 132, 23229),
         (151, 132, 23070), (155, 132, 25001)
     ):
         trace = assets[asset_id]
@@ -360,7 +412,9 @@ def check_pack(pack_path):
             if offset + 38 > len(trace):
                 raise AssertionError(f"truncated submenu PPU trace {asset_id}")
             brightness, main, sub, reserved = struct.unpack_from("<BBBB", trace, offset)
-            if brightness > 15 or main > 31 or sub > 31 or reserved != 0:
+            # Rules-open bit6 marks observed INIDISP; bit7 is forced blank.
+            valid_flags = (0x40, 0xC0) if asset_id in (145, 155) else (0,)
+            if brightness > 15 or main > 31 or sub > 31 or reserved not in valid_flags:
                 raise AssertionError(f"invalid submenu PPU screen state {asset_id}")
             for layer in range(3):
                 hscroll, vscroll, tilemap, char_base, wide, tall = \
@@ -744,16 +798,20 @@ def check_frames(exe, rom, pack):
                 if arrow != MESEN_MENU_PRIMITIVE_SHA256["down_arrow"]:
                     raise AssertionError("Set Rules viewport arrow differs from Mesen")
 
-        # The ROM does not swap pages immediately. $80:A3B8 first scrolls BG3
-        # away, slides BG1/BG2 out under a 15-step fade, holds while the new
-        # layer state is built, then runs the standard entrance in reverse.
+        # Rules opening and return checkpoints use independent synchronous
+        # native witnesses with fixed input-idle phase alignment.
         for (direction, frame), expected_hash in EXPECTED_SUBMENU_TRANSITION_SHA256.items():
             output = Path(directory) / f"submenu_{direction}_{frame}.bmp"
             command = [str(exe), "--headless", "--setup-only", "--setup-menu", "rules"]
             if direction == "close":
-                command.append("--setup-menu-confirm")
+                command.extend(["--setup-menu-confirm", "--setup-menu-confirm-delay", "212"])
+            else:
+                # Same independently fixed input-idle phase alignment as the
+                # complete146-frame gate; this never changes game timing.
+                command.extend(["--setup-menu-delay", "717"])
             command.extend(["--rom", str(rom), "--assets", str(pack),
-                            "--frames", str(frame), "--dump-frame", str(output)])
+                            "--frames", str(frame + (717 if direction == "open" else 212)),
+                            "--dump-frame", str(output)])
             result = subprocess.run(command, text=True, capture_output=True, check=True)
             actual = hashlib.sha256(Image.open(output).convert("RGB").tobytes()).hexdigest()
             if actual != expected_hash:
@@ -820,7 +878,10 @@ def check_frames(exe, rom, pack):
             raise AssertionError("Rules transition CSV changed directed route")
         blank_rows = [int(row["transition_frame"]) for row in rows
                       if int(row["forced_blank"])]
-        if blank_rows != list(range(51, 81)) or \
+        # Canonical native521 asserts blank;522 releases at brightness0;
+        # native523..546 assert blank again. Preserve the observed bit7,
+        # rather than fitting a broad blank interval to screenshots.
+        if blank_rows != [51] + list(range(53, 77)) or \
                 len({row["rgb_fnv64"] for row in rows if int(row["forced_blank"])}) != 1:
             raise AssertionError("Rules transition did not preserve $2100 forced blank")
 
@@ -863,14 +924,16 @@ def check_frames(exe, rom, pack):
                 )
         if int(rows[1]["bg2v"]) != visible_bg2_origin:
             raise AssertionError("Rules transition reset BG2 before forced blank")
-        if [int(row["bg2v"]) for row in rows[-3:]] != [21, 21, 22]:
+        if [int(row["bg2v"]) for row in rows[-3:]] != [21, 22, 22]:
             raise AssertionError("Rules transition lost the rebuilt BG2 settle cadence")
 
         # Prove the handoff from the last packed state back to the steady
         # updater. The ROM holds/increments according to the phase established
         # by $80:A3B8; it never jumps back to the lifetime Setup frame value.
         for menu, checkpoints in {
-            "rules": {313: 22, 314: 22, 315: 22, 316: 23},
+            # Native616..619:22,22,23,23. Do not preserve the stale delayed
+            # trace's extra hold at315; native continuation is tested too.
+            "rules": {313: 22, 314: 22, 315: 23, 316: 23},
             "options": {300: 18, 301: 19, 302: 19, 303: 19, 304: 20},
         }.items():
             for frame, expected_bg2v in checkpoints.items():
@@ -900,6 +963,7 @@ def check_frames(exe, rom, pack):
                 raise AssertionError(f"Set {menu.title()} did not play move SFX")
             if rights and "DSP menu SFX SRCN $1A" not in result.stdout:
                 raise AssertionError(f"Set {menu.title()} did not play adjust SFX")
+
             actual = hashlib.sha256(Image.open(output).convert("RGB").tobytes()).hexdigest()
             if actual != expected_hash:
                 raise AssertionError(
@@ -940,6 +1004,23 @@ def check_frames(exe, rom, pack):
                     raise AssertionError(
                         f"Set Options row {row} retained the previous value tail"
                     )
+
+        # Original $87:8BA6-$8C18/$81:D327: an accepted Down highlights its
+        # opaque arrow interior for exactly15 frames. Native normal-input
+        # setup_rules_simulation_arrows_v1 frames700..716: pixel(24,191) is
+        # idle(132,115,0), then15x(255,255,231), then idle. C's corresponding
+        # accepted press is315, independently of the different entry timing.
+        arrow_dir = Path(directory) / "arrow_timer"
+        arrow_dir.mkdir()
+        subprocess.run([str(exe), "--headless", "--setup-only", "--setup-menu", "rules",
+            "--setup-menu-row", "1", "--rom", str(rom), "--assets", str(pack),
+            "--frames", "330", "--dump-sequence-from", "314", "--dump-sequence-dir", str(arrow_dir)],
+            text=True, capture_output=True, check=True, timeout=30)
+        for frame in range(314, 331):
+            pixel = Image.open(arrow_dir / f"frame_{frame:04d}.bmp").convert("RGB").getpixel((24, 191))
+            expected = (255, 255, 231) if 315 <= frame <= 329 else (132, 115, 0)
+            if pixel != expected:
+                raise AssertionError(f"native arrow press lifetime/palette differs at C{frame}")
 
         # $7E:16FB is a working copy: an edit must not alter the committed
         # block until Start runs $81:D516 or $82:8CD9/$82:8D0A.
@@ -1035,7 +1116,7 @@ def main():
     args = parser.parse_args()
     check_pack(Path(args.pack))
     check_frames(Path(args.exe), Path(args.rom), Path(args.pack))
-    print("[TEST] PASS: Setup transition, Rules/Options persistence, menu SFX assets, ROM audio")
+    print("[TEST] PASS: C Setup/Rules/Options regression, session values and audio asset checks; independent native transition gates are separate")
 
 
 if __name__ == "__main__":

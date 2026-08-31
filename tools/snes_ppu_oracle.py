@@ -41,8 +41,11 @@ def cgram_color(cgram, index, brightness):
     offset = (index * 2) & 0x1FF
     word = cgram[offset] | cgram[(offset + 1) & 0x1FF] << 8
     channels = [word & 31, (word >> 5) & 31, (word >> 10) & 31]
-    rgb = [((value << 3) | (value >> 2)) * brightness // 15
-           for value in channels]
+    # Mesen's PPU applies INIDISP to RGB555, before its video filter expands
+    # channels. The old independent oracle repeated the C renderer's RGB888
+    # scaling defect; agreement between them did not validate dimmed frames.
+    levels = [value * brightness // 15 for value in channels]
+    rgb = [(level << 3) | (level >> 2) for level in levels]
     return tuple(rgb)
 
 

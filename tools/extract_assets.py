@@ -8,6 +8,7 @@ import numpy as np
 
 import re
 from snes65816_decompressor import Snes65816Decompressor
+from setup_transition_capture import validate_rules_capture, read_ppu_states, read_rgb_flags
 
 NBA_ROM_EXPECTED_SHA256 = "2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870"
 
@@ -1492,10 +1493,36 @@ def create_asset_pack(rom_path, output_path):
         "setup_option_values", "options_assistance_on_vram.bin", 0x10000)
 
     def build_menu_ppu_trace(menu_name, prefix, first_frame, last_frame):
-        base_vram = read_setup_menu_capture(menu_name, f"{prefix}_transition_vram.bin", 0x10000)
-        base_cgram = read_setup_menu_capture(menu_name, f"{prefix}_transition_cgram.bin", 0x200)
+        # Rules routes use synchronous getScreenBuffer RGB evidence and
+        # Mesen frame skipping disabled (transition-ownership-20260830).
+        # Its prior whole-frame delay was fitted to asynchronous screenshots,
+        # not native scanout. Options routes retain their historical contract
+        # until separately recaptured; do not extend this bounded claim.
+        current_scanout = menu_name == "rules"
         directory = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..",
                                  ".analysis", f"setup_{menu_name}")
+        if current_scanout:
+            suffix = "setup_rules_exact" if prefix == "open" else "setup_rules_return_exact"
+            directory = os.environ.get(f"NBA95_RULES_{prefix.upper()}_CAPTURE", os.path.join(
+                os.path.dirname(os.path.abspath(__file__)), "..", ".analysis", suffix))
+            manifest = validate_rules_capture(directory, include_return=prefix == "return")
+            if prefix == "return" and manifest.get("configuration", {}).get("hold_menu_without_value_edits") is not True:
+                raise ValueError("Rules production return base requires the unchanged native hold-menu capture")
+        base_vram = open(os.path.join(directory, f"{prefix}_transition_vram.bin"), "rb").read()
+        base_cgram = open(os.path.join(directory, f"{prefix}_transition_cgram.bin"), "rb").read()
+        if len(base_vram) != 0x10000 or len(base_cgram) != 0x200:
+            raise RuntimeError("Invalid transition VRAM/CGRAM snapshot size")
+        forced_blank = {}
+        if current_scanout:
+            flag_path = os.path.join(directory, "rgb_state.csv")
+            if not os.path.isfile(flag_path):
+                raise RuntimeError("Rules open requires a fresh exact capture with rgb_state.csv; "
+                                   "run capture_setup_transition_exact.ps1 -OutputRoot .analysis/setup_rules_exact "
+                                   "-SimulationThreeMinute (or set NBA95_RULES_OPEN_CAPTURE)")
+            for name, row in read_rgb_flags(flag_path).items():
+                match = re.fullmatch(rf"{'open' if prefix == 'open' else 'close'}_step_(\d+)\.png", name)
+                if match:
+                    forced_blank[int(match[1])] = int(row["forced_blank"])
         events = ({}, {})
         states = {}
         for event_index, memory_name in enumerate(("vram", "cgram")):
@@ -1507,34 +1534,35 @@ def create_asset_pack(rom_path, output_path):
                 frame = int(frame_text)
                 if frame < first_frame:
                     raise RuntimeError(f"Invalid submenu PPU trace frame: {raw.strip()}")
-                # endFrame screenshots contain the scanout just presented,
-                # while VRAM/CGRAM reads observe memory prepared for the next
-                # scanout.  Delay deltas one frame so construction DMA cannot
-                # leak raw tiles through the still-visible outgoing page.
-                packed_frame = frame + 1 - first_frame
+                # Historical routes retain their old delay pending a fresh
+                # direct-frame audit; Rules open uses current native inputs.
+                packed_frame = frame + (0 if current_scanout else 1) - first_frame
                 if packed_frame < 0 or packed_frame >= last_frame - first_frame + 1:
                     continue
                 events[event_index].setdefault(packed_frame, []).append(
                     (int(address_text, 16), int(value_text, 16)))
         state_path = os.path.join(directory, f"{prefix}_transition_ppu_states.txt")
-        for raw in open(state_path, "r", encoding="ascii"):
-            fields = list(map(int, raw.split()))
-            if len(fields) != 22 or fields[0] < first_frame:
-                raise RuntimeError(f"Invalid submenu PPU state: {raw.strip()}")
-            if fields[0] <= last_frame:
-                states[fields[0] - first_frame] = fields[1:]
+        for native_frame, values in read_ppu_states(state_path).items():
+            if native_frame < first_frame:
+                raise RuntimeError(f"Invalid submenu PPU state frame: {native_frame}")
+            if native_frame <= last_frame:
+                states[native_frame - first_frame] = values
         frame_count = last_frame - first_frame + 1
         if len(states) != frame_count:
             raise RuntimeError(f"Incomplete Set {menu_name.title()} {prefix} PPU states")
         trace = bytearray(struct.pack("<8sII", b"NBSPPU2\0", 2, frame_count))
-        # endFrame exposes the PPU registers prepared for the following
-        # scanout, just as it does VRAM/CGRAM. Pack the preceding state so the
-        # shared $80:A2BF/$80:A3B8 scroll, fade, and map switch are presented
-        # on the same frame as Mesen's completed image. Frame zero is already
-        # the first transition state and therefore clamps to itself.
+        # NBSPPU2's reserved state byte now uses bit6 to mark an observed
+        # INIDISP bit7 and bit7 for forced blank. This prevents static route
+        # windows from exposing config-dependent one-frame builder work.
         for frame in range(frame_count):
-            state = states[max(0, frame - 1)]
-            trace.extend(struct.pack("<BBBB", state[0], state[1], state[2], 0))
+            state = states[frame if current_scanout else max(0, frame - 1)]
+            flags = 0
+            if current_scanout:
+                blank = forced_blank.get(frame + first_frame)
+                if blank not in (0, 1):
+                    raise RuntimeError("Missing/invalid per-frame forced-blank observation")
+                flags = 0x40 | (blank << 7)
+            trace.extend(struct.pack("<BBBB", state[0], state[1], state[2], flags))
             for layer in range(3):
                 base = 3 + layer * 6
                 trace.extend(struct.pack(

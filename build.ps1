@@ -87,6 +87,22 @@ if ($Test) {
     if ($LASTEXITCODE -ne 0) { throw 'Native verifier protocol integrity failed.' }
     & python (Join-Path $Root 'tools\test_differential.py')
     if ($LASTEXITCODE -ne 0) { throw 'Strict differential harness unit tests failed.' }
+    & python (Join-Path $Root 'tools\test_mesen_portable.py')
+    if ($LASTEXITCODE -ne 0) { throw 'Private Mesen capture isolation checks failed.' }
+    & python (Join-Path $Root 'tools\test_closure_diagnostic_integrity.py')
+    if ($LASTEXITCODE -ne 0) { throw 'Closure attribution protocol integrity failed.' }
+    & python (Join-Path $Root 'tools\test_rules_custom_caller_verifier.py')
+    if ($LASTEXITCODE -ne 0) { throw 'Rules Custom caller protocol integrity failed.' }
+    & python (Join-Path $Root 'tools\test_inbound_verifier_integrity.py')
+    if ($LASTEXITCODE -ne 0) { throw 'Inbound verifier protocol integrity failed.' }
+    & python (Join-Path $Root 'tools\test_ppu_brightness_verifier.py')
+    if ($LASTEXITCODE -ne 0) { throw 'Native brightness witness protocol integrity failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name ppu_brightness_probe
+    & python (Join-Path $Root 'tools\verify_ppu_brightness.py') `
+        --vectors (Join-Path $Root 'tests\fixtures\ppu-brightness-witnesses.json') `
+        --probe (Join-Path $BuildDir 'ppu_brightness_probe.exe') `
+        --report (Join-Path $BuildDir 'ppu-brightness-report.json')
+    if ($LASTEXITCODE -ne 0) { throw 'Controlled native PPU brightness comparison failed.' }
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name differential_observer_probe
     & (Join-Path $BuildDir 'differential_observer_probe.exe') $AssetPack
     if ($LASTEXITCODE -ne 0) { throw 'Differential observer changed gameplay or missed real sweep boundaries.' }
@@ -210,10 +226,24 @@ if ($Test) {
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name match_lifecycle_probe
     & (Join-Path $BuildDir 'match_lifecycle_probe.exe') $AssetPack $RomPath
     if ($LASTEXITCODE -ne 0) { throw 'Match lifecycle initialization binding failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name new_match_runtime_probe
+    & python (Join-Path $Root 'tools\verify_new_match_reset.py') `
+        --fixture (Join-Path $Root 'tests\fixtures\new-match-native-start.json') `
+        --probe (Join-Path $BuildDir 'new_match_runtime_probe.exe') `
+        --pack $AssetPack --rom $RomPath
+    if ($LASTEXITCODE -ne 0) { throw 'New-match native startup projection/C return journey failed.' }
+    & python (Join-Path $Root 'tools\test_new_match_reset.py')
+    if ($LASTEXITCODE -ne 0) { throw 'New-match verifier protocol integrity failed.' }
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name match_lifecycle_expiry_probe
-    & (Join-Path $BuildDir 'match_lifecycle_expiry_probe.exe') `
-        (Join-Path $Root 'tests\fixtures\match-lifecycle-expiry-witnesses.json')
-    if ($LASTEXITCODE -ne 0) { throw 'Match lifecycle expiry native replay failed.' }
+    & (Join-Path $BuildDir 'match_lifecycle_expiry_probe.exe') --self-test
+    if ($LASTEXITCODE -ne 0) { throw 'C-only lifecycle expiry regression failed.' }
+    & python (Join-Path $Root 'tools\verify_match_lifecycle.py') `
+        --fixture (Join-Path $Root 'tests\fixtures\match-lifecycle-expiry-witnesses.json') `
+        --probe (Join-Path $BuildDir 'match_lifecycle_expiry_probe.exe')
+    if ($LASTEXITCODE -ne 0) { throw 'Recorded lifecycle terminal-word projection failed.' }
+    & python (Join-Path $Root 'tools\test_match_lifecycle_verifier.py') `
+        --probe (Join-Path $BuildDir 'match_lifecycle_expiry_probe.exe')
+    if ($LASTEXITCODE -ne 0) { throw 'Lifecycle verifier mutation checks failed.' }
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name timeout_resume_runtime_probe
     & (Join-Path $BuildDir 'timeout_resume_runtime_probe.exe')
     if ($LASTEXITCODE -ne 0) { throw 'Timeout/resume runtime binding failed.' }
@@ -343,6 +373,11 @@ if ($Test) {
         --vectors (Join-Path $Root 'tests\fixtures\inbound-arrival-witnesses.json') `
         --probe (Join-Path $BuildDir 'inbound_arrival_vector_probe.exe')
     if ($LASTEXITCODE -ne 0) { throw 'Inbound arrival ROM witness regression failed.' }
+    & python (Join-Path $Root 'tools\verify_inbound_internal.py') `
+        --vectors (Join-Path $Root 'tests\fixtures\inbound-internal-witnesses.json') `
+        --motion-probe (Join-Path $BuildDir 'inbound_motion_vector_probe.exe') `
+        --arrival-probe (Join-Path $BuildDir 'inbound_arrival_vector_probe.exe')
+    if ($LASTEXITCODE -ne 0) { throw 'Inbound internal native-stage projection failed.' }
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name inbound_selector_vector_probe
     & python (Join-Path $Root 'tools\verify_inbound_selector_vectors.py') `
         --vectors (Join-Path $Root 'tests\fixtures\inbound-selector-witnesses.json') `
@@ -453,6 +488,22 @@ if ($Test) {
     if ($LASTEXITCODE -ne 0) {
         throw "Title regression tests failed with exit code $LASTEXITCODE"
     }
+    & python (Join-Path $Root 'tools\test_setup_transition_integrity.py')
+    if ($LASTEXITCODE -ne 0) { throw 'Native transition witness integrity failed.' }
+    & python (Join-Path $Root 'tools\test_setup_rules_reveal.py') `
+        --pack $AssetPack --exe $ConsoleExePath --rom $RomPath
+    if ($LASTEXITCODE -ne 0) { throw 'Consecutive native Rules incoming-reveal comparison failed.' }
+    & python (Join-Path $Root 'tools\test_setup_rules_reveal.py') --whole-open `
+        --pack $AssetPack --exe $ConsoleExePath --rom $RomPath
+    if ($LASTEXITCODE -ne 0) { throw 'Consecutive native Rules whole-open comparison failed.' }
+    & python (Join-Path $Root 'tools\test_setup_rules_settled.py') `
+        --pack $AssetPack --exe $ConsoleExePath --rom $RomPath
+    if ($LASTEXITCODE -ne 0) { throw 'Consecutive native Rules steady-screen comparison failed.' }
+    foreach ($ReturnMode in @('hold', 'custom-row2')) {
+        & python (Join-Path $Root 'tools\test_setup_rules_return.py') `
+            --mode $ReturnMode --pack $AssetPack --exe $ConsoleExePath --rom $RomPath
+        if ($LASTEXITCODE -ne 0) { throw "Consecutive native Rules return failed: $ReturnMode" }
+    }
     & python (Join-Path $Root "tools\test_setup_transition.py") `
         --pack $AssetPack --exe $ConsoleExePath --rom $RomPath
     if ($LASTEXITCODE -ne 0) {
@@ -527,6 +578,13 @@ if ($Test) {
     if ($LASTEXITCODE -ne 0) {
         throw 'Multi-team gameplay-85 state/render endurance failed.'
     }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name rules_custom_caller_probe
+    & python (Join-Path $Root 'tools\verify_rules_custom_caller.py') `
+        --fixture (Join-Path $Root 'tests\fixtures\setup-config-native-witnesses.json') `
+        --probe (Join-Path $BuildDir 'rules_custom_caller_probe.exe') `
+        --rom $RomPath --pack $AssetPack `
+        --report (Join-Path $BuildDir 'rules-custom-caller-report.json')
+    if ($LASTEXITCODE -ne 0) { throw 'Native Rules adjustment/Custom caller projection failed.' }
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name gameplay100_closure_probe
     & (Join-Path $BuildDir 'gameplay100_closure_probe.exe') $AssetPack
     if ($LASTEXITCODE -ne 0) {

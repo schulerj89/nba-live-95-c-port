@@ -11,7 +11,7 @@
     "rom_bytes": 1572864,
     "decoded_starts": 60346,
     "decoded_bytes": 146425,
-    "observed_starts": 26688,
+    "observed_starts": 27478,
     "verified_starts": 11526,
     "undecoded_bytes": 1426439
   },
@@ -21,7 +21,7 @@
       "rom_bytes": 32768,
       "decoded_starts": 9481,
       "decoded_bytes": 20864,
-      "observed_starts": 5658,
+      "observed_starts": 5977,
       "verified_starts": 366,
       "undecoded_bytes": 11904
     },
@@ -30,7 +30,7 @@
       "rom_bytes": 32768,
       "decoded_starts": 6716,
       "decoded_bytes": 16148,
-      "observed_starts": 2592,
+      "observed_starts": 2845,
       "verified_starts": 0,
       "undecoded_bytes": 16620
     },
@@ -57,7 +57,7 @@
       "rom_bytes": 32768,
       "decoded_starts": 6044,
       "decoded_bytes": 14718,
-      "observed_starts": 166,
+      "observed_starts": 177,
       "verified_starts": 0,
       "undecoded_bytes": 18050
     },
@@ -84,7 +84,7 @@
       "rom_bytes": 32768,
       "decoded_starts": 8155,
       "decoded_bytes": 20700,
-      "observed_starts": 3392,
+      "observed_starts": 3599,
       "verified_starts": 2203,
       "undecoded_bytes": 12068
     },

@@ -1,6 +1,7 @@
 {
   "schema": 1,
   "purpose": "Whole-game planning estimate kept separate from native instruction coverage.",
+  "assessment_note": "The 2026-08-30 ownership audit does not endorse these inherited completion estimates as current proof. Missing option consumers, human gameplay, retail modes and unreliable historical consecutive-frame captures are recorded in docs/ownership-plan.md and its workstream inventories. No whole-game completion percentage is accepted as a release gate.",
   "features": [
     {
       "id": "boot_title",
@@ -12,7 +13,7 @@
       "recomp": "strong",
       "differential": "partial",
       "port_tests": "strong",
-      "remaining": "Finish frame/pixel equivalence for a few presentation boundaries.",
+      "remaining": "Reverify consecutive-frame boundaries with synchronous non-skipped Mesen output and isolated save state; historical screenshot timing and broad routine-address claims are insufficient.",
       "evidence": ["docs/ea-intro.md", "docs/title-to-setup-transition.md", "docs/post-ea-title-audio.md"]
     },
     {
@@ -25,8 +26,8 @@
       "recomp": "partial",
       "differential": "partial",
       "port_tests": "strong",
-      "remaining": "Broaden transition and option-combination visual witnesses.",
-      "evidence": ["docs/game-setup-screen.md", "docs/game-setup-audio.md"]
+      "remaining": "Fix resource-state timing, native raster IRQ visibility, changed-value transitions, Style presets/Custom propagation, and all runtime option consumers. Six rules and multiple audio/presentation settings have no production reader.",
+      "evidence": ["docs/game-setup-screen.md", "docs/game-setup-audio.md", "docs/options-test-ownership-audit.md"]
     },
     {
       "id": "pregame",
@@ -77,8 +78,8 @@
       "recomp": "partial",
       "differential": "partial",
       "port_tests": "strong",
-      "remaining": "Pixel-exact break/final scenes, substitution orchestration, and persistence modes.",
-      "evidence": ["STATUS.md", "docs/match-lifecycle.md", "docs/match-lifecycle-native-expiry.md"]
+      "remaining": "Pixel-exact break/final scenes, all pause/substitution choices and persistence modes. Second-match reset now has a native startup projection plus separate C return journeys; lifecycle terminal-word replay is repaired but does not prove timing or complete callers.",
+      "evidence": ["STATUS.md", "docs/match-lifecycle.md", "docs/match-lifecycle-native-expiry.md", "docs/new-match-reset.md", "docs/lifecycle-verifier-audit.md"]
     },
     {
       "id": "human_controls",

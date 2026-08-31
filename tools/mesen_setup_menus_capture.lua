@@ -8,6 +8,14 @@ local variant_mode = os.getenv("NBA95_CAPTURE_VARIANTS") == "1"
 local value_mode = os.getenv("NBA95_CAPTURE_VALUES") == "1"
 local call_mode = os.getenv("NBA95_CAPTURE_CALLS") == "1"
 local every_frame_mode = os.getenv("NBA95_CAPTURE_EVERY_FRAME") == "1"
+local canonical_ui_mode = os.getenv("NBA95_CAPTURE_CANONICAL_UI") == "1"
+local hold_menu_mode = os.getenv("NBA95_CAPTURE_HOLD_MENU") == "1"
+local repeat_visit_mode = os.getenv("NBA95_CAPTURE_REPEAT_VISIT") == "1"
+local target_menu_row = tonumber(os.getenv("NBA95_CAPTURE_TARGET_ROW") or "-1")
+local target_menu_rights = tonumber(os.getenv("NBA95_CAPTURE_TARGET_RIGHTS") or "0")
+assert(target_menu_row >= -1 and target_menu_row <= 12)
+assert(target_menu_rights >= 0 and target_menu_rights <= 2)
+local OPEN_LAST_FRAME = 829
 assert(out and out ~= "", "NBA95_CAPTURE_DIR is not set")
 assert(menu == "rules" or menu == "options", "NBA95_CAPTURE_MENU must be rules or options")
 
@@ -18,19 +26,50 @@ local wram_log = assert(io.open(out .. "/wram_writes.txt", "wb"))
 local dsp_log = assert(io.open(out .. "/dsp_writes.txt", "wb"))
 local ppu_log = assert(io.open(out .. "/menu_transition_ppu.txt", "wb"))
 local call_log = assert(io.open(out .. "/menu_transition_calls.txt", "wb"))
+local rgb_state_log = every_frame_mode and assert(io.open(out .. "/rgb_state.csv", "wb"))
+if rgb_state_log then rgb_state_log:write("name,forced_blank,brightness,main,sub\n") end
+local raster_log = every_frame_mode and assert(io.open(out .. "/raster_registers.csv", "wb"))
+if raster_log then raster_log:write("frame,scanline,address,value,pc\n") end
 local open_vram_writes = assert(io.open(out .. "/open_transition_vram_writes.txt", "wb"))
 local open_cgram_writes = assert(io.open(out .. "/open_transition_cgram_writes.txt", "wb"))
 local return_vram_writes = assert(io.open(out .. "/return_transition_vram_writes.txt", "wb"))
 local return_cgram_writes = assert(io.open(out .. "/return_transition_cgram_writes.txt", "wb"))
 local open_ppu_states = assert(io.open(out .. "/open_transition_ppu_states.txt", "wb"))
 local return_ppu_states = assert(io.open(out .. "/return_transition_ppu_states.txt", "wb"))
+local dispatch_ppu_states = assert(io.open(out .. "/dispatch_ppu_states.txt", "wb"))
+local repeat_open_vram_writes = repeat_visit_mode and assert(io.open(out .. "/repeat_open_transition_vram_writes.txt", "wb"))
+local repeat_open_cgram_writes = repeat_visit_mode and assert(io.open(out .. "/repeat_open_transition_cgram_writes.txt", "wb"))
+local repeat_return_vram_writes = repeat_visit_mode and assert(io.open(out .. "/repeat_return_transition_vram_writes.txt", "wb"))
+local repeat_return_cgram_writes = repeat_visit_mode and assert(io.open(out .. "/repeat_return_transition_cgram_writes.txt", "wb"))
+local repeat_open_ppu_states = repeat_visit_mode and assert(io.open(out .. "/repeat_open_transition_ppu_states.txt", "wb"))
+local repeat_return_ppu_states = repeat_visit_mode and assert(io.open(out .. "/repeat_return_transition_ppu_states.txt", "wb"))
 local global_frame = 0
 local title_frame = -1
 local setup_frame = -1
+local normalization_frame = -1
 local PRESS_TITLE_AT = 850
-local LAST_SETUP_FRAME = value_mode and 960 or 1050
+local LAST_SETUP_FRAME = repeat_visit_mode and 1650 or (value_mode and 960 or 1050)
 local target_row = menu == "rules" and 4 or 5
 local open_vram, open_cgram, return_vram, return_cgram
+local repeat_open_vram, repeat_open_cgram, repeat_return_vram, repeat_return_cgram
+
+if every_frame_mode then
+    emu.addMemoryCallback(function(address, value)
+        local reg = address & 0xffff
+        if (setup_frame >= 465 and setup_frame <= OPEN_LAST_FRAME) or
+           (setup_frame >= 825 and setup_frame <= 1000) or
+           (repeat_visit_mode and setup_frame >= 1001 and setup_frame <= 1630) then
+            if reg == 0x2100 or (reg >= 0x2105 and reg <= 0x2112) or
+               (reg >= 0x2123 and reg <= 0x2131) then
+                local state = emu.getState()
+                raster_log:write(string.format("%d,%d,%04X,%02X,%06X\n",
+                    setup_frame, state["ppu.scanline"] or -1, reg, value,
+                    state["cpu.pc"] or 0))
+            end
+        end
+    end, emu.callbackType.write, 0x002100, 0x002131,
+        emu.cpuType.snes, emu.memType.snesMemory)
+end
 
 local function dump_mem(name, mem_type, size)
     local chunks = {}
@@ -92,11 +131,34 @@ end
 local function shot(name)
     local f = assert(io.open(out .. "/" .. name, "wb"))
     f:write(emu.takeScreenshot()); f:close()
+    -- takeScreenshot reads VideoDecoder's asynchronously presented image.
+    -- It can repeat a previous frame even in --testrunner while PPU state
+    -- advances. getScreenBuffer renders the current PPU frame synchronously
+    -- (Mesen Core/Debugger/LuaApi.cpp::GetRenderedFrame); use this independent
+    -- RGB stream for exact consecutive-frame comparisons, never the PNG.
+    if every_frame_mode then
+        local pixels = emu.getScreenBuffer()
+        local chunks = {}
+        for i = 1, #pixels do
+            local color = pixels[i]
+            chunks[i] = string.char((color >> 16) & 255,
+                                     (color >> 8) & 255, color & 255)
+        end
+        local rgb = assert(io.open(out .. "/" .. name:gsub("%.png$", ".rgb"), "wb"))
+        rgb:write(table.concat(chunks)); rgb:close()
+        dump_mem(name:gsub("%.png$", ".oam"), emu.memType.snesSpriteRam, 0x220)
+        local state = emu.getState()
+        rgb_state_log:write(string.format("%s,%d,%d,%d,%d\n", name,
+            state["ppu.forcedBlank"] and 1 or 0, state["ppu.screenBrightness"],
+            state["ppu.mainScreenLayers"], state["ppu.subScreenLayers"]))
+        rgb_state_log:flush()
+    end
 end
 
 emu.addMemoryCallback(function()
     if title_frame >= PRESS_TITLE_AT and setup_frame < 0 then
         setup_frame = 0
+        if canonical_ui_mode then normalization_frame = 0 end
         log:write(string.format("entered setup global=%d\n", global_frame)); log:flush()
     end
 end, emu.callbackType.exec, 0x80A2BF, 0x80A2BF,
@@ -217,6 +279,18 @@ end
 
 emu.addEventCallback(function()
     local input = {}
+    if normalization_frame >= 0 then
+        -- The native builder ignores some early input while its text/resource
+        -- jobs run. Wait beyond the established steady370 boundary, then
+        -- allow60 frames after each menu operation. No RAM is modified.
+        if pulse(normalization_frame, 400) or pulse(normalization_frame, 520) or
+           pulse(normalization_frame, 580) then input.down = true end
+        if pulse(normalization_frame, 460) or pulse(normalization_frame, 640) then input.right = true end
+        if pulse(normalization_frame, 700) or pulse(normalization_frame, 760) or
+           pulse(normalization_frame, 820) then input.up = true end
+        emu.setInput(input, 0)
+        return
+    end
     if setup_frame < 0 then
         if pulse(title_frame, PRESS_TITLE_AT) then input.start = true end
     else
@@ -225,7 +299,17 @@ emu.addEventCallback(function()
         end
         if pulse(setup_frame, 470) then input.a = true end
         -- Exercise both value navigation and row navigation inside the menu.
-        if value_mode then
+        if target_menu_row >= 0 then
+            -- Natural state-aligned UI snapshots, distinct from the exact
+            -- no-input continuation. Capture/validate the final row at753.
+            for i = 0, target_menu_row - 1 do
+                if pulse(setup_frame, 620 + i * 10) then input.down = true end
+            end
+            for i = 0, target_menu_rights - 1 do
+                if pulse(setup_frame, 620 + (target_menu_row + i) * 10) then input.right = true end
+            end
+            if pulse(setup_frame, 830) then input.start = true end
+        elseif value_mode then
             -- Capture every Set Options discrete value independently from the
             -- settled default canvas.  Each changed row is restored before the
             -- next row is captured, making each VRAM delta safe to compose.
@@ -260,10 +344,25 @@ emu.addEventCallback(function()
             end
             if pulse(setup_frame, 830) then input.start = true end
         else
-            if pulse(setup_frame, 650) then input.right = true end
-            if pulse(setup_frame, 700) then input.down = true end
-            if pulse(setup_frame, 750) then input.left = true end
+            if not hold_menu_mode then
+                if pulse(setup_frame, 650) then input.right = true end
+                if pulse(setup_frame, 700) then input.down = true end
+                if pulse(setup_frame, 750) then input.left = true end
+            end
             if pulse(setup_frame, 830) then input.start = true end
+        end
+        if repeat_visit_mode then
+            for i = 0, target_row - 1 do
+                if pulse(setup_frame, 1010 + i * 12) then input.down = true end
+            end
+            if pulse(setup_frame, 1100) then input.a = true end
+            for i = 0, target_menu_row - 1 do
+                if pulse(setup_frame, 1250 + i * 10) then input.down = true end
+            end
+            for i = 0, target_menu_rights - 1 do
+                if pulse(setup_frame, 1250 + (target_menu_row + i) * 10) then input.right = true end
+            end
+            if pulse(setup_frame, 1460) then input.start = true end
         end
     end
     emu.setInput(input, 0)
@@ -273,6 +372,18 @@ emu.addEventCallback(function()
     global_frame = global_frame + 1
     if title_frame >= 0 and setup_frame < 0 then title_frame = title_frame + 1 end
     if setup_frame < 0 then return end
+    if normalization_frame >= 0 then
+        normalization_frame = normalization_frame + 1
+        if normalization_frame >= 920 then
+            normalization_frame = -1
+            -- Rebase evidence labels only, keeping the familiar opening470
+            -- coordinate. Emulator execution, scroll and memory continue.
+            setup_frame = 370
+            log:write(string.format("natural UI normalization done global=%d; evidence setup_frame rebased=370\n", global_frame))
+            log:flush()
+        end
+        return
+    end
     local frame = setup_frame
     setup_frame = setup_frame + 1
 
@@ -286,13 +397,15 @@ emu.addEventCallback(function()
         dump_wram("wram_open.bin"); shot("menu_open.png")
     end
     if frame == 470 then
+        trace_ppu_state(frame, dispatch_ppu_states)
         open_vram, open_cgram = snapshot_ppu("open_transition")
-    elseif frame >= 471 and frame <= 649 and open_vram then
+    elseif frame >= 471 and frame <= OPEN_LAST_FRAME and open_vram then
         trace_ppu(frame, open_vram, open_cgram,
                   open_vram_writes, open_cgram_writes)
         trace_ppu_state(frame, open_ppu_states)
     end
     if not value_mode and frame == 830 then
+        trace_ppu_state(frame, dispatch_ppu_states)
         return_vram, return_cgram = snapshot_ppu("return_transition")
     elseif not value_mode and frame >= 831 and frame <= 1000 and return_vram then
         trace_ppu(frame, return_vram, return_cgram,
@@ -311,6 +424,28 @@ emu.addEventCallback(function()
     if frame == 675 then dump_wram("wram_after_right.bin"); shot("after_right.png") end
     if frame == 725 then dump_wram("wram_after_down.bin"); shot("after_down.png") end
     if frame == 775 then dump_wram("wram_after_left.bin"); shot("after_left.png") end
+    if frame == 753 then dump_wram("wram_state753.bin") end
+    if repeat_visit_mode then
+        if frame == 1099 then dump_wram("wram_repeat_before_open.bin") end
+        if frame == 1190 then dump_wram("wram_repeat_open.bin") end
+        if frame == 1459 then dump_wram("wram_repeat_before_return.bin") end
+        if frame == 1490 then dump_wram("wram_repeat_after_return.bin") end
+        if frame == 1100 then
+            repeat_open_vram, repeat_open_cgram = snapshot_ppu("repeat_open_transition")
+        elseif frame >= 1101 and frame <= 1459 and repeat_open_vram then
+            trace_ppu(frame, repeat_open_vram, repeat_open_cgram, repeat_open_vram_writes, repeat_open_cgram_writes)
+            trace_ppu_state(frame, repeat_open_ppu_states)
+        end
+        if frame == 1460 then
+            repeat_return_vram, repeat_return_cgram = snapshot_ppu("repeat_return_transition")
+        elseif frame >= 1461 and frame <= 1630 and repeat_return_vram then
+            trace_ppu(frame, repeat_return_vram, repeat_return_cgram, repeat_return_vram_writes, repeat_return_cgram_writes)
+            trace_ppu_state(frame, repeat_return_ppu_states)
+        end
+        if frame >= 1001 and frame <= 1630 then
+            shot(string.format(frame < 1460 and "repeat_open_step_%04d.png" or "repeat_close_step_%04d.png", frame))
+        end
+    end
     if variant_mode and frame == 690 then
         dump_mem(menu .. "_off_vram.bin", emu.memType.snesVideoRam, 0x10000)
         shot(menu .. "_off.png")
@@ -351,7 +486,7 @@ emu.addEventCallback(function()
     if scroll_mode and frame == 780 then shot("rules_scroll_bottom.png") end
     if frame == 860 then dump_wram("wram_after_back.bin"); shot("after_back.png") end
 
-    if not value_mode and ((frame >= 465 and frame <= 649) or
+    if not value_mode and ((frame >= 465 and frame <= OPEN_LAST_FRAME) or
                            (frame >= 825 and frame <= 1000)) then
         local st = emu.getState()
         ppu_log:write(string.format(
@@ -367,7 +502,7 @@ emu.addEventCallback(function()
             tostring(st["ppu.layers[2].doubleHeight"]),
             tostring(st["ppu.oamBaseAddress"]), tostring(st["ppu.oamMode"])))
         if every_frame_mode or frame % 4 == 1 then
-            shot(string.format(frame < 700 and "open_step_%03d.png" or "close_step_%03d.png", frame))
+            shot(string.format(frame < 830 and "open_step_%03d.png" or "close_step_%03d.png", frame))
         end
     end
 
@@ -378,6 +513,14 @@ emu.addEventCallback(function()
         open_vram_writes:close(); open_cgram_writes:close()
         return_vram_writes:close(); return_cgram_writes:close()
         open_ppu_states:close(); return_ppu_states:close()
+        dispatch_ppu_states:close()
+        if repeat_visit_mode then
+            repeat_open_vram_writes:close(); repeat_open_cgram_writes:close()
+            repeat_return_vram_writes:close(); repeat_return_cgram_writes:close()
+            repeat_open_ppu_states:close(); repeat_return_ppu_states:close()
+        end
+        if rgb_state_log then rgb_state_log:close() end
+        if raster_log then raster_log:close() end
         local done = assert(io.open(out .. "/capture_complete.txt", "wb"))
         done:write("ok\n"); done:close(); emu.stop(0)
     end

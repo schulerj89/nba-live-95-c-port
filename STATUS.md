@@ -1,8 +1,109 @@
 # Project status
 
-Last updated 2026-08-29. This is a current-state handoff, not a milestone log.
+Last updated 2026-08-30. This is a current-state handoff, not a milestone log.
 Use Git history for older checkpoints and run
 `python tools/progress.py --write docs/progress.md` for live measurements.
+
+## Active ownership audit and implementation
+
+The current plan is `docs/ownership-plan.md`, with detailed gameplay and
+configuration inventories in `docs/gameplay-ownership-audit.md` and
+`docs/options-test-ownership-audit.md`. Whole-game acceptance remains **FAIL**:
+ordinary human gameplay, multiple rule/option consumers, exact transitions,
+complete pause/substitution/postgame presentation and non-Exhibition modes
+remain incomplete or materially unverified. The inherited 55.50% planning
+score is historical, not an endorsed current completeness measurement.
+
+The August 30 audit found and repaired a second-match freeze: a normal new
+Exhibition now resets match-owned FINAL/period/score/timeout/lineup state while
+preserving session choices. Two controlled-final-to-normal-menu C journeys
+and the retained native first-court projection pass; no native second-match
+timing or full-state parity is claimed. See `docs/new-match-reset.md`.
+Independent bounded review: `docs/new-match-reset-audit.md`.
+
+The lifecycle probe previously ignored expected fixture values. Its C-only
+self-test and actual three-word native projection are now separate, every
+recorded output is consumed, and independent mutation tests protect the
+capture boundary and protocol. Independent bounded audit: PASS in
+`docs/lifecycle-verifier-audit.md`; whole lifecycle parity remains unproven.
+
+Fresh inbound internal capture records 500 dispatches, including 470
+same-dispatch velocity changes, 389 prepared arrivals and 111 rejections.
+All four motion words (including the formerly discarded direction) and ten
+arrival words match production helper replay. Raw targets are restored before
+the exact `[-9,+8]` arrival test. The old compensation envelope was already
+removed before this audit; no tolerance was introduced. Full-stage native
+fixture: `tests/fixtures/inbound-internal-witnesses.json`. This is controlled
+Exhibition setup with recorded native human/CPU actors, not natural-menu or
+whole-runtime parity.
+
+Transition investigation found unreliable historical screenshot timing:
+Mesen can skip rendering at maximum speed, and `takeScreenshot` reads an
+asynchronously presented image. Synchronous output, disabled frame skipping
+and verified save/configuration isolation are required for new frame claims.
+The C and Python PPU renderers also shared an eight-bit brightness scaling
+bug; the corrected five-bit quantization is documented in
+`docs/ppu-brightness.md`. Remaining resource/IRQ/value-canvas work is active;
+do not read these repairs as a clean-transition or release PASS.
+
+The configured first Rules opening now matches147 consecutive native
+frames (470–616), including the A-dispatch frame, all256x224 active pixels
+and22 mapped PPU fields each.
+Its fixed717-frame C input idle was derived from the native/C background
+scroll phase before comparison; it is not a production transition delay.
+The incoming reveal and unchanged hold also match 208 consecutive native
+frames (546–753), with four additional changed-row/value snapshots passing.
+Independent review is in
+`docs/transition-independent-audit.md`. Extending the capture past the reveal
+exposed a settled-renderer handoff mismatch at frame617; the native viewport
+and idle-arrow fixes now pass that interval. Unchanged and edited/Custom
+returns now match342 consecutive native RGB frames,266 complete22-field PPU
+rows, and both final13-word Rules/4-word main configurations. The original
+parent cursor reset and Rules adjustment-to-Custom side effect are wired.
+The Start-dispatch frame830 is included: the live viewport survives that
+dispatch while the selected highlight clears, until the following native wait.
+Repeated entry still fails: the native second build boundary differs by one
+frame, background phase is not preserved, and stale default value cells can
+reappear. Custom return also has intermediate offscreen VRAM-write divergence
+despite exact pixels; whole routine/resource timing parity is not claimed. The separate
+1,536-case controlled brightness experiment and conversion-only golden audit
+passed; see `docs/ppu-brightness-independent-audit.md`.
+
+Fresh cold-boot/EA investigation also disproves the old intro parity claim:
+91 of302 motion frames differ under the existing address-based mapping, and
+the legal scene omitted a second native wait/input loop. The old optional PNG
+mean-error checks cannot certify exact transitions. See
+`docs/intro-exact-audit.md`; these defects remain open while the Rules repair
+is integrated.
+
+The intro extractor also still uses handwritten bitmap rows for license
+asset1 and Mesen PNGs for legal asset2, EA stage
+assets3–6/final72 and flash sequence73. This violates the required production
+asset policy. The standalone indexed letter layers do not make that whole
+path ROM-derived. Replacement is active in an isolated intro worktree; the
+current pack is not yet fully compliant.
+
+A fresh strict run with a verified private portable Mesen home still fails:
+62 of449 baseline words differ, zero checkpoints match, and the first actor
+sweep occurs at native frame25 versus C frame2. This reproduces the earlier
+failure without relying on shared Mesen settings/SRAM. Configuration and
+initialization are still unsynchronized; no trajectory equivalence is claimed.
+Evidence: `.analysis/differential-ownership-20260830-portable/` and
+`docs/differential-launch-independent-audit.md`.
+
+The new closure digest `fdbdd69c21271f89` is a C regression, not ROM equivalence.
+Independent attribution reproduced the historical baseline and verified all
+6,000 gameplay updates/telemetry rows byte for byte, except the explicitly
+native-backed Style1-to-Custom2 session word. One of66 sampled images changed;
+its entire57,344-pixel Rules image matches fresh native evidence. The other65
+images are unchanged. See `docs/closure-digest-attribution.md`.
+
+Checkpoint A1's full regression/endurance suite passed. The final dispatch fix
+also passed the expanded native gates, complete Setup regression and fresh
+closure attribution. The desktop C Port build/pack and shortcut are refreshed.
+See `docs/ownership-checkpoint-a1.md` for exact evidence and exclusions; this
+does not change whole-game acceptance. The August29 PASS table later in this
+file remains historical.
 
 ## Current state
 
@@ -18,9 +119,9 @@ Current measured coverage:
 
 | metric | captured address positions | % of captured addresses |
 |---|---:|---:|
-| observed executed code | 28,643 | 100.0% |
-| documented by ROM-address provenance | 28,643 | 100.0% |
-| inside evidence-eligible verified boundaries | 11,529 | 40.25% |
+| observed executed code | 29,438 | 100.0% |
+| documented by ROM-address provenance | 29,438 | 100.0% |
+| inside evidence-eligible verified boundaries | 11,529 | 39.16% |
 
 These values are generated, not estimated. The former 28,643/28,643 verified
 headline was invalid: broad whole-bank and `host equivalent` ledger rows had
@@ -28,7 +129,8 @@ silently granted address credit beyond their bounded evidence. Those rows now
 remain documented but set `coverage_credit=false`. The detailed report is
 `docs/progress.md`; the authoritative verified list and evidence paths are in
 `docs/verified-routines.json`.
-The exec interval files mix instruction-start captures and older gap-coalesced
+Fresh ownership captures added 795 address positions without increasing
+eligible verification credit. The exec interval files mix instruction-start captures and older gap-coalesced
 captures. This is an address-coverage metric, **not an instruction census or
 percentage of the whole game completed**. Disassembled instruction counts
 for a requested slice are reported separately.
@@ -77,12 +179,12 @@ The permanent 20,000-frame unforced probe observes natural reversals and exact
 cached-resource X/Y attachment, and the sustained CPU regression no longer
 excludes those bases. See `docs/dynamic-dribble-attachment.md`.
 
-## Evidence-audited gameplay checkpoint
+## Historical August 29 gameplay checkpoint
 
 The former closure document is retained as historical context at
 `docs/gameplay-100-percent-plan.md`, but its whole-bank address-credit
-conclusion is superseded by the strict evidence audit. The retained local
-capture union contains 28,643 address positions: all are documented by source
+conclusion is superseded by the strict evidence audit. At that checkpoint the
+capture union contained 28,643 address positions: all were documented by source
 provenance, while 11,529 are inside precise evidence-eligible ledger
 boundaries. Documentation and Ghidra classification do not by themselves
 establish behavioral parity.

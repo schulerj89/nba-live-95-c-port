@@ -17,6 +17,14 @@ and substeps, actor boundaries, inbound/OOB rules and halftime formation
 anchors; the strict full-game differential still fails its initial-state
 comparison. See [STATUS.md](STATUS.md) for verified scopes and remaining gaps.
 
+The [ownership inventory and milestone plan](docs/ownership-plan.md) records the
+2026-08-30 repository/reference audit. Separate
+[transition](docs/transition-ownership-audit.md),
+[gameplay](docs/gameplay-ownership-audit.md), and
+[rules/options and test-method](docs/options-test-ownership-audit.md) inventories
+distinguish production wiring, bounded native evidence, C regressions, and
+missing behavior. Captured instruction coverage is not game completion.
+
 Graphics and audio come from a user-supplied ROM-derived asset pack. The title,
 Game Setup, and Player Introduction music use the original SPC700/S-DSP state
 and BRR samples; the pack does not contain rendered video or mixed music WAVs.
@@ -39,6 +47,18 @@ Enable script file I/O in Mesen, then create the ignored `.analysis` captures:
 ```powershell
 .\tools\capture_assets.ps1 -RomPath '<path-to-rom>' -MesenPath '<path-to-Mesen.exe>'
 ```
+
+The corrected Rules entrance additionally requires a fresh isolated capture:
+
+```powershell
+.\tools\capture_setup_transition_exact.ps1 -RomPath '<path-to-rom>' `
+  -OutputRoot '.analysis/setup_rules_exact' -SimulationThreeMinute
+```
+
+That output directory must be new. Preserve earlier evidence when recapturing;
+use another new directory and set `NBA95_RULES_OPEN_CAPTURE` to its absolute
+path for extraction. The recorded raw PPU resources are production inputs;
+RGB frames remain comparison evidence and are not packed.
 
 Press **F9** for the ROM-backed Player Lab. Left/Right cycles all teams and
 Up/Down cycles the selected team's 12-player roster; see

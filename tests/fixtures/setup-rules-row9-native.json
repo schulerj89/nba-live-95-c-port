@@ -1,0 +1,261 @@
+{
+  "schema": 1,
+  "mode": "ui-snapshot",
+  "menu_row": 9,
+  "menu_rights": 0,
+  "native_capture": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\transition-ownership-20260830\\setup_rules_ui_row9_v1",
+  "native_manifest": {
+    "schema": 2,
+    "kind": "natural-input frontend journey",
+    "menu": "rules",
+    "configuration": {
+      "natural_ui_normalization": true,
+      "hold_menu_without_value_edits": false,
+      "target_row": 9,
+      "target_rights": 0,
+      "variant_schedule": "Natural down pulses at620+10*n; right pulses after the final down. Snapshot753 validates selected row. This is an equivalent UI-state snapshot, not a claim of identical button timing to the C harness.",
+      "target": "Exhibition/Simulation/Rookie/3min via controller input",
+      "normalization_schedule": "Wait 400 native frames; down400,right460,down520,down580,right640,up700,up760,up820; harness evidence labels rebase to370 at normalization frame920. Emulator execution uninterrupted; no CPU/WRAM state injection."
+    },
+    "raw_rgb": {
+      "width": 256,
+      "height": 239,
+      "visible_first_row": 7,
+      "visible_rows": 224,
+      "source": "emu.getScreenBuffer at endFrame",
+      "screenshots": "asynchronous evidence only"
+    },
+    "arguments": [
+      "--testrunner",
+      "--timeout=180",
+      "\"F:\\Games\\SNES\\NBA Live 95 (USA).sfc\"",
+      "\"C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\transition-ownership-20260830\\setup_rules_ui_row9_v1\\capture.lua\""
+    ],
+    "isolation": {
+      "method": "private portable executable and settings.json",
+      "home": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\transition-ownership-20260830\\setup_rules_ui_row9_v1\\portable-mesen",
+      "save_folder": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\transition-ownership-20260830\\setup_rules_ui_row9_v1\\isolated-saves",
+      "initial_save_files": [],
+      "settings": {
+        "Debug": {
+          "ScriptWindow": {
+            "AllowIoOsAccess": true,
+            "ScriptTimeout": 60,
+            "SaveScriptBeforeRun": false
+          }
+        },
+        "Preferences": {
+          "SingleInstance": false,
+          "PauseWhenInBackground": false,
+          "AutoLoadPatches": false,
+          "OverrideSaveDataFolder": true,
+          "SaveDataFolder": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\transition-ownership-20260830\\setup_rules_ui_row9_v1\\isolated-saves"
+        },
+        "Snes": {
+          "Port1": {
+            "Type": "SnesController"
+          },
+          "Port2": {
+            "Type": "None"
+          },
+          "DisableFrameSkipping": true,
+          "EnableRandomPowerOnState": false,
+          "RamPowerOnState": "AllZeros",
+          "ForceFixedResolution": false,
+          "Overscan": {
+            "Top": 7,
+            "Bottom": 8,
+            "Left": 0,
+            "Right": 0
+          }
+        },
+        "Video": {
+          "VideoFilter": "None",
+          "AspectRatio": "NoStretching",
+          "Brightness": 0,
+          "Contrast": 0,
+          "Hue": 0,
+          "Saturation": 0
+        }
+      },
+      "installed_executable": "C:\\Users\\joshs\\AppData\\Local\\Microsoft\\WinGet\\Packages\\SourMesen.Mesen2_Microsoft.Winget.Source_8wekyb3d8bbwe\\Mesen.exe"
+    },
+    "sources": {
+      "rom": {
+        "path": "F:\\Games\\SNES\\NBA Live 95 (USA).sfc",
+        "sha256": "2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870"
+      },
+      "mesen": {
+        "path": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\transition-ownership-20260830\\setup_rules_ui_row9_v1\\portable-mesen\\Mesen.exe",
+        "sha256": "d2eb03c2590c648bf329f127ebcfefd70130e7690a9e2ccdba8616faea1fe96b"
+      },
+      "capture": {
+        "path": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\transition-ownership-20260830\\setup_rules_ui_row9_v1\\capture.lua",
+        "sha256": "212136544692f319d31965e998c821aca63227bd0111eadea3b10d8754d842fd"
+      },
+      "portable_settings": {
+        "path": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\transition-ownership-20260830\\setup_rules_ui_row9_v1\\portable-mesen\\settings.json",
+        "sha256": "7ce5bc081fefa4df0f8df0f9ed83815e1d435e1b1d6b27b9a6f616d5d1c57473"
+      },
+      "capture_source": {
+        "path": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\tools\\mesen_setup_menus_capture.lua",
+        "sha256": "212136544692f319d31965e998c821aca63227bd0111eadea3b10d8754d842fd"
+      },
+      "runner": {
+        "path": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\tools\\capture_setup_transition_exact.ps1",
+        "sha256": "3921fea0d2a578a28082fedfb68c692985fbd2771ababb09b01e49b66c92a973"
+      }
+    },
+    "artifacts": {
+      "schema": 1,
+      "files": {
+        "rgb_state.csv": {
+          "bytes": 15020,
+          "sha256": "a657cbde94739c01fbe7a9cbb9a5a6da9d0fd77d9b478f43b324638f99a65814"
+        },
+        "raster_registers.csv": {
+          "bytes": 3480636,
+          "sha256": "08520bd4d76d19c411a252023ccdd7ed8d36728d392ba89fb2e3bf9d12aa4fbd"
+        },
+        "exec_trace.txt": {
+          "bytes": 223079,
+          "sha256": "2f28831f4514a08e13251206d9fd427470139d6ae207e88c2fda57f1a7b2dbf6"
+        },
+        "capture_log.txt": {
+          "bytes": 115,
+          "sha256": "c7fe18c3a6bb29b2cae6706e30bdb5eba08809d70342b2b11820008461117a71"
+        },
+        "wram_before_open.bin": {
+          "bytes": 131072,
+          "sha256": "a9d2fe73f06aee095e7d17255834b5b921cefd8a04bba6c476a8ede53bd7848d"
+        },
+        "wram_open.bin": {
+          "bytes": 131072,
+          "sha256": "4b5d1394bc6e81cffb590755f0a1bb56b9c6c3180857127861e57ae0c9a5b999"
+        },
+        "capture_complete.txt": {
+          "bytes": 3,
+          "sha256": "dc51b8c96c2d745df3bd5590d990230a482fd247123599548e0632fdbf97fc22"
+        },
+        "wram_state753.bin": {
+          "bytes": 131072,
+          "sha256": "0dbe91d8e022b02929b10311cf45fefd15cabd82543700b4855d3f477bee01df"
+        },
+        "open_transition_vram.bin": {
+          "bytes": 65536,
+          "sha256": "1e5c485b7ed12fe444588a5beebd984fa6489598fcb43064187e1617ab0238ce"
+        },
+        "open_transition_cgram.bin": {
+          "bytes": 512,
+          "sha256": "34d010c965f58a851c9622553466102c49b1faabde83ac674957d90ee2d51553"
+        },
+        "open_transition_vram_writes.txt": {
+          "bytes": 309156,
+          "sha256": "5ccb1703449ac4cbc48f088a1335095e23f529337d6497a3df3068cf3f675986"
+        },
+        "open_transition_cgram_writes.txt": {
+          "bytes": 1680,
+          "sha256": "705515fb0cea32e6d51857258302ff78be39edc6bfef2b9fbfeb0711c15601a9"
+        },
+        "open_transition_ppu_states.txt": {
+          "bytes": 25676,
+          "sha256": "bff2feb1951af693d5aebb71b644539840bad468e3f2f00a380cff7cb136b6df"
+        },
+        "return_transition_vram.bin": {
+          "bytes": 65536,
+          "sha256": "acc87f5139c463275742a378f966c64cc030b40f9712dc0e7329ddc57e622b31"
+        },
+        "return_transition_cgram.bin": {
+          "bytes": 512,
+          "sha256": "c0f020106386715daa7583eaca351851bf7a4863c2118079ffa7d56bbb2693ec"
+        },
+        "return_transition_vram_writes.txt": {
+          "bytes": 299676,
+          "sha256": "14b44a478139c575e4d8b3a217fa8c5e8c9df837d62426f1deda5fee3574bd1a"
+        },
+        "return_transition_cgram_writes.txt": {
+          "bytes": 336,
+          "sha256": "711a5d9efc1121475e65a5514510176548b4616b61afed47209846f07567963a"
+        },
+        "return_transition_ppu_states.txt": {
+          "bytes": 12176,
+          "sha256": "9e5e0e67da3a06eab6155da05e2fcf25cca23cc9a95ea514f1909003b3c2aacd"
+        }
+      }
+    },
+    "result": {
+      "exit_code": 0,
+      "save_files": [
+        {
+          "name": "NBA Live 95 (USA).srm",
+          "size": 8192,
+          "sha256": "ae26cc050983bbce1f53addf79801a9bafac08959c1328157b0357da67c06e85"
+        }
+      ],
+      "native_handler": "81D318",
+      "transition_main_values": [
+        0,
+        1,
+        0,
+        0
+      ],
+      "committed_before_open": [
+        0,
+        0,
+        0,
+        3
+      ],
+      "committed_after_open": [
+        0,
+        1,
+        0,
+        0
+      ],
+      "variant_snapshot": {
+        "frame": 753,
+        "selected_row": 9,
+        "recent_direction_timer": 38,
+        "recent_direction_bits": 0
+      }
+    }
+  },
+  "native_manifest_canonical_sha256": "d70b1629b9e07eb81de7e8b10d36ed0f47d6b3ff5a80891a9a54ad9c7d76fb2e",
+  "rows": [
+    {
+      "native_frame": 753,
+      "port_step": 450,
+      "bg2v": 68,
+      "rgb_sha256": "0d3fdb11e9ef7fd1e24275817019f05b191aaa0a59b0ba7ae1e6d0e293cff7a4"
+    }
+  ],
+  "native_values_before": [
+    45,
+    45,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+  ],
+  "native_values_after": [
+    45,
+    45,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+  ]
+}

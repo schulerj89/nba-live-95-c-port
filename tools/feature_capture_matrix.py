@@ -36,7 +36,8 @@ def main():
         "the native instruction census: feature completion is a weighted engineering",
         "estimate, while capture/Ghidra/recomp/differential columns describe evidence",
         "strength. `strong` does not mean a feature is complete.", "",
-        f"**Current weighted whole-game estimate: {estimate:.2f}%**", "",
+        f"**Historical weighted planning estimate: {estimate:.2f}%**", "",
+        data.get("assessment_note", "This estimate is not a native parity or release-acceptance metric."), "",
         "| feature | weight | completion | native | Ghidra | recomp | differential | tests |",
         "|---|---:|---:|---|---|---|---|---|",
     ]
@@ -58,7 +59,7 @@ def main():
         "outside 0-100, and weights that do not total 100.", "",
     ]
     args.output.write_text("\n".join(lines), encoding="utf-8")
-    print(f"[MATRIX] {len(features)} features; weighted completion={estimate:.2f}%")
+    print(f"[MATRIX] {len(features)} features; historical weighted planning estimate={estimate:.2f}%")
 
 
 if __name__ == "__main__":

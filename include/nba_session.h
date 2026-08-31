@@ -88,6 +88,9 @@ extern const uint16_t nba_default_rules[NBA_SETUP_RULE_COUNT];
 extern const uint16_t nba_default_options[NBA_SETUP_OPTION_COUNT];
 
 void nba_session_init(NbaSession *session);
+/* Start a new Exhibition match while preserving session configuration,
+ * selected teams and controller side. Never use for period/timeout resume. */
+void nba_session_begin_match(NbaSession *session);
 uint16_t nba_match_regulation_clock(uint16_t quarter_length_setting);
 uint16_t nba_match_overtime_clock(uint16_t quarter_length_setting);
 uint16_t nba_match_period_clock(const NbaSession *session);

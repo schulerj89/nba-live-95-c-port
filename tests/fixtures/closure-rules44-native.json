@@ -1,0 +1,379 @@
+{
+  "schema": "nba95-native-closure-rules44-v1",
+  "classification": "natural controller-only configured Rules render-state witness; not native timing or fullconfiguration parity",
+  "native_manifest": {
+    "schema": 2,
+    "kind": "natural-input frontend journey",
+    "menu": "rules",
+    "configuration": {
+      "natural_ui_normalization": true,
+      "hold_menu_without_value_edits": false,
+      "closure_variant": "Native Left pulse619..621; row0 45-to44; capture618..621. No state writes.",
+      "target_row": -1,
+      "target_rights": 0,
+      "variant_schedule": "none",
+      "target": "Exhibition/Simulation/Rookie/3min via controller input",
+      "normalization_schedule": "Wait 400 native frames; down400,right460,down520,down580,right640,up700,up760,up820; harness evidence labels rebase to370 at normalization frame920. Emulator execution uninterrupted; no CPU/WRAM state injection."
+    },
+    "raw_rgb": {
+      "width": 256,
+      "height": 239,
+      "visible_first_row": 7,
+      "visible_rows": 224,
+      "source": "emu.getScreenBuffer at endFrame",
+      "screenshots": "asynchronous evidence only"
+    },
+    "arguments": [
+      "--testrunner",
+      "--timeout=180",
+      "\"F:\\Games\\SNES\\NBA Live 95 (USA).sfc\"",
+      "\"C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\closure-digest-audit-20260830\\native-rules44-v1\\capture.lua\""
+    ],
+    "isolation": {
+      "method": "private portable executable and settings.json",
+      "home": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\closure-digest-audit-20260830\\native-rules44-v1\\portable-mesen",
+      "save_folder": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\closure-digest-audit-20260830\\native-rules44-v1\\isolated-saves",
+      "initial_save_files": [],
+      "settings": {
+        "Debug": {
+          "ScriptWindow": {
+            "AllowIoOsAccess": true,
+            "ScriptTimeout": 60,
+            "SaveScriptBeforeRun": false
+          }
+        },
+        "Preferences": {
+          "SingleInstance": false,
+          "PauseWhenInBackground": false,
+          "AutoLoadPatches": false,
+          "OverrideSaveDataFolder": true,
+          "SaveDataFolder": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\closure-digest-audit-20260830\\native-rules44-v1\\isolated-saves"
+        },
+        "Snes": {
+          "Port1": {
+            "Type": "SnesController"
+          },
+          "Port2": {
+            "Type": "None"
+          },
+          "DisableFrameSkipping": true,
+          "EnableRandomPowerOnState": false,
+          "RamPowerOnState": "AllZeros",
+          "ForceFixedResolution": false,
+          "Overscan": {
+            "Top": 7,
+            "Bottom": 8,
+            "Left": 0,
+            "Right": 0
+          }
+        },
+        "Video": {
+          "VideoFilter": "None",
+          "AspectRatio": "NoStretching",
+          "Brightness": 0,
+          "Contrast": 0,
+          "Hue": 0,
+          "Saturation": 0
+        }
+      },
+      "installed_executable": "C:\\Users\\joshs\\AppData\\Local\\Microsoft\\WinGet\\Packages\\SourMesen.Mesen2_Microsoft.Winget.Source_8wekyb3d8bbwe\\Mesen.exe"
+    },
+    "sources": {
+      "rom": {
+        "path": "F:\\Games\\SNES\\NBA Live 95 (USA).sfc",
+        "sha256": "2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870"
+      },
+      "mesen": {
+        "path": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\closure-digest-audit-20260830\\native-rules44-v1\\portable-mesen\\Mesen.exe",
+        "sha256": "d2eb03c2590c648bf329f127ebcfefd70130e7690a9e2ccdba8616faea1fe96b"
+      },
+      "capture": {
+        "path": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\closure-digest-audit-20260830\\native-rules44-v1\\capture.lua",
+        "sha256": "6cfe3ccf14695787ceacce22bc1f158aa40bdad8410776bb3ab4dffd147a7013"
+      },
+      "portable_settings": {
+        "path": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\closure-digest-audit-20260830\\native-rules44-v1\\portable-mesen\\settings.json",
+        "sha256": "e128a36c8b9e5e9e79e1d841b4d817cc4428629e45ab23fe2613b901f9619569"
+      },
+      "capture_source": {
+        "path": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\closure-digest-audit-20260830\\native-source\\mesen_setup_menus_capture.lua",
+        "sha256": "6cfe3ccf14695787ceacce22bc1f158aa40bdad8410776bb3ab4dffd147a7013"
+      },
+      "runner": {
+        "path": "C:\\Users\\joshs\\Projects\\nba-live-95-c-port\\.analysis\\closure-digest-audit-20260830\\native-source\\capture.ps1",
+        "sha256": "1227f2f738f4b5a4810ec6ec1907b3d4a1e887c03e300cae1ae4151475275545"
+      }
+    },
+    "artifacts": {
+      "schema": 1,
+      "files": {
+        "rgb_state.csv": {
+          "bytes": 15020,
+          "sha256": "a657cbde94739c01fbe7a9cbb9a5a6da9d0fd77d9b478f43b324638f99a65814"
+        },
+        "raster_registers.csv": {
+          "bytes": 3754146,
+          "sha256": "c1c2519e7ca3fd5c7ce9b01d6fdcf2ac8bd401a5d5eb7aeb103a16237c3adea8"
+        },
+        "exec_trace.txt": {
+          "bytes": 212761,
+          "sha256": "80933b2755263baefc5e9d8b1e3612cfc06e5c98a3604e437656e9504ac06795"
+        },
+        "capture_log.txt": {
+          "bytes": 115,
+          "sha256": "c7fe18c3a6bb29b2cae6706e30bdb5eba08809d70342b2b11820008461117a71"
+        },
+        "wram_before_open.bin": {
+          "bytes": 131072,
+          "sha256": "a9d2fe73f06aee095e7d17255834b5b921cefd8a04bba6c476a8ede53bd7848d"
+        },
+        "wram_open.bin": {
+          "bytes": 131072,
+          "sha256": "4b5d1394bc6e81cffb590755f0a1bb56b9c6c3180857127861e57ae0c9a5b999"
+        },
+        "capture_complete.txt": {
+          "bytes": 3,
+          "sha256": "dc51b8c96c2d745df3bd5590d990230a482fd247123599548e0632fdbf97fc22"
+        },
+        "wram_closure618.bin": {
+          "bytes": 131072,
+          "sha256": "5513962c8cc10bb90c517bb7434946f9e57e20d78c2db60a9c4fc12e62885902"
+        },
+        "wram_closure619.bin": {
+          "bytes": 131072,
+          "sha256": "e79b39945b993eb781058ed90c30e1e940488699a505b4ec30fe669ab6c7b33c"
+        },
+        "wram_closure620.bin": {
+          "bytes": 131072,
+          "sha256": "7b02456be544b99e20fa75a90ab8e6795ffd46cc066680cd9c868b4acccc3f05"
+        },
+        "wram_closure621.bin": {
+          "bytes": 131072,
+          "sha256": "b01b980896c77bc1c8e510381b6f75f5fecd33840d8ad990f8a66b0651df10dc"
+        },
+        "oam_closure618.bin": {
+          "bytes": 544,
+          "sha256": "f018ce04b9ab0983013c501b6467c5e98f24eb956c2a21dc1d2f52809311878b"
+        },
+        "oam_closure619.bin": {
+          "bytes": 544,
+          "sha256": "5009acfc751f873645e2be3b3c355774541587bd40e6911d2d530758ac9d9573"
+        },
+        "oam_closure620.bin": {
+          "bytes": 544,
+          "sha256": "45add67bd768d0e5a7a76df8b769c18287d145813418880eb685653a6177d187"
+        },
+        "oam_closure621.bin": {
+          "bytes": 544,
+          "sha256": "e32273b0f10a7cdb289594ddf329e5d6bb26e2be8b87b7e545b66d6c8cf01fb3"
+        },
+        "observed-script-data-folder.txt": {
+          "bytes": 137,
+          "sha256": "4e717e4ca8404572817de90caa96e2e423a0ab6b0f31ace524ad247347aedac0"
+        },
+        "open_transition_vram.bin": {
+          "bytes": 65536,
+          "sha256": "1e5c485b7ed12fe444588a5beebd984fa6489598fcb43064187e1617ab0238ce"
+        },
+        "open_transition_cgram.bin": {
+          "bytes": 512,
+          "sha256": "34d010c965f58a851c9622553466102c49b1faabde83ac674957d90ee2d51553"
+        },
+        "open_transition_vram_writes.txt": {
+          "bytes": 309156,
+          "sha256": "5ccb1703449ac4cbc48f088a1335095e23f529337d6497a3df3068cf3f675986"
+        },
+        "open_transition_cgram_writes.txt": {
+          "bytes": 1680,
+          "sha256": "705515fb0cea32e6d51857258302ff78be39edc6bfef2b9fbfeb0711c15601a9"
+        },
+        "open_transition_ppu_states.txt": {
+          "bytes": 25531,
+          "sha256": "cf0aa584267e323dac6537dbff94678ae01f7dab5930fa733b4105d2e23d059e"
+        },
+        "return_transition_vram.bin": {
+          "bytes": 65536,
+          "sha256": "acc87f5139c463275742a378f966c64cc030b40f9712dc0e7329ddc57e622b31"
+        },
+        "return_transition_cgram.bin": {
+          "bytes": 512,
+          "sha256": "c0f020106386715daa7583eaca351851bf7a4863c2118079ffa7d56bbb2693ec"
+        },
+        "return_transition_vram_writes.txt": {
+          "bytes": 298932,
+          "sha256": "6ee7d175276f13b3506edc7e3e49c85e4ed688941462b94f8bd54038e957ad67"
+        },
+        "return_transition_cgram_writes.txt": {
+          "bytes": 336,
+          "sha256": "711a5d9efc1121475e65a5514510176548b4616b61afed47209846f07567963a"
+        },
+        "return_transition_ppu_states.txt": {
+          "bytes": 12176,
+          "sha256": "9e5e0e67da3a06eab6155da05e2fcf25cca23cc9a95ea514f1909003b3c2aacd"
+        }
+      }
+    },
+    "result": {
+      "exit_code": 0,
+      "save_files": [
+        {
+          "name": "NBA Live 95 (USA).srm",
+          "size": 8192,
+          "sha256": "d62db06cabf57bdde5dc649c3fddb51d466fbefa2ee89e2b86059d490387a152"
+        }
+      ],
+      "native_handler": "81D318",
+      "transition_main_values": [
+        0,
+        1,
+        0,
+        0
+      ],
+      "committed_before_open": [
+        0,
+        0,
+        0,
+        3
+      ],
+      "committed_after_open": [
+        0,
+        1,
+        0,
+        0
+      ]
+    }
+  },
+  "native_manifest_sha256": "d80b2a1fa0a5da3dda930808658fb609ec721e9c4fb6f8e328d25f5249482daa",
+  "observations": {
+    "frame": 620,
+    "active_pixels": 57344,
+    "rgb_sha256": "1f3c956bacce89b957edd8d91369ff6818f2f401b6bd6c48581cb0a4bb133733",
+    "raw_rgb_sha256": "aecd95c32d117be41ad13c0ae369e9abaeef61351af4fbe7f48522a250680b1d",
+    "ppu": [
+      15,
+      3,
+      4,
+      512,
+      1023,
+      3072,
+      12288,
+      1,
+      0,
+      0,
+      23,
+      2048,
+      4096,
+      1,
+      0,
+      0,
+      0,
+      0,
+      16384,
+      0,
+      1
+    ],
+    "state_snapshots": [
+      {
+        "frame": 618,
+        "row": 0,
+        "working_rules": [
+          45,
+          45,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "committed_main": [
+          0,
+          1,
+          0,
+          0
+        ]
+      },
+      {
+        "frame": 619,
+        "row": 0,
+        "working_rules": [
+          44,
+          45,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "committed_main": [
+          0,
+          2,
+          0,
+          0
+        ]
+      },
+      {
+        "frame": 620,
+        "row": 0,
+        "working_rules": [
+          44,
+          45,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "committed_main": [
+          0,
+          2,
+          0,
+          0
+        ]
+      },
+      {
+        "frame": 621,
+        "row": 0,
+        "working_rules": [
+          44,
+          45,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "committed_main": [
+          0,
+          2,
+          0,
+          0
+        ]
+      }
+    ],
+    "caveat": "state-aligned render only; native committed Style becomesCustom, current C stilldoesnot; different input timelines"
+  }
+}

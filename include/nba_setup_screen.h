@@ -208,12 +208,16 @@ typedef struct {
     NbaSetupPage page;
     int menu_row;
     int menu_scroll;
+    uint8_t menu_arrow_pressed; /* $7E:1759: bit0 up, bit1 down */
+    uint8_t menu_arrow_frames;  /* $7E:163B recent-direction timer */
     NbaSetupTransition transition;
     NbaSetupTransitionRoute transition_route;
     NbaSetupPage transition_target;
     int transition_frame;
     bool transition_blank;
     bool transition_release_pending;
+    uint8_t transition_previous_main;
+    uint8_t transition_previous_sub;
     int transition_bg2_start_vscroll;
     int transition_bg2_trace_origin;
     int transition_bg2_last_raw;

@@ -7,6 +7,7 @@ import a RAM image.
 import argparse,json,os,shutil,subprocess,sys
 from pathlib import Path
 from differential_compare import CONTRACT,SCHEMA,compare,digest,load,schema
+from mesen_portable import prepare as prepare_mesen, verify as verify_mesen
 
 ROOT=Path(__file__).resolve().parents[1]
 
@@ -42,7 +43,11 @@ def main():
                               comparator=ROOT/'tools/differential_compare.py',runner=Path(__file__)).items():
             manifest['sources'][name]=dict(path=str(path),sha256=digest(path))
         if not a.mesen:raise ValueError('Mesen.exe not found')
-        manifest['sources']['mesen']=dict(path=str(Path(a.mesen).resolve()),sha256=digest(a.mesen))
+        native_executable,isolation=prepare_mesen(out,Path(a.mesen).resolve())
+        manifest['isolation']=isolation
+        manifest['sources']['mesen']=dict(path=str(native_executable),sha256=digest(native_executable))
+        manifest['sources']['isolation_helper']=dict(path=str(ROOT/'tools/mesen_portable.py'),
+                                                    sha256=digest(ROOT/'tools/mesen_portable.py'))
         manifest['git_head']=subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip()
         manifest['git_status']=subprocess.check_output(['git','status','--short'],cwd=ROOT,text=True)
         (out/'addresses.txt').write_text('\n'.join(schema())+'\n')
@@ -81,8 +86,9 @@ def main():
             startup=subprocess.STARTUPINFO();startup.dwFlags|=subprocess.STARTF_USESHOWWINDOW;startup.wShowWindow=0
             hidden['startupinfo']=startup
         with (out/'mesen.log').open('w') as log:
-            subprocess.run([a.mesen,'--testrunner','--timeout=180',str(rom),str(capture)],
+            subprocess.run([str(native_executable),'--testrunner','--timeout=180',str(rom),str(capture)],
                            env=env,stdout=log,stderr=subprocess.STDOUT,check=True,timeout=200,**hidden)
+        verify_mesen(out,isolation)
         if not (out/'differential_complete.txt').is_file():raise ValueError('Mesen did not complete differential checkpoints')
         if a.capture_jump_reach:
             progress=json.loads((out/'jump-reach-progress.json').read_text())

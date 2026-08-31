@@ -31,16 +31,18 @@ uint16_t nba_match_period_clock(const NbaSession *session) {
         nba_match_regulation_clock(setting);
 }
 
-void nba_session_init(NbaSession *session) {
+void nba_session_begin_match(NbaSession *session) {
     if (!session) return;
-    memset(session, 0, sizeof(*session));
-    memcpy(session->config.main_values, nba_default_main_values,
-           sizeof(nba_default_main_values));
-    memcpy(session->config.rules, nba_default_rules, sizeof(nba_default_rules));
-    memcpy(session->config.options, nba_default_options, sizeof(nba_default_options));
-    session->left_team = 3;   /* Chicago */
-    session->right_team = 18; /* Orlando */
-    session->player_one_side = 1; /* Live Exhibition path defaults to home/right. */
+    /* New Exhibition initialization, not the later-period path:
+     * `$86:DBE8` clears `$0926`; `$86:DD2D-$DD44` instead preserves the
+     * current period when selecting the next period's clock. Native first-
+     * court state confirms zero scores, seven timeouts and the twelve-entry
+     * lineup below. Clear host-only final/pause phases at the same logical
+     * new-match boundary. See docs/new-match-reset.md and the native-start
+     * fixture. Session setup/menu values deliberately survive this call. */
+    memset(&session->match, 0, sizeof(session->match));
+    session->score[0] = session->score[1] = 0u;
+    session->game_clock_ticks = 0u;
     session->match.period_raw_0926 = 0u;
     session->match.flow_state = NBA_MATCH_FLOW_LIVE;
     session->match.final_marker = NBA_MATCH_FINAL_ACTIVE;
@@ -62,4 +64,17 @@ void nba_session_init(NbaSession *session) {
         for (uint8_t roster = 0; roster < NBA_MATCH_ROSTER_SIZE; ++roster)
             session->match.roster_available[side][roster] = true;
     }
+}
+
+void nba_session_init(NbaSession *session) {
+    if (!session) return;
+    memset(session, 0, sizeof(*session));
+    memcpy(session->config.main_values, nba_default_main_values,
+           sizeof(nba_default_main_values));
+    memcpy(session->config.rules, nba_default_rules, sizeof(nba_default_rules));
+    memcpy(session->config.options, nba_default_options, sizeof(nba_default_options));
+    session->left_team = 3;   /* Chicago */
+    session->right_team = 18; /* Orlando */
+    session->player_one_side = 1; /* Live Exhibition path defaults to home/right. */
+    nba_session_begin_match(session);
 }

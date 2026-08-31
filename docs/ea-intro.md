@@ -1,5 +1,12 @@
 # EA intro reconstruction
 
+**2026-08-30 audit correction:** the production path below is incomplete and
+some provenance claims were wrong. Legal/fixed EA assets still come from PNGs,
+license rows are handwritten, and selected-frame/mean-error gates do not
+establish consecutive-frame timing. See [intro-exact-audit.md](intro-exact-audit.md)
+and the active indexed-asset replacement. The following describes the historical
+implementation, not an accepted complete ROM translation.
+
 The EA intro is reconstructed from ROM/PPU state rather than from emulator
 screenshots. Asset-pack version 18 contains independent indexed E, A, and
 SPORTS layers captured from VRAM with their ROM palettes.

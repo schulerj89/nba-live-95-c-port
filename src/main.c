@@ -100,6 +100,10 @@ int main(int argc, char *argv[]) {
     const char *setup_menu = NULL;
     int setup_menu_row = 0;
     int setup_menu_right = 0;
+    int setup_menu_delay = 0;
+    int setup_menu_confirm_delay = 0;
+    int setup_menu_visits = 1;
+    int setup_menu_revisit_delay = 0;
     int setup_main_row = -1;
     int setup_main_right = 0;
     int setup_main_left = 0;
@@ -266,6 +270,54 @@ int main(int argc, char *argv[]) {
             setup_menu_row = atoi(argv[++i]);
         } else if (strcmp(argv[i], "--setup-menu-right") == 0 && i + 1 < argc) {
             setup_menu_right = atoi(argv[++i]);
+        } else if (strcmp(argv[i], "--setup-menu-delay") == 0 && i + 1 < argc) {
+            const char *value_text = argv[++i];
+            char *end = NULL;
+            long value = strtol(value_text, &end, 10);
+            if (end == value_text || !end || *end || value < 0 || value > 20000) {
+                fprintf(stderr, "[HEADLESS] --setup-menu-delay must be 0..20000 frames.\n");
+                return 1;
+            }
+            setup_menu_delay = (int)value;
+        } else if (strcmp(argv[i], "--setup-menu-confirm-delay") == 0) {
+            if (i + 1 >= argc) {
+                fprintf(stderr, "[HEADLESS] --setup-menu-confirm-delay requires a frame count.\n");
+                return 1;
+            }
+            const char *value_text = argv[++i];
+            char *end = NULL;
+            long value = strtol(value_text, &end, 10);
+            if (end == value_text || !end || *end || value < 0 || value > 20000) {
+                fprintf(stderr, "[HEADLESS] --setup-menu-confirm-delay must be 0..20000 frames.\n");
+                return 1;
+            }
+            setup_menu_confirm_delay = (int)value;
+        } else if (strcmp(argv[i], "--setup-menu-revisit-delay") == 0) {
+            if (i + 1 >= argc) {
+                fprintf(stderr, "[HEADLESS] --setup-menu-revisit-delay requires a frame count.\n");
+                return 1;
+            }
+            const char *value_text = argv[++i];
+            char *end = NULL;
+            long value = strtol(value_text, &end, 10);
+            if (end == value_text || !end || *end || value < 0 || value > 20000) {
+                fprintf(stderr, "[HEADLESS] --setup-menu-revisit-delay must be 0..20000 frames.\n");
+                return 1;
+            }
+            setup_menu_revisit_delay = (int)value;
+        } else if (strcmp(argv[i], "--setup-menu-visits") == 0) {
+            if (i + 1 >= argc) {
+                fprintf(stderr, "[HEADLESS] --setup-menu-visits requires a count.\n");
+                return 1;
+            }
+            const char *value_text = argv[++i];
+            char *end = NULL;
+            long value = strtol(value_text, &end, 10);
+            if (end == value_text || !end || *end || value < 1 || value > 3) {
+                fprintf(stderr, "[HEADLESS] --setup-menu-visits must be 1..3.\n");
+                return 1;
+            }
+            setup_menu_visits = (int)value;
         } else if (strcmp(argv[i], "--setup-main-row") == 0 && i + 1 < argc) {
             setup_main_row = atoi(argv[++i]);
         } else if (strcmp(argv[i], "--setup-main-right") == 0 && i + 1 < argc) {
@@ -361,7 +413,11 @@ int main(int argc, char *argv[]) {
             printf("  --setup-menu <name>   Open Rules or Options in headless mode\n");
             printf("  --setup-menu-row <N>  Move to submenu row N\n");
             printf("  --setup-menu-right N  Apply N right-value adjustments\n");
+            printf("  --setup-menu-delay N  Wait N extra frames before scripted menu inputs\n");
             printf("  --setup-menu-confirm  Press Start to commit submenu values\n");
+            printf("  --setup-menu-confirm-delay N  Idle N extra frames after edits before Start/B\n");
+            printf("  --setup-menu-visits N  Repeat 1..3 normal submenu entry/commit/return journeys\n");
+            printf("  --setup-menu-revisit-delay N  Idle N extra frames after return before reentry\n");
             printf("  --setup-menu-b        Press ignored B after scripted edits\n");
             printf("  --setup-transition-trace FILE\n");
             printf("                        Export every Setup transition PPU/render state as CSV\n");
@@ -422,6 +478,10 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "[HEADLESS] --setup-menu must be rules or options.\n");
             return 1;
         }
+        if (setup_menu_visits > 1 && (!setup_menu || !setup_menu_confirm || setup_menu_b)) {
+            fprintf(stderr, "[HEADLESS] Repeated submenu visits require --setup-menu and --setup-menu-confirm without --setup-menu-b.\n");
+            return 1;
+        }
         if (setup_menu_row < 0 || setup_menu_row > 1000 ||
             setup_menu_right < 0 || setup_menu_right > 1000 ||
             setup_main_row < -1 || setup_main_row > 3 ||
@@ -465,6 +525,9 @@ int main(int argc, char *argv[]) {
         bool setup_menu_done = false;
         int setup_menu_moves_done = 0;
         int setup_menu_right_done = 0;
+        int setup_menu_confirm_waited = 0;
+        int setup_menu_returns_completed = 0;
+        int setup_menu_revisit_waited = 0;
         int setup_main_right_done = 0;
         int setup_main_left_done = 0;
         bool setup_main_confirm_done = false;
@@ -653,10 +716,28 @@ int main(int argc, char *argv[]) {
             }
 
             /* Deterministic controller script for Rules/Options regressions.
-             * One new press is issued per frame, after $80:A3B8 has settled. */
+             * One new press is issued per frame, after $80:A3B8 has settled.
+             * Optional input delay aligns a declared native idle/background
+             * phase; it does not change production transition timing. */
+            if (setup_menu_done && setup_menu_returns_completed + 1 < setup_menu_visits &&
+                game.state == NBA_STATE_GAME_SETUP &&
+                game.scene.setup.page == NBA_SETUP_PAGE_MAIN &&
+                game.scene.setup.transition == NBA_SETUP_TRANSITION_NONE &&
+                !game.scene.setup.transition_release_pending) {
+                /* Reuse the real returned screen/configuration; never reinitialize
+                 * the scene or patch its cursor/scroll/resource state for a test. */
+                if (setup_menu_revisit_waited < setup_menu_revisit_delay) {
+                    setup_menu_revisit_waited++;
+                } else {
+                    setup_menu_returns_completed++;
+                    setup_menu_done = setup_menu_opened = false;
+                    setup_menu_moves_done = setup_menu_right_done = 0;
+                    setup_menu_confirm_waited = setup_menu_revisit_waited = 0;
+                }
+            }
             if (setup_menu && !setup_menu_done &&
                 game.state == NBA_STATE_GAME_SETUP &&
-                game.scene.setup.frame >= NBA_SETUP_BG3_SETTLE_FRAME) {
+                game.scene.setup.frame >= NBA_SETUP_BG3_SETTLE_FRAME + setup_menu_delay) {
                 NbaSetupRow target = strcmp(setup_menu, "rules") == 0 ?
                                      NBA_SETUP_ROW_RULES : NBA_SETUP_ROW_OPTIONS;
                 if (!setup_menu_opened) {
@@ -674,6 +755,10 @@ int main(int argc, char *argv[]) {
                     } else if (setup_menu_right_done < setup_menu_right) {
                         game.input.pressed = NBA_BTN_RIGHT;
                         setup_menu_right_done++;
+                    } else if ((setup_menu_confirm || setup_menu_b) &&
+                               setup_menu_confirm_waited < setup_menu_confirm_delay) {
+                        /* Input-script idle, not an added game transition wait. */
+                        setup_menu_confirm_waited++;
                     } else if (setup_menu_b) {
                         game.input.pressed = NBA_BTN_B;
                         setup_menu_done = true;
@@ -884,7 +969,7 @@ int main(int argc, char *argv[]) {
             int report_row = setup_menu_row % menu_count;
             printf("[SETUP TEST] page=%d menu_row=%d transition=%d/%d blank=%d gfx=%d "
                    "rules0=%u/%u options0=%u/%u "
-                   "option_row=%d working=%u committed=%u\n",
+                   "option_row=%d working=%u committed=%u main_row=%d main=%u/%u/%u/%u",
                    (int)s->page, s->menu_row, (int)s->transition,
                    s->transition_frame, s->transition_blank, s->has_gfx,
                    s->working_rules[0], s->config->rules[0],
@@ -893,7 +978,15 @@ int main(int argc, char *argv[]) {
                    strcmp(setup_menu, "rules") == 0 ?
                        s->working_rules[report_row] : s->working_options[report_row],
                    strcmp(setup_menu, "rules") == 0 ?
-                       s->config->rules[report_row] : s->config->options[report_row]);
+                       s->config->rules[report_row] : s->config->options[report_row],
+                   (int)s->row, s->config->main_values[0],
+                   s->config->main_values[1], s->config->main_values[2],
+                   s->config->main_values[3]);
+            printf(" rules=");
+            for (int row = 0; row < NBA_SETUP_RULE_COUNT; row++) {
+                printf("%s%u", row ? "/" : "", s->config->rules[row]);
+            }
+            printf("\n");
         }
         if (setup_main_row >= 0) {
             printf("[SETUP MAIN TEST] row=%d mode=%u style=%u level=%u quarter=%u action=%d\n",

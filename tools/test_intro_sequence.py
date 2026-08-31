@@ -1,4 +1,8 @@
-"""Pixel and timing regressions for license, legal, and EA intro states."""
+"""C image regressions plus historical, approximate optional intro comparisons.
+
+These are not exact ROM-parity or production-asset-provenance acceptance gates.
+See docs/intro-exact-audit.md for the independent synchronous capture failures.
+"""
 
 import argparse
 import hashlib
@@ -84,8 +88,9 @@ EXPECTED_RGB_SHA256 = {
 }
 
 # Address-synchronized Mesen motion frames captured by mesen_intro_capture.lua.
-# These comparisons remain phase-tolerant at the pixel level because the C
-# renderer cannot reproduce the SNES analog RGB conversion byte-for-byte.
+# The old asynchronous PNG capture and mean-error thresholds are retained as
+# historical regression checks only. Their former analog-color explanation
+# was incorrect; new exact synchronous evidence exposes timing/geometry bugs.
 MESEN_MOTION_ORACLE = {
     352: 7, 360: 15,
     **{port: port - 345 for port in
@@ -160,7 +165,7 @@ def main():
             raise AssertionError(f"missing exact SPORTS implementation marker: {marker}")
     if "col3 != col2" in implementation:
         raise AssertionError("flattened screenshot-difference SPORTS path returned")
-    print("[TEST] PASS: license/legal fades and four-stage EA intro timing")
+    print("[TEST] PASS: retained C intro images and optional historical PNG thresholds; exact native intro remains unverified")
 
 
 if __name__ == "__main__":

@@ -99,14 +99,17 @@ uint32_t nba_snes_cgram_color(const uint8_t *cgram, int index, int brightness,
     if (brightness < 0) brightness = 0;
     if (brightness > 15) brightness = 15;
 
+    /* INIDISP brightness quantizes the RGB555 result, after color math and
+     * before host RGB888 expansion. Applying it to RGB888 invented colors
+     * between native levels during every fade (e.g. red18 at brightness7:
+     * native66, formerly69). Mesen 2.1.1 ApplyBrightness and consecutive
+     * retail Rules-transition RGB evidence: docs/ppu-brightness.md. */
+    r = r * brightness / 15;
+    g = g * brightness / 15;
+    b = b * brightness / 15;
     uint32_t r8 = (uint32_t)((r << 3) | (r >> 2));
     uint32_t g8 = (uint32_t)((g << 3) | (g >> 2));
     uint32_t b8 = (uint32_t)((b << 3) | (b >> 2));
-    if (brightness < 15) {
-        r8 = r8 * (uint32_t)brightness / 15u;
-        g8 = g8 * (uint32_t)brightness / 15u;
-        b8 = b8 * (uint32_t)brightness / 15u;
-    }
     return 0xFF000000u | (r8 << 16) | (g8 << 8) | b8;
 }
 
@@ -476,6 +479,14 @@ bool nba_snes_window_masked(int x, const NbaSnesWindow *window1,
 bool nba_snes_mode1_self_test(void) {
     static NbaRenderer renderer;
     static bool renderer_initialized;
+    /* Literal RGB555 quantization witnesses. Full-brightness-only tests
+     * cannot distinguish the old RGB888 scaling from native INIDISP. */
+    static const uint8_t fade_cgram[512] = {0x12u, 0x7eu};
+    if (nba_snes_cgram_color(fade_cgram, 0, 7, 0, 0, 0) != 0xff423973u ||
+        nba_snes_cgram_color(fade_cgram, 0, 0, 0, 0, 0) != 0xff000000u ||
+        nba_snes_cgram_color(fade_cgram, 0, 15, 0, 0, 0) != 0xff9484ffu ||
+        nba_snes_cgram_color(fade_cgram, 0, 7, 2, 1, 3) != 0xff39396bu)
+        return false;
     static const struct {
         NbaSnesLayer layer;
         uint8_t priority;

@@ -1,6 +1,8 @@
 -- cpu-sweep-v1: actual execution checkpoints; no endFrame reconstruction.
 -- Configures teams before commit, then observes without repairing state.
 local out=assert(os.getenv('NBA95_CAPTURE_DIR'))
+local observed_home=assert(io.open(out..'/observed-script-data-folder.txt','wb'))
+observed_home:write(emu.getScriptDataFolder()..'\n');observed_home:close()
 local function require_capture(condition,message)
     if condition then return end
     local f=assert(io.open(out..'/capture_error.txt','wb'));f:write(message);f:close()

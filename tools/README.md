@@ -1,5 +1,36 @@
 # Reverse-engineering and asset tools
 
+The 2026-08-30 [ownership audit](../docs/ownership-plan.md) found that maximum-speed
+Mesen capture can skip PPU rendering and that `takeScreenshot()` may return a
+previous presented frame. For consecutive-frame evidence, use the isolated
+portable runner `capture_setup_transition_exact.ps1`, rendering skips disabled,
+and synchronous `getScreenBuffer()` output. Its fixed seven-row SNES border
+conversion retains all 256x224 active pixels. Historical PNG sequences are not
+automatically valid frame-by-frame oracles.
+
+Recent verification gates deliberately separate their claims:
+
+- `verify_inbound_internal.py`: all represented internal outputs from 500 native
+  inbound dispatches; includes pre-compensation and same-dispatch velocity.
+- `verify_match_lifecycle.py`: twelve terminal words from four native expiry
+  witnesses; the C adapter begins after the clock writer and skips presentation.
+- `verify_new_match_reset.py`: a native first-court state projection plus two
+  production C postgame-to-new-match journeys, not native whole-journey parity.
+- `verify_ppu_brightness.py`: 1,536 controlled PPU/CGRAM cases with all rejected
+  attempts retained; no natural scene-timing or color-math claim.
+- `audit_brightness_golden_delta.py`: compares old committed Setup goldens to
+  repaired output using the native brightness table for every pixel. Reports
+  conversion-only changes; never rewrites expected hashes.
+- `audit_menu_brightness_golden_delta.py`: applies that strict conversion-only
+  check to the existing Options and Rules transition snapshots, rejecting any
+  changed scroll state or unexplained pixel rather than authorizing a new hash.
+- `run_differential.py`: now creates and verifies a private portable Mesen
+  home through `mesen_portable.py`; its controlled launch and unsynchronized
+  C/native baseline remain explicitly separate from natural menu journeys.
+
+The corresponding `test_*verifier*.py` tests reject malformed, truncated, and
+mutated evidence/probe output. A verifier protocol PASS is not gameplay parity.
+
 ## Reproducible pipeline
 
 `capture_assets.ps1` runs these authoritative Mesen captures into ignored

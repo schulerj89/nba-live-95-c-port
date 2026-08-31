@@ -1,5 +1,5 @@
 """Reduce natural `$86:F43A` captures to native arrived-state witnesses."""
-import argparse, json
+import argparse, hashlib, json
 from pathlib import Path
 
 def memory(snapshot):
@@ -14,11 +14,19 @@ def signed(value): return value-0x10000 if value&0x8000 else value
 def main():
     p=argparse.ArgumentParser(); p.add_argument("--vectors",required=True)
     p.add_argument("--output",required=True); args=p.parse_args()
-    calls=[]
-    for line in Path(args.vectors).read_text().splitlines():
-        if not line.strip(): continue
-        row=json.loads(line); before=memory(row["entry"]["mem"])
+    source=Path(args.vectors)
+    rows=[json.loads(line) for line in source.read_text().splitlines()]
+    if not rows: raise ValueError('empty native arrival capture')
+    if [row['call'] for row in rows] != list(range(1,len(rows)+1)):
+        raise ValueError('missing, duplicated or reordered native calls')
+    calls=[]; launches=0
+    for row in rows:
+        if row['entry_pc'].lower() != '86f43a' or \
+                row['exit_pc'].lower() not in ('86f439','86f653'):
+            raise ValueError('unexpected native routine boundary')
+        before=memory(row["entry"]["mem"])
         after=memory(row["exit"]["mem"]); actor=word(before,0x96)
+        launches += int(row['exit_pc'].lower() == '86f653')
         dx=signed((word(before,0x958)-word(before,actor+4))&0xffff)
         dy=signed((word(before,0x95a)-word(before,actor+8))&0xffff)
         if not (-9<=dx<9 and -9<=dy<9): continue
@@ -42,7 +50,8 @@ def main():
     Path(args.output).write_text(json.dumps({
         "routine":"$86:F4F2-$F58E CPU inbound arrival/readiness",
         "provenance":"natural ROM execution in Mesen; no PC/ROM patching",
-        "raw_calls":500,"native_launch_calls":2,
+        "source_sha256":hashlib.sha256(source.read_bytes()).hexdigest(),
+        "raw_calls":len(rows),"native_launch_calls":launches,
         "arrival_calls":len(calls),"calls":calls
     },separators=(",",":"))+"\n")
     print(f"normalized {len(calls)} arrived calls")

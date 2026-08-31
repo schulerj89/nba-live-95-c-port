@@ -672,9 +672,12 @@ void nba_game_tick(NbaGame *game, float delta_time) {
                            game->session.config.main_values[1],
                            game->session.config.main_values[2],
                            game->session.config.main_values[3]);
-                    if (mode == 0u &&
-                        !nba_game_enter_state(game, NBA_STATE_TEAM_SELECT)) {
-                        fprintf(stderr, "[GAME] Could not enter Team Select.\n");
+                    if (mode == 0u) {
+                        /* A confirmed Exhibition starts a new match; period
+                         * restarts enter Tipoff without clearing the session. */
+                        nba_session_begin_match(&game->session);
+                        if (!nba_game_enter_state(game, NBA_STATE_TEAM_SELECT))
+                            fprintf(stderr, "[GAME] Could not enter Team Select.\n");
                     }
                 }
             }

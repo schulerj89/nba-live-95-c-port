@@ -1,17 +1,31 @@
 """Replay native inbound-arrival outputs through the production helper."""
-import argparse,json,subprocess
+import argparse,json,re,subprocess
 from pathlib import Path
 def main():
     p=argparse.ArgumentParser();p.add_argument("--vectors",required=True)
     p.add_argument("--probe",required=True);a=p.parse_args()
     fixture=json.loads(Path(a.vectors).read_text()); calls=fixture["calls"]
     if fixture["raw_calls"]!=500 or fixture["arrival_calls"]!=387 or \
-       fixture["native_launch_calls"]!=2:
+       fixture["native_launch_calls"]!=2 or len(calls)!=387:
         raise AssertionError("inbound arrival fixture population changed")
+    for c in calls:
+        if len(c['input'])!=12 or len(c['expected'])!=10 or \
+                any(type(v) is not int or not 0<=v<=0xffff
+                    for v in c['input']+c['expected']):
+            raise ValueError('invalid arrival witness schema')
     payload="\n".join(" ".join(f"{v&0xffff:x}" for v in c["input"])
                        for c in calls)+"\n"
     r=subprocess.run([a.probe],input=payload,text=True,capture_output=True,check=True)
-    actual=[[int(v,16) for v in x.split()] for x in r.stdout.splitlines()]
+    lines=r.stdout.splitlines()
+    if len(lines)!=len(calls):
+        raise ValueError(f'expected {len(calls)} rows; received {len(lines)}')
+    actual=[]
+    for line in lines:
+        tokens=line.split()
+        if len(tokens)!=10 or any(not re.fullmatch('[0-9a-fA-F]{1,4}',v)
+                                  for v in tokens):
+            raise ValueError(f'invalid complete arrival-probe row: {line!r}')
+        actual.append([int(v,16) for v in tokens])
     bad=[(c["call"],c["expected"],x) for c,x in zip(calls,actual)
          if c["expected"]!=x]
     initial=sum(c["input"][5]==0 for c in calls)

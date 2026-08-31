@@ -17,6 +17,10 @@ temporary presentation/input state. Reinitializing Setup therefore cannot
 silently restore defaults. Its update result separates menu sound from
 navigation action. Confirming a main value row emits the generic `CONFIRM_MODE`
 event; the scene dispatcher then routes Exhibition to the Team Select scene.
+That confirmation calls `nba_session_begin_match` to clear match-owned state
+from any prior final while preserving configuration, teams and controller
+choice. Browsing Setup and period/timeout resume do not reset a match; see
+`new-match-reset.md` for the native startup projection and C return journeys.
 That handoff intentionally preserves the resident Setup SPC track. Team Select
 uses its own scene-local active side, seven-position name/ranking selector, PPU
 presentation, and transition state while writing team IDs back to the session.
