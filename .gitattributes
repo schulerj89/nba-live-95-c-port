@@ -15,3 +15,8 @@ tools/mesen_setup_scheduler.lua -text
 tools/capture_human_switch.py -text
 tools/mesen_human_switch.lua -text
 tools/mesen_portable.py -text
+# Pass-stage evidence uses exact original runner/Lua bytes.
+tools/capture_human_pass.py -text
+tools/mesen_human_pass.lua -text
+tools/capture_human_pass_init.py -text
+tools/mesen_human_pass_init.lua -text
