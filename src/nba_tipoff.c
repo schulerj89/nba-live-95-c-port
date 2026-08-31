@@ -7089,6 +7089,7 @@ static void cpu_update_all_actors(NbaTipoff *tipoff) {
      * Possession and inbound changes do not rephase it. */
     if ((tipoff->simulation_tick & 1u) != 0u) return;
     ++tipoff->actor_update_tick;
+    tipoff->actor_pass_executed = true;
     if (tipoff->differential_observer)
         tipoff->differential_observer(tipoff, "actors.begin", tipoff->differential_context);
     /* `$87:9090-$90A0` snapshots all ten +$5E modes into +$84 before any
@@ -9017,6 +9018,10 @@ bool nba_tipoff_apply_foul_out_substitution(NbaTipoff *tipoff) {
 
 void nba_tipoff_update(NbaTipoff *tipoff, const NbaInput *input) {
     if (!tipoff || !tipoff->is_initialized) return;
+    /* This observation is cleared even when pause/lifecycle returns before
+     * gameplay. Tick parity alone falsely reported ten physics entries on
+     * frozen period frames. It never controls an original gameplay branch. */
+    tipoff->actor_pass_executed = false;
     /* `$86:8338-$8341` changes live state before the pause loop. The entire
      * typed pause flow returns before any clock, RNG, actor, ball, camera,
      * audio-event, fatigue or lifecycle writer below can execute. */
@@ -9316,8 +9321,11 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
     telemetry->ball_velocity_raw[2]=(uint16_t)tipoff->ball.velocity_z;
     telemetry->simulation_tick = tipoff->simulation_tick;
     telemetry->phase = (uint8_t)tipoff->phase;
-    telemetry->scheduler_due_raw =
-        (uint8_t)((tipoff->simulation_tick & 1u) == 0u);
+    /* The native capture counts actual $85:963D entries. Report the C
+     * physical actor pass only when cpu_update_all_actors ran this update;
+     * a due tick that returned through pause, period or free-throw handling
+     * is not an executed pass. Full native scheduling remains separate. */
+    telemetry->scheduler_due_raw = (uint8_t)tipoff->actor_pass_executed;
     telemetry->actor_pass_dt_raw = telemetry->scheduler_due_raw ? 2u : 0u;
     telemetry->actor_pass_mask_raw = telemetry->scheduler_due_raw ? 0x03FFu : 0u;
     for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor)

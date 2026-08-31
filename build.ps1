@@ -668,7 +668,8 @@ if ($Test) {
         throw "CPU gameplay regression tests failed with exit code $LASTEXITCODE"
     }
     & python (Join-Path $Root "tools\test_intro_sequence.py") `
-        --pack $AssetPack --exe $ConsoleExePath --rom $RomPath
+        --pack $AssetPack --exe $ConsoleExePath --rom $RomPath `
+        --native (Join-Path $NativeCaptureRoot 'intro-exact-20260830\capture-v4')
     if ($LASTEXITCODE -ne 0) {
         throw "Intro sequence regression tests failed with exit code $LASTEXITCODE"
     }

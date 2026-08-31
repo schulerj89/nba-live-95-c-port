@@ -307,7 +307,15 @@ def verify_camera_subject_trace(rows):
         else:
             require(ticks == before["ticks_raw_0564"] + int(advanced),
                     "camera wait/frozen presentation credits changed")
-            if advanced and ticks == 1:
+            # The host lifecycle increments the period and returns before
+            # cpu_update_camera on the horn-completion update. It has earned
+            # a credit but has not entered 95AC. Preserve an existing wait,
+            # or leave it absent, across this return and the presentation.
+            # This checks the host binding; it is not native phase proof.
+            lifecycle_return = (advanced and
+                row["match"]["period_raw_0926"] !=
+                previous["match"]["period_raw_0926"])
+            if advanced and ticks == 1 and not lifecycle_return:
                 require(latched_pointer is None,
                         "camera restarted an unfinished resolver wait")
                 latched_pointer = resolve(row["possession"]["actor"])
@@ -952,13 +960,22 @@ def main():
             if following not in reseed_prefix:
                 raise AssertionError("$80:CEE7 zero state did not reseed")
 
-        # `$87:8EFB-$8F92`: one global, possession-independent 30-Hz pass,
-        # fixed `$0938=2`, strict actor records 0 through 9.
+        # `$87:8EFB-$8F92`: each executed ordinary physical pass has fixed
+        # `$0938=2`, strict records 0..9 and the unchanged even-tick phase.
+        # Host pause/period returns and the separate free-throw path can skip
+        # that call. The trace now reports execution, not just tick parity.
         possession_changes = 0
         previous_team = rows[0]["possession"]["team"]
+        previous_eligible = False
         for index, row in enumerate(rows):
             scheduler = row["scheduler"]
-            due = (row["simulation_tick"] & 1) == 0
+            before = rows[index - 1] if index else None
+            advanced = before is None or row["simulation_tick"] != before["simulation_tick"]
+            period_return = before is not None and advanced and \
+                row["match"]["period_raw_0926"] != before["match"]["period_raw_0926"]
+            eligible = advanced and not period_return and (before is None or
+                before["fouls"]["free_throw_state_raw"] == 0)
+            due = eligible and (row["simulation_tick"] & 1) == 0
             expected_order = list(range(10)) if due else []
             if scheduler != {
                     "due_raw": int(due),
@@ -969,10 +986,11 @@ def main():
             team = row["possession"]["team"]
             if team != previous_team:
                 possession_changes += 1
-                if index and row["scheduler"]["due_raw"] == \
+                if index and eligible and previous_eligible and row["scheduler"]["due_raw"] == \
                         rows[index - 1]["scheduler"]["due_raw"]:
                     raise AssertionError("possession change rephased global actor pass")
                 previous_team = team
+            previous_eligible = eligible
         if possession_changes < 4:
             raise AssertionError("scheduler was not tested across possessions")
 
@@ -1001,6 +1019,13 @@ def main():
                         raise AssertionError(
                             f"$86:B34F/A7DA carried finish changed: {after} {ball}")
                     mode13_carried_frames += 1
+                # A period restart rebuilds modes outside the shot-release
+                # caller. With actual pass telemetry, these adjacent samples
+                # can straddle that entire presentation/rebuild. Keep the
+                # current carried-state checks above, but do not classify the
+                # cross-period mode reset as a 9D6E/A9D0 release.
+                if current["match"]["period_raw_0926"] != previous["match"]["period_raw_0926"]:
+                    continue
                 if old_mode == 13 and new_mode == 1:
                     # A close finish positioned directly over the rim may
                     # score in the same physics substep as `$86:A9D0`.

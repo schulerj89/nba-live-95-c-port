@@ -324,6 +324,7 @@ typedef struct NbaTipoff {
     uint32_t player_contact_routine_raw;
     bool cpu_vs_cpu;
     bool is_initialized;
+    bool actor_pass_executed; /* Host diagnostic for the most recent update. */
 } NbaTipoff;
 
 bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
