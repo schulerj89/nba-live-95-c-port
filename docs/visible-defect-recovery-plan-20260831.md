@@ -21,14 +21,17 @@ routes honestly.
 
 The exact failing baseline is frozen outside Git at
 `.analysis/progress-screenshots/20260831T222202.578262Z-user-defect-baseline-preview-ee0eee9/`.
-Its failure matrix reproduces the 109-frame all-black Player Setup hold,
-ignored Start presses in matchup/ratings, `312 TURNER`, and an inbound that is
-ready at frame 546 but has not transferred by frame 650. The longer production
-trace transfers at frame 674, so the bounded baseline does not prove an
-indefinite stall and the source timer remains unchanged pending native review. It partially
-reproduces abrupt Team Select theme changes, whole-lineup skip, and the court
-logo overlap. Neutral Start does enter Player Intro in the scripted path, and
-the first bounded pass does not reproduce the hand offset; those two reports
+Its corrected failure matrix reproduces the port's frozen outgoing fade followed
+by black frames 209..298, ignored Start presses in matchup/ratings, `312 TURNER`,
+and an inbound that is ready at frame 546 but has not transferred by frame 650.
+The longer production trace transfers at frame 674, so the bounded baseline does
+not prove an indefinite stall and the source timer remains unchanged pending
+native review. The earlier 109-frame all-black result was a screenshot-tool
+warmup artifact and is retained as such. Scripted Right presses caused the
+observed settled Team Select changes, so that route does not reproduce an entry
+glitch. It does reproduce the incorrect one-card lineup Start behavior and the
+ratings/logo overlap. Neutral Start enters Player Intro in the scripted path,
+and the first bounded pass does not reproduce the hand offset; those two reports
 remain open for broader interactive/directional coverage.
 
 | Ticket | Current observed defect | Owner | Required regression and exit |
