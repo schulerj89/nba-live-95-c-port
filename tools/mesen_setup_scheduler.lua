@@ -16,6 +16,11 @@ local nmi_depth=0
 local function word(a)
  return emu.read(a,emu.memType.snesWorkRam,false)|(emu.read(a+1,emu.memType.snesWorkRam,false)<<8)
 end
+local function hexbytes(a,count)
+ local bytes={}
+ for i=0,count-1 do bytes[#bytes+1]=string.format('%02x',emu.read(a+i,emu.memType.snesWorkRam,false))end
+ return table.concat(bytes)
+end
 local function active()
  return (setup>=465 and setup<=620) or (setup>=825 and setup<=965) or
         (setup>=1095 and setup<=1250) or (setup>=1455 and setup<=1600)
@@ -35,15 +40,23 @@ local function log(tag,pc,extra)
  local values={event=event,tag=tag,pc=pc,label=setup,global_frame=global_frame,
   ppu_frame=st['ppu.frameCount'],scanline=st['ppu.scanline'],master_clock=st.masterClock,
   cpu_cycles=st['cpu.cycleCount'],cpu_a=st['cpu.a'],cpu_x=st['cpu.x'],cpu_y=st['cpu.y'],
-  cpu_ps=st['cpu.ps'],cpu_d=st['cpu.d'],cpu_sp=st['cpu.sp'],nmi_depth=nmi_depth,
+  cpu_ps=st['cpu.ps'],cpu_d=st['cpu.d'],cpu_sp=st['cpu.sp'],cpu_db=st['cpu.dbr'],
+  hclock=st['memoryManager.hClock'],nmi_depth=nmi_depth,
   epoch0564=word(0x564),epoch_block059c=word(0x59c),busy05cb=word(0x5cb),
   dma_mode0561=word(0x561),brightness0562=word(0x562),queue_head=word(0x35),
   queue_tail=word(0x37),queue_budget=word(0x39),palette_size0568=word(0x568),
   bg2_phase168f=word(0x168f),bg2_scroll0613=word(0x613),
   callback_05c2=word(0x5c2)|(emu.read(0x5c4,emu.memType.snesWorkRam,false)<<16),
   callback_05c5=word(0x5c5)|(emu.read(0x5c7,emu.memType.snesWorkRam,false)<<16),
-  ppu_vram_address=st['ppu.vramAddress'],header_count=header_count,
+  ppu_vram_address=st['ppu.vramAddress'],ppu_cgram_address=st['ppu.cgramAddress'],
+  ppu_vram_increment=st['ppu.vramIncrementValue'],ppu_vram_remapping=st['ppu.vramAddressRemapping'],
+  ppu_vram_increment_high=st['ppu.vramAddrIncrementOnSecondReg'] and 1 or 0,
+  header_count=header_count,
+  source0c=word(0x0c)|(emu.read(0x0e,emu.memType.snesWorkRam,false)<<16),
+  palette_source056c=word(0x56c)|(emu.read(0x56e,emu.memType.snesWorkRam,false)<<16),
+  palette_dest056a=word(0x56a),budget_mode07f0=word(0x7f0),
   header_active=in_header and 1 or 0,wait_owner=wait_owner}
+ if tag=='nmi.before_publish' then values.queue_hex=hexbytes(0x100,0x200)end
  if extra then for k,v in pairs(extra)do values[k]=v end end
  local keys={};for k in pairs(values)do keys[#keys+1]=k end;table.sort(keys)
  local fields={}
@@ -82,7 +95,10 @@ hook(0x80eec6,function()
   log('header.entry',0x80eec6);dump(string.format('header_%02d_entry.wram',header_count))
  end
 end)
-hook(0x80ef1a,function()log('header.before_wait',0x80ef1a)end)
+hook(0x80ef1a,function()
+ log('header.before_wait',0x80ef1a)
+ if active()then dump(string.format('header_%02d_before_wait.wram',header_count))end
+end)
 hook(0x80ef1e,function()
  log('header.after_wait',0x80ef1e)
  if active()then dump(string.format('header_%02d_after_wait.wram',header_count))end
@@ -97,7 +113,7 @@ for _,pair in ipairs({{0x81f9fc,'setup.nmi_callback'},{0x80ec68,'backdrop.entry'
  {0x81cf62,'rules.constructor'},{0x81ba8e,'main.constructor'},
  {0x8081e3,'nmi.before_publish'},{0x8083ce,'nmi.queue_completed'},
  {0x8082e3,'nmi.queue_budget_exhausted'},{0x808bcf,'copy.immediate_exit'},
- {0x808ad1,'fill.immediate_exit'}})do
+ {0x808b34,'fill.immediate_exit'}})do
  hook(pair[1],function()log(pair[2],pair[1])end)
 end
 for _,bank in ipairs({0,0x80,0x81,0x82})do
