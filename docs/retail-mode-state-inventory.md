@@ -16,7 +16,7 @@ cancel/resume/demo/result branches.
 | 0 Exhibition | DBA8→DBF3, clears15C3, then DBF6→82:809A; later DC41→81:A489 | Current mode0 enters Team Select then Player Setup; full initialization and return parity remain separate |
 | 1 Season | DC24→81:C54F, then DC30→84:8103 unless1753 requests return; later Player Setup | Current code logs SEASON but enters no mode scene; inventory configuration, season hub/schedule/result/terminal children of these actual callers |
 | 2 Playoffs | DBC6→84:A2F3; conditional DBD6→84:A328, DBDC→84:AB5F and DBE8→84:A9DD; later Player Setup | Current code logs PLAYOFFS only; close bracket/setup/selection and cancellation state before exposing a working route |
-| 3 Load Series | DBB2's non2 path reaches DBF6→82:809A, sharing that family with Exhibition | Current code logs LOAD_SERIES only; trace mode3-specific behavior inside the shared family and original SRAM selectors before inventing a separate Load screen |
+| 3 Load Series | Still inside Setup,81:BF81 tests mode3 and07F8; BF93 clears15C1 and BF99 calls82:D085. Only after a possible Setup return can the later dispatcher reach the shared DBF6 family | Current code logs LOAD_SERIES only; implement the original Load prelude, its cancellation1753 path back to Setup, and the loaded-series state before the later dispatcher |
 
 Postgame is part of each mode. Original80:DC88..DD33 branches on492B,1886,
 17AB and16C5, returns Season throughDC30, and sends Playoffs through84:A7A9,
@@ -24,11 +24,43 @@ Postgame is part of each mode. Original80:DC88..DD33 branches on492B,1886,
 returns to Setup after a host countdown/button press. It does not provide retail
 progression, record updates or full terminal-screen behavior.
 
-No native menu journey for these non-Exhibition branches has been added by M0
-yet. The next capture must use normal menu input and record first entry/cancel,
-one match-result transition, save/reload and terminal/progression behavior.
+Four independently reviewed normal-input captures now establish first entry
+plus300frames, as recorded below. They do not establish cancellation, a match
+result, save/reload or terminal/progression behavior. Those journeys remain next.
 Formats, season lengths, tiebreaks, record screens, roster-management features
 and exact Load Series scope remain facts to establish, not values to invent.
+
+## Reviewed first-entry checkpoint
+
+The four `build/retail-mode-entry-v2` runs start from isolated emulator power-on
+with explicitly nonrandom zero-initialized memory and initially empty private
+save folders. Scripts submit controller input only; they do not seed game state
+or jump scenes. The actual title Start is one poll at1996 before Setup takes
+over. Setup Right/Start pulses are three polls each. Each run exits successfully
+300frames after the first requested native entry.
+
+| Capture directory | First entry | Entry → final frame | Manifest SHA256 |
+|---|---|---|---|
+| exhibition | 82:809A | 2447→2747 | `76b830299b7ce1f682dc18c1a86cc8db847459cf08cb68f96ef8dd82bb40db76` |
+| season | 81:C54F | 2507→2807 | `d40e9581db06b7250c0b9cf459bd0091e41e46e079e6a9675d827535f494f937` |
+| playoffs | 84:A2F3, then84:A328 | 2567→2867 | `8f81c198869503eea38caf2340147d73a45221608653d3a36798a8b241c116c1` |
+| load-series | 81:BF99→82:D085 | 2628→2928 | `8aa9c2d7bdd5079b97cba8b4412d5d954b6e2ec2ce76245e239e0fbc188e6b27` |
+
+Independent QA checked all69artifacts,11,345input rows,29events and1,218raw
+field words, exact ROM/emulator/tool identities and private settings/save
+isolation. Its receipt is `checkpoint-qa-20260831/build/m0-mode-entry-audit/independent-audit.md`,
+SHA256 `726fdbbb10c2d0c379cc96f9289d26bf701ba9b4f869948062cbbe6128cc38aa`.
+The v1 Load attempt missed the actual prelude hook and did not complete; its
+failed evidence and the subsequent exact-private-process stop are retained.
+
+The current tools are `capture_retail_mode_entry.py` SHA256
+`f2d326cb9c58cbf1d836b1e7d120993b0955ab0ce399631db7809f13542e3f14`
+and `mesen_retail_mode_entry.lua` SHA256
+`8462620978da3d4664d3ab460c0323ca55eb382a6a53657dc4d20cb3db9e9337`.
+Mesen's580Exhibition/579other uninitialized-read warnings remain in stdout.
+This is bounded route evidence, not a clean-memory, full-mode, timing, rendering,
+save/reload or general verifier-certification claim. No native screenshots were
+produced here; the separate gallery shows the current C port.
 
 ## Configuration SRAM transactions are separate
 

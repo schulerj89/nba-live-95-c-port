@@ -157,3 +157,6 @@ tools/period_formation_dependencies_v1/nba_assets.h -text
 docs/completion-gameplay-work-plan-20260831.md -text
 docs/completion-timing-work-plan-20260831.md -text
 docs/completion-plan-audit-20260831.md -text
+# Preserve the independently reviewed normal retail-entry capture identities.
+tools/capture_retail_mode_entry.py -text
+tools/mesen_retail_mode_entry.lua -text

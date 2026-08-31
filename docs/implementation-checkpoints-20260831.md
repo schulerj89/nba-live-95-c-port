@@ -59,3 +59,21 @@ attribution and independent review are in progress; this is not yet an accepted 
 The S1 implementer and root corrected a planning-only mnemonic error: SPC03DB
 is `MOV $F3,A` (`C4 F3`), not `OR A,$F3`. Its read-before-write bus cycle still
 needs the hardware owner. Frozen source was already correct and remains unchanged.
+
+## M0 normal mode-entry reference checkpoint
+
+All four isolated normal-input v2 captures passed independent bounded review:
+Exhibition82:809A,Season81:C54F,Playoffs84:A2F3→A328 and Load Series81:BF99→82:D085.
+Each ends300frames after first entry. Root rechecked artifact hashes, exit status
+and isolation. The corrected inventory and capture sources are committed together;
+the large captures and independent audit artifacts remain ignored. See
+`retail-mode-state-inventory.md` for exact identities, retained warnings and the
+failed v1 Load attempt. This checkpoint adds no production mode implementation
+and therefore does not require a duplicate screenshot gallery.
+
+C1 now has three independently source-confirmed contact corrections in its
+private candidate, with9,216controlled cases passing and936baseline failures.
+The real63,800-frame loop has completed; regression review is still in progress.
+S1 has a first executable reset/IPL upload with matching resident entry/F1 ARAM
+and an explicit stop before an untranslated CPU reset helper. Its fresh native
+capture/replay review remains underway; neither candidate is integrated yet.
