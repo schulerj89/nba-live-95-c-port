@@ -2,14 +2,14 @@
 
 This catalog records original NBA Live 95 behavior that the port deliberately retains. It separates demonstrated arithmetic/indexing defects from unusual behavior whose purpose is unknown. **It is not a list of bugs that players can currently encounter in the port.** Most entries are preserved in audited standalone components that have not been enabled in normal gameplay.
 
-Reviewed on 2026-08-31 against owner commit `dc10166f18f505af0259c981a59f525e4ead663e`. The original USA ROM is SHA-256 `2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870`. This is a bounded catalog of investigated behavior, not an exhaustive ROM audit.
+Initial review on 2026-08-31 against owner commit `dc10166f18f505af0259c981a59f525e4ead663e`; the later HUD endpoint entry explicitly describes an unintegrated candidate. The original USA ROM is SHA-256 `2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870`. This is a bounded catalog of investigated behavior, not an exhaustive ROM audit.
 
 “Native” below means execution of the original ROM in the recorded emulator. A **controlled native** case changes declared test inputs; a **source-only** case checks original instructions with diagnostic inputs and does not prove normal gameplay reaches them. None of these labels establishes developer intent, audible symptoms, or complete game parity.
 
 | Category | Entries | Current preservation status |
 |---|---:|---|
 | Confirmed arithmetic/indexing defects | 2 | One accepted standalone component; one unintegrated candidate whose source review passed but verifier packet was rejected |
-| Original quirks retained, not classified as defects | 7 | Accepted standalone components, with the evidence limits below |
+| Original quirks retained, not classified as defects | 8 | Seven accepted standalone components; one HUD candidate under review, with the evidence limits below |
 | Excluded or unresolved claims | Listed at the end | Not counted as original-game bugs |
 
 The listed SPC, period, appearance, role, human-dispatch and catch components are absent from `nba95_sources.txt` at the reviewed commit. The launch candidate resides in the controller worktree. Existing production code may implement related routines, but the bounded acceptance reported here must not be transferred to a different implementation without verification.
@@ -75,6 +75,14 @@ The listed SPC, period, appearance, role, human-dispatch and catch components ar
 **Trigger and behavior:** the initial focal scan replaces its candidate only on the original wrapped strict-lower comparison. If nobody wins, the old scratch pointer `$92` survives. A later fallback promotes the **last** equal eligible candidate instead. Early cadence returns preserve rebuild state; they do not mean “reset the planner.” Selection therefore depends on scan order and carried state, not just a fresh nearest-player calculation.
 
 **Preservation and evidence:** [nba_period_roles.c](../src/nba_period_roles.c) comments on `$BCDF..BCE1`'s carried-pointer publication and `$BCED..BD06`'s cadence path. [nba_period_roles_v2.c](../src/nba_period_roles_v2.c) preserves `$C086`'s last-equal choice. Native captures witness the early-return cadence behavior; deeper selection and edge cases have controlled original-ROM coverage. Unrepresented record reads and assignment children stop explicitly. See the [source audit](completion-period-roles-v2-independent-audit.md), [final acceptance](completion-period-roles-v3-acceptance.md), and [integration scope](period-roles-integration.md). **Standalone; no claim of general live-play planner parity.**
+
+### 10. The shot-clock graphic advances at exact multiples of 60
+
+**Trigger and behavior:** when the original publisher runs with a positive shot counter below the game clock, raw values 1–59 select numeral frame1, raw60 selects frame2, and raw120 selects frame3. Zero or a negative counter selects frame0. A positive counter at least as large as the game clock leaves the graphic unchanged. This is an exact source endpoint rule; no incorrect visible clock or timing fault is claimed.
+
+**Original source and preservation:** `$87:BA6D` increments the graphic index before `$BA6F` subtracts60, and `$BA72` repeats when the result is zero as well as positive. The original `$87:BA9F` pointer table selects numeral maps `$AF:ED1B` for frame1 and `$AF:EC83` for frame2. The `shot_clock` function's `$87:BA6D/BA72` comment preserves that rule in the [HUD repair candidate](../../completion-controllers/build/hud-repair-v1/candidate/src/nba_gameplay_hud.c). **This candidate is not integrated or accepted as a complete HUD.**
+
+**Evidence limits:** an independent source-only diagnostic executes the actual original bytes for602 boundary/domain cases. The map glyphs use original indexed characters matching the captured first-court VRAM. Existing lifecycle captures contain no `$87:BA5E/BA9E` observations or raw60 input, so they do not establish this endpoint occurring during ordinary play. See the [source-check evidence](../../completion-scheduler/build/original-bug-catalog-v1/shot-clock-evidence.json) and [bounded draft/report](../../completion-scheduler/build/original-bug-catalog-v1/shot-clock-quirk-draft.md). No emulator capture was added for this entry.
 
 ## Claims deliberately excluded
 
