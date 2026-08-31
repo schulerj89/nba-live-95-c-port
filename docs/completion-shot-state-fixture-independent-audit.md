@@ -1,0 +1,11 @@
+# Shot-state runtime fixture independent audit
+
+Verdict: **PASS for the controlled C integration fixture change only**. This change is outside the inbound source freeze and was copied separately for review. Reviewed `tools/shot_state_runtime_probe.c` SHA256 is `0208eaa9f7a5228f558c6f34e941c96d8f2ec8ccd4fd71ed4abf767ff5798190`; the unchanged earlier fixture is `c1eee222544d19ba2cf2ebd8f97548395446b7236d9b8cfc841f17182fea37b1`.
+
+The corrected inbound trajectory places the first enabled make after the old one-shot late-clock window. The old fixture then lacks its required assistance observation, even though the per-frame binding checks pass. A fresh compilation of that exact earlier fixture against the frozen corrected runtime independently reproduces exit 10. This is retained in auditor `build/inbound-layout-audit-v1/shot-state-old-fresh.log`, not reclassified as a native source failure.
+
+The new fixture renews the explicitly controlled clock to 7199 whenever it drops below 6000 until an unforced assisted make occurs. It then restores the long clock as before. The initial frame-221 three-point deficit is unchanged. The fixture does not force a basket or assistance result, alter game production code, shorten the 16,000 frames per configuration, or remove the final assistance requirement.
+
+Every clock/fatigue oracle is still computed from the state after the declared fixture intervention and before the real update. Exact fatigue state, actor roster/stamina publication and score-event momentum/assistance comparisons are unchanged. Period-end grants remain intentionally excluded and separately covered elsewhere. This repeated controlled window is an integration fixture, not a natural timing or gameplay-parity claim.
+
+Fresh `/W4 /WX` compilation with the independently rebuilt corrected helper and immutable frozen runtime objects produces `compiled/shot_state.exe` SHA256 `326a5dc7f3a9726c946e114f02a584f83319143e538cc1d3c6fceb5f82ef4cb2`. The fresh run passes both configurations: fatigue off has 209 updates/10 makes; fatigue on has 206 updates/14 makes/one assisted make. The older fixture executable `78072106b336537096cad99cc0e5cd430fef056e3aa847a53fc3ec33680aacd5` fails the coverage guard under those same runtime dependencies. No native fixture or expected native value was changed.

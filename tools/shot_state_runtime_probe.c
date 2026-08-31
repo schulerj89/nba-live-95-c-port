@@ -10,8 +10,7 @@ static int exercise(const NbaAssetPack *pack,unsigned enabled) {
     nba_session_init(&session);session.config.rules[11]=(uint16_t)enabled;
     session.config.options[6]=1;
     if(!nba_tipoff_init(&game,pack,&session))return 1;
-    /* Keep this helper-binding probe inside one period. Production now uses
-     * the selected three-minute clock (10800); period-end stamina grants are
+    /* Keep this helper-binding probe inside one period. Period-end grants are
      * covered by match_lifecycle_expiry_probe and are intentionally outside
      * the per-frame fatigue oracle below. */
     game.match_clock_raw_0928=43200u;
@@ -23,11 +22,13 @@ static int exercise(const NbaAssetPack *pack,unsigned enabled) {
             game.match_clock_raw_0928=7199;
             session.score[0]=97;session.score[1]=100;
         }
-        /* The assistance witness needs a late clock, but this probe is not a
-         * period-transition test. Return to a long controlled clock before
-         * the native expiry boundary can add its separately verified grants. */
+        /* Keep offering the controlled late-clock window until an unforced
+         * basket exercises assistance. Correct native layout1 dispatch moves
+         * the first make to2356, beyond the old one-shot window; silently
+         * returning to43200 first would leave the binding untested. Restore
+         * the long clock after coverage, avoiding period-end grants here. */
         if(enabled && game.match_clock_raw_0928<6000u)
-            game.match_clock_raw_0928=43200u;
+            game.match_clock_raw_0928=assisted_makes ? 43200u : 7199u;
         NbaTipoff before=game;
         uint16_t scores[2]={session.score[0],session.score[1]};
         NbaShotFatigue expected=before.fatigue;
@@ -79,7 +80,11 @@ static int exercise(const NbaAssetPack *pack,unsigned enabled) {
             ++makes;
         }
     }
-    if(!updates || !makes || (enabled && !assisted_makes))return 10;
+    if(!updates || !makes || (enabled && !assisted_makes)) {
+        fprintf(stderr,"shot-state binding coverage: fatigue=%u updates=%u makes=%u assisted=%u\n",
+            enabled,updates,makes,assisted_makes);
+        return 10;
+    }
     printf("[SHOT STATE RUNTIME] fatigue=%u updates=%u made=%u assisted=%u roster/clock/score binding PASS\n",enabled,updates,makes,assisted_makes);
     return 0;
 }

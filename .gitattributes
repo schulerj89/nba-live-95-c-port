@@ -20,3 +20,6 @@ tools/capture_human_pass.py -text
 tools/mesen_human_pass.lua -text
 tools/capture_human_pass_init.py -text
 tools/mesen_human_pass_init.lua -text
+# Controlled layout captures pin their executed source bytes.
+tools/capture_inbound_layout.py -text
+tools/mesen_inbound_layout.lua -text

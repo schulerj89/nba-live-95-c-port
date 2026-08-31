@@ -225,7 +225,12 @@ bool nba_gameplay_inbound_target(
         if (context_anchor_x >= 0) { x = -394; y = 64; direction = 2u; }
         play = inbound_edge_play(x, y, context_anchor_x, rng);
         request = true;
-    } else if (layout_state < 0) {
+    } else if (layout_state < 0 || layout_state == 1) {
+        /* $85:C39C CMP #2 -> C3A4 BPL tests the subtraction's N flag.
+         * Layout 1 therefore takes C50B, like the negative edge layout;
+         * it must not reach C450's ball-X/endline path for layout 4.
+         * The old translation could request unreachable X=404 from a
+         * player capped at394 and wait forever at F4F2. */
         x = source_x < 0 ? -394 : 394;
         y = source_y < -160 ? -160 : source_y > 160 ? 160 : source_y;
         direction = source_x < 0 ? 2u : 6u;
@@ -240,7 +245,7 @@ bool nba_gameplay_inbound_target(
         direction = source_y < 0 ? 0u : 4u;
         play = inbound_endline_play(x, context_anchor_x, rng);
         request = true;
-    } else if (layout_state == 1 || layout_state == 4) {
+    } else if (layout_state == 4) {
         if ((int16_t)(context_anchor_x ^ source_x) < 0)
             x = context_anchor_x < 0 ? -40 : 40;
         else x = ball_x;

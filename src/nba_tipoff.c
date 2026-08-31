@@ -5032,7 +5032,7 @@ static void cpu_finalize_dead_ball_inbound(NbaTipoff *tipoff) {
     NbaGameplayInboundTarget target;
     int16_t context_anchor = tipoff->team_context[side].anchor_x_raw_0a;
     /* C37D consumes signed integer coordinate words. Keep subpixel fractions
-     * out of both the dead-ball source and the live `$3EEF` layout-1/4 X. */
+     * out of both the dead-ball source and the live `$3EEF` layout-4 X. */
     if (nba_gameplay_inbound_target(
             tipoff->inbound_layout_raw, tipoff->dead_ball_x_raw_09b0,
             tipoff->dead_ball_y_raw_09b2, context_anchor,
@@ -5391,9 +5391,10 @@ static bool cpu_dead_ball_dispatch_self_test(void) {
            bonus.fouls.foul_event_raw_0964 == 0u &&
            bonus.fouls.whistle_active_raw_09b6 == 1u)) return false;
 
-    /* Regression witness for the sustained trajectory that reached
-     * X=402.996. `$3EEF` is +402, not the display-rounded +403; +402 remains
-     * reachable from the common actor cap at +394 through F4F2's +8 edge. */
+    /* Preserve the fractional-coordinate regression, now with the original
+     * C39C dispatcher: layout1 takes C50B's edge target. Only layout4 reads
+     * live $3EEF through C477. Its +402 integer word remains reachable from
+     * the actor cap+394 through F4F2's +8 edge; rounding to403 would not. */
     NbaTipoff fractional;
     memset(&fractional, 0, sizeof(fractional));
     fractional.session = &session;publish_exhibition_team_ids(&fractional);
@@ -5404,6 +5405,13 @@ static bool cpu_dead_ball_dispatch_self_test(void) {
     fractional.ball.y_fp = -209 * 256 + 127;
     fractional.dead_ball_x_raw_09b0 = 402;
     fractional.dead_ball_y_raw_09b2 = -209;
+    nba_gameplay_rng_seed(&fractional.rng, 0x9146u);
+    cpu_finalize_dead_ball_inbound(&fractional);
+    if (fractional.inbound_target_x_raw != 394 ||
+        fractional.inbound_target_y_raw != -160 ||
+        fractional.actors[7].target_x != 394 ||
+        fractional.actors[7].target_y != -160) return false;
+    fractional.inbound_layout_raw = 4;
     nba_gameplay_rng_seed(&fractional.rng, 0x9146u);
     cpu_finalize_dead_ball_inbound(&fractional);
     return fractional.inbound_target_x_raw == 402 &&

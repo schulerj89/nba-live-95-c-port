@@ -55,11 +55,16 @@ def main():
             # change. Old totals were 2176/38703/5641/2573/8251. See
             # docs/completion-mode1-attribution-audit.md; this is not native
             # trajectory or HUD parity. All per-pixel assertions stay intact.
-            assert summary["visible"]["bg1"] == 750
-            assert summary["visible"]["bg2"] == 46939
+            # C39C's CMP#2 sends layout1 to C50B. The corrected target first
+            # changes gameplay at506, then camera/actors at1000. A private
+            # pre-fix-helper + matching startup-check relink reproduces every
+            # old winner count; no compositor source changes. See
+            # docs/inbound-layout-repair.md. Native expectations are unchanged.
+            assert summary["visible"]["bg1"] == 0
+            assert summary["visible"]["bg2"] == 46422
             assert summary["visible"]["bg3"] == 5641
-            assert summary["visible"]["obj"] == 1362
-            assert summary["visible"]["backdrop"] == 2652
+            assert summary["visible"]["obj"] == 1298
+            assert summary["visible"]["backdrop"] == 3983
             counts = {name: 0 for name in
                       ("BACKDROP", "BG1", "BG2", "BG3", "OBJ")}
             indexed = direct = rows = 0
