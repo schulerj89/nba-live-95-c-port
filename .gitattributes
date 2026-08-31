@@ -64,3 +64,7 @@ tools/period_support_source_domain.py -text
 # Preserve executed initializer capture identities.
 tools/capture_setup_spc_init.py -text
 tools/mesen_setup_spc_init.lua -text
+# Preserve the reviewed render-tail component/probe bytes.
+include/period_render_tail.h -text
+src/period_render_tail.c -text
+tools/period_render_tail_probe.c -text
