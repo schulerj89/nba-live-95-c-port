@@ -148,7 +148,7 @@ def inspect_pack(path: Path) -> dict:
                 "magic": payload[:8].decode("ascii", errors="replace"),
                 "sha256": hashlib.sha256(payload).hexdigest(),
             }
-    require(selected is not None, "ACC4 player-draw resource 287 is absent")
+    require(selected is not None, "player-draw resource 287 is absent")
     require(selected["magic"] == "NBPDRAW1", "resource 287 is not NBPDRAW1")
     return {"version": version, "resource_count": count,
             "player_draw_resource": selected}
@@ -235,10 +235,20 @@ class Harness:
         frames = sorted(set(
             [1, 5, 10, 15, 20, 30, 40, 60, 80, 100, 120, 140, 160, 180, 200, 203]
             + [204, 210, 220, 228, 229, 230, 240, 250, 253, 254, 280, 298, 299,
-               300, 320, 323, 324, 350, 400, 403, 404, 405, 406, 500, 580, 586,
+               300, 319, 320, 321, 322, 350, 400, 403, 404, 405, 406, 500, 580, 586,
                587, 588, 589, 590, 591, 593, 594, 595, 596, 620]
         ))
         refs = self.export_frames(raw, "frontend", frames)
+        nonblack = {}
+        for frame in (253, 254, 320, 321):
+            with Image.open(refs[frame].path) as image:
+                nonblack[frame] = sum(
+                    pixel != (0, 0, 0) for pixel in image.convert("RGB").getdata()
+                )
+        require(nonblack[253] > 0 and nonblack[254] == 0,
+                "full route did not enter forced black at frame 254")
+        require(nonblack[320] == 0 and nonblack[321] > 0,
+                "Player Setup reveal is not last-black 320 / first-pixel 321")
         self.make_contact(
             "team-select-entry-contact.png",
             [refs[frame] for frame in
@@ -249,7 +259,7 @@ class Harness:
             "team-to-player-setup-contact.png",
             [refs[frame] for frame in
              (203, 204, 210, 220, 228, 229, 240, 250, 253, 254, 280, 298,
-              299, 300, 320, 323, 324, 350, 403, 405)],
+              299, 300, 319, 320, 321, 322, 350, 403, 405)],
             "Team Select layer exit and Player Setup destination reveal",
             columns=5,
         )
@@ -264,6 +274,11 @@ class Harness:
         self.checks["frontend"] = {
             "team_select_entry": "captured",
             "team_select_exit": "captured",
+            "forced_black_first_frame": 254,
+            "forced_black_last_frame": 320,
+            "forced_black_presented_frames": 67,
+            "player_setup_first_reveal_frame": 321,
+            "boundary_nonblack_pixels": nonblack,
             "neutral_cpu_vs_cpu": "state assertion passed",
             "presentation_skips_to_tipoff": "state assertion passed",
         }
@@ -657,7 +672,7 @@ class Harness:
             "Manual visual checks:",
             "",
             "- Team Select builds in source phases; clipped BG3 reveal fragments are documented original behavior.",
-            "- Team Select layers withdraw before the black construction interval and Player Setup reveals cleanly.",
+            "- Team Select layers withdraw before the 67-frame black construction interval; frame 320 is black and Player Setup first reveals at frame 321.",
             "- Neutral controller setup reaches CPU-vs-CPU and Start skips Matchup, Ratings, and the whole lineup.",
             "- All ten lineup cards render complete proportional text; verify `31` does not bleed into the name.",
             "- The Orlando oval/Ratings overlap is a documented original-game composition quirk.",
@@ -741,7 +756,7 @@ def main() -> int:
     parser.add_argument("--exe", type=Path, required=True,
                         help="production nba95_port executable")
     parser.add_argument("--pack", type=Path, required=True,
-                        help="production ACC4 asset pack containing NBPDRAW1")
+                        help="production v31 asset pack containing NBPDRAW1")
     parser.add_argument("--rom", type=Path, required=True,
                         help="verified NBA Live 95 USA ROM")
     parser.add_argument("--output", type=Path, required=True,

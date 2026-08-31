@@ -25,10 +25,12 @@ by separate starts, then only the selected PNG checkpoints are retained. The
 gameplay telemetry is kept as compressed JSONL. Every command and SHA-256
 identity is recorded in `manifest.json`.
 
-On the August 31 ACC4 candidate, the full capture and focused regression run
-finishes in about twenty seconds on the development host. The capture-only mode
-is intended for intermediate monitoring, while the default run is the
-checkpoint gate.
+On the August 31 post-transparency candidate, the full capture and focused
+regression run finishes in about twenty seconds on the development host. The
+capture-only mode is intended for intermediate monitoring, while the default
+run is the checkpoint gate. Asset acceptance is based on pack-v31 structure and
+the required resource-287 `NBPDRAW1` identity; it does not pin one historical
+whole-pack digest.
 
 Run it from the repository root in PowerShell:
 
