@@ -29,13 +29,21 @@ EXPECTED_FRAME_HASHES = {
     "right_philadelphia": "487b0efe17269dcf04d1f004fd4ca1f5647ecd60e3a4b72099427bd03fab3acf",
     "east": "09902c67a6ce3b516c83b079ae8f609494459cf100a13c0ec735c9e0f5a5dfe7",
     "west": "94d3d4fe72c06911a9c27748dd1e5fdfcd83ec6e407706ca2c20326b7d9d0662",
-    # Assets 277..285 change F12's count; test_shot_assets proves that the
-    # only changed pixels are in the debugger's index/count row.
-    # Indexed intro75/76 replacement likewise changes only the count/index;
-    # retained A1 images reproduce the prior hash and all pixels outside that
-    # metadata row match. C-only migration: docs/intro-indexed-resources.md.
-    "logo_debug": "81822e2e036339824927217bd1cfe350684ba7dcf53333cb6ff4bd70d890cf5f",
 }
+
+# Resource 287 is optional by design. Its addition changes the F12 item-count
+# glyph but does not change asset 160 or its rendered logo. Both full hashes are
+# retained so the count remains visible/correct, while the masked hash proves
+# that the two supported configurations have the same debugger canvas outside
+# that one seven-pixel glyph. See docs/checksum-guard-attribution.md.
+EXPECTED_DEBUG_FRAME_HASHES = {
+    "fallback": "4944e48bb54bb0c88976e02379aef296dfc239f73955d496cd952cc8743b6182",
+    "literal": "628aa6decb1c13a1a62fb769b3a0996f6ea07a1522bf2e5252888d7611948041",
+}
+EXPECTED_DEBUG_STABLE_HASH = \
+    "3430e5ff2ca65cc16ab37e586a92bbcc717b65be0424b19dfc8a44032ad8e95d"
+EXPECTED_PLAYER_DRAW_HASH = \
+    "2c561159b63e56e5e42a4d461a1f03bee65c1f7b94fcc5ee933349cbc66bff9f"
 
 EXPECTED_LOGO_HASHES = {
     160: "83012b77eeda4d75735eeb22f88690260ab82b55ff53560d46b6d8d306b99510",
@@ -99,6 +107,30 @@ def frame_hash(path):
     return hashlib.sha256(Image.open(path).convert("RGB").tobytes()).hexdigest()
 
 
+def debug_stable_hash(path):
+    image = Image.open(path).convert("RGB")
+    # `%02u` prints 264/265 at x=32; only the final count glyph at x=48..54
+    # differs between the otherwise identical supported packs.
+    image.paste((0, 0, 0), (48, 19, 55, 26))
+    return hashlib.sha256(image.tobytes()).hexdigest()
+
+
+def player_draw_configuration(assets):
+    item = assets.get(287)
+    if item is None:
+        if len(assets) != 264:
+            raise AssertionError("fallback pack is not the reviewed 264-item configuration")
+        return "fallback"
+    payload, width, height, flags = item
+    if len(assets) != 265 or (len(payload), width, height, flags) != \
+            (2144, 0, 0, 0) or payload[:8] != b"NBPDRAW1" or \
+            struct.unpack_from("<6I", payload, 8) != \
+            (1, 2096, 32, 8, 2128, 2144) or \
+            hashlib.sha256(payload).hexdigest() != EXPECTED_PLAYER_DRAW_HASH:
+        raise AssertionError("literal player-draw resource 287 changed")
+    return "literal"
+
+
 def wallpaper_hash(path):
     image = Image.open(path).convert("RGB")
     return hashlib.sha256(image.crop((232, 120, 256, 224)).tobytes()).hexdigest()
@@ -127,6 +159,7 @@ def main():
     pack, exe, rom = Path(args.pack), Path(args.exe), Path(args.rom)
 
     assets = load_pack(pack)
+    draw_configuration = player_draw_configuration(assets)
     required = {189, 250, *range(160, 189), *range(192, 221), *range(221, 250)}
     if not required.issubset(assets):
         raise AssertionError(f"missing Team Select assets: {sorted(required - assets.keys())}")
@@ -256,8 +289,12 @@ def main():
         logo_debug = directory / "logo_debug.bmp"
         run(exe, "--headless", "--rom", rom, "--assets", pack,
             "--asset-debug", "160", "--frames", "1", "--dump-frame", logo_debug)
-        if frame_hash(logo_debug) != EXPECTED_FRAME_HASHES["logo_debug"]:
-            raise AssertionError("F12 Team Select logo view changed")
+        if frame_hash(logo_debug) != \
+                EXPECTED_DEBUG_FRAME_HASHES[draw_configuration]:
+            raise AssertionError(
+                f"F12 Team Select logo view changed for {draw_configuration} pack")
+        if debug_stable_hash(logo_debug) != EXPECTED_DEBUG_STABLE_HASH:
+            raise AssertionError("F12 Team Select stable logo canvas changed")
 
     handoff = run(exe, "--headless", "--rom", rom, "--assets", pack,
                   "--setup-only", "--setup-main-row", "0", "--setup-main-confirm",
