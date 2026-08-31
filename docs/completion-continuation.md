@@ -383,3 +383,70 @@ is build/period-support-freeze-v1.json (856identities). The latter composes real
 BC9B/cancel/install/AEC3/B649/B66A operations without native poststate seeding.
 Neither candidate is accepted or wired yet. BC07 role suffix, video child,
 integrated restart and whole-game/native phase remain outstanding.
+
+### Latest accepted components and continuous formation checkpoint
+
+This update supersedes the pending component statuses immediately above.
+`5684b5e` accepts the corrected period-parent v2 as a standalone component:
+28,420 native words, independent original-ROM cases and source CPU-domain
+checks pass. Opening/OT positive-anchor Y negation is corrected as a port bug.
+The original carried latches/fractions and A6 pair index remain documented.
+
+`979c042` commits unchanged appearance/support C after independent final
+verifier acceptance. Appearance v3 freeze is
+`d61ea18b12a15d90ecfbba1358bbb90ecdb57b6e8fda2f4762b198eebd9f3ce1`
+(1414 identities); support v2 is
+`7a34dbcab0846133893dbd6d4c0a3b299f6bab94e17f408e455d4353d142a133`
+(1683). Commands now derive from complete native rows, with exact raw-field
+binding and no old C-report authority. Raw support adapters require canonical
+actor IDs/carried roster tables and a zero leading collision sentinel.
+A fresh thirteen-source root build with no borrowed objects passes all forty
+appearance and eleven support native calls. Neither is production-wired.
+
+`0328d13` accepts standalone SPC initializer v4. All 192,818 instruction states,
+64,394 writes and full ARAM endpoints match; six binary files are unchanged.
+Both 21-case source sets, 4 protocol, 19 evidence, 6 independent metadata and
+44 schema/callback checks pass. The original $08FF clear omission remains
+commented and survives nonzero tests. F1 control v4's separate PS.P callback
+rejection remains visible; scheduler control v5 awaits final audit/integration.
+Production SPC/audio remains unchanged.
+
+The original $80:FBFF child is a draw-depth sort, not video DMA. Root's bounded
+render-tail source and v2 verifier passed independent review, including 384
+controlled original-ROM cases. Final freeze
+`build/period-render-tail-freeze-v2.json` is
+`b9362eab95705e0b0c4fcab5a8f6ce85b846de9f32a28a1dfc90dcdc79e90e96`
+(2100 identities). Source and all old evidence remain unchanged; the repaired
+verifier rejects duplicate/reordered/inserted hooks. Native periods0/1 cross
+one frame during E1F7-E207 while2/3 do not. Owned bytes match without a timing,
+CPU, DP or interrupt-parity claim. Root standalone integration is next.
+
+Root's diagnostic DD97-to-E207 composition consumes one before-state per
+capture and executes every included C child on the preceding C output.
+All 125 native checkpoints / 504,500 owned bytes pass, with 27 malformed-output
+checks and 8 explicit domain refusals. Freeze
+`build/period-composition-freeze-v1.json` is
+`075660a6bca1e2aac08683bd0f6b5f0267e8d9b016db8ebde3a09e5227e5c32c`
+(2674 identities). Controllers is independently reviewing this root-authored
+composition. It uses role-prefix v1 only for observed cadence early returns;
+rebuild/planner paths are refused. It is diagnostic, not a production raw-WRAM
+runtime. Scheduler is building a canonical typed composition for a subsequent
+NbaTipoff adapter, including role v2 and explicit unresolved source stops.
+
+Controllers supplied the inline DCA6-to-DD97 entry prefix, freeze
+`a96b329445557aaa0e4d6976e97a14b9f518d0cbd55ccaaed4ff36893b3e3ea8`.
+It resets source-owned animation fields, preserves queue contents and original
+latches, selects the original OT clock table and flips anchors only for raw
+period2. Native/source/protocol checks pass; independent review is pending.
+The role continuation v2 source passed independent source cases but required
+a separate byte-width verifier repair: role v3 freeze
+`40f6762fa9310fa4ac83f2f8fc427e689594591952c45ce8e71bd1048f928667`
+(1056 identities) is queued for final review. Human launch remains frozen
+separately at `87326e441bd90f6e8b921075724683e40e7b1cf94ad69b6949c471a5cbfe45a8`
+and awaits independent review.
+
+No production period repair is accepted or wired yet. The known CPU failure
+at frame49412, rules-reentry158 mismatches, HUD gaps, hardware scheduling and
+full-game acceptance remain open. Main/desktop and the read-only Max consultant
+are unchanged. Existing implementation agents continue only in their own
+previously authorized worktrees; root owns all commits and integration.
