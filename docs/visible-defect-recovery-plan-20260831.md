@@ -19,15 +19,27 @@ trace and screenshots. The existing `tools/quick_live_scenario.py` already
 covers CPU pass/catch, Q1 expiry and pause/resume and refuses unsupported live
 routes honestly.
 
+The exact failing baseline is frozen outside Git at
+`.analysis/progress-screenshots/20260831T222202.578262Z-user-defect-baseline-preview-ee0eee9/`.
+Its failure matrix reproduces the 109-frame all-black Player Setup hold,
+ignored Start presses in matchup/ratings, `312 TURNER`, and an inbound that is
+ready at frame 546 but has not transferred by frame 650. The longer production
+trace transfers at frame 674, so the bounded baseline does not prove an
+indefinite stall and the source timer remains unchanged pending native review. It partially
+reproduces abrupt Team Select theme changes, whole-lineup skip, and the court
+logo overlap. Neutral Start does enter Player Intro in the scripted path, and
+the first bounded pass does not reproduce the hand offset; those two reports
+remain open for broader interactive/directional coverage.
+
 | Ticket | Current observed defect | Owner | Required regression and exit |
 |---|---|---|---|
 | F1 | Corrupt/glitching frames on entry to Team Select | `startup_nmi` | Game Setup confirm through settled Team Select, consecutive transition frames and team changes; no stale/foreign tiles, palette or OAM pieces |
-| F2 | Incorrect fade into Player Setup | `startup_nmi` | Team Select Start through settled Player Setup compared at source transition boundaries; remove host-invented fade/black hold |
+| F2 | Incorrect fade into Player Setup | `startup_nmi` | Team Select Start through settled Player Setup compared at source transition boundaries; replace the current 109-frame fully black hold with the source transition sequence, retaining only source-demonstrated forced blanking |
 | F3 | Centered controller cannot confirm CPU-vs-CPU | `startup_nmi` | Move pad0 to native neutral `$166D=1`, press the original confirm input, enter next scene and Tipoff with no human assignment or forced side |
 | F4 | Team presentation and starting lineup cannot be skipped | `startup_nmi` | Press/release edges at every presentation phase; match original permitted skip destinations and handoff without repeated held-input activation |
-| F5 | Intro/lineup text renders incorrectly | Root | Render every team/player/position/jersey string used by the route with the ROM font descriptors, widths, palettes and clipping; pixel and semantic checks pass |
+| F5 | Intro/lineup text renders incorrectly | Root | Fixed at `b42350d`: render one or two ROM strips from each proportional descriptor width; focused regression passes and independent exact-build screenshot review remains |
 | G1 | Court logo is corrupted | `runtime_graphics` | Multiple home courts and camera positions use source-produced indexed court/logo data; no flattened/captured substitute or broken tile seam |
-| G2 | Jersey/player numbers display malformed values such as `312` | `runtime_graphics` | All starters plus edge jersey numbers verify binary roster value, source BCD/digit selection, glyph/tile placement and no adjacent-text merge |
+| G2 | Jersey/player numbers display malformed values such as `312` | Root for reproduced lineup case; `runtime_graphics` for live jerseys | The roster is 31 and the extra 2 was adjacent-glyph bleed fixed by `b42350d`; independently replay all ten cards, then separately verify live jersey BCD/tile composition |
 | G3 | Inbound presentation glitches | `runtime_graphics` | Consecutive frames before whistle/dead ball, inbound setup, throw/release/catch and return to live play; no stale sprite, teleport, queue residue or formation flash |
 | G4 | Ball is not at the hand during pass/catch | `runtime_graphics` | Existing CPU-pass scenario plus held, windup, last attached, release, flight and catch frames; compare source hand point and ball OAM origin without changing ball physics/world coordinates |
 
