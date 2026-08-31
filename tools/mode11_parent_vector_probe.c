@@ -66,8 +66,9 @@ int main(int argc, char **argv) {
     while (fread(raw, 1u, SIZE, stdin) == SIZE) {
         NbaSession session; NbaTipoff state;
         nba_session_init(&session);
-        session.left_team = (uint8_t)word(raw, 0x46EBu);
-        session.right_team = (uint8_t)word(raw, 0x476Bu);
+        /* Native home/context0 -> UI right; visitor/context1 -> UI left. */
+        session.right_team = (uint8_t)word(raw, 0x46EBu);
+        session.left_team = (uint8_t)word(raw, 0x476Bu);
         session.config.main_values[2] = (uint8_t)word(raw, 0x17AFu);
         session.config.rules[8] = (uint8_t)word(raw, 0x17E1u);
         if (!nba_tipoff_init(&state, &assets, &session)) return 3;

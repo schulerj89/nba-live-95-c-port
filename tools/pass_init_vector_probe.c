@@ -66,8 +66,10 @@ int main(int argc, char **argv) {
         NbaSession session;
         NbaTipoff state;
         nba_session_init(&session);
-        session.left_team = (uint8_t)word(raw, 0x46EBu);
-        session.right_team = (uint8_t)word(raw, 0x476Bu);
+        /* Native context0 $46EB is home/right; context1 $476B visitor/left.
+         * Convert raw context identity at the UI initializer boundary. */
+        session.right_team = (uint8_t)word(raw, 0x46EBu);
+        session.left_team = (uint8_t)word(raw, 0x476Bu);
         if (!nba_tipoff_init(&state, &assets, &session)) return 4;
         for (unsigned i = 0; i < NBA_GAMEPLAY_ACTOR_COUNT; ++i)
             load_actor(&state.actors[i], raw,

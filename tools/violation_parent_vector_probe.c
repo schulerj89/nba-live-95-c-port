@@ -34,7 +34,8 @@ int main(int argc,char **argv){
     _setmode(_fileno(stdin),_O_BINARY);
     while(fread(raw,1,SIZE,stdin)==SIZE){
         NbaSession session;NbaTipoff s;nba_session_init(&session);
-        session.left_team=(uint8_t)word(raw,0x46EB);session.right_team=(uint8_t)word(raw,0x476B);
+        /* Native home/context0 -> UI right; visitor/context1 -> UI left. */
+        session.right_team=(uint8_t)word(raw,0x46EB);session.left_team=(uint8_t)word(raw,0x476B);
         session.config.rules[2]=(uint8_t)word(raw,0x17D5);
         session.config.rules[5]=(uint8_t)word(raw,0x17DB);
         if(!nba_tipoff_init(&s,&assets,&session))return 3;

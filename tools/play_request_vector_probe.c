@@ -22,8 +22,9 @@ int main(int argc, char **argv) {
         memset(&state, 0, sizeof(state));
         state.assets = &assets;
         state.session = &session;
-        session.left_team = (uint8_t)word(raw, 0x46EBu);
-        session.right_team = (uint8_t)word(raw, 0x476Bu);
+        /* Native home/context0 -> UI right; visitor/context1 -> UI left. */
+        session.right_team = (uint8_t)word(raw, 0x46EBu);
+        session.left_team = (uint8_t)word(raw, 0x476Bu);
         session.score[0] = word(raw, 0x4711u);
         session.score[1] = word(raw, 0x4791u);
         /* DP $9E is the active team context at B120. $093A is a persistent

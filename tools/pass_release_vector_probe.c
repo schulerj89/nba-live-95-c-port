@@ -67,8 +67,9 @@ int main(int argc, char **argv) {
         NbaSession session;
         NbaTipoff state;
         nba_session_init(&session);
-        session.left_team = (uint8_t)word(raw, 0x46EBu);
-        session.right_team = (uint8_t)word(raw, 0x476Bu);
+        /* Native home/context0 -> UI right; visitor/context1 -> UI left. */
+        session.right_team = (uint8_t)word(raw, 0x46EBu);
+        session.left_team = (uint8_t)word(raw, 0x476Bu);
         if (!nba_tipoff_init(&state, &assets, &session)) return 4;
         for (unsigned i = 0; i < NBA_GAMEPLAY_ACTOR_COUNT; ++i)
             load_actor(&state.actors[i], raw,

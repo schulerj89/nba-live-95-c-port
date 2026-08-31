@@ -54,7 +54,8 @@ int main(int argc,char **argv){
     uint8_t raw[WRAM_SIZE];_setmode(_fileno(stdin),_O_BINARY);
     while(fread(raw,1,WRAM_SIZE,stdin)==WRAM_SIZE){
         NbaSession session;NbaTipoff s;nba_session_init(&session);
-        session.left_team=(uint8_t)word(raw,0x46eb);session.right_team=(uint8_t)word(raw,0x476b);
+        /* Native home/context0 -> UI right; visitor/context1 -> UI left. */
+        session.right_team=(uint8_t)word(raw,0x46eb);session.left_team=(uint8_t)word(raw,0x476b);
         if(!nba_tipoff_init(&s,&assets,&session))return 4;
         for(unsigned i=0;i<10;i++)load_actor(&s.actors[i],raw,ACTOR_BASE+i*ACTOR_STRIDE,
             (uint8_t)word(raw,(i<5?0x46f9:0x4779)+(i%5)*2));

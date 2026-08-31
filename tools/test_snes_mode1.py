@@ -50,11 +50,16 @@ def main():
             # dispatch/fractions and actor-edge semantics changed the CPU
             # trajectory. Court/HUD/backdrop remain unchanged; 75 more OBJ
             # pixels replace BG2. This is a C regression, not ROM pixel parity.
-            assert summary["visible"]["bg1"] == 2176
-            assert summary["visible"]["bg2"] == 38703
+            # Source/config/pack attribution independently isolates corrected
+            # team identity and actor ranks as the cause of this C trajectory
+            # change. Old totals were 2176/38703/5641/2573/8251. See
+            # docs/completion-mode1-attribution-audit.md; this is not native
+            # trajectory or HUD parity. All per-pixel assertions stay intact.
+            assert summary["visible"]["bg1"] == 750
+            assert summary["visible"]["bg2"] == 46939
             assert summary["visible"]["bg3"] == 5641
-            assert summary["visible"]["obj"] == 2573
-            assert summary["visible"]["backdrop"] == 8251
+            assert summary["visible"]["obj"] == 1362
+            assert summary["visible"]["backdrop"] == 2652
             counts = {name: 0 for name in
                       ("BACKDROP", "BG1", "BG2", "BG3", "OBJ")}
             indexed = direct = rows = 0
@@ -83,7 +88,7 @@ def main():
             assert counts["BACKDROP"] == summary["visible"]["backdrop"]
             assert indexed > 0 and direct > 0
 
-    print("SNES Mode-1 PASS: native-input winner counts, priority ladder, OAM self-test, indexed colors, window, CLI JSONL")
+    print("SNES Mode-1 PASS: C-only winner counts, priority ladder, OAM self-test, indexed colors, window, CLI JSONL")
 
 
 if __name__ == "__main__":

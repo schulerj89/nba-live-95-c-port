@@ -29,8 +29,12 @@ int main(int argc, char **argv) {
         memset(&state, 0, sizeof(state));
         state.assets = &assets;
         state.session = &session;
-        session.left_team = (uint8_t)word(raw, 0x46EBu);
-        session.right_team = (uint8_t)word(raw, 0x476Bu);
+        /* This adapter bypasses match initialization: publish raw context IDs
+         * as well as translating them into legacy UI left/right selection. */
+        session.right_team = (uint8_t)word(raw, 0x46EBu);
+        session.left_team = (uint8_t)word(raw, 0x476Bu);
+        state.team_context[0].strategy_team_raw_00 = word(raw, 0x46EBu);
+        state.team_context[1].strategy_team_raw_00 = word(raw, 0x476Bu);
         state.team_context[0].anchor_x_raw_0a = (int16_t)word(raw, 0x46F5u);
         state.team_context[1].anchor_x_raw_0a = (int16_t)word(raw, 0x4775u);
         state.possession_actor = (int8_t)(int16_t)word(raw, 0x093Eu);

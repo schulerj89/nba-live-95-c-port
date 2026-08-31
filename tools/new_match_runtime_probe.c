@@ -50,7 +50,9 @@ static bool clean_host_match(const NbaSession *s) {
         s->match.pause.state != NBA_MATCH_PAUSE_INACTIVE ||
         s->match.pause.saved_live_state_raw_4988 != 0u ||
         s->match.pause.transition_ticks_remaining != 0u ||
-        s->match.pause.selected_side != s->player_one_side) return false;
+        /* Pause holds native home0/visitor1, opposite the legacy UI's
+         * left0/right1. The new-match initializer already translates it. */
+        s->match.pause.selected_side != (s->player_one_side ? 0u : 1u)) return false;
     for (unsigned side = 0; side < 2u; ++side) {
         if (memcmp(s->match.active_lineup[side],
                    s->match.roster_order[side], 5u) != 0) return false;

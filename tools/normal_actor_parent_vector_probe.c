@@ -35,7 +35,8 @@ static void print_actor(const NbaTipoffActor *a){
 int main(int argc,char **argv){NbaAssetPack assets={0};static uint8_t raw[SIZE];
  if(argc!=2||!nba_assets_load(&assets,argv[1]))return 2;_setmode(_fileno(stdin),_O_BINARY);
  while(fread(raw,1,SIZE,stdin)==SIZE){NbaSession session;NbaTipoff s;nba_session_init(&session);
-  session.left_team=(uint8_t)word(raw,0x46eb);session.right_team=(uint8_t)word(raw,0x476b);
+  /* Native home/context0 -> UI right; visitor/context1 -> UI left. */
+  session.right_team=(uint8_t)word(raw,0x46eb);session.left_team=(uint8_t)word(raw,0x476b);
   if(!nba_tipoff_init(&s,&assets,&session))return 3;
   for(unsigned i=0;i<10;i++)load_actor(&s.actors[i],raw,ACTOR_BASE+i*0x100,(uint8_t)word(raw,(i<5?0x46f9:0x4779)+(i%5)*2));
   s.rng.state=word(raw,0x7f6);s.live_state_raw=word(raw,0x936);s.camera_side_group_raw=(uint8_t)word(raw,0x93a);

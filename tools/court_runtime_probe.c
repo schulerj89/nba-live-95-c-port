@@ -67,6 +67,10 @@ int main(int argc,char **argv) {
     const uint8_t *map=(const uint8_t *)map_item->data;
     for(unsigned team=0;team<29;++team) {
         session.right_team=(uint8_t)team;
+        /* Isolated post-initialization panorama fixture: the renderer reads
+         * the native home context's $00 identity. Changing only the session
+         * selection no longer changes that already initialized match state. */
+        game.team_context[0].strategy_team_raw_00=(uint16_t)team;
         const uint8_t *vram=NULL,*cgram=NULL;
         if(!nba_assets_gameplay_ppu_input(&pack,(uint8_t)team,&vram,&cgram))return 9;
         for(unsigned xi=0;xi<7;++xi)for(unsigned yi=0;yi<4;++yi) {
