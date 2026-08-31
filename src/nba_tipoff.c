@@ -614,6 +614,14 @@ static void actor_store_animation_channels(NbaTipoffActor *a,
     a->upper_phase_target_raw_b0 = c->upper_phase_target;
 }
 
+/* `$87:AB48-$AC22`: every successful animation publication first clears
+ * actor+$28 bit15, then sets it iff resolved actor+$52 is below three. This
+ * is the body mirror producer; head selection at A5FB-A609 owns only bit2. */
+static void actor_publish_body_mirror(NbaTipoffActor *actor) {
+    actor->actor_status_raw_28 &= 0x7fffu;
+    if (actor->direction < 3u) actor->actor_status_raw_28 |= 0x8000u;
+}
+
 static void actor_animation_command(NbaTipoff *tipoff, NbaTipoffActor *actor,
     NbaPlayerAnimationCommand command, uint16_t state) {
     NbaPlayerAnimationChannels channels = actor_animation_channels(actor);
@@ -635,6 +643,7 @@ static void actor_animation_command(NbaTipoff *tipoff, NbaTipoffActor *actor,
         if (actor->animation_resources_valid) {
             actor->upper_animation_resource_raw_2a = pose.upper_resource;
             actor->lower_animation_resource_raw_2c = pose.lower_resource;
+            actor_publish_body_mirror(actor);
         }
     }
 }
@@ -867,6 +876,7 @@ static void cpu_advance_actor_animation(NbaTipoff *tipoff,
         actor->upper_animation_phase_raw = actor->rom_upper_animation_phase_raw_3a;
     if (actor->animation_resources_valid && actor->lower_animation_lock_raw_48 != 0u)
         actor->lower_animation_phase_raw = actor->rom_lower_animation_phase_raw_3c;
+    if (actor->animation_resources_valid) actor_publish_body_mirror(actor);
 }
 
 static int16_t pass_predict_component(int16_t value, unsigned shift) {
@@ -2101,7 +2111,8 @@ static bool actor_animation_resources(const NbaTipoff *tipoff,
         upper_resource, lower_resource);
 }
 
-static uint8_t actor_draw_direction(const NbaTipoff *tipoff,
+static NbaGameplayDrawDirection actor_draw_direction_input(
+                                    const NbaTipoff *tipoff,
                                     unsigned actor_index) {
     const NbaTipoffActor *actor = &tipoff->actors[actor_index];
     NbaGameplayDrawDirection input = {
@@ -2133,11 +2144,17 @@ static uint8_t actor_draw_direction(const NbaTipoff *tipoff,
         input.candidate_dy = (int16_t)(
             fp_integer_word(tipoff->ball.y_fp) - fp_integer_word(actor->y_fp));
     }
+    return input;
+}
+
+static uint8_t actor_draw_direction(const NbaTipoff *tipoff,
+                                    unsigned actor_index) {
+    const NbaTipoffActor *actor = &tipoff->actors[actor_index];
     /* `$87:A59C-$A5A2` uses actor+88 >>1 for upper states20/21 when the
      * preceding mode/target branches do not apply. It skips F02D entirely;
      * the old stale-AE comment described a port omission, not a native bug. */
     NbaGameplayDrawPreparationInput preparation = {
-        .direction = input,
+        .direction = actor_draw_direction_input(tipoff, actor_index),
         .status = actor->actor_status_raw_28,
         .upper_resource = actor->upper_animation_resource_raw_2a,
         .lower_resource = actor->lower_animation_resource_raw_2c,
@@ -3686,8 +3703,7 @@ static void actor_store_shot_action(NbaTipoff *tipoff, NbaTipoffActor *actor,
     if (actor->animation_resources_valid) {
         actor->upper_animation_resource_raw_2a=pose.upper_resource;
         actor->lower_animation_resource_raw_2c=pose.lower_resource;
-        if (actor->control_mode==17u)
-            actor->actor_status_raw_28=(actor->actor_status_raw_28&0x7FFFu)|pose.mirror_flags;
+        actor_publish_body_mirror(actor);
     }
 }
 
@@ -4131,6 +4147,7 @@ static void cpu_finish_rom_close_shot(NbaTipoff *tipoff, unsigned slot) {
                 actor->upper_animation_resource_raw_2a = upper;
                 actor->lower_animation_resource_raw_2c = lower;
                 actor->animation_resources_valid = true;
+                actor_publish_body_mirror(actor);
                 actor->x_fp = fp_replace_integer_word(
                     actor->x_fp,
                     (int16_t)(basket_x - offset_x));
@@ -4670,7 +4687,7 @@ static bool cpu_shot_branches_self_test(const NbaAssetPack *assets,
     s.attached_ball_state_raw_09f6=1;
     if (!cpu_update_rom_shooter(&s,0) || a->control_mode!=11 ||
         a->behavior_flags_raw!=0 || a->reaction_threshold!=0 ||
-        a->actor_status_raw_28!=0x1234 || a->upper_animation_lock_raw_46!=0 ||
+        a->actor_status_raw_28!=0x9234 || a->upper_animation_lock_raw_46!=0 ||
         a->lower_animation_lock_raw_48!=0 || s.ball_activity_raw!=0 ||
         s.live_state_raw!=0 || s.ball.z_fp!=40*256+171 || s.ball.velocity_z!=0 ||
         s.dead_ball_raw_0968!=40 || s.attached_ball_state_raw_09f6!=2)
@@ -8369,7 +8386,7 @@ static void latch_player_screen_origins(NbaTipoff *tipoff) {
      * Reprojecting only the ball against a newer camera moves it away from
      * its retained hand point for one frame. */
     for (unsigned actor=0;actor<NBA_GAMEPLAY_ACTOR_COUNT;++actor) {
-        const NbaTipoffActor *state=&tipoff->actors[actor];
+        NbaTipoffActor *state=&tipoff->actors[actor];
         int16_t z=fp_integer_word(state->z_fp);
         nba_court_project_actor(fp_integer_word(state->x_fp),
             fp_integer_word(state->y_fp),z,tipoff->camera_x,tipoff->camera_y,
@@ -8378,6 +8395,13 @@ static void latch_player_screen_origins(NbaTipoff *tipoff) {
             tipoff->player_screen_x[actor],
             (int16_t)((uint16_t)tipoff->player_screen_y[actor]+(uint16_t)z),
             z,state->controller_assignment_raw>=0);
+        /* `$87:A5FB-$A609` updates only bit2 after projection/culling admits
+         * the actor. Body bit15 remains AB48-AC22's animation result. */
+        if (tipoff->player_screen_visible[actor]) {
+            uint8_t head_direction = actor_draw_direction(tipoff, actor);
+            state->actor_status_raw_28 &= 0xfffbu;
+            if (head_direction < 3u) state->actor_status_raw_28 |= 0x0004u;
+        }
         memset(&tipoff->player_indicator[actor],0,
                sizeof(tipoff->player_indicator[actor]));
         if (state->controller_assignment_raw>=0 &&
@@ -9037,6 +9061,7 @@ static bool prepare_substitution_actor_bindings(
                 &state->upper_animation_resource_raw_2a,
                 &state->lower_animation_resource_raw_2c)) return false;
         state->animation_resources_valid = true;
+        actor_publish_body_mirror(state);
     }
     publish_appearance_assignment_roles(actors, &active);
     /* Native actor rebuild restores reciprocal matchup geometry after the
@@ -9931,10 +9956,58 @@ void nba_tipoff_render(const NbaTipoff *tipoff, NbaRenderer *ren) {
          * independently; it does not rotate the torso/legs or ball point. */
         if (actor_draw_body_resources(tipoff, &tipoff->actors[actor], direction,
                 &draw_upper_resource, &draw_lower_resource)) {
-            nba_player_sprite_render_resources(
-                &object_plane, tipoff->assets, team, slot, uniform_side, direction,
-                draw_upper_resource, draw_lower_resource,
-                screen_x[actor], screen_y[actor] - jump, 1);
+            uint16_t head_order = 0u, number_resource = 0u;
+            uint16_t head_base = 0u, palette_offset = 0u;
+            NbaGameplayDrawPreparation prepared = {0};
+            bool literal = nba_player_sprite_pose_table_inputs(
+                    tipoff->assets, draw_upper_resource,
+                    tipoff->actors[actor].direction,
+                    &head_order, &number_resource) &&
+                nba_player_sprite_pose_identity(tipoff->assets, team, slot,
+                    uniform_side, &head_base, &palette_offset);
+            if (literal) {
+                int16_t world_z = fp_integer_word(tipoff->actors[actor].z_fp);
+                NbaGameplayDrawPreparationInput preparation = {
+                    .direction = actor_draw_direction_input(tipoff, actor),
+                    .status = tipoff->actors[actor].actor_status_raw_28,
+                    .upper_resource = draw_upper_resource,
+                    .lower_resource = draw_lower_resource,
+                    .world_x = fp_integer_word(tipoff->actors[actor].x_fp),
+                    .world_y = fp_integer_word(tipoff->actors[actor].y_fp),
+                    .world_z = world_z,
+                    .screen_x = screen_x[actor],
+                    /* The retained origin already includes A620's Z
+                     * subtraction. Restore the pre-A620 input word here. */
+                    .screen_y = (int16_t)((uint16_t)screen_y[actor] +
+                                          (uint16_t)world_z),
+                    .head_base = head_base,
+                    .palette_offset = palette_offset
+                };
+                nba_gameplay_prepare_player_draw(&preparation, &prepared);
+                NbaPlayerSpritePoseInput pose = {
+                    .upper_d6 = draw_upper_resource,
+                    .lower_d4 = draw_lower_resource,
+                    .head_da = prepared.head_resource,
+                    .number_d8 = number_resource,
+                    .flags_47 = prepared.status,
+                    .head_order_51 = head_order,
+                    .movement_c0 = tipoff->actors[actor].movement_direction,
+                    .attribute_4f = prepared.attribute,
+                    /* 0884 is queue work and has no pixel effect. This
+                     * adapter neither exports nor claims its live value. */
+                    .glyph_work_0884 = 0u,
+                    .x = prepared.x,
+                    .y = (int16_t)(prepared.y - jump)
+                };
+                literal = nba_player_sprite_render_pose(&object_plane,
+                    tipoff->assets, team, slot, uniform_side,
+                    tipoff->actors[actor].direction, &pose, 1);
+            }
+            if (!literal)
+                nba_player_sprite_render_resources(
+                    &object_plane, tipoff->assets, team, slot, uniform_side,
+                    direction, draw_upper_resource, draw_lower_resource,
+                    screen_x[actor], screen_y[actor] - jump, 1);
         } else {
             nba_player_sprite_render_split(&object_plane, tipoff->assets, team, slot,
                                            uniform_side, state, lower_state,

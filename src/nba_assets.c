@@ -26,6 +26,35 @@ static uint16_t asset_u16(const uint8_t *p) {
     return (uint16_t)p[0] | (uint16_t)((uint16_t)p[1] << 8);
 }
 
+bool nba_assets_player_draw_inputs_valid(const NbaAssetPack *pack) {
+    const NbaAssetItem *item=nba_assets_get(pack,NBA_ASSET_PLAYER_DRAW_INPUTS);
+    if (!item || !item->data || item->size!=2144u || item->width ||
+        item->height || item->flags) return false;
+    const uint8_t *p=item->data;
+    if (memcmp(p,"NBPDRAW1",8) || asset_u32(p+8)!=1u ||
+        asset_u32(p+12)!=2096u || asset_u32(p+16)!=32u ||
+        asset_u32(p+20)!=8u || asset_u32(p+24)!=2128u ||
+        asset_u32(p+28)!=2144u) return false;
+    /* Complete AC:B6B3 table integrity. The extractor additionally binds
+     * original ROM/table SHA256; this runtime checksum is not attestation. */
+    uint32_t checksum=2166136261u;
+    for (unsigned i=32u;i<2128u;++i) checksum=(checksum^p[i])*16777619u;
+    if (checksum!=0xc5836647u) return false;
+    static const uint16_t number[8]={0x593,0xffff,0x591,0x592,0x593,0xffff,0x591,0x592};
+    for (unsigned i=0;i<8u;++i) if (asset_u16(p+2128u+i*2u)!=number[i]) return false;
+    return true;
+}
+
+bool nba_assets_player_draw_inputs(const NbaAssetPack *pack,uint16_t upper,
+    uint16_t resolved_direction,uint16_t *head_order,uint16_t *number_resource) {
+    if (!head_order || !number_resource || upper>=0x830u ||
+        resolved_direction>=8u || !nba_assets_player_draw_inputs_valid(pack)) return false;
+    const uint8_t *p=nba_assets_get(pack,NBA_ASSET_PLAYER_DRAW_INPUTS)->data;
+    uint16_t head=(uint16_t)(int16_t)(int8_t)p[32u+upper];
+    uint16_t number=asset_u16(p+2128u+resolved_direction*2u);
+    *head_order=head;*number_resource=number;return true;
+}
+
 static bool formation_payload_valid(const uint8_t *data, size_t size) {
     static const uint8_t counts[61] = {
         3,3,3,3,3,3,5,5,5,5,5,4,4,3,4,4,4,4,5,5,5,5,5,5,5,6,6,8,7,5,
@@ -375,6 +404,9 @@ bool nba_assets_load(NbaAssetPack *pack, const char *asset_path) {
 
     const NbaAssetItem *formations = nba_assets_get(
         pack, NBA_ASSET_GAMEPLAY_FORMATIONS);
+    if (nba_assets_get(pack,NBA_ASSET_PLAYER_DRAW_INPUTS) &&
+        !nba_assets_player_draw_inputs_valid(pack))
+        return asset_load_error(pack,"Player draw-input tables are invalid");
     if (formations && !formation_payload_valid(
             (const uint8_t *)formations->data, formations->size))
         return asset_load_error(pack, "Gameplay formation graph is invalid");

@@ -110,8 +110,62 @@ typedef struct {
     uint8_t count;
 } NbaPlayerSpriteComposition;
 
-/* Portable observable output of `$80:AD92-$AEC1`: resolve the four player
- * layers and their attachment origins in native sprite-queue order. */
+/* Literal 80:AD92 / shared 80:AF1E body inputs. The caller owns these
+ * fields; selected head facing must not replace body flags or C0/C2. */
+typedef struct {
+    uint16_t upper_d6, lower_d4, head_da, number_d8;
+    uint16_t flags_47, head_order_51, movement_c0, attribute_4f;
+    uint16_t glyph_work_0884;
+    int16_t x, y;
+} NbaPlayerSpritePoseInput;
+typedef struct {
+    NbaPlayerSpritePartKind kind;
+    uint16_t resource, attribute, glyph_work_0884;
+    int16_t x, y;
+} NbaPlayerSpriteSubmission;
+typedef struct {
+    NbaPlayerSpriteSubmission parts[4];
+    uint16_t count, upper_flip_aa, lower_flip_ac, head_flip_49;
+    uint16_t glyph_work_0884;
+    int16_t upper_x_b2, upper_y_b4, head_x_b6, head_y_b8;
+    int16_t number_x_dc, number_y_de;
+} NbaPlayerSpritePoseComposition;
+/* Binary 16-bit arithmetic (native D/M/X=0); upper/lower resource <0x830.
+ * Ordered B348 call arguments and source-owned geometry. No allocation,
+ * clipping, OAM cursor, DMA queue, AF1E ball interleave or CPU timing.
+ * Invalid table/input domain returns false without modifying output. */
+bool nba_player_compose_sprite_pose(const NbaAssetPack *assets,
+                                   const NbaPlayerSpritePoseInput *input,
+                                   NbaPlayerSpritePoseComposition *output);
+/* `$87:A4F5-$A525`: resolve the signed upper-resource table inputs. C2 is
+ * the actor's published display direction, distinct from selected head
+ * facing and movement C0. */
+bool nba_player_sprite_pose_table_inputs(const NbaAssetPack *assets,
+                                         uint16_t upper_resource,
+                                         uint16_t direction_c2,
+                                         uint16_t *head_order_51,
+                                         uint16_t *number_resource_d8);
+
+/* Source-owned `$87:AFA2-$B053` identity words used by `$87:A61E`'s
+ * AD92/AF1E caller. */
+bool nba_player_sprite_pose_identity(const NbaAssetPack *assets,
+                                     uint8_t team, uint8_t roster_slot,
+                                     uint8_t side, uint16_t *head_base,
+                                     uint16_t *palette_offset);
+
+/* Pixel-visible adapter for the literal pose stream. `direction_c2` selects
+ * the already-built jersey tile. Glyph work $0884 remains external graphics
+ * queue state and is deliberately not claimed by this renderer. */
+bool nba_player_sprite_render_pose(NbaRenderer *renderer,
+                                   const NbaAssetPack *assets,
+                                   uint8_t team, uint8_t roster_slot,
+                                   uint8_t side, uint8_t direction_c2,
+                                   const NbaPlayerSpritePoseInput *input,
+                                   int scale);
+
+/* Legacy combined-direction entry retained for current rendering/lab callers.
+ * Its inferred flags/head order are not the literal AD92/AF1E contract above.
+ * Runtime migration requires the actual DP47/51/C0 and resource producers. */
 bool nba_player_compose_sprite_parts(const NbaAssetPack *assets,
                                     uint8_t team, uint8_t roster_slot,
                                     uint8_t side, uint8_t direction,

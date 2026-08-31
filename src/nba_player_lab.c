@@ -45,6 +45,8 @@ typedef struct {
 } PlayerLabRecord;
 
 static void fill(NbaRenderer *ren, int x, int y, int w, int h, uint32_t color);
+static bool player_record(const NbaAssetPack *assets, int team, int player,
+                          PlayerLabRecord *out);
 
 static uint32_t read_u32(const uint8_t *p) {
     return (uint32_t)p[0] | ((uint32_t)p[1] << 8) |
@@ -229,6 +231,39 @@ static int8_t number_visibility_for_upper(const NbaAssetPack *assets,
 static bool number_allowed_for_upper(const NbaAssetPack *assets,
                                      uint16_t upper_resource) {
     return number_visibility_for_upper(assets, upper_resource) >= 0;
+}
+
+bool nba_player_sprite_pose_table_inputs(const NbaAssetPack *assets,
+                                         uint16_t upper_resource,
+                                         uint16_t direction_c2,
+                                         uint16_t *head_order_51,
+                                         uint16_t *number_resource_d8) {
+    if (!head_order_51 || !number_resource_d8 || upper_resource >= 0x830u ||
+        direction_c2 >= 8u) return false;
+    uint16_t head_order = 0u, directional_number = 0u;
+    if (!nba_assets_player_draw_inputs(assets, upper_resource, direction_c2,
+            &head_order, &directional_number)) return false;
+    int8_t visibility = number_visibility_for_upper(assets, upper_resource);
+    *head_order_51 = head_order;
+    *number_resource_d8 = visibility < 0 ?
+        (uint16_t)(int16_t)visibility : directional_number;
+    return true;
+}
+
+bool nba_player_sprite_pose_identity(const NbaAssetPack *assets,
+                                     uint8_t team, uint8_t roster_slot,
+                                     uint8_t side, uint16_t *head_base,
+                                     uint16_t *palette_offset) {
+    PlayerLabRecord player;
+    if (!head_base || !palette_offset || side > 1u ||
+        !player_record(assets, team, roster_slot, &player)) return false;
+    unsigned skin = player.palette_variant;
+    if (skin >= 3u) skin = 2u;
+    uint16_t head = player.head_raw;
+    if (head >= 0x27u) head &= 0x1fu;
+    *head_base = (uint16_t)(0x049cu + head * 5u);
+    *palette_offset = (uint16_t)(side * 0x600u + skin * 0x200u);
+    return true;
 }
 
 static const uint8_t *jersey_asset_table(const NbaAssetPack *assets,
@@ -583,6 +618,77 @@ bool nba_player_compose_jersey_number(const NbaAssetPack *assets,
     return true;
 }
 
+static bool sprite_pose_table(const NbaAssetItem *item, unsigned header,
+                              uint16_t resource, unsigned delta,
+                              int16_t *value) {
+    if (!item || resource >= PLAYER_ATTACHMENT_TABLE_SIZE) return false;
+    const uint8_t *data = item->data;
+    uint32_t offset = read_u32(data + header);
+    if (offset > item->size || delta > item->size - offset ||
+        resource >= item->size - offset - delta) return false;
+    *value = (int8_t)data[offset + delta + resource];
+    return true;
+}
+
+bool nba_player_compose_sprite_pose(const NbaAssetPack *assets,
+                                   const NbaPlayerSpritePoseInput *in,
+                                   NbaPlayerSpritePoseComposition *out) {
+    if (!in || !out) return false;
+    const NbaAssetItem *item;
+    if (!animation_data(assets, &item)) return false;
+    int16_t lx, ly, ux, uy, nx, ny;
+    if (!sprite_pose_table(item,24u,in->lower_d4,0u,&lx) ||
+        !sprite_pose_table(item,24u,in->lower_d4,PLAYER_ATTACHMENT_TABLE_SIZE,&ly) ||
+        !sprite_pose_table(item,24u,in->upper_d6,0u,&ux) ||
+        !sprite_pose_table(item,24u,in->upper_d6,PLAYER_ATTACHMENT_TABLE_SIZE,&uy) ||
+        !sprite_pose_table(item,44u,in->upper_d6,0u,&nx) ||
+        !sprite_pose_table(item,44u,in->upper_d6,PLAYER_ATTACHMENT_TABLE_SIZE,&ny)) return false;
+    NbaPlayerSpritePoseComposition next={0};
+    uint16_t flags=in->flags_47;
+    /* AD9A-ADB4 / AF26-AF40: sign toggles only the body masks. Head
+     * bit2 is independent. Negate sign-extended words, including -128. */
+    if (flags&0x8000u) flags^=3u;
+    next.upper_flip_aa=(flags&1u)?0xffffu:0u;
+    next.lower_flip_ac=(flags&2u)?0xffffu:0u;
+    next.head_flip_49=(flags&4u)?0xffffu:0u;
+    if (flags&2u) lx=(int16_t)(0u-(uint16_t)lx);
+    if (flags&1u) { ux=(int16_t)(0u-(uint16_t)ux); nx=(int16_t)(0u-(uint16_t)nx); }
+    next.upper_x_b2=(int16_t)((uint16_t)in->x+(uint16_t)lx);
+    next.upper_y_b4=(int16_t)((uint16_t)in->y+(uint16_t)ly);
+    next.head_x_b6=(int16_t)((uint16_t)next.upper_x_b2+(uint16_t)ux);
+    next.head_y_b8=(int16_t)((uint16_t)next.upper_y_b4+(uint16_t)uy);
+    next.number_x_dc=(int16_t)((uint16_t)next.upper_x_b2+(uint16_t)nx);
+    next.number_y_de=(int16_t)((uint16_t)next.upper_y_b4+(uint16_t)ny);
+    next.glyph_work_0884=in->glyph_work_0884;
+#define POSE_PART(k,r,px,py,flip,number) do { \
+    NbaPlayerSpriteSubmission *part=&next.parts[next.count++]; \
+    part->kind=(k); part->resource=(r); part->x=(px); part->y=(py); \
+    part->attribute=(uint16_t)(in->attribute_4f | ((flip)?0x4000u:0u) | ((number)?0x0e00u:0u)); \
+    part->glyph_work_0884=next.glyph_work_0884; \
+} while(0)
+#define POSE_HEAD() POSE_PART(NBA_PLAYER_SPRITE_HEAD,in->head_da,next.head_x_b6,next.head_y_b8,flags&4u,false)
+#define POSE_UPPER() POSE_PART(NBA_PLAYER_SPRITE_UPPER,in->upper_d6,next.upper_x_b2,next.upper_y_b4,flags&1u,false)
+#define POSE_NUMBER() do { \
+    if (!(in->number_d8&0x8000u)) { \
+        ++next.glyph_work_0884; \
+        POSE_PART(NBA_PLAYER_SPRITE_NUMBER,in->number_d8,next.number_x_dc,next.number_y_de,in->number_d8==0x0591u,true); \
+        next.glyph_work_0884=0u; \
+    } \
+} while(0)
+    /* AE50/AEC5 sign-select head order. AE69-AE71's unsigned CMP
+     * after DEC selects C0=1..5, not selected head direction2..4. */
+    if (!(in->head_order_51&0x8000u)) POSE_HEAD();
+    if ((uint16_t)(in->movement_c0-1u)<5u) { POSE_NUMBER(); POSE_UPPER(); }
+    else { POSE_UPPER(); POSE_NUMBER(); }
+    POSE_PART(NBA_PLAYER_SPRITE_LOWER,in->lower_d4,in->x,in->y,flags&2u,false);
+    if (in->head_order_51&0x8000u) POSE_HEAD();
+#undef POSE_NUMBER
+#undef POSE_UPPER
+#undef POSE_HEAD
+#undef POSE_PART
+    *out=next;return true;
+}
+
 bool nba_player_compose_sprite_parts(const NbaAssetPack *assets,
                                     uint8_t team, uint8_t roster_slot,
                                     uint8_t side, uint8_t direction,
@@ -594,41 +700,20 @@ bool nba_player_compose_sprite_parts(const NbaAssetPack *assets,
     NbaPlayerSpriteDiagnostics d;
     if (!nba_player_sprite_diagnose_resources(assets, team, roster_slot, side,
             direction, upper_resource, lower_resource, &d)) return false;
-    bool body_flip = direction < 3u;
-    int16_t upper_x = (int16_t)(lower_x +
-        (body_flip ? -d.upper_attach_x : d.upper_attach_x));
-    int16_t upper_y = (int16_t)(lower_y + d.upper_attach_y);
-    NbaPlayerSpriteComposition next = {0};
-#define ADD_PART(part_kind, part_resource, part_x, part_y, part_flip) do { \
-    NbaPlayerSpritePart *part = &next.parts[next.count++]; \
-    part->kind = (part_kind); part->resource = (part_resource); \
-    part->x = (part_x); part->y = (part_y); part->flip = (part_flip); \
-} while (0)
-    ADD_PART(NBA_PLAYER_SPRITE_HEAD, d.head_resource,
-        (int16_t)(upper_x + (body_flip ? -d.head_attach_x : d.head_attach_x)),
-        (int16_t)(upper_y + d.head_attach_y), body_flip);
-    /* `$80:AE42-$80:AE86`: the oblique/front views 2..4 queue the jersey
-     * overlay before the torso. Views 0,6,7 queue it after the torso. This
-     * changes overlap priority and cannot be represented by one fixed host
-     * painter order. Directions 1/5 have no number resource. */
-    bool number_before_upper = direction >= 2u && direction <= 4u;
-    if (d.number_composed && number_before_upper)
-        ADD_PART(NBA_PLAYER_SPRITE_NUMBER, d.number_resource,
-            (int16_t)(upper_x +
-                (body_flip ? -d.number_attach_x : d.number_attach_x)),
-            (int16_t)(upper_y + d.number_attach_y),
-            d.number_resource == 0x0591u);
-    ADD_PART(NBA_PLAYER_SPRITE_UPPER, upper_resource,
-        upper_x, upper_y, body_flip);
-    if (d.number_composed && !number_before_upper)
-        ADD_PART(NBA_PLAYER_SPRITE_NUMBER, d.number_resource,
-            (int16_t)(upper_x +
-                (body_flip ? -d.number_attach_x : d.number_attach_x)),
-            (int16_t)(upper_y + d.number_attach_y),
-            d.number_resource == 0x0591u);
-    ADD_PART(NBA_PLAYER_SPRITE_LOWER, lower_resource,
-        lower_x, lower_y, body_flip);
-#undef ADD_PART
+    /* Compatibility entry for Player Lab and the existing caller. Its
+     * combined direction contract is unchanged; runtime D1 must supply the
+     * literal fields to compose_sprite_pose instead of guessing DP51. */
+    NbaPlayerSpritePoseInput input={upper_resource,lower_resource,d.head_resource,
+        d.number_composed?d.number_resource:0xffffu,
+        direction<3u?0x8004u:0u,0u,direction,0u,0u,lower_x,lower_y};
+    NbaPlayerSpritePoseComposition pose;
+    if (!nba_player_compose_sprite_pose(assets,&input,&pose)) return false;
+    NbaPlayerSpriteComposition next={0};next.count=(uint8_t)pose.count;
+    for (unsigned i=0;i<pose.count;++i) {
+        next.parts[i].kind=pose.parts[i].kind;next.parts[i].resource=pose.parts[i].resource;
+        next.parts[i].x=pose.parts[i].x;next.parts[i].y=pose.parts[i].y;
+        next.parts[i].flip=(pose.parts[i].attribute&0x4000u)!=0u;
+    }
     *composition = next;
     return true;
 }
@@ -667,6 +752,47 @@ static bool draw_player_resources_at(NbaRenderer *ren,
         int draw_y = lower_y + (part->y - lower_y) * scale;
         draw_animation_resource(ren, assets, part->resource, part_palette,
             draw_x, draw_y, part->flip, override, scale);
+    }
+    return true;
+}
+
+bool nba_player_sprite_render_pose(NbaRenderer *renderer,
+                                   const NbaAssetPack *assets,
+                                   uint8_t team, uint8_t roster_slot,
+                                   uint8_t side, uint8_t direction_c2,
+                                   const NbaPlayerSpritePoseInput *input,
+                                   int scale) {
+    PlayerLabRecord player;
+    if (!renderer || !assets || !input || side > 1u || direction_c2 >= 8u ||
+        scale < 1 || !player_record(assets, team, roster_slot, &player))
+        return false;
+    const uint8_t *palette = player_palette(assets, team, side,
+                                            player.palette_variant);
+    if (!palette) return false;
+    NbaPlayerSpritePoseComposition composition;
+    if (!nba_player_compose_sprite_pose(assets, input, &composition))
+        return false;
+    uint8_t number_tile[32], number_palette[32];
+    bool have_number = nba_player_compose_jersey_number(
+        assets, player.jersey, direction_c2, side, number_tile);
+    if (have_number && !jersey_palette(assets, team, side, number_palette))
+        return false;
+    /* B348 submission priority is reversed for the direct framebuffer. The
+     * attributes retain independent upper/lower/head masks and D8=$0591's
+     * extra mirror bit; palette bits are represented by the selected source. */
+    for (unsigned index = composition.count; index-- > 0;) {
+        const NbaPlayerSpriteSubmission *part = &composition.parts[index];
+        if (part->kind == NBA_PLAYER_SPRITE_NUMBER && !have_number)
+            return false;
+        const uint8_t *part_palette = part->kind == NBA_PLAYER_SPRITE_NUMBER
+            ? number_palette : palette;
+        const uint8_t *override = part->kind == NBA_PLAYER_SPRITE_NUMBER
+            ? number_tile : NULL;
+        int draw_x = input->x + (part->x - input->x) * scale;
+        int draw_y = input->y + (part->y - input->y) * scale;
+        draw_animation_resource(renderer, assets, part->resource, part_palette,
+            draw_x, draw_y, (part->attribute & 0x4000u) != 0u,
+            override, scale);
     }
     return true;
 }

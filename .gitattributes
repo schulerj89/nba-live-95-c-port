@@ -298,3 +298,23 @@ tools/verify_bootstrap_tables_v2.py -text
 tools/test_bootstrap_tables_boundary_v2.py -text
 docs/bootstrap-boundary-verifier-addendum-v2.md -text
 tools/bootstrap_fill_trace_protocol.py -text
+
+# Preserve literal sprite-compositor/runtime adapter source identities.
+docs/sprite-pose-compositor-component.md -text
+docs/sprite-pose-runtime-adapter.md -text
+tools/build_player_draw_inputs.py -text
+tools/build_sprite_pose_guards.py -text
+tools/build_sprite_pose_probe.py -text
+tools/build_sprite_pose_runtime_probe.py -text
+tools/inspect_sprite_pose_source.py -text
+tools/sprite_pose_guard_probe.c -text
+tools/sprite_pose_probe.c -text
+tools/sprite_pose_rom_oracle.py -text
+tools/sprite_pose_runtime_probe.c -text
+tools/test_sprite_pose.py -text
+tools/test_sprite_pose_protocol.py -text
+tools/test_sprite_pose_runtime_inputs.py -text
+tools/test_sprite_pose_runtime_source.py -text
+tools/upgrade_player_draw_pack.py -text
+tools/verify_sprite_pose_live_runtime.py -text
+tools/verify_sprite_pose_runtime.py -text
