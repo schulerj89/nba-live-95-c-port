@@ -68,3 +68,6 @@ tools/mesen_setup_spc_init.lua -text
 include/period_render_tail.h -text
 src/period_render_tail.c -text
 tools/period_render_tail_probe.c -text
+# Preserve executed F1 control capture identities.
+tools/capture_setup_spc_control.py -text
+tools/mesen_setup_spc_control.lua -text
