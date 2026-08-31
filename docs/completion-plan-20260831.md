@@ -166,6 +166,13 @@ latches, timer-edge state and the original08FF omission. This removes one real
 initialization stop without claiming DSP timing is solved. The next continuation
 is03DB..043F into0447, with actual DSP/timer ownership rather than a canned read.
 
+Source correction at implementation start:03DB bytes `C4 F3` are `MOV $F3,A`,
+including a read-before-write bus cycle. The preserved timing work-plan and Max
+consultation incorrectly name `OR A,$F3`; their mnemonic is superseded by the
+actual ROM bytes and accepted initializer source. The pending DSP bus boundary
+still exists. Preserve those reports as history; do not alter frozen source to
+match their prose.
+
 That composition must start with the original reset caller and80:AB06 IPL/upload
 transactions, not a captured0380 prestate. Following Max's ownership correction,
 place the CPU/SPC clock/bus state beside `NbaGame.session`, outside the scene union

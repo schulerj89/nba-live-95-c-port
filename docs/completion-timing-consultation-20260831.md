@@ -8,6 +8,13 @@ captures or implementation were performed by the consultant. Root and scheduler
 must implement the contract and obtain independent verification; advice is not
 an acceptance result.
 
+Implementation-start correction: the03DB instruction named `OR A,$F3` below
+is actually `MOV $F3,A` (`C4 F3` at ROM offset0046E2), with a read-before-write
+DSP bus cycle. Root and scheduler independently checked the original bytes and
+`nba_setup_spc_init.c`. The historical advice remains quoted accurately below;
+its mnemonic is not authoritative over source. The explicit pending DSP bus
+boundary and persistent-owner recommendation remain applicable.
+
 ## First unit and persistent owner
 
 Compose original cold reset, IPL/upload and resident handoff with one persistent

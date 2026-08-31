@@ -17,6 +17,14 @@ owner outside the scene union. Its bounded first gate reaches the real F1/0387
 state and explicit03DB DSP-read stop. See `completion-timing-consultation-20260831.md`.
 Planning and archival commits are not implementation acceptance.
 
+Execution is now authorized and underway from7002fb1. Controllers owns C1 in
+`c1-pass-interruption-20260831`; scheduler owns S1 in `s1-bootstrap-20260831`;
+the independent auditor uses `checkpoint-qa-20260831` and also owns checkpoint
+screenshots. Root handles integration and the source-grounded retail/SRAM
+inventory. See `implementation-checkpoints-20260831.md` and
+`retail-mode-state-inventory.md`. Commit/push follows independently verified
+integration checkpoints; gallery publication follows exact-build visual QA.
+
 Explicit user instruction (2026-08-31): preserve every bug present in the
 original game and comment it. Confirm native behavior with ROM/routine/evidence
 before labeling it an original bug; preserve quirks and document them near the
