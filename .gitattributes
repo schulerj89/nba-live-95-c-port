@@ -53,3 +53,11 @@ tools/mesen_human_pass_return.lua -text
 # Preserve executed mode15 release capture bytes.
 tools/capture_human_pass_release.py -text
 tools/mesen_human_pass_release.lua -text
+# Preserve the unchanged reviewed period component/probe source identities.
+include/period_appearance.h -text
+src/period_appearance.c -text
+tools/period_appearance_probe.c -text
+include/period_support.h -text
+src/period_support.c -text
+tools/period_support_probe.c -text
+tools/period_support_source_domain.py -text
