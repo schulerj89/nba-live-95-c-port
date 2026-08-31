@@ -6,6 +6,13 @@ dated plan and frozen audits remain historical evidence. **The game is not
 complete.** No completion percentage or delivery date is inferred from source
 coverage, passing helper tests or screenshots.
 
+User review of the current preview exposed release-blocking visible defects in
+Team Select, Player Setup, intro/lineup control and text, court/logo rendering,
+jersey numbers, inbounds and ball/hand attachment. The immediate execution
+order is temporarily replaced by the
+[visible defect recovery plan](visible-defect-recovery-plan-20260831.md). The
+remaining phases in this document resume after that route passes.
+
 ## Current position
 
 The integrated HUD score/clock/expiry repair, contact interruption/recovery,
