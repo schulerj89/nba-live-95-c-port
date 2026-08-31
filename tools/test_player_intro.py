@@ -21,10 +21,16 @@ EXPECTED_AUDIO_RMS = [
 ]
 
 EXPECTED_ASSETS = {
-    260: (229376, "372c50ea64dc4180637c1666d123d3c018012a5c65b31823fc943be28358440b"),
+    260: (229376, "56a982c2388bb12ab67264d6d055229454b55e6dde6e8a143b1ad3336f136992"),
     261: (6015784, "91120473949026d6803083ceb70bcc4e84623baa49151d10b7e6846df16ea14c"),
     264: (6144, "7888790592673fd5e9fb1f76d7c50344fb8f6853d7d21594aad9a9c588e73d0b"),
 }
+
+# Native normal-route frame 2550 contains no BG3/OBJ pixels in the top 16
+# rows. Its RGB crop therefore locks the BG1 crowd/basket layer in the packed
+# Orlando pregame background without treating a screenshot as extraction input.
+EXPECTED_ORLANDO_TOP_RGB = \
+    "6b4cda12034520a700e01fd6135f3e9d993e4a518801a94d0b59fbc2b8388c0d"
 
 
 def load_pack(path):
@@ -101,6 +107,12 @@ def main():
                                   24 + 19 * frame_size]).hexdigest() != \
             EXPECTED_ASSETS[260][1]:
         raise AssertionError("home-team courts are not unique/ROM-ordered")
+    orlando = Image.frombytes(
+        "RGBA", (256, 224),
+        courts[24 + 18 * frame_size:24 + 19 * frame_size], "raw", "BGRA")
+    if hashlib.sha256(orlando.convert("RGB").crop((0, 0, 256, 16)).tobytes()).hexdigest() \
+            != EXPECTED_ORLANDO_TOP_RGB:
+        raise AssertionError("Orlando pregame background lost native BG1 crowd/basket")
 
     for asset_id, (size, digest) in EXPECTED_ASSETS.items():
         payload, width, height, flags = assets[asset_id]
@@ -141,7 +153,7 @@ def main():
         # $81:9756 uses each character's descriptor width. This catches both
         # small-font M/W second strips and narrow one-strip lineup glyphs;
         # the complete frame also locks the native +2,+4 variable-logo offset.
-        if rgb_hash(matchup) != "b38c8ea7bc263298722e54f726b4b608ee82607380b452dc22838a066abbc7cc":
+        if rgb_hash(matchup) != "25d6a923895f9cff23460feb75b52bffe63899820e31290fa777ee20061658af":
             raise AssertionError("ROM-layout visitor/VS/home presentation changed")
 
         ratings = Path(directory) / "ratings.bmp"
@@ -152,8 +164,8 @@ def main():
         run(exe, "--headless", "--rom", rom, "--assets", pack,
             "--player-setup-only", "--player-setup-confirm",
             "--frames", 812, "--dump-frame", ratings_next)
-        if rgb_hash(ratings) != "067a5aee23f30c662096f97e202032a70f775b655815735777538d3ef5f65e51" or \
-           rgb_hash(ratings_next) != "ca6b7ed973d7b4801243f2bf9cfaac79f0ac7c91045b50f4904dd240250ee389":
+        if rgb_hash(ratings) != "78544a87568f29bec99f6705a5b060bacafddf0692fe45126ddc7bc680383ccc" or \
+           rgb_hash(ratings_next) != "de8887c8612ca71949cea934f3add37793207c59e7d61a14224bccdb167e6a64":
             raise AssertionError("rating-ball thresholds, placement, or 12-frame animation changed")
 
         frame = Path(directory) / "lineup.bmp"
@@ -163,7 +175,7 @@ def main():
         if "SCN:PLAYER_INTRO" not in output or "CARD:01/10" not in output or \
            "ROM LOOP:$87:BE92" not in output:
             raise AssertionError("Player Setup did not hand off to the lineup state")
-        if rgb_hash(frame) != "9c12be7194bbc1170760360d669b87cf5dc5abf4de1be3ff8a7ce9b31651b099":
+        if rgb_hash(frame) != "694a89064d79f1eeb476d6de822dd8183b741ffd106bf9b3f659768f540b296b":
             raise AssertionError("first Starting Lineup frame changed")
 
         output = run(exe, "--headless", "--rom", rom, "--assets", pack,
@@ -184,7 +196,7 @@ def main():
                      "--team-confirm", "--player-setup-confirm", "--frames", 1600,
                      "--dump-frame", away_frame, "--debug-state")
         if "TEAM L:08 R:18" not in output or "CARD:01/10" not in output or \
-           rgb_hash(away_frame) != "f6afbc9a3ca46bacbbd2608364e795223c71d1f7f08190398c735d97142b754b":
+           rgb_hash(away_frame) != "6ba8e0a29f4bf7dc553915813ab1032bc514162426242cd739dd0636d946b0e7":
             raise AssertionError("non-default visitor portrait selection changed")
 
         home_frame = Path(directory) / "san_antonio_home.bmp"
@@ -193,7 +205,7 @@ def main():
                      "--player-setup-confirm", "--frames", 3600,
                      "--dump-frame", home_frame, "--debug-state")
         if "TEAM L:03 R:23" not in output or "CARD:06/10" not in output or \
-           rgb_hash(home_frame) != "5214a6f3a18745a5cd6f39450d10676539ed1ae980b4282404648864c1f76e42":
+           rgb_hash(home_frame) != "72ac6e4619be39c66fa7e0ef60be7999e838c802e66a79491f49127f3677fc4b":
             raise AssertionError("non-default home portrait selection changed")
 
     print("Player Introduction regression checks passed")

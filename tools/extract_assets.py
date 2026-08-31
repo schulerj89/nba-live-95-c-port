@@ -85,15 +85,10 @@ def decode_team_logo(vram, cgram, oam):
     return b"".join(struct.pack("<I", pixel) for pixel in pixels)
 
 
-def decode_bg_layer(vram, cgram, map_base, chr_base, bits_per_pixel,
-                    wide, tall, hscroll, vscroll):
-    """Render one raw SNES background layer to ARGB pixels.
-
-    The player-introduction court is BG2 in Mode 1.  This deliberately consumes
-    VRAM/CGRAM, not a Mesen screenshot; the PNG capture remains visual evidence
-    only.  The parameters are the live PPU state recorded during the lineup.
-    """
-    pixels = []
+def decode_bg_samples(vram, cgram, map_base, chr_base, bits_per_pixel,
+                      wide, tall, hscroll, vscroll):
+    """Decode one raw SNES background into color, priority, and ARGB samples."""
+    samples = []
     map_width, map_height = (512 if wide else 256), (512 if tall else 256)
     bytes_per_tile = bits_per_pixel * 8
     for y in range(224):
@@ -120,7 +115,30 @@ def decode_bg_layer(vram, cgram, map_base, chr_base, bits_per_pixel,
             palette = (entry >> 10) & 7
             palette_index = palette * (1 << bits_per_pixel) + color
             word = cgram[palette_index * 2] | (cgram[palette_index * 2 + 1] << 8)
-            pixels.append(bgr555_to_argb(word))
+            samples.append((color, (entry >> 13) & 1, bgr555_to_argb(word)))
+    return samples
+
+
+def decode_bg_layer(vram, cgram, map_base, chr_base, bits_per_pixel,
+                    wide, tall, hscroll, vscroll):
+    """Render one raw SNES background layer to ARGB pixels."""
+    return b"".join(struct.pack("<I", sample[2]) for sample in
+                    decode_bg_samples(vram, cgram, map_base, chr_base,
+                                      bits_per_pixel, wide, tall,
+                                      hscroll, vscroll))
+
+
+def decode_player_intro_background(vram, cgram):
+    """Render the native pregame BG2 over the CGRAM[0] backdrop.
+
+    The normal-route PPU witness has BG2 at map/CHR bytes $1000/$4000 with
+    scroll (6,6). As on the SNES, BG color index zero is transparent; the old
+    single-layer decoder instead emitted that tile palette's color-zero entry.
+    """
+    bg2 = decode_bg_samples(vram, cgram, 0x1000, 0x4000,
+                            4, True, False, 6, 6)
+    backdrop = bgr555_to_argb(cgram[0] | (cgram[1] << 8))
+    pixels = [sample[2] if sample[0] else backdrop for sample in bg2]
     return b"".join(struct.pack("<I", pixel) for pixel in pixels)
 
 
@@ -179,9 +197,9 @@ def build_player_introduction_assets(court_capture_dir, away_portrait_dir,
 
     court_vram = payload(court_capture_dir, 2550, "vram", 0x10000)
     court_cgram = payload(court_capture_dir, 2550, "cgram", 0x200)
-    # Mesen reports tilemapAddress in SNES words; the raw VRAM dump is bytes.
-    court = decode_bg_layer(court_vram, court_cgram, 0x1000, 0x4000,
-                            4, True, False, 6, 6)
+    # Mesen reports tilemapAddress in SNES words; the decoder uses byte
+    # addresses. Preserve native background transparency here.
+    court = decode_player_intro_background(court_vram, court_cgram)
     cards = [(side, team, slot) for side in range(2)
              for team in range(29) for slot in range(5)]
     portrait_pack = bytearray(struct.pack("<8sIIII", b"NBINTRO1", 2,
@@ -231,8 +249,7 @@ def build_home_court_catalog(home_portrait_dir):
         cgram = open(os.path.join(directory, "slot_0_cgram.bin"), "rb").read()
         if len(vram) != 0x10000 or len(cgram) != 0x200:
             raise RuntimeError(f"Invalid home-court PPU state for team {team}")
-        courts.append(decode_bg_layer(vram, cgram, 0x1000, 0x4000,
-                                      4, True, False, 6, 6))
+        courts.append(decode_player_intro_background(vram, cgram))
     groups = {}
     for team, court in enumerate(courts):
         groups.setdefault(hashlib.sha256(court).digest(), []).append(team)

@@ -43,10 +43,12 @@ The generated listings and decompilation are under the ignored
 
 ## Asset provenance
 
-Asset 260 is the legacy Orlando Mode-1 court BG2 reconstructed from raw VRAM/CGRAM using the
-live map `$1000`, CHR `$4000`, and scroll `(6,6)`. Asset 261 contains keyed
-72x72 RGBA portraits decoded from the raw palette-zero OBJ group. PNG files are
-visual evidence only; the extractor does not read them.
+Asset 260 is the Orlando Mode-1 pregame background reconstructed from raw
+VRAM/CGRAM. BG2 uses map/CHR `$1000/$4000` and scroll `(6,6)` for the court.
+The extractor treats BG color index zero as transparent and shows the CGRAM[0]
+backdrop, matching the native compositor. Asset 261 contains keyed 72x72 RGBA
+portraits decoded from the raw palette-zero OBJ group. PNG files are visual
+evidence only; the extractor does not read them.
 
 The verified portrait catalog contains both visitor and home uniform variants
 for all five starters on every ROM team: 29 teams and 290 decoded portraits,
@@ -56,12 +58,14 @@ navigates Team Select until the requested ID is observed, and verifies that ID
 again when `$87:BE92` begins the lineup loop. It saves raw PPU state only after
 the ROM has built each home-team card.
 
-Asset 271 (`NBCOURT1`) contains the raw-PPU-decoded BG2 court for every home
-selector. `$84:E55D-$E57A` reads `$7E:46EB`, multiplies it by four, and selects
-the compressed graphics pointer through `$84:E6B5/$84:E6B7` before `$80:C62B`
-expands the court block. The C presentation indexes this catalog with
-`NbaSession.right_team`; the visitor never owns the floor. East and West
-intentionally share the ROM's neutral presentation court.
+Asset 271 (`NBCOURT1`) contains that raw-PPU-decoded BG2/backdrop composition
+for every home selector. `$84:E55D-$E57A` reads `$7E:46EB`, multiplies it by
+four, and selects the compressed graphics pointer through `$84:E6B5/$84:E6B7`
+before `$80:C62B` expands the court block. The C presentation indexes this
+catalog with `NbaSession.right_team`; the visitor never owns the floor. East
+and West intentionally share the ROM's neutral presentation background. The
+Orlando top 16 rows match native normal-route frame 2550 exactly; their RGB
+SHA-256 is `6b4cda12034520a700e01fd6135f3e9d993e4a518801a94d0b59fbc2b8388c0d`.
 
 Assets 265-268 contain the Player Introduction's 64 KiB ARAM bank, S-DSP
 register snapshot, SPC state, and 5,560-frame cycle-timed DSP program. Asset
@@ -78,9 +82,9 @@ renderer defect, not an original-game bug.
 
 ## Regression
 
-`tools/test_player_intro.py` locks the visual assets, all 290 portrait keys,
-ROM font format, SPC/DSP asset dimensions, a phase-tolerant runtime-audio
-fingerprint, Player Setup handoff, first-card frame, visitor/home boundary,
-and final-card cadence. `tools/test_frontend_route.py` drives the real
+`tools/test_player_intro.py` locks the visual assets, native BG1 crowd/basket
+crop, all 290 portrait keys, ROM font format, SPC/DSP asset dimensions, a
+phase-tolerant runtime-audio fingerprint, Player Setup handoff, first-card
+frame, visitor/home boundary, and final-card cadence. `tools/test_frontend_route.py` drives the real
 Team Select -> Player Setup -> Player Introduction -> Tipoff caller path and
 checks centered controllers plus Start skips at all three presentation phases.
