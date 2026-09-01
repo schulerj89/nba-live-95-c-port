@@ -54,17 +54,27 @@ EXPECTED_AUDIO_RMS_EIGHTHS = [
 ]
 EXPECTED_AUDIO_BAND_PPM = [889127, 48767, 32034, 14587, 14255, 1068, 162]
 EXPECTED_AUDIO_CHANNEL_RMS = [3363, 3363]
-# Asset280 adds one F12 count entry. test_shot_assets independently proves
-# only the index/count row changes, retaining the historical art hashes.
-# Asset281 changes only F12's directory count row; test_shot_assets proves
-# the pixel delta remains confined to that row before these hashes are used.
-# Pack v31 adds the indexed gameplay PPU entry, changing only F12's displayed
-# entry count; the decoded VRAM and OAM artwork remains locked below.
-# Indexed intro75/76 replaces eleven entries: A1/new complete-image comparison
-# verified only F12's metadata row changed. These remain C-only debugger hashes.
-# See docs/intro-indexed-resources.md; every common asset is byte-identical.
-EXPECTED_ASSET_DEBUGGER_SHA256 = "9c9a026b488b28c0317d9dacc47bbef9372db110d142634c8e692cf0a4c133fa"
-EXPECTED_OAM_DEBUGGER_SHA256 = "919da3c071ad245b83ad027651fa2beb557038c19202f492aa6732ce124d85d9"
+# These C-only F12 baselines include the displayed pack count. The original
+# 263-entry indexed-intro pack is retained as provenance; later packs append
+# resource286 and optional resource287 without moving or changing resources
+# 126/128. Bind each supported directory configuration instead of silently
+# treating its expected one-digit count delta as an artwork regression. The
+# stable hashes exclude only y19..26, the count/index row. See
+# docs/setup-transition-f12-guard-attribution.md.
+EXPECTED_ASSET_DEBUGGER_SHA256 = {
+    263: "9c9a026b488b28c0317d9dacc47bbef9372db110d142634c8e692cf0a4c133fa",
+    264: "d5fec70926527df285c1758c4e835c611efebbc2cb273dc180f79e202add2de3",
+    265: "9cde8f84567fe618b4e40c6b4926b89a9060be81330e738ce42ad7b790402ccf",
+}
+EXPECTED_OAM_DEBUGGER_SHA256 = {
+    263: "919da3c071ad245b83ad027651fa2beb557038c19202f492aa6732ce124d85d9",
+    264: "aa1c60ea0d9792c0feaaaddd3351888c1bbb195f57643ae7d7db0d45912ca0ea",
+    265: "ee84e706b2bf4b958aa160754cbbb8802083b78f1d9823ce927aa5aed3f30fd3",
+}
+EXPECTED_ASSET_DEBUGGER_STABLE_SHA256 = \
+    "5be142f182d119d6a24e3d153fcf8fcbc5a1d8b7cdfe15be33148b000744a9ec"
+EXPECTED_OAM_DEBUGGER_STABLE_SHA256 = \
+    "02fde7eb2c082f4d6a2e420aa95f01024ab58dff61e81892418763e9f7011aa0"
 EXPECTED_RENDERED_MENU_SFX_SHA256 = {
     0x1A: "447a1ea48a94e2036ff0bdf1f4c5248d6284daec0b723b9a966f841976e703c4",
     0x1B: "96de89e954e4e8f75e555625abba5bf4380b8868b3263776a4cc27a6285de664",
@@ -486,6 +496,15 @@ def legacy_options_script(directory, confirm=False):
 
 def check_frames(exe, rom, pack):
     with tempfile.TemporaryDirectory(prefix="nba95-setup-test-") as directory:
+        with pack.open("rb") as pack_file:
+            pack_header = pack_file.read(16)
+        if len(pack_header) != 16:
+            raise AssertionError("truncated pack header for F12 regression")
+        debugger_pack_count = struct.unpack_from("<I", pack_header, 12)[0]
+        if debugger_pack_count not in EXPECTED_ASSET_DEBUGGER_SHA256:
+            raise AssertionError(
+                f"unsupported F12 pack directory count {debugger_pack_count}"
+            )
         # Rules/Options must never fall back to host-rendered text when a
         # mandatory game-authored variant is absent. Keep the pack structurally
         # valid but rename OFF's entry to an unused ID, then prove page entry is
@@ -581,11 +600,14 @@ def check_frames(exe, rom, pack):
              "--rom", str(rom), "--assets", str(pack), "--dump-frame", str(asset_debug)],
             text=True, capture_output=True, check=True,
         )
-        asset_debug_hash = hashlib.sha256(
-            Image.open(asset_debug).convert("RGB").tobytes()
-        ).hexdigest()
-        if asset_debug_hash != EXPECTED_ASSET_DEBUGGER_SHA256:
+        asset_debug_image = Image.open(asset_debug).convert("RGB")
+        asset_debug_hash = hashlib.sha256(asset_debug_image.tobytes()).hexdigest()
+        if asset_debug_hash != EXPECTED_ASSET_DEBUGGER_SHA256[debugger_pack_count]:
             raise AssertionError("F12 ROM asset debugger rendering changed")
+        if hashlib.sha256(
+            asset_debug_image.crop((0, 27, 256, 224)).tobytes()
+        ).hexdigest() != EXPECTED_ASSET_DEBUGGER_STABLE_SHA256:
+            raise AssertionError("F12 ROM asset debugger stable canvas changed")
 
         oam_debug = Path(directory) / "asset_debug_rules_oam.bmp"
         subprocess.run(
@@ -593,9 +615,14 @@ def check_frames(exe, rom, pack):
              "--rom", str(rom), "--assets", str(pack), "--dump-frame", str(oam_debug)],
             text=True, capture_output=True, check=True,
         )
-        if hashlib.sha256(Image.open(oam_debug).convert("RGB").tobytes()).hexdigest() != \
-                EXPECTED_OAM_DEBUGGER_SHA256:
+        oam_debug_image = Image.open(oam_debug).convert("RGB")
+        if hashlib.sha256(oam_debug_image.tobytes()).hexdigest() != \
+                EXPECTED_OAM_DEBUGGER_SHA256[debugger_pack_count]:
             raise AssertionError("F12 OAM/OBJ asset reconstruction changed")
+        if hashlib.sha256(
+            oam_debug_image.crop((0, 27, 256, 224)).tobytes()
+        ).hexdigest() != EXPECTED_OAM_DEBUGGER_STABLE_SHA256:
+            raise AssertionError("F12 OAM/OBJ stable canvas changed")
 
         for srcn, expected_hash in EXPECTED_RENDERED_MENU_SFX_SHA256.items():
             output = Path(directory) / f"menu_sfx_{srcn:02x}.wav"
