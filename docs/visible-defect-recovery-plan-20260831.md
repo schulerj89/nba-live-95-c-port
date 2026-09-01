@@ -67,9 +67,10 @@ inactive.
    commit/push, and publish exact-build visual evidence.
 3. **Complete:** integrate G1-G4, rerun CPU pass/catch and inbound sequences
    across courts/directions, and publish the visual smoke matrix.
-4. **In progress:** publish a new isolated desktop preview from the accepted
-   commit and pack after the final independent gallery review. The standing
-   release shortcut remains untouched until the final release candidate.
+4. **Complete:** publish a new isolated desktop preview from the accepted
+   production commit `74a74ba` and final pack after independent gallery review.
+   The standing release shortcut remains untouched until the final release
+   candidate.
 5. **Pending broader completion:** resume the remaining full-game gates after
    this visible-defect preview is accepted. Passing this matrix is deliberately
    not represented as whole-game completion.
@@ -77,3 +78,12 @@ inactive.
 No ticket passes on a static helper image, component-only probe, refreshed
 golden without attribution, or a single hand-picked frame. Before/after route
 evidence and the first remaining defect are recorded at every checkpoint.
+
+The accepted executable SHA-256 is
+`fb52a4cdf15e849b0d8ad209649c5f3ad50a8e70bd0feee37a48b4b5c52ae040`.
+The final smoke run recorded 246 bound artifacts, 13 reviewed contacts and 193
+PNG checkpoints with manifest SHA-256
+`3ccf8109d77da4bc683ab3dfc267a56d9d13f2aee55573bfec1045fcb38ed34a`.
+Independent visual acceptance found no remaining current-port defect in the
+reported set. The desktop preview is intentionally separate from the standing
+release shortcut.
