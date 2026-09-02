@@ -14,6 +14,7 @@ typedef struct {
     uint16_t destination, source, next_scroll_x, next_scroll_y;
     uint16_t scroll_x, scroll_y, source_bank;
     uint16_t rows[99];
+    bool standard_layout;
 } NbaCourtStream;
 typedef struct {
     bool active;
@@ -27,6 +28,8 @@ typedef void (*NbaCourtTransfer)(void *context, uint16_t source,
 void nba_court_presentation_update(NbaCourtPresentation *state,
     int16_t x, int16_t y, uint16_t period, int16_t left_basket, int16_t right_basket);
 void nba_court_stream_init(NbaCourtStream *state, int16_t x, int16_t y);
+void nba_court_stream_init_home(NbaCourtStream *state, int16_t x, int16_t y,
+                                uint8_t home_team);
 /* 85:8EE6-90C3. Transfer callback exposes native DMA descriptors for proof;
  * runtime draws the same asset-pack map directly, without a SNES DMA engine. */
 bool nba_court_stream_update(NbaCourtStream *state, const NbaAssetPack *assets,

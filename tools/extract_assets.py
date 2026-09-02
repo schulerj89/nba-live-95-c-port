@@ -268,7 +268,7 @@ def build_home_court_catalog(home_portrait_dir):
 def build_gameplay_home_court_catalog(rom_data, base_vram, base_cgram,
                                        home_portrait_dir, legacy_home_court,
                                        ppu_base_vram, ppu_base_cgram):
-    """Replay the ROM's $84:E55D-$E57A team court selection offline.
+    """Replay $85:8BBF's floor layout and $84:E55D's team court selection.
 
     `$84:E6B5/$E6B7` supplies one compressed 0x8c0-byte tile block per team.
     `$84:E5BD` supplies the matching gameplay-bright palette record. The fixed
@@ -280,18 +280,29 @@ def build_gameplay_home_court_catalog(rom_data, base_vram, base_cgram,
     courts = []
     panoramas = []
     ppu_states = []
+    # $85:8BDA/$8BFA choose separate parquet and standard map/CHR resources.
+    # The earlier catalog kept Orlando's parquet CHR and map for every team.
+    common_tiles = {}
+    for parquet, bank, address, size in (
+            (True, 0xA1, 0xA8ED, 0x5340),
+            (False, 0xA2, 0x8000, 0x52C0)):
+        decoder = Snes65816Decompressor(rom_data)
+        decoder.decompress(bank, address, 0x7F, 0)
+        if decoder.x != size:
+            raise RuntimeError("Court base resource did not fully decompress")
+        common_tiles[parquet] = bytes(decoder.wram[0x10000:0x10000 + size])
 
-    def render_panorama(vram, cgram):
-        """Render the complete $A0:8006 court map, not a captured viewport.
+    def render_panorama(vram, cgram, map_base):
+        """Render the selected complete ROM court map.
 
         `$85:8EE6` addresses this 148x52 map as
         `base + coarse_camera_x * 104 + coarse_camera_y * 2`. Thus its ROM
         storage is column-major relative to the projected 1184x416 surface.
         """
-        width_tiles, height_tiles = struct.unpack_from("<HH", rom_data, 0x100000)
+        width_tiles, height_tiles = struct.unpack_from("<HH", rom_data, map_base)
         if (width_tiles, height_tiles) != (148, 52):
             raise RuntimeError("ROM gameplay court dimensions changed")
-        map_offset = 0x100006  # LoROM $A0:8006
+        map_offset = map_base + 6
         map_size = width_tiles * height_tiles * 2
         tilemap = rom_data[map_offset:map_offset + map_size]
         if len(tilemap) != map_size:
@@ -323,9 +334,14 @@ def build_gameplay_home_court_catalog(rom_data, base_vram, base_cgram,
         return pixels.astype("<u4", copy=False).tobytes()
 
     for team in range(29):
+        parquet = team in (1, 16, 18)
+        map_base = 0x100000 if parquet else 0x103C26
         directory = os.path.join(home_portrait_dir, f"team_{team:02d}")
         presentation_vram = open(
             os.path.join(directory, "slot_0_vram.bin"), "rb").read()
+        common = common_tiles[parquet]
+        if presentation_vram[0x51C0:0x51C0 + len(common)] != common:
+            raise RuntimeError(f"Team {team} court base differs from its ROM layout")
 
         entry = graphics_table + team * 4
         source_address = rom_data[entry] | (rom_data[entry + 1] << 8)
@@ -333,12 +349,11 @@ def build_gameplay_home_court_catalog(rom_data, base_vram, base_cgram,
         emulator = Snes65816Decompressor(rom_data)
         emulator.decompress(source_bank, source_address, 0x7E, 0x8FEE)
         decompressed_tiles = bytes(emulator.wram[0x8FEE:0x98AE])
-        # $84:E55D normally streams the court block to VRAM $B4A0. Orlando's
-        # entry uses $B520 because its block shares the preceding fixed tiles.
-        # Team 1's compressed stream is an all-zero delta in the offline
-        # decompressor, so searching for it is inherently ambiguous; take the
-        # final raw PPU bytes at the ROM-selected destination in every case.
-        tile_destination = 0xB520 if team == 18 else 0xB4A0
+        # $84:E58B uses the selected descriptor's +$10 tile destination.
+        # Boston and Milwaukee share Orlando's parquet descriptor. Their
+        # FB30 streams are not supported by this bounded decompressor; the
+        # independently captured final PPU tiles remain their source.
+        tile_destination = 0xB520 if parquet else 0xB4A0
         team_tiles = presentation_vram[
             tile_destination:tile_destination + len(decompressed_tiles)]
         if (any(decompressed_tiles) and
@@ -348,7 +363,10 @@ def build_gameplay_home_court_catalog(rom_data, base_vram, base_cgram,
 
         vram = bytearray(base_vram)
         if team != 18:
-            vram[tile_destination:tile_destination + len(team_tiles)] = team_tiles
+            # Both native layouts own BG2 CHR from the $28E0-word upload
+            # through the end of the court atlas. Retain the separate BG1,
+            # HUD and OBJ inputs below that range.
+            vram[0x51C0:0xC000] = presentation_vram[0x51C0:0xC000]
 
         entry = palette_table + team * 4
         palette_address = rom_data[entry] | (rom_data[entry + 1] << 8)
@@ -364,15 +382,18 @@ def build_gameplay_home_court_catalog(rom_data, base_vram, base_cgram,
             cgram[34:38] = palette[2:6]
             cgram[64:192] = palette[0x20:0xA0]
             cgram[240:246] = palette[0xD0:0xD6]
-        court = decode_bg_layer(vram, cgram, 0x1000, 0x4000,
-                                4, True, False, 6, 6)
+        panorama = render_panorama(vram, cgram, map_base)
+        # Legacy catalog272 stores only the initial center-camera viewport.
+        # $85:90C4 gives camera(-128,-124), scroll(6,6), and one display row.
+        surface = np.frombuffer(panorama, dtype="<u4").reshape(416, 1184)
+        court = surface[119:343, 454:710].copy().tobytes()
         # Preserve the established frame-140 Orlando oracle byte-for-byte.
         courts.append(legacy_home_court if team == 18 else court)
-        panoramas.append(render_panorama(vram, cgram))
+        panoramas.append(panorama)
         ppu_vram = bytearray(ppu_base_vram)
         ppu_cgram = bytearray(ppu_base_cgram)
         if team != 18:
-            ppu_vram[tile_destination:tile_destination + len(team_tiles)] = team_tiles
+            ppu_vram[0x51C0:0xC000] = presentation_vram[0x51C0:0xC000]
             ppu_cgram[0:2] = palette[0:2]
             ppu_cgram[34:38] = palette[2:6]
             ppu_cgram[64:192] = palette[0x20:0xA0]
@@ -396,7 +417,7 @@ def build_gameplay_home_court_catalog(rom_data, base_vram, base_cgram,
     for panorama in panoramas:
         panorama_payload.extend(panorama)
     print("[ASSET EXTRACTOR] Replayed 29 ROM home-court tile/palette selections")
-    print("[ASSET EXTRACTOR] Rendered 29 complete $A0:8006 court panoramas")
+    print("[ASSET EXTRACTOR] Rendered 29 home-selected standard/parquet court panoramas")
     ppu_payload = bytearray(struct.pack(
         "<8sIIII", b"NBPPUIN1", 1, 29, 0x10000, 0x200))
     for state in ppu_states:
@@ -1931,6 +1952,9 @@ def create_asset_pack(rom_path, output_path, capture_root=None):
     assets.append((286, 0, 0, 0, gameplay_hud))
     from build_player_draw_inputs import build as build_player_draw_inputs
     assets.append((287, 0, 0, 0, build_player_draw_inputs(rom_data)))
+    # Standard floor: the second literal 148x52 map selected by $85:8BFA.
+    assets.append((288, 148, 52, 0xA0BC26,
+                   rom_data[0x103C26:0x103C26 + 6 + 148 * 52 * 2]))
 
     with open(output_path + ".hud-provenance.json", "w", encoding="utf-8") as manifest:
         json.dump(hud_provenance, manifest, indent=2)

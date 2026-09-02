@@ -34,11 +34,12 @@ EXPECTED_FRAME_HASHES = {
 # Resource 287 is optional by design. Its addition changes the F12 item-count
 # glyph but does not change asset 160 or its rendered logo. Both full hashes are
 # retained so the count remains visible/correct, while the masked hash proves
-# that the two supported configurations have the same debugger canvas outside
+# that the supported configurations have the same debugger canvas outside
 # that one seven-pixel glyph. See docs/checksum-guard-attribution.md.
 EXPECTED_DEBUG_FRAME_HASHES = {
     "fallback": "4944e48bb54bb0c88976e02379aef296dfc239f73955d496cd952cc8743b6182",
     "literal": "628aa6decb1c13a1a62fb769b3a0996f6ea07a1522bf2e5252888d7611948041",
+    "literal-court": "be6a5d5122d2534106c29781034a25aab00662092d15888ba22e7695871f1dc2",
 }
 EXPECTED_DEBUG_STABLE_HASH = \
     "3430e5ff2ca65cc16ab37e586a92bbcc717b65be0424b19dfc8a44032ad8e95d"
@@ -121,7 +122,7 @@ def frame_hash(path):
 
 def debug_stable_hash(path):
     image = Image.open(path).convert("RGB")
-    # `%02u` prints 264/265 at x=32; only the final count glyph at x=48..54
+    # `%02u` prints 264/265/266 at x=32; only the count glyph at x=48..54
     # differs between the otherwise identical supported packs.
     image.paste((0, 0, 0), (48, 19, 55, 26))
     return hashlib.sha256(image.tobytes()).hexdigest()
@@ -134,13 +135,13 @@ def player_draw_configuration(assets):
             raise AssertionError("fallback pack is not the reviewed 264-item configuration")
         return "fallback"
     payload, width, height, flags = item
-    if len(assets) != 265 or (len(payload), width, height, flags) != \
+    if len(assets) != 265 + int(288 in assets) or (len(payload), width, height, flags) != \
             (2144, 0, 0, 0) or payload[:8] != b"NBPDRAW1" or \
             struct.unpack_from("<6I", payload, 8) != \
             (1, 2096, 32, 8, 2128, 2144) or \
             hashlib.sha256(payload).hexdigest() != EXPECTED_PLAYER_DRAW_HASH:
         raise AssertionError("literal player-draw resource 287 changed")
-    return "literal"
+    return "literal-court" if 288 in assets else "literal"
 
 
 def wallpaper_hash(path):

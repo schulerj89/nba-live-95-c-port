@@ -237,8 +237,8 @@ static void draw_gameplay_court_bg2(const NbaTipoff *tipoff,
                                     const uint8_t *vram,
                                     const uint8_t *cgram,
                                     int crop_x, int crop_y) {
-    const NbaAssetItem *map = nba_assets_get(
-        tipoff->assets, NBA_ASSET_GAMEPLAY_COURT_MAP);
+    const NbaAssetItem *map = nba_assets_gameplay_court_map(
+        tipoff->assets, team_id_for_context(tipoff, 0u));
     if (!map || map->size != 15398u) return;
     const uint8_t *data = (const uint8_t *)map->data;
     for (int sy = 0; sy < NBA_SNES_HEIGHT; ++sy) {
@@ -285,12 +285,16 @@ static void draw_animated_crowd(const NbaTipoff *tipoff, NbaRenderer *ren,
                                 int crop_x, int crop_y) {
     const NbaAssetItem *anim = nba_assets_get(
         tipoff->assets, NBA_ASSET_GAMEPLAY_CROWD_TILES);
-    const NbaAssetItem *map = nba_assets_get(
-        tipoff->assets, NBA_ASSET_GAMEPLAY_COURT_MAP);
+    const NbaAssetItem *map = nba_assets_gameplay_court_map(
+        tipoff->assets, team_id_for_context(tipoff, 0u));
     if (!anim || !map || anim->size != 3548u || map->size != 15398u ||
         memcmp(anim->data, "NBCROWD1", 8)) return;
     const uint8_t *data = (const uint8_t *)anim->data;
     const uint8_t *map_data = (const uint8_t *)map->data;
+    /* $85:8BBF selects descriptor $89:FF81 or $AF:E4F8. Standard
+     * destinations are $40 VRAM words (four 4bpp tiles) below parquet.
+     * Native frames 20..180 match at all 28 relocated tile destinations. */
+    const unsigned tile_bias = map->id == NBA_ASSET_GAMEPLAY_STANDARD_COURT_MAP ? 4u : 0u;
     const unsigned frame_count = (unsigned)read_u16(data + 12);
     const unsigned tile_count = (unsigned)read_u16(data + 16);
     if (frame_count != 3u || tile_count != 28u) return;
@@ -314,7 +318,7 @@ static void draw_animated_crowd(const NbaTipoff *tipoff, NbaRenderer *ren,
             uint16_t tile_id = entry & 0x03ffu;
             unsigned slot;
             for (slot = 0; slot < tile_count; ++slot)
-                if (read_u16(data + 24u + slot * 2u) == tile_id) break;
+                if (read_u16(data + 24u + slot * 2u) == tile_id + tile_bias) break;
             if (slot == tile_count) continue;
             int tx = px & 7, ty = py & 7;
             if (entry & 0x4000u) tx = 7 - tx;
@@ -8510,7 +8514,8 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
     NBA_TIPOFF_REQUIRE("indexed gameplay PPU inputs",
         nba_assets_gameplay_ppu_input(assets, session->right_team,
                                       &ppu_vram, &ppu_cgram));
-    NBA_TIPOFF_REQUIRE("court stream map", nba_assets_get(assets, NBA_ASSET_GAMEPLAY_COURT_MAP));
+    NBA_TIPOFF_REQUIRE("home-selected court stream map",
+        nba_assets_gameplay_court_map(assets, session->right_team));
     NBA_TIPOFF_REQUIRE("tipoff ball asset", nba_assets_get(assets, NBA_ASSET_TIPOFF_BALL));
     NBA_TIPOFF_REQUIRE("complete original HUD lifecycle resource286",
         nba_gameplay_hud_lifecycle_assets_valid(assets));
@@ -8729,7 +8734,8 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
     /* Scene entry starts on the due presentation phase. Subsequent credits
      * come from outer updates; pauses do not consume or invent camera ticks. */
     tipoff->camera.presentation_ticks_0564 = 1;
-    nba_court_stream_init(&tipoff->court_stream,tipoff->camera_x,tipoff->camera_y);
+    nba_court_stream_init_home(&tipoff->court_stream,tipoff->camera_x,
+        tipoff->camera_y,team_id_for_context(tipoff,0u));
     tipoff->is_initialized = true;
     printf("[TIPOFF] $86:CCFC contact -> $86:B04C receiver -> "
            "$86:99C4 deflection -> $86:D365 possession.\n");

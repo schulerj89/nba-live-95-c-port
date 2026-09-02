@@ -59,13 +59,21 @@ int main(int argc,char **argv) {
     }
     game.ball.x_fp=10000*256;game.ball.y_fp=10000*256;
     game.frame=989;
+    /* Isolate the static map/CHR compositor from the sampled fan overlay.
+     * Different native home captures carry different crowd phases. The
+     * button/Tipoff frame smoke keeps the real overlay enabled throughout. */
+    NbaAssetPack static_court_pack=pack;
+    for(unsigned i=0;i<static_court_pack.item_count;++i)
+        if(static_court_pack.items[i].id==NBA_ASSET_GAMEPLAY_CROWD_TILES)
+            static_court_pack.items[i].size=0;
+    game.assets=&static_court_pack;
     NbaRenderer renderer;nba_renderer_init(&renderer);
     const int xs[]={-582,-128,74,75,135,194,328},ys[]={-242,-220,-124,-53};
     uint64_t verified_bg2=0,verified_backdrop=0,verified_bg3=0,verified_bg1=0;
-    const NbaAssetItem *map_item=nba_assets_get(&pack,NBA_ASSET_GAMEPLAY_COURT_MAP);
-    if(!map_item || map_item->size!=15398u)return 9;
-    const uint8_t *map=(const uint8_t *)map_item->data;
     for(unsigned team=0;team<29;++team) {
+        const NbaAssetItem *map_item=nba_assets_gameplay_court_map(&pack,(uint8_t)team);
+        if(!map_item || map_item->size!=15398u)return 9;
+        const uint8_t *map=(const uint8_t *)map_item->data;
         session.right_team=(uint8_t)team;
         /* Isolated post-initialization panorama fixture: the renderer reads
          * the native home context's $00 identity. Changing only the session
@@ -95,7 +103,13 @@ int main(int argc,char **argv) {
                     if(!color || pixel.color_index!=color ||
                        pixel.palette_index!=palette ||
                        pixel.priority!=((entry>>13)&1) ||
-                       pixel.argb!=nba_snes_cgram_color(cgram,palette,15,0,0,0))return 10;
+                       pixel.argb!=nba_snes_cgram_color(cgram,palette,15,0,0,0)) {
+                        fprintf(stderr,"COURT pixel mismatch home=%u camera=(%d,%d) pixel=(%d,%d) tile=%u index=%u/%u palette=%u/%u argb=%08x/%08x\n",
+                            team,xs[xi],ys[yi],x,y,entry&0x3ffu,pixel.color_index,color,
+                            pixel.palette_index,palette,pixel.argb,
+                            nba_snes_cgram_color(cgram,palette,15,0,0,0));
+                        return 10;
+                    }
                     ++verified_bg2;
                 } else if(pixel.layer==NBA_SNES_LAYER_BACKDROP){
                     if(color || pixel.argb!=nba_snes_cgram_color(cgram,0,15,0,0,0))return 10;

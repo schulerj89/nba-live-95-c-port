@@ -8,6 +8,12 @@ evidence only. The pack stores structured 4bpp/map/palette state, not frames.
 
 ## Component census
 
+Updated 2026-09-02: the original audit's map witnesses covered Orlando's
+parquet branch. The [home-layout correction](court-logo-complaint-audit.md)
+adds the standard `$A0:BC26` map, its shared CHR and native fan relocation.
+The historical viewport counts below did not independently establish the
+missing standard branch; the new every-frame smoke covers all 29 home teams.
+
 | Component | Native ownership | Port/pack status | Pending decoded instructions |
 |---|---|---|---:|
 | Center-court logo and floor paint | `$85:8EE6-$90C3` streams the 148x52 column-major map from `$A0:8006`; its tile graphics are the gameplay BG2 CHR set | Complete in asset 273 (`NBCOURT2`, 29 x 1184x416) and raw map asset 279; 522 viewport checks and 12 native map witnesses pass | **0** in the already-censused map/render scope |

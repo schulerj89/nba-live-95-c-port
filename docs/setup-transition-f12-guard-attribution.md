@@ -20,6 +20,13 @@ appends optional resource287. Neither addition moves resource126, whose
 | c7b90d93 | 263 | baseline | `9c9a026b488b28c0317d9dacc47bbef9372db110d142634c8e692cf0a4c133fa` | `919da3c071ad245b83ad027651fa2beb557038c19202f492aa6732ce124d85d9` |
 | f564c296 | 264 | 286 | `d5fec70926527df285c1758c4e835c611efebbc2cb273dc180f79e202add2de3` | `aa1c60ea0d9792c0feaaaddd3351888c1bbb195f57643ae7d7db0d45912ca0ea` |
 | be2d761e | 265 | 287 | `9cde8f84567fe618b4e40c6b4926b89a9060be81330e738ce42ad7b790402ccf` | `ee84e706b2bf4b958aa160754cbbb8802083b78f1d9823ce927aa5aed3f30fd3` |
+| c2d1a79b | 266 | 288 | `19169b1f862b4605fe43f888a1d0a7b30cf17754f951be587c3bf9bbc3183b82` | `b3baf8c51d7d6910f0142c5a80aaaa4d50dcd2fd6a5ac32d04d13c4f00c693c2` |
+
+The 266-entry court-layout pack changes exactly 18 pixels in each final
+count digit, at `(56,19)-(63,24)`. Both stable-canvas hashes remain unchanged.
+The asset160 Team Select debugger guard likewise changes only its final
+digit at `(48,19)-(55,24)`; its stable hash remains unchanged. The source
+comparison is retained in `build/court-logo-20260902/remaining-attribution.json`.
 
 The 3db96b2 executable
 `7de9771a70c9fce918b9244e62f14e3bb83a2e46b4f39385a2dba7d30fb61035`

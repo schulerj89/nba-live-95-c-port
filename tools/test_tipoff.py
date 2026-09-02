@@ -83,7 +83,7 @@ def player_draw_configuration(assets):
             raise AssertionError("fallback pack is not the reviewed 264-item configuration")
         return "fallback"
     payload, width, height, flags = item
-    if len(assets) != 265 or (len(payload), width, height, flags) != \
+    if len(assets) != 265 + int(288 in assets) or (len(payload), width, height, flags) != \
             (2144, 0, 0, 0) or payload[:8] != b"NBPDRAW1" or \
             struct.unpack_from("<6I", payload, 8) != \
             (1, 2096, 32, 8, 2128, 2144) or \

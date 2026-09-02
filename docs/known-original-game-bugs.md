@@ -84,29 +84,16 @@ The listed SPC, period, appearance, role, human-dispatch and catch components ar
 
 **Evidence limits:** an independent source-only diagnostic executes the actual original bytes for602 boundary/domain cases. The map glyphs use original indexed characters matching the captured first-court VRAM. Existing lifecycle captures contain no `$87:BA5E/BA9E` observations or raw60 input, so they do not establish this endpoint occurring during ordinary play. See the [source-check evidence](../../completion-scheduler/build/original-bug-catalog-v1/shot-clock-evidence.json) and [bounded draft/report](../../completion-scheduler/build/original-bug-catalog-v1/shot-clock-quirk-draft.md). No emulator capture was added for this entry.
 
-### 11. Some center-court logo artwork looks separated or unusually long
+### 11. Withdrawn: center-court fragmentation was a port layout error
 
-**Trigger and behavior:** Chicago's center graphic includes a long horizontal
-bull shape and a separate-looking white/red mark. Orlando uses a dark blue oval
-with a comparatively small central mark. At some camera positions these can
-look like a split or corrupt logo. They are original team court artwork, not a
-host-drawn overlay and not classified here as a gameplay bug.
-
-**Preservation and evidence:** gameplay center court is part of the original
-148x52 BG2 map at `$A0:8006`, streamed by `$85:8EE6-$85:90C3`; team graphics
-are selected by `$84:E55D-$84:E57A`. Independent ROM decompression, existing
-normal-route native PPU captures, and production pack asset284 match with zero
-tile or court-palette differences for Chicago and Orlando. The complete map is
-also byte-exact, and the production renderer passes 812 indexed viewports
-across all29 teams. See the [court-logo complaint audit](court-logo-complaint-audit.md).
-**Visible production quirk; retained as original artwork.**
-
-**Evidence limits:** this result establishes the map, court-owned graphics and
-palette bytes, plus production selection of home teams3/18. It does not claim
-that every animated crowd tile or player/goal composition pixel is static or
-identical; those layers have separate ownership. The Player Introduction's
-variable logos are also separate objects. Their source-backed `+2,+4` gold
-plate offset corrected a port placement error and is not part of this quirk.
+The earlier classification as original artwork was incorrect. Correct team
+tile bytes were combined with Orlando's map and shared CHR on standard-floor
+teams such as New York and Chicago. `$85:8BBF-$8C4E` selects two distinct court
+layouts; Boston, Milwaukee and Orlando share the parquet branch. The port now
+selects the native map, common CHR and upload offsets together. Fresh Ghidra,
+recomp and original-game PPU evidence, plus every-frame Tipoff checks, are in
+the [court layout correction](court-logo-complaint-audit.md). This is a fixed
+port error and is no longer an original-game quirk.
 
 ### 12. Team Select briefly exposes clipped name/rank rows during its reveal
 

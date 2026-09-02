@@ -46,13 +46,25 @@ void nba_court_stream_init(NbaCourtStream *s,int16_t x,int16_t y) {
 static void emit(NbaCourtTransfer cb,void *ctx,uint16_t src,uint16_t bank,
     uint16_t bytes,uint16_t dest) { if(cb)cb(ctx,src,bank,bytes,dest); }
 
+void nba_court_stream_init_home(NbaCourtStream *s,int16_t x,int16_t y,
+                                uint8_t home_team) {
+    nba_court_stream_init(s,x,y);
+    s->standard_layout=nba_assets_gameplay_court_map_id(home_team)==
+        NBA_ASSET_GAMEPLAY_STANDARD_COURT_MAP;
+    /* $85:9117 adds the selected map pointer, not a fixed $8000. */
+    if(s->standard_layout)s->source=(uint16_t)(s->source+0x3c26u);
+}
+
 /* `$85:8EE6-$90C3`: source/destination row/column walk, including wrap and
  * three-row limit. SNES transfers are represented by portable descriptors. */
 bool nba_court_stream_update(NbaCourtStream *s,const NbaAssetPack *assets,
     int16_t x,int16_t y,int16_t previous_x,int16_t previous_y,
     NbaCourtTransfer cb,void *ctx) {
-    const NbaAssetItem *map=nba_assets_get(assets,NBA_ASSET_GAMEPLAY_COURT_MAP);
-    if(!s || !map || !map->data || map->size!=15398u || s->source_bank!=0xa0u ||
+    if(!s)return false;
+    const uint16_t map_base=s->standard_layout?0xbc26u:0x8000u;
+    const NbaAssetItem *map=nba_assets_get(assets,s->standard_layout?
+        NBA_ASSET_GAMEPLAY_STANDARD_COURT_MAP:NBA_ASSET_GAMEPLAY_COURT_MAP);
+    if(!map || !map->data || map->size!=15398u || s->source_bank!=0xa0u ||
        x < -582 || x>328 || y < -242 || y> -53) return false;
     const uint8_t *data=(const uint8_t *)map->data;
     s->row_bytes=0;
@@ -98,7 +110,7 @@ bool nba_court_stream_update(NbaCourtStream *s,const NbaAssetPack *assets,
             s->source=(uint16_t)(s->source+2);source=(uint16_t)(s->source+0x38);
         }
         for(unsigned col=0;col<=32;++col) {
-            unsigned offset=(unsigned)source+col*104u-0x8000u;
+            unsigned offset=(unsigned)source+col*104u-map_base;
             if(offset+1>=map->size)return false;
             s->rows[s->row_bytes/2+col]=(uint16_t)(data[offset]|((uint16_t)data[offset+1]<<8));
         }

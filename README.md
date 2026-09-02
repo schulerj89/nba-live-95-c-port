@@ -91,6 +91,23 @@ Run the GUI:
 .\build.ps1 -RomPath '<path-to-rom>' -Run
 ```
 
+Use the regular `nba-live-95-c-port` checkout on `main`; its executable and
+asset pack are `build/nba95_port.exe` and `build/nba95_assets.pak`. Headless
+smoke tests can jump straight to a configured matchup and capture frames
+inside the renderer:
+
+```powershell
+.\build\nba95_port.exe --headless --rom '<path-to-rom>' `
+  --assets 'build/nba95_assets.pak' --tipoff-only `
+  --tipoff-home-team 17 --tipoff-away-team 3 --frames 90 `
+  --dump-frame 'build/new-york-tipoff.bmp'
+```
+
+The [court layout correction and frame smoke](docs/court-logo-complaint-audit.md)
+documents the original-game source evidence, scripted button route, all 29
+home-team sweep and per-frame floor/logo checks. Capture output can stay under
+`build`; `.analysis` is only needed when reading older raw reference inputs.
+
 The tests lock intro/title/Setup/Team Select/Player Setup pixels, both title-exit paths, all Setup cursor
 rows, malformed-pack handling, ROM identity, 59.94/60 Hz equivalence, robust
 runtime-PCM fingerprints, all 29 currently exposed ROM-derived logos/ranking records, independent

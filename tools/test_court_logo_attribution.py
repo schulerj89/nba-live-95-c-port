@@ -1,4 +1,4 @@
-"""Source/native attribution for the Chicago and Orlando court logos."""
+"""Chicago/Orlando team tile streams; full layout proof is in the frame smoke."""
 
 import argparse
 import hashlib
@@ -91,7 +91,7 @@ def main():
 
         print(f"[COURT LOGO] {name}: ROM/native/pack tiles {expected_hash[:16]} PASS")
 
-    print("[TEST] PASS: Chicago/Orlando court logos are exact ROM BG2 content")
+    print("[TEST] PASS: Chicago/Orlando team tile streams match ROM; layout checked separately")
 
 
 if __name__ == "__main__":

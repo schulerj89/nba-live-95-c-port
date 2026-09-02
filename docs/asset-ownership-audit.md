@@ -102,17 +102,15 @@ the EA composite from decoded BRR; this distinction matters.
 
 ## Court and palette caveats
 
-`build_gameplay_home_court_catalog` reads the actual148×52 column-major court
-map from `$A0:8006` and team graphics/palette tables `$84:E6B5/$E5BD`. For each
-team, the shipped tile block is taken from the portrait capture's final VRAM,
-then compared to decompressed ROM bytes only when any decompressed byte is
-nonzero. Team1's zero result skips that content check; Orlando18 has special
-destination `$B520` and keeps an existing baseline. Those choices are explicit
-in source, but “all29 courts replayed from ROM” overstates the independently
-checked denominator. Establish the all-zero/delta semantics and verify each
-team's raw source/destination, especially18, before closing that claim.
+The 2026-09-02 [court layout correction](court-logo-complaint-audit.md) resolves
+the missing home selector in `build_gameplay_home_court_catalog`: Boston,
+Milwaukee and Orlando use `$A0:8000` and destination `$B520`; the other exposed
+teams use `$A0:BC26` and `$B4A0`. Both shared CHR blocks are independently
+decompressed and checked against all 29 input captures. Boston/Milwaukee FB30
+team streams are unsupported by the bounded decoder, not all-zero deltas;
+fresh native uploads and visible-floor checks establish their final PPU input.
 
-The normal runtime does sample indexed tiles from284 and map279, preserving
+The normal runtime samples indexed tiles from284 and the selected map279/288, preserving
 transparency and Mode1 layer priority; it does not blit asset273's panorama.
 The live goal also uses these indexed memories and native object resources.
 This is a meaningful architectural distinction from the prohibited intro

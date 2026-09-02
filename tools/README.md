@@ -214,6 +214,14 @@ reports success.
   (one kind per run) with `-Controlled` for boundary cases; detailed commands,
   Ghidra labels, pixel-proof limits and evidence are in
   `docs/camera-presentation-plan.md`.
+  `test_tipoff_court_smoke.py` additionally checks every captured Tipoff frame
+  for all 29 home selectors and a scripted button route. Both native floor
+  layouts are sourced by `regenerate_court_logo_reference.py` and
+  `capture_court_logo.py`; `upgrade_court_pack.py` rebuilds the court catalogs
+  and adds standard map 288 while preserving unrelated resources. The smoke
+  emits PNGs, winning-layer masks, state/hash records and a frame scrubber
+  under `build`. See `docs/court-logo-complaint-audit.md` for prerequisites and
+  native evidence limits.
   `verify_camera_vectors.py` retains the older camera target/easing replay.
   It does not alone prove the entire `$85:9192-$93F4` routine:
   `verify_court_presentation.py` covers the older 212 instructions;

@@ -180,6 +180,9 @@ static bool asset_metadata_valid(uint32_t id, uint32_t size, uint32_t width,
     if (id == NBA_ASSET_GAMEPLAY_COURT_MAP)
         return size == 6u + 148u * 52u * 2u && width == 148u &&
                height == 52u && flags == 0xA08000u;
+    if (id == NBA_ASSET_GAMEPLAY_STANDARD_COURT_MAP)
+        return size == 6u + 148u * 52u * 2u && width == 148u &&
+               height == 52u && flags == 0xA0BC26u;
     if (id == NBA_ASSET_GAMEPLAY_FORMATIONS)
         return size == 8868u && width == 61u && height == 5u && flags == 1595u;
     if (id == NBA_ASSET_GAMEPLAY_CPU_TABLES)
@@ -523,6 +526,19 @@ const uint32_t *nba_assets_gameplay_court_panorama(const NbaAssetPack *pack,
         asset_u32(data + 20) != 416u)
         return NULL;
     return (const uint32_t *)(data + 24u + (size_t)home_team * frame_size);
+}
+
+NbaAssetId nba_assets_gameplay_court_map_id(uint8_t home_team) {
+    if (home_team >= 29u) return NBA_ASSET_MAX;
+    /* $85:8BC2-$8C16 selects parquet for Boston, Milwaukee and Orlando.
+     * The additional native selector $21 is outside the 29-team catalog. */
+    return home_team == 1u || home_team == 16u || home_team == 18u ?
+        NBA_ASSET_GAMEPLAY_COURT_MAP : NBA_ASSET_GAMEPLAY_STANDARD_COURT_MAP;
+}
+
+const NbaAssetItem *nba_assets_gameplay_court_map(const NbaAssetPack *pack,
+                                                uint8_t home_team) {
+    return nba_assets_get(pack, nba_assets_gameplay_court_map_id(home_team));
 }
 
 bool nba_assets_gameplay_ppu_input(const NbaAssetPack *pack, uint8_t home_team,

@@ -8,6 +8,42 @@
 #include "nba_snes_ppu.h"
 #include "nba_menu_input.h"
 
+/* Compact winning-layer evidence accompanies test-only Tipoff sequences.
+ * Header: NBLAYER1, four LE32 dimensions/step/state-frame, two LE16 camera
+ * words, home/visitor/layout/reserved bytes, then one layer byte per pixel. */
+static bool save_tipoff_layer_mask(const NbaGame *game, const char *path,
+                                   unsigned step) {
+    if (game->state != NBA_STATE_TIPOFF) return false;
+    uint8_t header[32] = {'N','B','L','A','Y','E','R','1'};
+    const uint32_t values[4] = {NBA_SNES_WIDTH, NBA_SNES_HEIGHT,
+                               step, game->state_frame};
+    for (unsigned i=0;i<4;++i)
+        for (unsigned j=0;j<4;++j)
+            header[8+i*4+j]=(uint8_t)(values[i]>>(j*8));
+    uint16_t cx=(uint16_t)game->scene.tipoff.camera_x;
+    uint16_t cy=(uint16_t)game->scene.tipoff.camera_y;
+    header[24]=(uint8_t)cx; header[25]=(uint8_t)(cx>>8);
+    header[26]=(uint8_t)cy; header[27]=(uint8_t)(cy>>8);
+    header[28]=game->session.right_team;
+    header[29]=game->session.left_team;
+    header[30]=game->scene.tipoff.court_stream.standard_layout?1u:0u;
+    static uint8_t layers[NBA_SNES_WIDTH*NBA_SNES_HEIGHT];
+    for (int y=0;y<NBA_SNES_HEIGHT;++y) {
+        for (int x=0;x<NBA_SNES_WIDTH;++x) {
+            NbaSnesMode1Pixel pixel;
+            if (!nba_snes_mode1_pixel(&game->renderer,x,y,&pixel)) return false;
+            layers[y*NBA_SNES_WIDTH+x]=(uint8_t)pixel.layer;
+        }
+    }
+    FILE *file=fopen(path,"wb");
+    if (!file) return false;
+    bool ok=fwrite(header,1,sizeof(header),file)==sizeof(header) &&
+            fwrite(layers,1,sizeof(layers),file)==sizeof(layers);
+    if (fclose(file)!=0) ok=false;
+    return ok;
+}
+
+
 extern int win32_run_game(const char *rom_path, const char *assets_path,
                           bool title_only, bool setup_only, bool team_only,
                           bool player_setup_only);
@@ -158,6 +194,7 @@ int main(int argc, char *argv[]) {
     bool start_at_player_setup = false;
     bool start_at_player_intro = false;
     bool start_at_tipoff = false;
+    bool dump_sequence_layers = false;
     int player_intro_team = 18;
     int player_intro_slot = 0;
     bool spc_self_test = false;
@@ -196,6 +233,8 @@ int main(int argc, char *argv[]) {
     bool player_setup_left = false;
     bool player_setup_confirm = false;
     int tipoff_clock_override = -1;
+    int tipoff_home_team = -1;
+    int tipoff_away_team = -1;
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--rom") == 0 && i + 1 < argc) {
@@ -297,6 +336,22 @@ int main(int argc, char *argv[]) {
             player_intro_slot = atoi(argv[++i]);
         } else if (strcmp(argv[i], "--tipoff-only") == 0) {
             start_at_tipoff = true;
+        } else if (strcmp(argv[i], "--tipoff-home-team") == 0 ||
+                   strcmp(argv[i], "--tipoff-away-team") == 0) {
+            bool home = strcmp(argv[i], "--tipoff-home-team") == 0;
+            if (i + 1 >= argc) {
+                fprintf(stderr, "[HEADLESS] Tipoff team requires a value in 0..28.\n");
+                return 1;
+            }
+            const char *text = argv[++i];
+            char *end = NULL;
+            long team = strtol(text, &end, 10);
+            if (end == text || *end != '\0' || team < 0 || team >= NBA_TEAM_COUNT) {
+                fprintf(stderr, "[HEADLESS] Tipoff team must be 0..28.\n");
+                return 1;
+            }
+            if (home) tipoff_home_team = (int)team;
+            else tipoff_away_team = (int)team;
         } else if (strcmp(argv[i], "--tipoff-clock") == 0 && i + 1 < argc) {
             tipoff_clock_override = atoi(argv[++i]);
             if (tipoff_clock_override < 0 || tipoff_clock_override > 0xFFFF) {
@@ -329,6 +384,8 @@ int main(int argc, char *argv[]) {
             team_action_gap = atoi(argv[++i]);
         } else if (strcmp(argv[i], "--dump-sequence-dir") == 0 && i + 1 < argc) {
             dump_sequence_dir = argv[++i];
+        } else if (strcmp(argv[i], "--dump-sequence-layers") == 0) {
+            dump_sequence_layers = true;
         } else if (strcmp(argv[i], "--dump-sequence-from") == 0 && i + 1 < argc) {
             dump_sequence_from = atoi(argv[++i]);
             if (dump_sequence_from < 1) {
@@ -485,6 +542,8 @@ int main(int argc, char *argv[]) {
             printf("  --player-intro-team N Select lineup team 0..28 (default 18)\n");
             printf("  --player-intro-slot N Select starter slot 0..4 (default 0)\n");
             printf("  --tipoff-only         Start at the ROM-matched center-court jump ball\n");
+            printf("  --tipoff-home-team N  Seed home team 0..28 before --tipoff-only entry\n");
+            printf("  --tipoff-away-team N  Seed visitor team 0..28 before --tipoff-only entry\n");
             printf("  --tipoff-clock N      Controlled raw clock seed for gameplay tests\n");
             printf("  --team-confirm        Press Start after Team Select settles\n");
             printf("  --player-setup-left   Assign Player 1 to the visitor/left team\n");
@@ -499,6 +558,7 @@ int main(int argc, char *argv[]) {
             printf("  --team-demo           Script right cycle, side toggle, then left cycle\n");
             printf("  --team-action-gap N   Frames between scripted Team Select inputs\n");
             printf("  --dump-sequence-dir D Save every rendered headless frame in directory D\n");
+            printf("  --dump-sequence-layers  Save Tipoff winning-layer masks beside sequence frames\n");
             printf("  --dump-sequence-from N  Begin sequence capture at stepped frame N\n");
             printf("  --setup-menu <name>   Open Rules or Options in headless mode\n");
             printf("  --setup-menu-row <N>  Move to submenu row N\n");
@@ -558,6 +618,16 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
+    if (dump_sequence_layers &&
+            (!is_headless || !dump_sequence_dir)) {
+        fprintf(stderr, "[HEADLESS] Layer masks require a headless sequence capturing Tipoff.\n");
+        return 1;
+    }
+    if ((tipoff_home_team >= 0 || tipoff_away_team >= 0) &&
+            (!is_headless || !start_at_tipoff)) {
+        fprintf(stderr, "[HEADLESS] Tipoff team seeds require --headless --tipoff-only.\n");
+        return 1;
+    }
     if (is_headless) {
         if (step_frames < 0 || tick_rate <= 0.0) {
             fprintf(stderr, "[HEADLESS] --frames must be non-negative and --tick-rate must be positive.\n");
@@ -785,6 +855,10 @@ int main(int argc, char *argv[]) {
                 NBA_PLAYER_INTRO_STARTERS_PER_TEAM + player_intro_slot;
         }
         if (start_at_tipoff) {
+            if (tipoff_home_team >= 0)
+                game.session.right_team = (uint8_t)tipoff_home_team;
+            if (tipoff_away_team >= 0)
+                game.session.left_team = (uint8_t)tipoff_away_team;
             if (!nba_game_enter_state(&game, NBA_STATE_TIPOFF)) {
                 nba_game_shutdown(&game);
                 return 1;
@@ -1134,6 +1208,17 @@ int main(int argc, char *argv[]) {
                         if (gameplay_trace_file) fclose(gameplay_trace_file);
                         nba_game_shutdown(&game);
                         return 1;
+                    }
+                    if (dump_sequence_layers) {
+                        snprintf(sequence_path, sizeof(sequence_path), "%s/frame_%04d.layers",
+                                 dump_sequence_dir, frame + 1);
+                        if (!save_tipoff_layer_mask(&game, sequence_path, (unsigned)frame + 1u)) {
+                            fprintf(stderr, "[HEADLESS] Failed layer mask: %s\n", sequence_path);
+                            if (setup_trace_file) fclose(setup_trace_file);
+                            if (gameplay_trace_file) fclose(gameplay_trace_file);
+                            nba_game_shutdown(&game);
+                            return 1;
+                        }
                     }
                 }
             }

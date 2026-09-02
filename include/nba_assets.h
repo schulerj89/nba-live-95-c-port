@@ -125,7 +125,7 @@ typedef enum {
     NBA_ASSET_HOME_COURTS                        = 271,
     /* NBCOURT1: gameplay-bright variants selected by $84:E55D-$E57A. */
     NBA_ASSET_GAMEPLAY_HOME_COURTS               = 272,
-    /* NBCOURT2 v2: complete ROM $A0:8006 148x52-tile panoramas. */
+    /* NBCOURT2 v2: 148x52-tile panoramas from the home-selected ROM map. */
     NBA_ASSET_GAMEPLAY_COURT_PANORAMAS            = 273,
     /* NBFORM1: exact `$85:AD6B` 61-play x five-role coordinate graph. */
     NBA_ASSET_GAMEPLAY_FORMATIONS                  = 274,
@@ -149,7 +149,9 @@ typedef enum {
     NBA_ASSET_GAMEPLAY_HUD          = 286, /* Original indexed HUD; gameplay requires lifecycle v2. */
     /* NBPDRAW1: literal 87:A4F5 head-order / A525 jersey-direction inputs. */
     NBA_ASSET_PLAYER_DRAW_INPUTS    = 287,
-    NBA_ASSET_MAX                   = 288
+    /* Literal standard-floor map selected by $85:8BFA: ROM $A0:BC26. */
+    NBA_ASSET_GAMEPLAY_STANDARD_COURT_MAP = 288,
+    NBA_ASSET_MAX                   = 289
 } NbaAssetId;
 
 typedef struct {
@@ -181,6 +183,9 @@ const uint32_t *nba_assets_gameplay_home_court(const NbaAssetPack *pack,
                                                 uint8_t home_team);
 const uint32_t *nba_assets_gameplay_court_panorama(const NbaAssetPack *pack,
                                                     uint8_t home_team);
+NbaAssetId nba_assets_gameplay_court_map_id(uint8_t home_team);
+const NbaAssetItem *nba_assets_gameplay_court_map(const NbaAssetPack *pack,
+                                                uint8_t home_team);
 bool nba_assets_gameplay_ppu_input(const NbaAssetPack *pack, uint8_t home_team,
                                    const uint8_t **vram,
                                    const uint8_t **cgram);

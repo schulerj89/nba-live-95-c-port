@@ -119,9 +119,11 @@ def require_progress_output(path: Path) -> None:
         lowered[index:index + 2] == list(PROGRESS_PARTS)
         for index in range(len(lowered) - 1)
     )
+    allowed = allowed or path.resolve().is_relative_to((ROOT / "build").resolve())
     if not allowed:
         raise RuntimeError(
-            "--output must be inside an ignored .analysis/progress-screenshots tree"
+            "--output must be inside this checkout's build tree or an ignored "
+            ".analysis/progress-screenshots tree"
         )
 
 
@@ -847,7 +849,7 @@ def main() -> int:
     parser.add_argument("--rom", type=Path, required=True,
                         help="verified NBA Live 95 USA ROM")
     parser.add_argument("--output", type=Path, required=True,
-                        help="new directory under .analysis/progress-screenshots")
+                        help="new directory under build or .analysis/progress-screenshots")
     parser.add_argument("--skip-regressions", action="store_true",
                         help="capture contacts only; manifest is not an accepted regression run")
     args = parser.parse_args()

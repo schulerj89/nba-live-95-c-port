@@ -26,8 +26,12 @@ EXPECTED_SKIP_TO_GAME_HASHES = {
     591: "ddce6be96a7a469229c2e94fbe11b66f869aa86a8412c286fb60fe3c6263d1de",
     593: "60ceec62db75a032c47355be41bc8cfcbecdbeb9617412ee42002210df62c32e",
     595: "2cbbeef1249170a43854962fa5b19fba628470c70beb9ce23e15a0f05cb891f2",
-    596: "741f18f3ef851294bbf67e4336a57d8a90354d00e1c6652264cc6580179a956f",
-    600: "5f7420dc66097ca5252883d745865e5533812b04245916b212437bd5ac9ae8a8",
+    # Home17 uses the standard $A0:BC26 map/CHR. The old executable
+    # reproduces both previous hashes; all pre-court anchors are unchanged.
+    # Every new Tipoff frame also matches the independent ROM-floor smoke.
+    # See docs/court-logo-complaint-audit.md and before-after.json evidence.
+    596: "d954eb6a9a2d7f841db4a86c69a285065d5b1a6bba29d85ca7cf440db7bdc1ee",
+    600: "6b0b4086f7bd26a4120564a3bf828ffb8a4f6e08b45924a8fa230f89ff3de9d3",
 }
 
 

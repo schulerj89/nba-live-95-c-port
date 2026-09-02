@@ -49,8 +49,10 @@ correlates instructions and calls in those windows:
   `screen_y = (world_y - world_x)/4 - camera_y - z`.
 
 Asset 273 (`NBCOURT2` version 2) supplies 29 gameplay-bright 1184x416 home-court
-panoramas, decoding the full 148x52-tile ROM map at `$A0:8006`. Asset 279 retains
-the literal map/header for the portable circular-stream model; asset 272
+panoramas, decoding the selected 148x52-tile ROM map. `$85:8BBF` selects
+`$A0:8000` for Boston, Milwaukee and Orlando, and `$A0:BC26` for the other
+exposed teams. Assets 279 and 288 retain those literal map/header resources
+for the portable circular-stream model; asset 272
 retains the legacy fixed viewports. The old 114-column truncation is fixed.
 Twelve native viewports prove map/scroll geometry; crowd CHR animation and
 the downstream BG1/backboard compositor remain separate presentation work.
@@ -58,9 +60,12 @@ See `camera-presentation-plan.md`. The team selection path replays the
 ROM path rather than pasting Team Select logos: `$84:E55D-$E57A` indexes the
 graphics table at `$84:E6B5/$84:E6B7`, `$80:C62B` expands its exact 0x8c0-byte
 tile block, and `$84:E5BD` supplies the matching palette record. An independent
-Chicago capture at the live `$87:A47A` player compositor matches the offline
-reconstruction pixel-for-pixel; home team 18 remains byte-identical to the
-established Orlando frame-140 oracle.
+Chicago tile-stream comparison alone did not prove correct placement: the
+2026-09-02 [court layout correction](court-logo-complaint-audit.md) fixes the
+previous use of Orlando's map and shared CHR for other teams. Fresh native
+New York/Boston/Milwaukee/Orlando PPU checkpoints and every-frame Tipoff
+checks verify the corrected floor. Home team 18 remains byte-identical to
+the established Orlando frame-140 oracle.
 - The extended CPU-only run identifies `$85:963D–$985F` as the
   recurring player-coordinate integrator. Per-actor signed motion at `+$0E`
   and `+$10` is added to the 32-bit X/Y pairs at `+$02/+$04` and `+$06/+$08`.
