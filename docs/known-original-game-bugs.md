@@ -150,6 +150,7 @@ scene and does not alter this center-court overlap.
 
 ## Claims deliberately excluded
 
+- Colored blocks, stray `SET OPTIONS` text, and wrapped setup tiles during the Setup -> Team Select exit were a port renderer error, not original behavior. The outgoing layer-window repair removes them and a continuous-scene pixel regression now guards the affected frames. This is distinct from entry 12's later source-authentic clipped Team Select name/rank reveal.
 - The stale captured HUD panel/clock was a port error addressed by the bounded HUD repair. Remaining HUD timing/statistics gaps, the CPU restart failure near frame49,412 in the earlier baseline, and repeated Rules-entry failure are port investigations, not established original-game bugs.
 - The former frame41,876 unreleased-pass failure was attributed and repaired at the C1 checkpoint: original owner-contact routing can skip the ball drop, and the guard must retain the actual interrupted passer identity. The independently verified correction and real C recovery are in [the C1 integration report](pass-interruption-integration.md). It is not counted as an original bug; ordinary original knockdown capture coverage remains absent.
 - The old culling helper discarded the original low-depth fallback and used the wrong wrapped comparison. This was a port error, now [corrected in the integration branch](court-culling-integration.md). Unusual source culling alone does not establish an original game defect.

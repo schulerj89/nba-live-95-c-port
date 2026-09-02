@@ -48,7 +48,7 @@ not a progress percentage. No row implies all branches, configurations or frames
 | Rules -> Setup first return | I/W/R/T/V for unchanged Simulation and changed row2/Custom,171 frames each. Other return phases/values and invisible write ordering remain M. |
 | Rules repeated entry/exit | I/W/T, native repeat FAIL; wrong live-text source, modulo3 phase and builder completion timing. Second return matches, reopening does not. |
 | Setup <-> Options | I/W/T/A; brightness-only changes independently predicted, original scene/resource scheduling and all intermediate frames still M. Existing Options construction guard has no fresh parity proof. |
-| Setup -> Team Select | I/W/T/A; source outgoing animation and normal mode dispatch exist; exact consecutive native handoff and altered settings/team coverage M. |
+| Setup -> Team Select | I/W/R/T/V/A for the normal Exhibition handoff: consecutive native frames now anchor the outgoing layer windows and a continuous production capture guards their pixels. Altered settings/team coverage and exact whole-frame parity remain M. |
 | Team Select -> Player Setup and return | I/W/T/A; existing logo/navigation fixtures; full transition, cancellation and repeated selections M. |
 | Player Setup -> introductions / starting lineup | I/W/T/A; ROM-derived portraits and existing tests; changed assignments/lineups and every normal frame still M. |
 | Starting lineup -> tip-off | I/W/T/A; existing presentation and gameplay probes; independently aligned camera/resource/input handoff M. |

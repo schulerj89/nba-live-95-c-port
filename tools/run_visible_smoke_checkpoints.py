@@ -217,6 +217,40 @@ class Harness:
         return result
 
     def capture_frontend(self, temporary: Path) -> dict[int, FrameRef]:
+        setup_raw = temporary / "setup-to-team-select"
+        setup_raw.mkdir()
+        self.exe_command(
+            "setup-to-team-select-sequence", [
+                "--setup-only", "--setup-main-row", 0, "--setup-main-confirm",
+                "--frames", 300, "--dump-sequence-from", 160,
+                "--dump-sequence-dir", setup_raw, "--debug-state",
+            ], ("route=TEAM_SELECTION", "SCN:TEAM_SELECT",
+                "Wrote 141 rendered sequence frames"),
+        )
+        setup_frames = [164, 166, 184, 185, 186, 193, 200, 205,
+                        213, 214, 215, 277, 281, 282, 300]
+        setup_refs = self.export_frames(
+            setup_raw, "setup-to-team-select", setup_frames
+        )
+        setup_nonblack = {}
+        for frame in (205, 213, 214, 277, 281, 282):
+            with Image.open(setup_refs[frame].path) as image:
+                setup_nonblack[frame] = sum(
+                    pixel != (0, 0, 0) for pixel in image.convert("RGB").getdata()
+                )
+        require(setup_nonblack[205] > 0 and setup_nonblack[213] == 0 and
+                setup_nonblack[214] == 0,
+                "Setup artwork did not withdraw cleanly into forced black")
+        require(setup_nonblack[277] == 0 and setup_nonblack[281] > 0 and
+                setup_nonblack[282] > 0,
+                "Team Select construction reveal boundary changed")
+        self.make_contact(
+            "setup-to-team-select-continuous-contact.png",
+            [setup_refs[frame] for frame in setup_frames],
+            "Continuous Game Setup exit and Team Select construction handoff",
+            columns=5,
+        )
+
         script = self.output / "frontend-neutral-and-skips.input"
         script.write_text(FRONTEND_INPUT, encoding="ascii")
         raw = temporary / "frontend"
@@ -272,6 +306,8 @@ class Harness:
             columns=6,
         )
         self.checks["frontend"] = {
+            "setup_to_team_select_continuous": "captured from production scene handoff",
+            "setup_to_team_select_boundary_nonblack_pixels": setup_nonblack,
             "team_select_entry": "captured",
             "team_select_exit": "captured",
             "forced_black_first_frame": 254,
@@ -612,6 +648,8 @@ class Harness:
 
     def run_regressions(self, gameplay_trace: Path) -> None:
         common = ["--exe", self.exe, "--rom", self.rom, "--pack", self.pack]
+        self.regression("test-setup-transition", "test_setup_transition.py", common)
+        self.regression("test-team-select", "test_team_select.py", common)
         self.regression("test-frontend-route", "test_frontend_route.py", common)
         self.regression("test-player-setup", "test_player_setup.py", common)
         self.regression("test-player-intro", "test_player_intro.py", common)
@@ -628,9 +666,9 @@ class Harness:
                         "test_consecutive_inbound_sequence.py",
                         ["--trace", gameplay_trace, "--output", inbound_output])
         self.checks["regressions"] = [
-            "frontend_route", "player_setup", "player_intro", "court_assets",
-            "court_logo_attribution", "sprite_pose_runtime_source",
-            "consecutive_inbound_sequence",
+            "setup_transition", "team_select", "frontend_route", "player_setup",
+            "player_intro", "court_assets", "court_logo_attribution",
+            "sprite_pose_runtime_source", "consecutive_inbound_sequence",
         ]
 
     def compress_trace(self, path: Path) -> Path:
@@ -727,7 +765,7 @@ code{{background:#292929;padding:2px 5px}}
                                          "sha256": sha256(trace)},
             },
             "boundaries": {
-                "frontend": "--team-only production NbaGame caller plus native input words",
+                "frontend": "continuous --setup-only handoff plus --team-only production caller and native input words",
                 "lineup": "--player-setup-only production NbaGame caller plus native input words",
                 "gameplay": "--tipoff-only production caller with an explicit long clock seed",
                 "player_lab": "F9 production player compositor debug route",

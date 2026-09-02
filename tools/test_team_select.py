@@ -45,6 +45,18 @@ EXPECTED_DEBUG_STABLE_HASH = \
 EXPECTED_PLAYER_DRAW_HASH = \
     "2c561159b63e56e5e42a4d461a1f03bee65c1f7b94fcc5ee933349cbc66bff9f"
 
+# Continuous production Setup -> Team Select frames. These close the coverage
+# gap left by direct --team-only captures: the outgoing framebuffer and scroll
+# masks must be carried through the actual scene handoff. Native comparison
+# anchors are Mesen 423/430/437/442/450 for port 186/193/200/205/213.
+EXPECTED_SETUP_TO_TEAM_FRAME_HASHES = {
+    186: "8f2cea8276b6b47abb9e30dcce4244174434fd129982618faddbd80501b93a68",
+    193: "be4c79ac83dc08327769576b4c22a864aff2ccbfcc66254ad6e7b0caa79907bd",
+    200: "edf85e0d24d5932dce33352b70fe2a54f25adc71742547bef4642ebc85ed240a",
+    205: "5733bcdf4af93fc47941f42f8d9de0159f8b8574f4fa331d23d56a9f762fc002",
+    213: "2cbbeef1249170a43854962fa5b19fba628470c70beb9ce23e15a0f05cb891f2",
+}
+
 EXPECTED_LOGO_HASHES = {
     160: "83012b77eeda4d75735eeb22f88690260ab82b55ff53560d46b6d8d306b99510",
     161: "8ef535efc6581fb321baeb59c45aac5f3c9efb3f0bffaa6adb2377a88110763d",
@@ -324,6 +336,21 @@ def main():
             raise AssertionError(
                 f"Setup -> Team Select edge frame {frames} changed:\n{edge}")
 
+    # State markers alone cannot detect stale tilemap cells in the outgoing
+    # framebuffer. Render the natural handoff once and lock the reviewed frames
+    # that previously exposed the port-only colored-tile corruption.
+    with tempfile.TemporaryDirectory() as handoff_directory:
+        handoff_directory = Path(handoff_directory)
+        run(exe, "--headless", "--rom", rom, "--assets", pack,
+            "--setup-only", "--setup-main-row", "0", "--setup-main-confirm",
+            "--frames", "213", "--dump-sequence-from", "186",
+            "--dump-sequence-dir", handoff_directory)
+        for frame, expected_hash in EXPECTED_SETUP_TO_TEAM_FRAME_HASHES.items():
+            path = handoff_directory / f"frame_{frame:04d}.bmp"
+            if frame_hash(path) != expected_hash:
+                raise AssertionError(
+                    f"continuous Setup -> Team Select rendered frame {frame} changed")
+
     a_handoff = run(exe, "--headless", "--rom", rom, "--assets", pack,
                     "--setup-only", "--setup-main-row", "0", "--setup-main-a",
                     "--frames", "400", "--debug-state")
@@ -331,7 +358,7 @@ def main():
        "route=TEAM_SELECTION" in a_handoff:
         raise AssertionError(f"Controller A incorrectly confirmed Exhibition:\n{a_handoff}")
 
-    print("[TEST] PASS: Start-only handoff, seven-position ROM selector, 29 teams/logos, dash ranks, and navigation wrap")
+    print("[TEST] PASS: continuous Setup pixel handoff, Start-only dispatch, seven-position ROM selector, 29 teams/logos, dash ranks, and navigation wrap")
 
 
 if __name__ == "__main__":

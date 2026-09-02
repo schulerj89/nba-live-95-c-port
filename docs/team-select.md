@@ -129,6 +129,18 @@ captured host frame is faded. `--dump-sequence-dir` exports every
 headless rendered frame for video/regression inspection; `--team-demo` scripts
 right-team cycling, the ROM side toggle, then left-team cycling.
 
+The outgoing renderer must also reproduce the source layer windows. Its static
+VRAM snapshot contains BG1 construction cells and wrapped BG2 map data that the
+SNES never presents during this edge. The port therefore limits outgoing BG1
+to the palette-5 header and clips both horizontal layers at their moving screen
+boundaries; BG3 uses the `$80:A3B8` vertical window. Without those windows,
+continuous port frame 200 displayed colored tile garbage even though a direct
+`--team-only` smoke run looked correct. `test_team_select.py` now hashes five
+reviewed frames from the natural `--setup-only` handoff, and the visible smoke
+harness publishes the complete boundary as its own contact sheet. This port fix
+is separate from the source-authentic clipped Team Select reveal described in
+`known-original-game-bugs.md`.
+
 ## Reproduction
 
 ```powershell

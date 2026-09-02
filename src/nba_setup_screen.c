@@ -1708,7 +1708,12 @@ void nba_setup_screen_render(const NbaSetupScreen *s, NbaRenderer *ren) {
             uint32_t out = backdrop;
             NbaSnesBgPixel pixel;
 
-            if (s->main_screen & 0x02) {
+            /* $80:EBF9 scrolls the outgoing BG2 canvas right without exposing
+             * the tilemap's wrapped left edge. The port keeps a static VRAM
+             * snapshot, so clip that edge explicitly once the slide begins. */
+            bool team_exit_bg2_visible = !s->team_select_exit_active ||
+                s->team_select_exit_frame <= 21 || x >= s->bg1_hscroll;
+            if ((s->main_screen & 0x02) && team_exit_bg2_visible) {
                 if (nba_snes_sample_bg(vram, layer_tilemap[1], layer_chr[1],
                                        4, layer_double_width[1],
                                        layer_double_height[1], s->bg2_hscroll,
@@ -1730,8 +1735,18 @@ void nba_setup_screen_render(const NbaSetupScreen *s, NbaRenderer *ren) {
                     /* The legacy initial-Setup projection exposes palette-5 BG1 artwork.
                      * Other map palettes are construction/staging cells and
                      * are not designated into the visible entrance scanout. */
-                    if (s->frame > NBA_SETUP_ENTER_FRAMES ||
-                        (pixel.palette == 5 && y >= 16 && y < 56)) {
+                    /* The native handoff exposes only the palette-5 header from
+                     * BG1, then clips its wrapped right edge as the canvas moves
+                     * left. Other snapshot cells are construction data that the
+                     * SNES never designates into the visible handoff. */
+                    bool team_exit_bg1_visible = s->team_select_exit_active &&
+                        pixel.palette == 5 &&
+                        (s->team_select_exit_frame <= 21 ||
+                         x < NBA_SNES_WIDTH - s->bg1_hscroll);
+                    if (team_exit_bg1_visible ||
+                        (!s->team_select_exit_active &&
+                         (s->frame > NBA_SETUP_ENTER_FRAMES ||
+                          (pixel.palette == 5 && y >= 16 && y < 56)))) {
                         out = nba_snes_cgram_color(cgram,
                             pixel.palette * 16 + pixel.color_index,
                             s->brightness, 0, 0, 0);
@@ -1751,6 +1766,10 @@ void nba_setup_screen_render(const NbaSetupScreen *s, NbaRenderer *ren) {
                                    s->brightness == 15 &&
                                    s->bg1_hscroll == 512 &&
                                    s->bg2_hscroll == 0);
+            if (s->team_select_exit_active) {
+                int last_y = 202 - s->bg3_vscroll;
+                bg3_designated = s->bg3_vscroll < 182 && y <= last_y;
+            }
             if (construction_guard) bg3_designated = false;
             /* $81:D54A disables the Rules viewport before the parent builder.
              * $212D retains its subscreen bit, but it cannot display BG3 on
