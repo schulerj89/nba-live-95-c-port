@@ -171,6 +171,12 @@ team pairing, or controller assignment during construction.
 
 ## Claims deliberately excluded
 
+- `255` (or a crowded three-digit string that can resemble another number)
+  beside Parish, Benjamin, or Duckworth in Starting Lineup was a port error,
+  not original behavior. The ROM stores `$FF` for these three records but its
+  visible cards show `00`. Their earlier two-scanline text offset and yellow
+  divider were also host layout/color errors; the all-roster visual smoke now
+  guards the corrected native placement and orange divider.
 - Colored blocks, stray `SET OPTIONS` text, and wrapped setup tiles during the Setup -> Team Select exit were a port renderer error, not original behavior. The outgoing layer-window repair removes them and a continuous-scene pixel regression now guards the affected frames. This is distinct from entry 12's later source-authentic clipped Team Select name/rank reveal.
 - The stale captured HUD panel/clock was a port error addressed by the bounded HUD repair. Remaining HUD timing/statistics gaps, the CPU restart failure near frame49,412 in the earlier baseline, and repeated Rules-entry failure are port investigations, not established original-game bugs.
 - The former frame41,876 unreleased-pass failure was attributed and repaired at the C1 checkpoint: original owner-contact routing can skip the ball drop, and the guard must retain the actual interrupted passer identity. The independently verified correction and real C recovery are in [the C1 integration report](pass-interruption-integration.md). It is not counted as an original bug; ordinary original knockdown capture coverage remains absent.

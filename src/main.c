@@ -156,7 +156,10 @@ int main(int argc, char *argv[]) {
     bool start_at_setup = false;
     bool start_at_team = false;
     bool start_at_player_setup = false;
+    bool start_at_player_intro = false;
     bool start_at_tipoff = false;
+    int player_intro_team = 18;
+    int player_intro_slot = 0;
     bool spc_self_test = false;
     int step_frames = 30;
     double tick_rate = 60.0;
@@ -286,6 +289,12 @@ int main(int argc, char *argv[]) {
             start_at_team = true;
         } else if (strcmp(argv[i], "--player-setup-only") == 0) {
             start_at_player_setup = true;
+        } else if (strcmp(argv[i], "--player-intro-only") == 0) {
+            start_at_player_intro = true;
+        } else if (strcmp(argv[i], "--player-intro-team") == 0 && i + 1 < argc) {
+            player_intro_team = atoi(argv[++i]);
+        } else if (strcmp(argv[i], "--player-intro-slot") == 0 && i + 1 < argc) {
+            player_intro_slot = atoi(argv[++i]);
         } else if (strcmp(argv[i], "--tipoff-only") == 0) {
             start_at_tipoff = true;
         } else if (strcmp(argv[i], "--tipoff-clock") == 0 && i + 1 < argc) {
@@ -472,6 +481,9 @@ int main(int argc, char *argv[]) {
             printf("  --setup-only          Start at the $80:E600 -> $80:A2BF handoff\n");
             printf("  --team-only           Start at the $80:DBF6 -> $82:809A Team Select handoff\n");
             printf("  --player-setup-only   Start at the Team Select -> Player Setup handoff\n");
+            printf("  --player-intro-only   Seed a home Starting Lineup card for visual tests\n");
+            printf("  --player-intro-team N Select lineup team 0..28 (default 18)\n");
+            printf("  --player-intro-slot N Select starter slot 0..4 (default 0)\n");
             printf("  --tipoff-only         Start at the ROM-matched center-court jump ball\n");
             printf("  --tipoff-clock N      Controlled raw clock seed for gameplay tests\n");
             printf("  --team-confirm        Press Start after Team Select settles\n");
@@ -584,6 +596,13 @@ int main(int argc, char *argv[]) {
             player_lab_animation_right < 0 || player_lab_animation_right > 1000 ||
             player_lab_direction_right < 0 || player_lab_direction_right > 1000) {
             fprintf(stderr, "[HEADLESS] Player Lab team must be 0..28 and roster must be 0..11.\n");
+            return 1;
+        }
+        if (player_intro_team < 0 || player_intro_team >= NBA_TEAM_COUNT ||
+            player_intro_slot < 0 ||
+            player_intro_slot >= NBA_PLAYER_INTRO_STARTERS_PER_TEAM) {
+            fprintf(stderr, "[HEADLESS] Player Introduction team must be 0..28 "
+                            "and starter slot must be 0..4.\n");
             return 1;
         }
         printf("[HEADLESS] Starting headless verification (ROM: %s, Assets: %s, frames: %d)\n",
@@ -750,6 +769,20 @@ int main(int argc, char *argv[]) {
                 nba_game_shutdown(&game);
                 return 1;
             }
+        }
+        if (start_at_player_intro) {
+            /* This seed bypasses presentation timing only. It initializes the
+             * production scene, assets, font and renderer, then selects one
+             * home card so the visual smoke can inspect every ROM starter. */
+            game.session.right_team = (uint8_t)player_intro_team;
+            if (!nba_game_enter_state(&game, NBA_STATE_PLAYER_INTRO)) {
+                nba_game_shutdown(&game);
+                return 1;
+            }
+            game.scene.player_intro.phase = NBA_PLAYER_INTRO_LINEUPS;
+            game.scene.player_intro.phase_frame = 0;
+            game.scene.player_intro.lineup_card =
+                NBA_PLAYER_INTRO_STARTERS_PER_TEAM + player_intro_slot;
         }
         if (start_at_tipoff) {
             if (!nba_game_enter_state(&game, NBA_STATE_TIPOFF)) {

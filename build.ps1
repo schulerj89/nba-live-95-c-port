@@ -580,6 +580,11 @@ if ($Test) {
     if ($LASTEXITCODE -ne 0) {
         throw "Player Introduction regression tests failed with exit code $LASTEXITCODE"
     }
+    & python (Join-Path $Root "tools\test_player_intro_text.py") `
+        --pack $AssetPack --exe $ConsoleExePath --rom $RomPath
+    if ($LASTEXITCODE -ne 0) {
+        throw "Player Introduction all-roster text smoke failed with exit code $LASTEXITCODE"
+    }
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name match_initialization_probe
     & (Join-Path $BuildDir 'match_initialization_probe.exe') $AssetPack
     if ($LASTEXITCODE -ne 0) { throw 'All-team match initialization failed.' }

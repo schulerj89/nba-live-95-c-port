@@ -421,20 +421,30 @@ static void draw_lineup(const NbaPlayerIntro *screen, NbaRenderer *ren) {
     static const char *const positions[] = {
         "CENTER", "POWER FORWARD", "SMALL FORWARD", "SHOOTING GUARD", "POINT GUARD"
     };
-    lineup_centered(screen, ren, 48, "STARTING");
-    lineup_centered(screen, ren, 68, "LINEUP");
+    /* Native $87:BE92 captures place the font bitmap two scanlines below the
+     * host's earlier tile-origin approximation. Keep each label on its
+     * observed baseline while the divider remains at y=$BA. */
+    lineup_centered(screen, ren, 50, "STARTING");
+    lineup_centered(screen, ren, 70, "LINEUP");
     const NbaTeamRecord *record = nba_team_record(team);
-    presentation_text(screen, ren, 80, 136, record ? record->name : "TEAM");
+    presentation_text(screen, ren, 80, 138, record ? record->name : "TEAM");
     if (!intro_player(screen->assets, team, slot, &player)) return;
     const uint32_t *portrait = intro_portrait(
         screen->assets, team, slot, (uint16_t)(card >= 5));
     draw_asset_rgba(ren, portrait, 72, 72, 8, 144);
     char jersey[8];
-    snprintf(jersey, sizeof(jersey), "%u", player.jersey);
-    lineup_text(screen, ren, 80, 165, jersey);
-    lineup_text(screen, ren, 112, 165, player.name);
-    nba_renderer_draw_rect(ren, 80, 186, 158, 3, 0xFFFFFF00u);
-    presentation_text(screen, ren, 80, 192,
+    /* The roster uses $FF for three centers whose visible lineup number is
+     * "00" (Parish, Benjamin and Duckworth). Native captures from $87:BE92
+     * show that conversion; printing the raw byte produced the port defect
+     * "255" and let its third digit collide with the player name. */
+    if (player.jersey == 0xFFu)
+        snprintf(jersey, sizeof(jersey), "00");
+    else
+        snprintf(jersey, sizeof(jersey), "%u", player.jersey);
+    lineup_text(screen, ren, 80, 167, jersey);
+    lineup_text(screen, ren, 112, 167, player.name);
+    nba_renderer_draw_rect(ren, 80, 186, 158, 3, 0xFFFFB521u);
+    presentation_text(screen, ren, 80, 194,
                       player.position < 5 ? positions[player.position] : "PLAYER");
 }
 

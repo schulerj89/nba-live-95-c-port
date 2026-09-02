@@ -33,8 +33,8 @@ EXPECTED_ORLANDO_TOP_RGB = \
     "6b4cda12034520a700e01fd6135f3e9d993e4a518801a94d0b59fbc2b8388c0d"
 
 EXPECTED_LINEUP_TO_TIPOFF_HASHES = {
-    5319: "568301e236eea794758cf4d6f956cdbfe23bb8adf6861599dc50f475b599caf3",
-    5321: "568301e236eea794758cf4d6f956cdbfe23bb8adf6861599dc50f475b599caf3",
+    5319: "84bd8d3abf7cc31a29798dd4b159b69855bd1d0153360a462e208df9926497a7",
+    5321: "84bd8d3abf7cc31a29798dd4b159b69855bd1d0153360a462e208df9926497a7",
     5322: "2cbbeef1249170a43854962fa5b19fba628470c70beb9ce23e15a0f05cb891f2",
     5323: "8dec91def2408adbb695d7626c00d6be3169e463379b82f40303c1d2106b2215",
     5324: "9f5bbbf92a2eb7a2fdefd4382c6e635562f54363fa3f42064a06072f29358caf",
@@ -184,7 +184,7 @@ def main():
         if "SCN:PLAYER_INTRO" not in output or "CARD:01/10" not in output or \
            "ROM LOOP:$87:BE92" not in output:
             raise AssertionError("Player Setup did not hand off to the lineup state")
-        if rgb_hash(frame) != "694a89064d79f1eeb476d6de822dd8183b741ffd106bf9b3f659768f540b296b":
+        if rgb_hash(frame) != "34928b957579ab033c8f03d66bb7da543b072495a0de48d523f96e06413f9994":
             raise AssertionError("first Starting Lineup frame changed")
 
         output = run(exe, "--headless", "--rom", rom, "--assets", pack,
@@ -220,7 +220,7 @@ def main():
                      "--team-confirm", "--player-setup-confirm", "--frames", 1600,
                      "--dump-frame", away_frame, "--debug-state")
         if "TEAM L:08 R:18" not in output or "CARD:01/10" not in output or \
-           rgb_hash(away_frame) != "6ba8e0a29f4bf7dc553915813ab1032bc514162426242cd739dd0636d946b0e7":
+           rgb_hash(away_frame) != "8d65571a85ff410b8c09b5dfe25b642358c12432207b8d99938a93000dc46f87":
             raise AssertionError("non-default visitor portrait selection changed")
 
         home_frame = Path(directory) / "san_antonio_home.bmp"
@@ -229,7 +229,7 @@ def main():
                      "--player-setup-confirm", "--frames", 3600,
                      "--dump-frame", home_frame, "--debug-state")
         if "TEAM L:03 R:23" not in output or "CARD:06/10" not in output or \
-           rgb_hash(home_frame) != "72ac6e4619be39c66fa7e0ef60be7999e838c802e66a79491f49127f3677fc4b":
+           rgb_hash(home_frame) != "4d38abcc6c48cec1dacd8d74f007bc13065ba42c51a1ccacb9153685bdbd1b6d":
             raise AssertionError("non-default home portrait selection changed")
 
     print("Player Introduction regression checks passed")

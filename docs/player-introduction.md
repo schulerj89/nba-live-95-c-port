@@ -73,6 +73,14 @@ register snapshot, SPC state, and 5,560-frame cycle-timed DSP program. Asset
 Asset 270 is the larger `$A6:BB16` 16x16 Starting Lineup font descriptor.
 The C runtime synthesizes the BRR samples and does not store a mixed song WAV.
 
+Three starting-center records store jersey byte `$FF`: Robert Parish,
+Benoit Benjamin, and Kevin Duckworth. Native `$87:BE92` captures display that
+sentinel as `00`. The runtime performs the same conversion before drawing the
+number so a raw decimal `255` cannot collide with the name. The verified native
+cards also place each lineup text bitmap two scanlines below the earlier host
+approximation and use divider color RGB `(255,181,33)`; production now uses
+those observed baselines and color.
+
 Both descriptors are proportional. `$81:9756` reads one or two 8-pixel strips
 according to the character width at descriptor `+$106+code`; the nominal asset
 width is not a fixed strip count. The runtime preserves that distinction so
@@ -92,3 +100,10 @@ The unskipped regression now continues beyond card 10: frame 5321 retains the
 final Orlando starter, frame 5322 enters Tipoff black, and frames 5323-5330 lock
 the first court brightness ramp. The visible smoke harness publishes this as a
 separate contact sheet instead of inferring game entry from a later state marker.
+
+`tools/test_player_intro_text.py` uses the production lineup renderer through
+the deterministic `--player-intro-only --player-intro-team N
+--player-intro-slot N` seed. It renders all 145 starter cards, rejects any
+non-sentinel three-digit jersey, locks the three native `00` sentinels, and
+fingerprints both every full card and every name/number crop. With `--output`,
+it also writes five contact sheets and a manifest for visual review.

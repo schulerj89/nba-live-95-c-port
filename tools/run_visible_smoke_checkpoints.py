@@ -698,6 +698,7 @@ class Harness:
         self.regression("test-frontend-route", "test_frontend_route.py", common)
         self.regression("test-player-setup", "test_player_setup.py", common)
         self.regression("test-player-intro", "test_player_intro.py", common)
+        self.regression("test-player-intro-text", "test_player_intro_text.py", common)
         self.regression("test-court-assets", "test_court_assets.py",
                         ["--pack", self.pack])
         self.regression("test-court-logo-attribution", "test_court_logo_attribution.py",
@@ -712,7 +713,8 @@ class Harness:
                         ["--trace", gameplay_trace, "--output", inbound_output])
         self.checks["regressions"] = [
             "setup_transition", "team_select", "frontend_route", "player_setup",
-            "player_intro", "court_assets", "court_logo_attribution",
+            "player_intro", "player_intro_text_all_145", "court_assets",
+            "court_logo_attribution",
             "sprite_pose_runtime_source", "consecutive_inbound_sequence",
         ]
 
@@ -759,7 +761,7 @@ class Harness:
             "- Player Setup's first partial right-edge layers match the documented original construction reveal.",
             "- Neutral controller setup reaches CPU-vs-CPU and Start skips Matchup, Ratings, and the whole lineup.",
             "- Both the Start-skip route and the complete ten-card lineup enter Tipoff through black and the court brightness ramp.",
-            "- All ten lineup cards render complete proportional text; verify `31` does not bleed into the name.",
+            "- The ten-card contact renders complete proportional text; the all-145 regression rejects three-digit bleed and locks the native `00` sentinels.",
             "- The Orlando oval/Ratings overlap is a documented original-game composition quirk.",
             "- During pass and inbound attachment frames the ball stays at the submitted hand pose, then separates on release.",
             "- Player bodies, heads, jersey colors, and numbers remain composed across the lab and live-direction grids.",
