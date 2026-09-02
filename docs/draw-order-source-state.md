@@ -1,9 +1,12 @@
 # Persistent source draw order
 
-`nba_draw_order` supplies a standalone typed owner for the twelve source draw
-pointers and their depth words. It is not production-wired, and independent
-audit is pending. It does not alter the accepted period render component or
-any prior freeze, audio component, HUD or runtime source manifest.
+`nba_draw_order` owns the twelve source draw pointers and their depth words.
+The [dribble animation correction](dribble-animation.md) connects it to
+`NbaTipoff`: initial placement performs FBFF, scheduled object-origin latches
+perform one FC80 pass, and period restarts perform FBFF on the carried list.
+The renderer uses that order for actor overlap and the owner's ball/hand
+interleave. The standalone period-render component and its frozen evidence
+remain separate; full native OAM allocation and CPU timing are not modeled.
 
 `NbaDrawOrder.order[12]` corresponds to `$7E44..7E5B`; `depth[i]` corresponds
 to `(34EB + 100*i) + 68` (hexadecimal addresses). The twelve records are the
@@ -18,6 +21,7 @@ default basket position, or timing inputs.
 | `nba_draw_order_project` | Twelve `$87:A3B6..A3CE` depth blocks, traversing the carried order backwards. Compute wrapped `(Y-X)`, two arithmetic right shifts, then wrapped camera-Y subtraction. Preserve order. |
 | `nba_draw_order_pass` | `$80:FC80..FCA1`: compare adjacent pairs `10/11,9/10,...,0/1` exactly once. Preserve depth words. |
 | `nba_draw_order_update` | Convenience composition of those projection/pass operations; the caller must own their scheduling and excluded work. |
+| `nba_draw_order_full_sort` | `$80:FBFF..FC7F`: project all twelve depths and execute the original 7/3/1 gap comparisons for initial/period placement. |
 
 The source initializer is called at `$86:DA89`. It must not be rerun each
 frame or each period. It accepts arbitrary previous order words because the
@@ -33,9 +37,9 @@ decision tests bit15 of the **wrapped** `rightDepth-leftDepth`. Equal keys do
 not swap. Host signed comparison, sorting by an unwrapped mathematical value,
 or a full sort changes original behavior. A reversed ordinary-key list needs
 eleven calls to become sorted; the first call deliberately leaves it partly
-unsorted. `$80:FBFF`'s exceptional full sort remains the separate accepted
-period-render operation. Any runtime owner must import its actual resulting
-order/depth into this same persistent state, not maintain a second list.
+unsorted. `$80:FBFF`'s exceptional full sort now updates this same persistent
+state at initial/period placement. Its wrapped comparisons match all 96
+order/depth words in the four existing native period-placement captures.
 
 The depth calculation preserves negative rounding and `$8000` wrap. It does
 not consume Z, fractions, camera X, or apparent screen Y after height removal.
@@ -55,9 +59,10 @@ by the period-two prefix. Basket Y has original initialization provenance
 instruction. Its value is zero both before and after, so that fixture alone
 does not distinguish an omitted write; the original opcode establishes the
 write. The draw-order API intentionally does not own or initialize basket XY.
-The runtime initializer must perform its actual source initialization and
-retain that state. Camera, actor/ball XY and the time of each scheduled pass
-also remain caller-owned.
+The runtime adapter supplies this initialized zero Y, the carried basket X,
+actual actor/ball integer XY, and current camera Y. Ordinary updates occur
+with the existing retained player/ball-origin latch. The standalone API
+continues to leave input and scheduling ownership to its caller.
 
 ## Evidence and reproduction
 

@@ -756,12 +756,51 @@ static bool draw_player_resources_at(NbaRenderer *ren,
     return true;
 }
 
-bool nba_player_sprite_render_pose(NbaRenderer *renderer,
+bool nba_player_ball_draw_order(const NbaAssetPack *assets,
+                                uint16_t upper_resource, int16_t *order) {
+    /* The existing literal AC:B6B3 capture also contains AC:BAFF. Its
+     * overlapping suffix covers every low-resource dribble pose (<$F0).
+     * Refuse IDs outside that retained byte range. */
+    const unsigned delta = 0xbaffu - 0xb6b3u;
+    if (!order || upper_resource >= 0x830u - delta ||
+        !nba_assets_player_draw_inputs_valid(assets)) return false;
+    const NbaAssetItem *item = nba_assets_get(assets, NBA_ASSET_PLAYER_DRAW_INPUTS);
+    *order = (int8_t)((const uint8_t *)item->data)[32u + delta + upper_resource];
+    return true;
+}
+
+bool nba_player_compose_sprite_pose_with_ball(const NbaAssetPack *assets,
+    const NbaPlayerSpritePoseInput *input, const NbaPlayerSpriteBallInput *ball,
+    NbaPlayerSpritePoseComposition *output) {
+    if (!ball || !output) return false;
+    NbaPlayerSpritePoseComposition next;
+    if (!nba_player_compose_sprite_pose(assets, input, &next)) return false;
+    /* AFEE/AFF2: nonnegative table byte submits the ball first. Negative
+     * entries submit after the upper/number group if the sorted ball record
+     * was already visited (B055/B0E8); otherwise after the whole body B0A8.
+     * Lower OAM indices win, including the hand-over-ball pixels. */
+    unsigned insert = next.count;
+    if (ball->order_9a >= 0) insert = 0;
+    else if (ball->before_owner_3f31 != 0u) {
+        for (unsigned i = 0; i < next.count; ++i)
+            if (next.parts[i].kind == NBA_PLAYER_SPRITE_LOWER) { insert = i; break; }
+    }
+    uint16_t work = insert < next.count ? next.parts[insert].glyph_work_0884 : next.glyph_work_0884;
+    memmove(&next.parts[insert + 1u], &next.parts[insert],
+            (next.count - insert) * sizeof(next.parts[0]));
+    next.parts[insert] = (NbaPlayerSpriteSubmission){
+        NBA_PLAYER_SPRITE_BALL, 0x081du, ball->attribute, work, ball->x, ball->y};
+    ++next.count;
+    *output = next;
+    return true;
+}
+
+static bool render_sprite_pose(NbaRenderer *renderer,
                                    const NbaAssetPack *assets,
                                    uint8_t team, uint8_t roster_slot,
                                    uint8_t side, uint8_t direction_c2,
                                    const NbaPlayerSpritePoseInput *input,
-                                   int scale) {
+                                   const NbaPlayerSpriteBallInput *ball, int scale) {
     PlayerLabRecord player;
     if (!renderer || !assets || !input || side > 1u || direction_c2 >= 8u ||
         scale < 1 || !player_record(assets, team, roster_slot, &player))
@@ -770,8 +809,19 @@ bool nba_player_sprite_render_pose(NbaRenderer *renderer,
                                             player.palette_variant);
     if (!palette) return false;
     NbaPlayerSpritePoseComposition composition;
-    if (!nba_player_compose_sprite_pose(assets, input, &composition))
+    if (!(ball ? nba_player_compose_sprite_pose_with_ball(assets, input, ball, &composition) :
+                 nba_player_compose_sprite_pose(assets, input, &composition)))
         return false;
+    const uint8_t *ball_palette = NULL;
+    if (ball) {
+        const NbaAssetItem *animation_item = NULL;
+        const uint8_t *animation = animation_data(assets, &animation_item);
+        if (!animation) return false;
+        uint32_t offset = read_u32(animation + 48u);
+        if (offset > animation_item->size || 32u > animation_item->size - offset)
+            return false;
+        ball_palette = animation + offset;
+    }
     uint8_t number_tile[32], number_palette[32];
     bool have_number = nba_player_compose_jersey_number(
         assets, player.jersey, direction_c2, side, number_tile);
@@ -785,7 +835,8 @@ bool nba_player_sprite_render_pose(NbaRenderer *renderer,
         if (part->kind == NBA_PLAYER_SPRITE_NUMBER && !have_number)
             return false;
         const uint8_t *part_palette = part->kind == NBA_PLAYER_SPRITE_NUMBER
-            ? number_palette : palette;
+            ? number_palette : part->kind == NBA_PLAYER_SPRITE_BALL
+            ? ball_palette : palette;
         const uint8_t *override = part->kind == NBA_PLAYER_SPRITE_NUMBER
             ? number_tile : NULL;
         int draw_x = input->x + (part->x - input->x) * scale;
@@ -795,6 +846,22 @@ bool nba_player_sprite_render_pose(NbaRenderer *renderer,
             override, scale);
     }
     return true;
+}
+
+bool nba_player_sprite_render_pose(NbaRenderer *renderer,
+    const NbaAssetPack *assets, uint8_t team, uint8_t roster_slot,
+    uint8_t side, uint8_t direction_c2, const NbaPlayerSpritePoseInput *input,
+    int scale) {
+    return render_sprite_pose(renderer, assets, team, roster_slot, side,
+                              direction_c2, input, NULL, scale);
+}
+
+bool nba_player_sprite_render_pose_with_ball(NbaRenderer *renderer,
+    const NbaAssetPack *assets, uint8_t team, uint8_t roster_slot,
+    uint8_t side, uint8_t direction_c2, const NbaPlayerSpritePoseInput *input,
+    const NbaPlayerSpriteBallInput *ball, int scale) {
+    return ball && render_sprite_pose(renderer, assets, team, roster_slot, side,
+                                     direction_c2, input, ball, scale);
 }
 
 static bool draw_player_animation_at(NbaRenderer *ren, const NbaAssetPack *assets,

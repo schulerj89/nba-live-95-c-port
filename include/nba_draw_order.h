@@ -29,4 +29,7 @@ bool nba_draw_order_pass(NbaDrawOrder *state);
 /* Convenience for a caller owning both boundaries; same exclusions as above.
  * Inputs and output remain unchanged on refusal. */
 bool nba_draw_order_update(NbaDrawOrder *state, const NbaDrawOrderInput *input);
+/* `$80:FBFF-$FC7F` exceptional 7/3/1 gap sort at initial/period placement.
+ * Ordinary presentation continues to use the single FC80 pass above. */
+bool nba_draw_order_full_sort(NbaDrawOrder *state, const NbaDrawOrderInput *input);
 #endif

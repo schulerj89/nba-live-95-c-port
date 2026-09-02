@@ -318,3 +318,11 @@ tools/test_sprite_pose_runtime_source.py -text
 tools/upgrade_player_draw_pack.py -text
 tools/verify_sprite_pose_live_runtime.py -text
 tools/verify_sprite_pose_runtime.py -text
+
+# Preserve the frozen dribble fixtures and executed capture/reference bytes.
+tests/fixtures/dribble-native.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+tests/fixtures/dribble-draw-native.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+tools/capture_dribble.py -text
+tools/mesen_dribble_capture.lua -text
+tools/regenerate_dribble_reference.py -text
+tools/ghidra/DumpDribble.java -text

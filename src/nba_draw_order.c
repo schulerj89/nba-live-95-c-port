@@ -55,3 +55,27 @@ bool nba_draw_order_update(NbaDrawOrder *state,const NbaDrawOrderInput *input) {
     if (!nba_draw_order_project(&next,input) || !nba_draw_order_pass(&next)) return false;
     *state=next;return true;
 }
+
+bool nba_draw_order_full_sort(NbaDrawOrder *state, const NbaDrawOrderInput *input) {
+    if (!input || !valid(state)) return false;
+    NbaDrawOrder next = *state;
+    if (!nba_draw_order_project(&next, input)) return false;
+    /* FBFF doubles 2 to 16 then decrements to 15; FC0D produces gaps 7,3,1.
+     * The wrapped CMP sign and equal-key behavior match period_render_tail. */
+    for (unsigned gap = 7; gap; gap >>= 1) for (unsigned i = 0; i + gap < 12; ++i) {
+        unsigned at = i;
+        for (;;) {
+            unsigned left = (next.order[at] - 0x34ebu) / 256u;
+            unsigned right = (next.order[at + gap] - 0x34ebu) / 256u;
+            if ((uint16_t)(next.depth[right] - next.depth[left]) & 0x8000u) {
+                uint16_t p = next.order[at];
+                next.order[at] = next.order[at + gap];
+                next.order[at + gap] = p;
+            }
+            if (at < gap) break;
+            at -= gap;
+        }
+    }
+    *state = next;
+    return true;
+}

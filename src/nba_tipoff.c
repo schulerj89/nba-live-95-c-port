@@ -402,7 +402,13 @@ static void submit_argb_object(NbaRenderer *ren, const NbaRenderer *object,
     }
 }
 
-static uint8_t actor_oam_index(unsigned actor) {
+static uint8_t actor_oam_index(const NbaTipoff *tipoff, unsigned actor) {
+    if (tipoff->draw_order_initialized && tipoff->tip_contact_actor >= 0) {
+        uint16_t pointer = (uint16_t)(0x34ebu + actor * 256u);
+        for (unsigned i = 0; i < 12u; ++i)
+            if (tipoff->draw_order.order[i] == pointer)
+                return (uint8_t)((11u - i) * 4u);
+    }
     for (unsigned i = 0; i < sizeof(visible_submission); ++i)
         if (visible_submission[i] == actor) return (uint8_t)(i * 4u);
     return (uint8_t)(64u + actor);
@@ -872,7 +878,8 @@ static void cpu_advance_actor_animation(NbaTipoff *tipoff,
     /* Action release gates consume the same phase that the locked resource
      * advances. Keeping the old half-rate tick here can finish/unlock a pass
      * before its release threshold is ever reached. Ordinary locomotion's
-     * legacy contact/ball phase remains the next integration boundary. */
+     * legacy contact phase remains a separate integration boundary; owned
+     * ball physics reads the literal ROM phase directly. */
     if (actor->animation_resources_valid &&
         (actor->upper_animation_lock_raw_46 != 0u ||
          (actor->control_mode == 15u && actor->exact_pass_animation) ||
@@ -5590,7 +5597,11 @@ static void cpu_update_attached_ball_substep(NbaTipoff *tipoff) {
         .impact_raw_13e5 = tipoff->rim_impact_raw_13e5,
         .event_bits_raw_13e7 = tipoff->rim_raw_13e7
     };
-    if (owner->upper_animation_phase_raw < 3u) {
+    /* `$85:A50D-$A516` reads actor +$3A, the descriptor phase that also
+     * publishes the hand sprite. The compatibility action counter can
+     * restart during a 9/11 pose reversal while +$3A is already in flight;
+     * reading it here snaps a falling ball back to the hand's height. */
+    if (owner->rom_upper_animation_phase_raw_3a < 3u) {
         if (vertical.attachment_state_raw_09f6 == 0u) {
             vertical.attachment_state_raw_09f6 = 1u;
             vertical.dead_ball_raw_0968 = 0u;
@@ -8389,6 +8400,28 @@ static void cpu_update_camera(NbaTipoff *tipoff) {
     tipoff->court_stream.scroll_y=tipoff->court_stream.next_scroll_y;
 }
 
+static void update_draw_order(NbaTipoff *tipoff, bool full_sort) {
+    NbaDrawOrderInput input = {0};
+    input.camera_y = (uint16_t)tipoff->camera_y;
+    for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
+        input.x[actor] = (uint16_t)fp_integer_word(tipoff->actors[actor].x_fp);
+        input.y[actor] = (uint16_t)fp_integer_word(tipoff->actors[actor].y_fp);
+    }
+    input.x[10] = (uint16_t)fp_integer_word(tipoff->ball.x_fp);
+    input.y[10] = (uint16_t)fp_integer_word(tipoff->ball.y_fp);
+    input.x[11] = tipoff->court_presentation.basket_x_3fef;
+    input.y[11] = 0u; /* `$86:DBC2` initializes basket Y to zero. */
+    if (!tipoff->draw_order_initialized) {
+        if (!nba_draw_order_initialize(&tipoff->draw_order)) return;
+        full_sort = true;
+    }
+    /* FBFF at initial/period placement starts from the carried order.
+     * Scheduled OAM passes retain that list and perform one FC80 pass. */
+    tipoff->draw_order_initialized = full_sort ?
+        nba_draw_order_full_sort(&tipoff->draw_order, &input) :
+        nba_draw_order_update(&tipoff->draw_order, &input);
+}
+
 static void latch_player_screen_origins(NbaTipoff *tipoff) {
     /* Live Mesen `$87:A47A` and `$87:B649` traces show that player and ball
      * OAM submissions persist across the intervening rendered frame.
@@ -8424,6 +8457,7 @@ static void latch_player_screen_origins(NbaTipoff *tipoff) {
         fp_integer_word(tipoff->ball.y_fp),fp_integer_word(tipoff->ball.z_fp),
         tipoff->camera_x,tipoff->camera_y,
         &tipoff->ball_screen_x,&tipoff->ball_screen_y);
+    update_draw_order(tipoff, false);
 }
 
 static bool cpu_ball_presentation_latch_self_test(void) {
@@ -8458,14 +8492,14 @@ static void draw_ball(const NbaTipoff *tipoff, NbaRenderer *ren, int x, int y) {
     if (!item || !item->data || item->size != 56u ||
         memcmp(item->data, "NBBALL1", 8)) return;
     const uint8_t *data = (const uint8_t *)item->data;
-    const uint8_t *tile = data + 12;
-    for (int py = 0; py < 8; ++py) for (int px = 0; px < 8; ++px) {
-        uint8_t index = tile_pixel(tile, px, py);
-        if (index < 5u || index > 10u) continue;
-        int dx = x + px, dy = y + py;
-        if (dx >= 0 && dx < 256 && dy >= 0 && dy < 224)
-            ren->pixels[dy * 256 + dx] = bgr555(read_u16(data + 44 + (index - 5u) * 2u));
-    }
+    uint8_t palette[32] = {0};
+    memcpy(palette + 5u * 2u, data + 44, 6u * 2u);
+    /* `$80:B10C-$B11F` submits resource $081D through B344. Its literal
+     * descriptor at `$9B:9C16` places the 8x8 tile at origin (-3,-4).
+     * Drawing the extracted tile directly treated the ball's projected
+     * center as its top-left corner and visibly separated it from the hand. */
+    nba_rom_sprite_resource_render(ren, tipoff->assets, 0x081du,
+        palette, x, y, false, 1);
 }
 
 bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
@@ -8943,6 +8977,7 @@ static void match_restart_period(NbaTipoff *tipoff) {
     tipoff->rim_raw_13e7 &= 0xF7FFu;
     session->match.presentation_ticks_remaining = 0u;
     session->match.flow_state = NBA_MATCH_FLOW_LIVE;
+    update_draw_order(tipoff, true);
 }
 
 static void match_finish_period(NbaTipoff *tipoff) {
@@ -9946,9 +9981,10 @@ void nba_tipoff_render(const NbaTipoff *tipoff, NbaRenderer *ren) {
                 render_order[render_count++] = (uint8_t)actor;
         }
         /* `$80:AD92`/`$80:B391` use OAM order, not screen-Y painter sorting.
-         * The Mode-1 compositor resolves overlaps from actor_oam_index(). */
+         * The Mode-1 compositor resolves overlaps from the carried FC80 list. */
     }
 
+    bool ball_in_player = false;
     for (unsigned order = 0; order < render_count; ++order) {
         unsigned actor = render_order[order];
         uint8_t team_side = actor >= 5u;
@@ -9964,6 +10000,7 @@ void nba_tipoff_render(const NbaTipoff *tipoff, NbaRenderer *ren) {
         nba_renderer_clear(&object_plane, 0u);
         uint16_t draw_upper_resource = 0u;
         uint16_t draw_lower_resource = 0u;
+        uint8_t object_priority = 2u;
         /* D4/D6 are the already-published body pose. A5FA selects the head
          * independently; it does not rotate the torso/legs or ball point. */
         if (actor_draw_body_resources(tipoff, &tipoff->actors[actor], direction,
@@ -9996,6 +10033,7 @@ void nba_tipoff_render(const NbaTipoff *tipoff, NbaRenderer *ren) {
                     .palette_offset = palette_offset
                 };
                 nba_gameplay_prepare_player_draw(&preparation, &prepared);
+                object_priority = (uint8_t)((prepared.attribute >> 12) & 3u);
                 NbaPlayerSpritePoseInput pose = {
                     .upper_d6 = draw_upper_resource,
                     .lower_d4 = draw_lower_resource,
@@ -10011,9 +10049,36 @@ void nba_tipoff_render(const NbaTipoff *tipoff, NbaRenderer *ren) {
                     .x = prepared.x,
                     .y = (int16_t)(prepared.y - jump)
                 };
-                literal = nba_player_sprite_render_pose(&object_plane,
-                    tipoff->assets, team, slot, uniform_side,
-                    tipoff->actors[actor].direction, &pose, 1);
+                int16_t ball_order = 0;
+                bool dribble = tipoff->ball.state != NBA_BALL_HIDDEN &&
+                    tipoff->ball.owner_actor == (int8_t)actor &&
+                    tipoff->possession_actor == (int8_t)actor &&
+                    tipoff->actors[actor].control_mode == 11u &&
+                    tipoff->live_state_raw < 0x80u &&
+                    tipoff->fouls.free_throw_state_raw_0978 == 0u &&
+                    tipoff->rim_effect.resource_raw_4015 < 0x082cu &&
+                    draw_upper_resource < 0x00f0u &&
+                    nba_player_ball_draw_order(tipoff->assets, draw_upper_resource, &ball_order);
+                if (dribble) {
+                    /* A47A walks the carried list backwards; visiting the
+                     * ball first sets 3F31 before this owner's AF1E call.
+                     * Z does not participate in that sort, and equal depths
+                     * retain their actual prior order. */
+                    NbaPlayerSpriteBallInput ball = {
+                        ball_order,
+                        actor_oam_index(tipoff, 10u) < actor_oam_index(tipoff, actor) ? 1u : 0u,
+                        (uint16_t)((prepared.attribute & 0x3000u) | 0x0c00u),
+                        tipoff->ball_screen_x, tipoff->ball_screen_y
+                    };
+                    literal = nba_player_sprite_render_pose_with_ball(&object_plane,
+                        tipoff->assets, team, slot, uniform_side,
+                        tipoff->actors[actor].direction, &pose, &ball, 1);
+                    ball_in_player = literal;
+                } else {
+                    literal = nba_player_sprite_render_pose(&object_plane,
+                        tipoff->assets, team, slot, uniform_side,
+                        tipoff->actors[actor].direction, &pose, 1);
+                }
             }
             if (!literal)
                 nba_player_sprite_render_resources(
@@ -10027,7 +10092,7 @@ void nba_tipoff_render(const NbaTipoff *tipoff, NbaRenderer *ren) {
                                            screen_x[actor],
                                            screen_y[actor] - jump, 1);
         }
-        submit_argb_object(ren, &object_plane, 2u, actor_oam_index(actor));
+        submit_argb_object(ren, &object_plane, object_priority, actor_oam_index(tipoff, actor));
     }
     int ball_x, ball_y;
     if (tipoff->tip_contact_actor < 0) {
@@ -10039,7 +10104,7 @@ void nba_tipoff_render(const NbaTipoff *tipoff, NbaRenderer *ren) {
         ball_x=tipoff->ball_screen_x;
         ball_y=tipoff->ball_screen_y;
     }
-    if (tipoff->ball.state!=NBA_BALL_HIDDEN) {
+    if (tipoff->ball.state!=NBA_BALL_HIDDEN && !ball_in_player) {
         nba_renderer_clear(&object_plane, 0u);
         draw_ball(tipoff, &object_plane, ball_x, ball_y);
         submit_argb_object(ren, &object_plane, 3u, 0u);

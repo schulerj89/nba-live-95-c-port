@@ -5,6 +5,7 @@
 #include "nba_renderer.h"
 #include "nba_session.h"
 #include "nba_controller.h"
+#include "nba_draw_order.h"
 #include "nba_gameplay_debugger.h"
 #include "nba_gameplay_camera.h"
 #include "nba_court_presentation.h"
@@ -162,6 +163,8 @@ typedef struct NbaTipoff {
     uint16_t context_raw_4933, context_raw_4935;
     int16_t camera_x, camera_y;
     NbaGameplayCamera camera;
+    NbaDrawOrder draw_order; /* carried `$7E44`, shared ball/player submission */
+    bool draw_order_initialized;
     /* `$87:A357-$A47A` prepares object origins only on the scheduled OAM
      * submission pass. The SNES keeps those coordinates between passes. */
     int16_t player_screen_x[NBA_GAMEPLAY_ACTOR_COUNT];

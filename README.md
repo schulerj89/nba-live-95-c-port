@@ -108,6 +108,19 @@ documents the original-game source evidence, scripted button route, all 29
 home-team sweep and per-frame floor/logo checks. Capture output can stay under
 `build`; `.analysis` is only needed when reading older raw reference inputs.
 
+To capture a complete dribble immediately from a configured CPU game:
+
+```powershell
+.\tools\run_dribble_smoke.ps1 -RomPath '<path-to-rom>' -TipoffOnly
+```
+
+This builds the regular executable, checks native Mesen physics and draw
+vectors, and saves every frame, contact sheets and a slow-motion GIF under
+`build/dribble-smoke-*`. Add `-NoBuild` for another quick run. Omit
+`-TipoffOnly` to exercise the scripted menu buttons as well. The
+[dribble animation audit](docs/dribble-animation.md) records the Ghidra,
+generated recomp C and native frame evidence.
+
 The tests lock intro/title/Setup/Team Select/Player Setup pixels, both title-exit paths, all Setup cursor
 rows, malformed-pack handling, ROM identity, 59.94/60 Hz equivalence, robust
 runtime-PCM fingerprints, all 29 currently exposed ROM-derived logos/ranking records, independent

@@ -95,7 +95,8 @@ typedef enum {
     NBA_PLAYER_SPRITE_HEAD = 0,
     NBA_PLAYER_SPRITE_NUMBER,
     NBA_PLAYER_SPRITE_UPPER,
-    NBA_PLAYER_SPRITE_LOWER
+    NBA_PLAYER_SPRITE_LOWER,
+    NBA_PLAYER_SPRITE_BALL
 } NbaPlayerSpritePartKind;
 
 typedef struct {
@@ -124,7 +125,7 @@ typedef struct {
     int16_t x, y;
 } NbaPlayerSpriteSubmission;
 typedef struct {
-    NbaPlayerSpriteSubmission parts[4];
+    NbaPlayerSpriteSubmission parts[5];
     uint16_t count, upper_flip_aa, lower_flip_ac, head_flip_49;
     uint16_t glyph_work_0884;
     int16_t upper_x_b2, upper_y_b4, head_x_b6, head_y_b8;
@@ -137,6 +138,19 @@ typedef struct {
 bool nba_player_compose_sprite_pose(const NbaAssetPack *assets,
                                    const NbaPlayerSpritePoseInput *input,
                                    NbaPlayerSpritePoseComposition *output);
+/* Ordinary `$80:AF1E` ball interleave, with `$4015 < $082C`.
+ * Sprite origins belong to the same retained submission as the player's pose. */
+typedef struct {
+    int16_t order_9a;
+    uint16_t before_owner_3f31;
+    uint16_t attribute;
+    int16_t x, y;
+} NbaPlayerSpriteBallInput;
+bool nba_player_ball_draw_order(const NbaAssetPack *assets,
+                                uint16_t upper_resource, int16_t *order);
+bool nba_player_compose_sprite_pose_with_ball(const NbaAssetPack *assets,
+    const NbaPlayerSpritePoseInput *input, const NbaPlayerSpriteBallInput *ball,
+    NbaPlayerSpritePoseComposition *output);
 /* `$87:A4F5-$A525`: resolve the signed upper-resource table inputs. C2 is
  * the actor's published display direction, distinct from selected head
  * facing and movement C0. */
@@ -162,6 +176,10 @@ bool nba_player_sprite_render_pose(NbaRenderer *renderer,
                                    uint8_t side, uint8_t direction_c2,
                                    const NbaPlayerSpritePoseInput *input,
                                    int scale);
+bool nba_player_sprite_render_pose_with_ball(NbaRenderer *renderer,
+    const NbaAssetPack *assets, uint8_t team, uint8_t roster_slot,
+    uint8_t side, uint8_t direction_c2, const NbaPlayerSpritePoseInput *input,
+    const NbaPlayerSpriteBallInput *ball, int scale);
 
 /* Legacy combined-direction entry retained for current rendering/lab callers.
  * Its inferred flags/head order are not the literal AD92/AF1E contract above.

@@ -1,5 +1,10 @@
 # Dynamic dribble ball attachment
 
+The follow-up [dribble animation audit](dribble-animation.md) corrects the
+vertical phase source, ball sprite origin and hand overlap, and adds a
+headless dribble capture. The counts and image statements below describe
+the earlier X/Y attachment correction.
+
 ## Finding
 
 The attachment tables and packed resources were already correct. The missing

@@ -18,9 +18,10 @@ def attest_build(exe,baseline):
  m=json.loads(exe.with_name('manifest.json').read_text())
  assert set(m)=={'schema','baseline','base_commit','source_and_headers','exe_sha256','translation_units','objects'}
  assert type(m['schema'])is int and m['schema']==1 and m['baseline']is baseline and m['base_commit']==BASE
- assert type(m['translation_units'])is int and m['translation_units']==40
+ assert type(m['translation_units'])is int
  assert sha(exe)==m['exe_sha256']
  names=[ROOT/n.strip()for n in(ROOT/'nba95_sources.txt').read_text().splitlines()if n.strip()and not n.startswith('#')and n.strip()not in('src/main.c','src/nba_player_lab.c')]
+ assert m['translation_units']==len(names)+2
  source=exe.parent/'nba_player_lab.c'if baseline else ROOT/'src/nba_player_lab.c'
  expected={str(q)for q in[*names,source,ROOT/'tools/sprite_pose_probe.c',ROOT/'tools/build_sprite_pose_probe.py',ROOT/'nba95_sources.txt',*list((ROOT/'include').glob('*.h'))]}
  assert set(m['source_and_headers'])==expected

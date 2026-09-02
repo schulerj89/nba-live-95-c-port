@@ -21,7 +21,8 @@ static void emit(uint16_t value) { printf("%04x ", value); }
 
 int main(int argc, char **argv) {
     NbaAssetPack assets;
-    if (argc != 2 || !nba_assets_load(&assets, argv[1])) return 2;
+    bool stale_phase = argc == 3 && strcmp(argv[2], "--stale-compat-phase") == 0;
+    if ((argc != 2 && !stale_phase) || !nba_assets_load(&assets, argv[1])) return 2;
     unsigned raw[INPUT_WORDS];
     for (;;) {
         for (unsigned i = 0; i < INPUT_WORDS; ++i) {
@@ -62,6 +63,10 @@ int main(int argc, char **argv) {
         owner->actor_status_raw_28 = (uint16_t)raw[25];
         owner->rom_upper_animation_phase_raw_3a = (uint16_t)raw[26];
         owner->upper_animation_phase_raw = (uint16_t)raw[26];
+        /* The visible pose uses literal +$3A. Ordinary locomotion's legacy
+         * action counter can be on the opposite side of the bounce gate. */
+        if (stale_phase)
+            owner->upper_animation_phase_raw = raw[26] < 3u ? 3u : 0u;
         owner->control_mode = (uint8_t)raw[27];
         owner->free_throw_launch_half_raw_a8 = (uint16_t)raw[28];
         owner->movement_direction = (uint8_t)raw[29];

@@ -38,9 +38,13 @@ EXPECTED_FRAMES = {
         "fallback": "576f1a252b9f73060bd1d1023045587e391dd4b1b220aaa1a22d9c6ec7b047a3",
         "literal": "814957ebbb1717ae86f370e9a32a90d35e58dca28fec95ebd5039f7f00c148f9",
     }),
+    # Resource $081D's native (-3,-4) tile origin changes exactly 90 ball
+    # pixels at frame170. At frame220, literal +$3A bounce timing and the
+    # descriptor change 100 ball pixels. Every other pixel in both reviewed
+    # pack configurations is unchanged; see docs/dribble-animation.md.
     170: ("TIP PH:POSSESSION", {
-        "fallback": "f24ba01e30a5b3b62d586f2786305e1ba3195ceda7e6d5894543b49b4ae86034",
-        "literal": "95ecfc14520f73d92370d7dddad460866f96227df3b2c562dfef16f7ee1885a4",
+        "fallback": "97d7036c1b5561871759450465767125d56e33da6e95e70cd802355fbde8f4dd",
+        "literal": "7bf685f3bf12b68806ab4b85d35cd7c66d0db246dc2b518b045b127fb559c85e",
     }),
     # `$86:CF38` receiver reach now permits `$86:D365` possession at frame186.
     # Live frame re-reviewed after the exact direction-specific AD92 torso /
@@ -53,8 +57,8 @@ EXPECTED_FRAMES = {
     # publishing derived movement one actor pass early. The live frame retains
     # ten complete players, ball, center court and an unobstructed HUD.
     220: ("TIP PH:LIVE", {
-        "fallback": "45ee1c3fb42eb88322c0d1d9effa80c746256a80d4da536b68a2ca3e5cfd336e",
-        "literal": "45ee1c3fb42eb88322c0d1d9effa80c746256a80d4da536b68a2ca3e5cfd336e",
+        "fallback": "13f98e7653405cbfbbe30ac5a09f02efcc62b1d5a148426084538a86a4c96869",
+        "literal": "13f98e7653405cbfbbe30ac5a09f02efcc62b1d5a148426084538a86a4c96869",
     }),
 }
 EXPECTED_PLAYER_DRAW_HASH = \
@@ -79,8 +83,8 @@ def pack_assets(path):
 def player_draw_configuration(assets):
     item = assets.get(287)
     if item is None:
-        if len(assets) != 264:
-            raise AssertionError("fallback pack is not the reviewed 264-item configuration")
+        if len(assets) != 264 + int(288 in assets):
+            raise AssertionError("fallback pack has an unexpected resource count")
         return "fallback"
     payload, width, height, flags = item
     if len(assets) != 265 + int(288 in assets) or (len(payload), width, height, flags) != \
