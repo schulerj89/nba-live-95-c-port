@@ -9,7 +9,7 @@ Initial review on 2026-08-31 against owner commit `dc10166f18f505af0259c981a59f5
 | Category | Entries | Current preservation status |
 |---|---:|---|
 | Confirmed arithmetic/indexing defects | 2 | One accepted standalone component; one unintegrated candidate whose source review passed but verifier packet was rejected |
-| Original quirks retained, not classified as defects | 11 | Seven entries in accepted standalone components; one in the bounded integration-branch HUD repair; three visible production artwork/transition quirks |
+| Original quirks retained, not classified as defects | 12 | Seven entries in accepted standalone components; one in the bounded integration-branch HUD repair; four visible production artwork/transition quirks |
 | Excluded or unresolved claims | Listed at the end | Not counted as original-game bugs |
 
 The listed SPC, period, appearance, role, human-dispatch and catch components are absent from `nba95_sources.txt` at the reviewed commit. The launch candidate resides in the controller worktree. Existing production code may implement related routines, but the bounded acceptance reported here must not be transferred to a different implementation without verification.
@@ -147,6 +147,27 @@ composition. **Visible production composition quirk; retained as original.**
 not every possible team pairing or animation frame. The separately corrected
 `+2,+4` variable-logo offset concerns the gold team plates at the top of the
 scene and does not alter this center-court overlap.
+
+### 14. Player Setup first reveals partial construction layers
+
+**Trigger and behavior:** after Team Select withdraws and the 67 presented
+black frames finish, Player Setup begins with only a narrow portion of its
+vertical background and logo motif at the right edge. Subsequent frames slide
+and brighten the layers into place before the title, team logos, and controller
+assignment settle. Individual early frames can resemble clipped or misplaced
+artwork.
+
+**Preservation and evidence:** consecutive ordinary-input native frames 767-769
+show last-black, first-pixel, and the next partial reveal. Native frames 797 and
+850 show the continuing slide and settled screen. Aligned production frames
+320-322, 350, and 403 preserve the same construction phases, while exact pixel
+hashes guard the C route's boundaries. See [frontend-route-checkpoint.md](frontend-route-checkpoint.md)
+and [player-setup.md](player-setup.md). **Visible production transition quirk;
+retained without defect classification.**
+
+**Evidence limits:** the comparison establishes the normal Exhibition path and
+phase ownership. It does not claim exact whole-frame parity for every palette,
+team pairing, or controller assignment during construction.
 
 ## Claims deliberately excluded
 

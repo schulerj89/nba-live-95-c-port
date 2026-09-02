@@ -1,11 +1,34 @@
 """Production-route regressions for the source-backed frontend fixes."""
 
 import argparse
+import hashlib
 import subprocess
 import tempfile
 from pathlib import Path
 
 from PIL import Image, ImageChops
+
+
+EXPECTED_TEAM_TO_PLAYER_HASHES = {
+    178: "872f67151f1dc4fed9bca5fe54cb669861b105a197ac87b319e735437ecd2629",
+    179: "1fa98c6e9f9ceca135cf1939c63c87a5e7d77a67513fa9bfaea4dff6ffe41092",
+    228: "b36923413e6aa122e7e0b55adbe9b8adad033ab809acdbb630b8f0ab0adc178e",
+    229: "2cbbeef1249170a43854962fa5b19fba628470c70beb9ce23e15a0f05cb891f2",
+    295: "2cbbeef1249170a43854962fa5b19fba628470c70beb9ce23e15a0f05cb891f2",
+    296: "573745bd2147d1f0b2e43eb573860a935845b09f9a325d8997de575c2d9fc1a4",
+    297: "65a5856464736ec1a123f831353546e577907ac9a4d28735ca7539c71ed2fccc",
+}
+
+EXPECTED_SKIP_TO_GAME_HASHES = {
+    586: "dc7bf300d70031c7b493aa9d549f366b9bc9a76ea6b0e10475a4c79c97af0e95",
+    587: "4045756ff167bce15069b5b0b9f6a84c4a23e44a44c9f1d86ce04d33cc45f2e2",
+    589: "24a5d44e073be6b3896cbdd477c68ac2b4ec60dc4bac477b1b23710a0d5a1ea5",
+    591: "d292e116138b92e3f15d7f6155be73dd6f1617d58ddf39c390249d84020ec2ed",
+    593: "24a5d44e073be6b3896cbdd477c68ac2b4ec60dc4bac477b1b23710a0d5a1ea5",
+    595: "2cbbeef1249170a43854962fa5b19fba628470c70beb9ce23e15a0f05cb891f2",
+    596: "741f18f3ef851294bbf67e4336a57d8a90354d00e1c6652264cc6580179a956f",
+    600: "5f7420dc66097ca5252883d745865e5533812b04245916b212437bd5ac9ae8a8",
+}
 
 
 def run(exe, *args):
@@ -23,6 +46,10 @@ def nonblack(image):
 def changed(left, right):
     return nonblack(ImageChops.difference(left.convert("RGB"),
                                           right.convert("RGB")))
+
+
+def rgb_hash(path):
+    return hashlib.sha256(Image.open(path).convert("RGB").tobytes()).hexdigest()
 
 
 def main():
@@ -52,9 +79,17 @@ def main():
         if "[PLAYER SETUP TEST] p1=NEUTRAL" not in centered or \
                 "SCN:PLAYER_SETUP" not in centered:
             raise AssertionError("centered CPU-vs-CPU selection was not retained:\n" + centered)
-        complete = run(exe, *base, "--frames", 620, "--debug-state")
+        skip_sequence = directory / "skip_sequence"
+        skip_sequence.mkdir()
+        complete = run(exe, *base, "--frames", 620,
+                       "--dump-sequence-from", 586,
+                       "--dump-sequence-dir", skip_sequence, "--debug-state")
         if "SCN:TIPOFF" not in complete:
             raise AssertionError("Start presentation skips did not reach Tipoff:\n" + complete)
+        for frame, expected_hash in EXPECTED_SKIP_TO_GAME_HASHES.items():
+            if rgb_hash(skip_sequence / f"frame_{frame:04d}.bmp") != expected_hash:
+                raise AssertionError(
+                    f"presentation-skip -> Tipoff rendered frame {frame} changed")
 
         sequence = directory / "sequence"
         sequence.mkdir()
@@ -75,6 +110,10 @@ def main():
             raise AssertionError("forced-black construction interval changed")
         if nonblack(frames[296]) == 0:
             raise AssertionError("Player Setup reveal did not begin at destination boundary")
+        for frame, expected_hash in EXPECTED_TEAM_TO_PLAYER_HASHES.items():
+            if rgb_hash(sequence / f"frame_{frame:04d}.bmp") != expected_hash:
+                raise AssertionError(
+                    f"Team Select -> Player Setup rendered frame {frame} changed")
 
     source = (Path(__file__).parents[1] / "src" / "nba_player_intro.c").read_text(
         encoding="utf-8")

@@ -32,6 +32,15 @@ EXPECTED_ASSETS = {
 EXPECTED_ORLANDO_TOP_RGB = \
     "6b4cda12034520a700e01fd6135f3e9d993e4a518801a94d0b59fbc2b8388c0d"
 
+EXPECTED_LINEUP_TO_TIPOFF_HASHES = {
+    5319: "568301e236eea794758cf4d6f956cdbfe23bb8adf6861599dc50f475b599caf3",
+    5321: "568301e236eea794758cf4d6f956cdbfe23bb8adf6861599dc50f475b599caf3",
+    5322: "2cbbeef1249170a43854962fa5b19fba628470c70beb9ce23e15a0f05cb891f2",
+    5323: "8dec91def2408adbb695d7626c00d6be3169e463379b82f40303c1d2106b2215",
+    5324: "9f5bbbf92a2eb7a2fdefd4382c6e635562f54363fa3f42064a06072f29358caf",
+    5330: "afcdcb9c515270ec993d73b76e784a887bcbbb5d3d2b4693d3ea4fbe98bcfab9",
+}
+
 
 def load_pack(path):
     raw = path.read_bytes()
@@ -189,6 +198,21 @@ def main():
                      "--frames", 5006, "--debug-state")
         if "CARD:10/10" not in output:
             raise AssertionError("final home starter cadence changed")
+
+        tipoff_sequence = Path(directory) / "lineup_to_tipoff"
+        tipoff_sequence.mkdir()
+        output = run(exe, "--headless", "--rom", rom, "--assets", pack,
+                     "--player-setup-only", "--player-setup-confirm",
+                     "--frames", 5330, "--dump-sequence-from", 5319,
+                     "--dump-sequence-dir", tipoff_sequence, "--debug-state")
+        if "SCN:TIPOFF" not in output:
+            raise AssertionError("unskipped final lineup card did not reach Tipoff")
+        for transition_frame, expected_hash in \
+                EXPECTED_LINEUP_TO_TIPOFF_HASHES.items():
+            if rgb_hash(tipoff_sequence / f"frame_{transition_frame:04d}.bmp") != \
+                    expected_hash:
+                raise AssertionError(
+                    f"unskipped lineup -> Tipoff frame {transition_frame} changed")
 
         away_frame = Path(directory) / "golden_state_away.bmp"
         output = run(exe, "--headless", "--rom", rom, "--assets", pack,

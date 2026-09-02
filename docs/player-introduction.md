@@ -88,3 +88,7 @@ phase-tolerant runtime-audio fingerprint, Player Setup handoff, first-card
 frame, visitor/home boundary, and final-card cadence. `tools/test_frontend_route.py` drives the real
 Team Select -> Player Setup -> Player Introduction -> Tipoff caller path and
 checks centered controllers plus Start skips at all three presentation phases.
+The unskipped regression now continues beyond card 10: frame 5321 retains the
+final Orlando starter, frame 5322 enters Tipoff black, and frames 5323-5330 lock
+the first court brightness ramp. The visible smoke harness publishes this as a
+separate contact sheet instead of inferring game entry from a later state marker.

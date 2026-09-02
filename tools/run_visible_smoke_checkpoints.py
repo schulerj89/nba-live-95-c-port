@@ -270,7 +270,7 @@ class Harness:
             [1, 5, 10, 15, 20, 30, 40, 60, 80, 100, 120, 140, 160, 180, 200, 203]
             + [204, 210, 220, 228, 229, 230, 240, 250, 253, 254, 280, 298, 299,
                300, 319, 320, 321, 322, 350, 400, 403, 404, 405, 406, 500, 580, 586,
-               587, 588, 589, 590, 591, 593, 594, 595, 596, 620]
+               587, 588, 589, 590, 591, 593, 594, 595, 596, 600, 620]
         ))
         refs = self.export_frames(raw, "frontend", frames)
         nonblack = {}
@@ -283,6 +283,16 @@ class Harness:
                 "full route did not enter forced black at frame 254")
         require(nonblack[320] == 0 and nonblack[321] > 0,
                 "Player Setup reveal is not last-black 320 / first-pixel 321")
+        tipoff_nonblack = {}
+        tipoff_energy = {}
+        for frame in (595, 596, 600):
+            with Image.open(refs[frame].path) as image:
+                pixels = list(image.convert("RGB").getdata())
+                tipoff_nonblack[frame] = sum(pixel != (0, 0, 0) for pixel in pixels)
+                tipoff_energy[frame] = sum(sum(pixel) for pixel in pixels)
+        require(tipoff_nonblack[595] == 0 and tipoff_nonblack[596] > 0 and
+                tipoff_energy[600] > tipoff_energy[596],
+                "presentation skip did not enter Tipoff through its brightness ramp")
         self.make_contact(
             "team-select-entry-contact.png",
             [refs[frame] for frame in
@@ -315,6 +325,8 @@ class Harness:
             "forced_black_presented_frames": 67,
             "player_setup_first_reveal_frame": 321,
             "boundary_nonblack_pixels": nonblack,
+            "skip_to_tipoff_nonblack_pixels": tipoff_nonblack,
+            "skip_to_tipoff_rgb_energy": tipoff_energy,
             "neutral_cpu_vs_cpu": "state assertion passed",
             "presentation_skips_to_tipoff": "state assertion passed",
         }
@@ -352,10 +364,43 @@ class Harness:
             "All ten Starting Lineup cards (inspect jersey/name text, including 31 without bleed)",
             columns=5,
         )
+        tipoff_raw = temporary / "lineup-to-tipoff"
+        tipoff_raw.mkdir()
+        self.exe_command(
+            "unskipped-lineup-to-tipoff-sequence", [
+                "--player-setup-only", "--player-setup-confirm",
+                "--frames", 5340, "--dump-sequence-from", 5319,
+                "--dump-sequence-dir", tipoff_raw, "--debug-state",
+            ], ("SCN:TIPOFF", "Wrote 22 rendered sequence frames"),
+        )
+        tipoff_frames = [5319, 5321, 5322, 5323, 5324, 5330, 5340]
+        tipoff_refs = self.export_frames(
+            tipoff_raw, "lineup-to-tipoff", tipoff_frames
+        )
+        tipoff_nonblack = {}
+        tipoff_energy = {}
+        for frame in tipoff_frames:
+            with Image.open(tipoff_refs[frame].path) as image:
+                pixels = list(image.convert("RGB").getdata())
+                tipoff_nonblack[frame] = sum(pixel != (0, 0, 0) for pixel in pixels)
+                tipoff_energy[frame] = sum(sum(pixel) for pixel in pixels)
+        require(tipoff_nonblack[5321] > 0 and tipoff_nonblack[5322] == 0 and
+                tipoff_nonblack[5323] > 0 and
+                tipoff_energy[5340] > tipoff_energy[5323],
+                "unskipped lineup did not hand off through the Tipoff brightness ramp")
+        self.make_contact(
+            "unskipped-lineup-to-tipoff-contact.png",
+            [tipoff_refs[frame] for frame in tipoff_frames],
+            "Unskipped final lineup card into Tipoff and gameplay court",
+            columns=4,
+        )
         self.checks["lineup"] = {
             "card_count": 10,
             "distinct_rgb_hashes": len(set(card_hashes)),
             "final_state": "CARD:10/10",
+            "unskipped_tipoff_first_frame": 5322,
+            "unskipped_tipoff_nonblack_pixels": tipoff_nonblack,
+            "unskipped_tipoff_rgb_energy": tipoff_energy,
         }
         return refs
 
@@ -711,7 +756,9 @@ class Harness:
             "",
             "- Team Select builds in source phases; clipped BG3 reveal fragments are documented original behavior.",
             "- Team Select layers withdraw before the 67-frame black construction interval; frame 320 is black and Player Setup first reveals at frame 321.",
+            "- Player Setup's first partial right-edge layers match the documented original construction reveal.",
             "- Neutral controller setup reaches CPU-vs-CPU and Start skips Matchup, Ratings, and the whole lineup.",
+            "- Both the Start-skip route and the complete ten-card lineup enter Tipoff through black and the court brightness ramp.",
             "- All ten lineup cards render complete proportional text; verify `31` does not bleed into the name.",
             "- The Orlando oval/Ratings overlap is a documented original-game composition quirk.",
             "- During pass and inbound attachment frames the ball stays at the submitted hand pose, then separates on release.",

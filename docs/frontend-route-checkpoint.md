@@ -28,6 +28,12 @@ outgoing owner through 228, and is black at 229. Player Setup first appears at
 preserves the native 67-frame fully-black construction interval (229-295 in
 the C route, corresponding to native frames 701-767).
 
+The early destination pixels are intentional construction, not a port-only
+glitch. Consecutive native frames 768-769 expose the same partial right-edge
+Player Setup layers as aligned production frames 296-297. The regression now
+locks RGB hashes for the outgoing frame, first motion, last outgoing owner,
+first/last black, and the first two destination frames.
+
 ## Controls
 
 The production `NbaGame` caller accepts Left once from the default right-side
@@ -36,6 +42,11 @@ controller selection is `1`, and the controller runtime probe verifies zero
 human controller counts for CPU-vs-CPU. Start skips MATCHUP, RATINGS, and the
 complete lineup presentation. Left/Right remain the lineup card navigation
 controls described by the ROM; A no longer advances one card.
+
+The deterministic skip route also locks the visual handoff into Tipoff:
+matchup, ratings, multiple lineup cards, black frame 595, and the first court
+brightness frame 596. This is a production-route regression; exact native
+timing for every skip edge remains separate evidence.
 
 Run `tools/test_frontend_route.py` for this combined route and
 `tools/test_player_setup.py` / `tools/test_player_intro.py` for the existing
