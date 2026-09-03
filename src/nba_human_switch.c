@@ -3,7 +3,7 @@
 
 /* Original ROM SHA256
  * 2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870.
- * Source and natural-call evidence: docs/human-switch-checkpoint.md. */
+ * Natural-call vectors are enforced by the human-switch verifier. */
 static bool negative_difference(uint16_t a, uint16_t b) {
     return ((uint16_t)(a-b)&0x8000u)!=0;
 }

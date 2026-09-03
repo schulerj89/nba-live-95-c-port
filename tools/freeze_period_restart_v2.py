@@ -12,13 +12,13 @@ def main():
     files=json.loads(old.read_text())['files']
     for name,want in files.items():assert identity(Path(want['path']))==want,('v1 identity changed',name)
     files[old.relative_to(ROOT).as_posix()]=identity(old)
-    for name in ('include/nba_period_restart_v2.h','src/nba_period_restart_v2.c','tools/period_restart_probe_v2.c','tools/build_period_restart_probe_v2.ps1','tools/verify_period_restart_v2.py','tools/period_restart_source_reference_v2.py','tools/test_period_restart_v2.py','tools/freeze_period_restart_v2.py','docs/period-restart-source-helper-v2.md','.analysis/period-restart-v2-preservation.json'):
+    for name in ('include/nba_period_restart_v2.h','src/nba_period_restart_v2.c','tools/period_restart_probe_v2.c','tools/build_period_restart_v2.ps1','tools/verify_period_restart_v2.py','tools/period_restart_source_reference_v2.py','tools/test_period_restart_v2.py','tools/freeze_period_restart_v2.py','.analysis/period-restart-v2-preservation.json'):
         files[name]=identity(ROOT/name)
     for name in ('period-restart-v2-build-v1','period-restart-v2-native-v1','period-restart-v2-tests-v1','period-restart-v2-independent-ROM-v1','period-restart-v2-independent-domain-v1'):
         for p in sorted((ROOT/'.analysis'/name).rglob('*')):
             if p.is_file():files[p.relative_to(ROOT).as_posix()]=identity(p)
     auditor=ROOT.parent/'completion-auditor'
-    for name in ('tools/test_period_formation_rom_audit.py','tools/test_period_native_domain_audit.py','docs/completion-period-restart-independent-audit.md'):
+    for name in ('tools/test_period_formation_rom_audit.py','tools/test_period_native_domain_audit.py'):
         files['auditor/'+name]=identity(auditor/name)
     out.write_text(json.dumps({'schema':1,'scope':'v2 corrects original opening positive-anchor Y transform and native caller domain; all v1 files retained unchanged as rejected evidence; bounded parent segments only; independent v2 audit pending; no production or timing acceptance','files':files},indent=2)+'\n')
     print(len(files),identity(out)['sha256'])

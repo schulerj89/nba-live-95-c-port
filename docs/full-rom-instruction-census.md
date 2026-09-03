@@ -77,8 +77,8 @@ This establishes a reproducible lower-bound instruction universe. The verified
 percentage above requires native observation plus a verified-ledger boundary
 and is a percentage of conservatively decoded starts, not retail
 feature completion. Expanding seeds or resolving an indirect table can increase
-the denominator without regressing the port. Whole-game planning belongs in
-`docs/feature-capture-matrix.md`.
+the denominator without regressing the port. Current product gaps are recorded
+in `STATUS.md`.
 
 The decoded-start count also differs from `docs/progress.md`: retained exec
 files contain address-position intervals, while this report counts only Ghidra-

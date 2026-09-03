@@ -1,8 +1,8 @@
 #include "nba_rom_font.h"
 
 /* ROM $81:9756-$9FFD; recomp IntroFont/FontWidth/CenteredFont, generated from
- * the original USA bank $81. Evidence: docs/intro-indexed-resources.md;
- * independent native HUD pre/post canvases and license/legal raster frames.
+ * the original USA bank $81. Independent native HUD pre/post canvases and
+ * license/legal raster frames enforce the translated output.
  * Only descriptor format $0010 (2bpp) is translated here. */
 static uint16_t word(const uint8_t *p) {
     return (uint16_t)(p[0] | ((uint16_t)p[1] << 8));

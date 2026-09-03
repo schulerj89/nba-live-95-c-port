@@ -15,7 +15,7 @@ def main():
   for n,w in json.loads(p.read_text())['files'].items():
    assert identity(Path(w['path']))==w,('prior frozen file changed',n);add('prior/'+name+'/'+n,Path(w['path']))
   add('prior/'+name,p)
- own=['include/nba_period_formation.h','src/nba_period_formation.c','tools/period_formation_probe.c','tools/period_formation_fields.inc','tools/generate_period_formation_fields.py','tools/build_period_formation_probe.ps1','tools/verify_period_formation.py','tools/test_period_formation.py','tools/test_period_formation_protocol.py','tools/freeze_period_formation.py','docs/period-formation-typed-composition.md','.analysis/period-formation-role-alias-map-v1.json','.analysis/period-formation-preservation-v1.json']
+ own=['include/nba_period_formation.h','src/nba_period_formation.c','tools/period_formation_probe.c','tools/period_formation_fields.inc','tools/generate_period_formation_fields.py','tools/build_period_formation_probe.ps1','tools/verify_period_formation.py','tools/test_period_formation.py','tools/test_period_formation_protocol.py','tools/freeze_period_formation.py','.analysis/period-formation-role-alias-map-v1.json','.analysis/period-formation-preservation-v1.json']
  for n in own:add(n,ROOT/n)
  for d in ['period-formation-dependencies-v1','period-formation-build-v1','period-formation-native-v1','period-formation-tests-v2','period-formation-protocol-v1']:
   for p in sorted((ROOT/'.analysis'/d).rglob('*')):
@@ -23,6 +23,6 @@ def main():
  owner=ROOT.parent/'completion-owner';auditor=ROOT.parent/'completion-auditor'
  add('original/rom.sfc',Path('F:/Games/SNES/NBA Live 95 (USA).sfc'));add('original/assets.pak',owner/'build/full-extraction-v1/nba95_assets.pak')
  for n in ['build/period-render-tail-freeze-v2.json','build/period-composition-freeze-v1.json','build/period-composition-v1/driver.c','build/period-composition-v1/README.md']:add('owner/'+n,owner/n)
- for n in ['docs/completion-period-restart-v2-independent-audit.md','docs/completion-period-roles-v3-acceptance.md','docs/completion-period-appearance-support-verifier-acceptance.md','docs/completion-period-render-tail-v2-acceptance.md','tools/test_period_formation_rom_audit.py']:add('auditor/'+n,auditor/n)
+ for n in ['tools/test_period_formation_rom_audit.py']:add('auditor/'+n,auditor/n)
  out.write_text(json.dumps(dict(schema=1,scope='typed DD97/E207 current-state child composition only; explicit unsupported domains; no native after inputs or normal-init/timing/production acceptance; independent audit pending',files=files),indent=2)+'\n');print(len(files),identity(out)['sha256'])
 if __name__=='__main__':main()

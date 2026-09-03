@@ -45,7 +45,7 @@ public class DumpShotCompletion extends GhidraScript {
         for(int i=0;i<pcs.length;++i) {
             disassemble(toAddr(pcs[i]));
             createLabel(toAddr(pcs[i]),names[i],true);
-            setPlateComment(toAddr(pcs[i]), comments[i]+" C port: src/nba_shot_launch.c, src/nba_shot_action.c, src/nba_tipoff.c; replay tools/verify_complete_shot_vectors.py and tools/verify_special_shot_vectors.py. See docs/shot-completion-plan.md for boundaries/caveats.");
+            setPlateComment(toAddr(pcs[i]), comments[i]+" C port: src/nba_shot_launch.c, src/nba_shot_action.c, src/nba_tipoff.c; replay tools/verify_complete_shot_vectors.py and tools/verify_special_shot_vectors.py.");
         }
         File dir=new File(getScriptArgs()[0]);dir.mkdirs();
         try(PrintWriter out=new PrintWriter(new File(dir,"shot_completion_bank86.txt"),"UTF-8")) {

@@ -60,7 +60,7 @@ EXPECTED_AUDIO_CHANNEL_RMS = [3363, 3363]
 # 126/128. Bind each supported directory configuration instead of silently
 # treating its expected one-digit count delta as an artwork regression. The
 # stable hashes exclude only y19..26, the count/index row. See
-# docs/setup-transition-f12-guard-attribution.md.
+# This guard distinguishes asset-browser state from production transition state.
 EXPECTED_ASSET_DEBUGGER_SHA256 = {
     263: "9c9a026b488b28c0317d9dacc47bbef9372db110d142634c8e692cf0a4c133fa",
     264: "d5fec70926527df285c1758c4e835c611efebbc2cb273dc180f79e202add2de3",

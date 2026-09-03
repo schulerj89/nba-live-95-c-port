@@ -7,8 +7,7 @@ uint16_t nba_menu_input_native_buttons(uint32_t host_buttons) {
     return native;
 }
 
-/* `$81:AB58-$AC03`, recomp bank81-with-repeat.c, decoded independently in
- * docs/setup-config-native-contract.md. This NMI-owned producer scans five
+/* `$81:AB58-$AC03`, recomp bank81-with-repeat.c. This NMI-owned producer scans five
  * connected type1 controller records backwards and queues whole held words.
  * Release deliberately preserves delay/speed/pending; it clears previous,
  * fast and $1846 only. Changed nonzero words also preserve fast until release.

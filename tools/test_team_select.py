@@ -12,7 +12,7 @@ from PIL import Image
 
 EXPECTED_FRAME_HASHES = {
     # Captures correspond to live-ROM $7E:1693 selector states, not merely
-    # self-consistent port behavior. See docs/team-select.md.
+    # self-consistent port behavior; native capture tests remain separate.
     "initial": "caa629073e4261102d063bce153a9014832f63544f97216132e7ec4194e97a86",
     "plate_phase_1": "5621b10391b624ef32cb4213f7fd2ebe7363db5a2071b779d8e65acd14b23cd9",
     "alphabetical_right": "3883cde7d8def515381d7bc3ff2a026714b8799020bc4809095d1647ba8f0171",
@@ -35,7 +35,7 @@ EXPECTED_FRAME_HASHES = {
 # glyph but does not change asset 160 or its rendered logo. Both full hashes are
 # retained so the count remains visible/correct, while the masked hash proves
 # that the supported configurations have the same debugger canvas outside
-# that one seven-pixel glyph. See docs/checksum-guard-attribution.md.
+# that one seven-pixel glyph.
 EXPECTED_DEBUG_FRAME_HASHES = {
     "fallback": "4944e48bb54bb0c88976e02379aef296dfc239f73955d496cd952cc8743b6182",
     "literal": "628aa6decb1c13a1a62fb769b3a0996f6ea07a1522bf2e5252888d7611948041",

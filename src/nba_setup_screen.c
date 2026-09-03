@@ -13,8 +13,8 @@
  * equivalence. The independent native witnesses currently cover a configured
  * first Rules opening, selected settled values, and two first-return cases.
  * Reentry still diverges in builder timing, background phase and live text.
- * See docs/transition-ownership-audit.md; no full routine/bank closure follows
- * from these render witnesses or the instruction census. */
+ * No full routine/bank closure follows from these render witnesses or the
+ * instruction census. */
 
 #define SETUP_PPU_MAGIC "NBSPPU1\0"
 #define SETUP_TRANSITION_PPU_MAGIC "NBSPPU2\0"

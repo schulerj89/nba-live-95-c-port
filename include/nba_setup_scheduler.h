@@ -7,7 +7,6 @@
 
 /* Bounded scheduler primitives translated from the canonical ROM. These do
  * not predict CPU/DMA wall time and are not yet the Setup constructor driver.
- * See docs/setup-scheduler-primitives.md before integrating a producer.
  */
 typedef struct {
     uint16_t epoch;            /* $0564 */

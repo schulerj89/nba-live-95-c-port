@@ -57,9 +57,8 @@ static const uint8_t visible_submission[8] = { 8, 2, 6, 5, 0, 1, 7, 3 };
 /* `$86:DA8D-$DAAB`, normal Exhibition (`$15C3=0`): gameplay context0
  * `$46EB` is home/right; context1 `$476B` is visitor/left. Only this
  * publication boundary reads the frontend's left/right team choices.
- * Native first-court captures for Rockets/Knicks and Pacers/Magic, plus
- * the owning Ghidra/recomp stores, are documented in
- * docs/controller-ownership-model.md. Other game-mode swap paths remain
+ * Native first-court fixtures cover Rockets/Knicks and Pacers/Magic and are
+ * checked against the owning Ghidra/recomp stores. Other game-mode swap paths remain
  * outside this Exhibition initializer; never infer them from UI truthiness. */
 static void publish_exhibition_team_ids(NbaTipoff *tipoff) {
     tipoff->team_context[0].strategy_team_raw_00 = tipoff->session->right_team;

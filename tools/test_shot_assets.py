@@ -3,7 +3,7 @@
 The F12 hashes are not ROM equivalence. Resource75/76 replaced eleven legacy
 intro entries: the retained A1 executable/pack reproduced all old hashes,
 and full-image comparisons proved only the index/count row changed. See
-docs/intro-indexed-resources.md and the private f12-directory-audit report.
+the indexed intro resource tests and the private F12 directory audit.
 """
 import argparse
 import hashlib

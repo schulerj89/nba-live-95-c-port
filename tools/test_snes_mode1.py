@@ -53,13 +53,13 @@ def main():
             # Source/config/pack attribution independently isolates corrected
             # team identity and actor ranks as the cause of this C trajectory
             # change. Old totals were 2176/38703/5641/2573/8251. See
-            # docs/completion-mode1-attribution-audit.md; this is not native
+            # This is an inspected C-only anchor; it is not native
             # trajectory or HUD parity. All per-pixel assertions stay intact.
             # C39C's CMP#2 sends layout1 to C50B. The corrected target first
             # changes gameplay at506, then camera/actors at1000. A private
             # pre-fix-helper + matching startup-check relink reproduces every
             # old winner count; no compositor source changes. See
-            # docs/inbound-layout-repair.md. Native expectations are unchanged.
+            # Native expectations are unchanged by this C-only repair.
             assert summary["visible"]["bg1"] == 0
             assert summary["visible"]["bg2"] == 46422
             assert summary["visible"]["bg3"] == 5641

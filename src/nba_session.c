@@ -4,7 +4,7 @@
 /* `$81:C19A-$C231`, InitializeOrLoadConfiguration: a genuinely fresh native
  * save defaults to Exhibition/Arcade/Rookie/12 minutes. Earlier C defaults
  * came from a configured Simulation/3-minute capture, not factory state.
- * Native witnesses: docs/setup-config-native-contract.md. */
+ * Native witnesses are enforced by the configuration verifier. */
 const uint16_t nba_default_main_values[NBA_SETUP_MAIN_VALUE_COUNT] = { 0, 0, 0, 3 };
 const uint16_t nba_default_rules[NBA_SETUP_RULE_COUNT] = {
     0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0
@@ -75,8 +75,8 @@ void nba_session_begin_match(NbaSession *session) {
      * current period when selecting the next period's clock. Native first-
      * court state confirms zero scores, seven timeouts and the twelve-entry
      * lineup below. Clear host-only final/pause phases at the same logical
-     * new-match boundary. See docs/new-match-reset.md and the native-start
-     * fixture. Session setup/menu values deliberately survive this call. */
+     * new-match boundary. The native-start fixture enforces this projection.
+     * Session setup/menu values deliberately survive this call. */
     memset(&session->match, 0, sizeof(session->match));
     session->score[0] = session->score[1] = 0u;
     session->game_clock_ticks = 0u;

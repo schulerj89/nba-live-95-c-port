@@ -32,7 +32,7 @@ public class DumpCourtPresentation extends GhidraScript {
             {"9192","CameraTargetAndApproach","nba_gameplay_camera_update: this goal reverifies212 instructions in seven bounded slices, not all272. 60 init/no-team/orientation/height/fraction correction instructions remain pending. Existing500 replay successes are NOT full-branch proof."},
             {"9352","CameraAdaptiveAxisApproach","Verified73 instruction starts through93F4: one-pixel dead zone, max22 request, prior displacement+2 acceleration, immediate deceleration. No floating-point smoothing substitute."}
         };
-        for(String[] c:comments){createLabel(toAddr(Integer.parseInt(c[0],16)),c[1],true);setPlateComment(toAddr(Integer.parseInt(c[0],16)),c[2]+" See docs/camera-presentation-plan.md.");}
+        for(String[] c:comments){createLabel(toAddr(Integer.parseInt(c[0],16)),c[1],true);setPlateComment(toAddr(Integer.parseInt(c[0],16)),c[2]+" C port: src/nba_court_presentation.c.");}
         int[][] spans={{0x8e1c,0x8ee5},{0x8ee6,0x90c3},{0x91cb,0x91de},{0x91fb,0x9218},
             {0x9230,0x92bf},{0x92ca,0x92e3},{0x92f9,0x932e},{0x932f,0x9348},{0x9352,0x93f4}};
         Map<String,List<Long>> census=new LinkedHashMap<>();

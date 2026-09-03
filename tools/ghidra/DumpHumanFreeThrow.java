@@ -41,7 +41,7 @@ public class DumpHumanFreeThrow extends GhidraScript {
             int address = Integer.parseInt(label[0], 16);
             createLabel(toAddr(address), label[1], true);
             setPlateComment(toAddr(address), label[2] +
-                " See docs/human-free-throw-differential.md.");
+                " C port: src/nba_gameplay_free_throw.c.");
         }
 
         try (PrintWriter output = new PrintWriter(

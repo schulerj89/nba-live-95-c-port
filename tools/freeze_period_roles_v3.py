@@ -11,7 +11,7 @@ def main():
  for p in (ROOT/'.analysis/period-roles-v2-native-v1').iterdir():
   if p.suffix in ('.input','.jsonl'):assert (ROOT/'.analysis/period-roles-v3-native-v1'/p.name).read_bytes()==p.read_bytes()
  files['.analysis/period-roles-freeze-v2.json']=identity(prior)
- for n in ['tools/verify_period_roles_v3.py','tools/test_period_roles_verifier_v3.py','tools/freeze_period_roles_v3.py','docs/period-role-verifier-v3.md']:files[n]=identity(ROOT/n)
+ for n in ['tools/verify_period_roles_v3.py','tools/test_period_roles_verifier_v3.py','tools/freeze_period_roles_v3.py']:files[n]=identity(ROOT/n)
  for d in ['period-roles-v3-independent-v1','period-roles-v3-native-v1']:
   for p in (ROOT/'.analysis'/d).rglob('*'):
    if p.is_file():files[p.relative_to(ROOT).as_posix()]=identity(p)

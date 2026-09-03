@@ -142,19 +142,19 @@ EXPECTED_RGB = {
     # ROM-derived court, ball and uniforms remain intact. Wide loose-ball
     # framing and some actor/HUD overlap remain explicit presentation gaps.
     # Independent native fixtures protect the changed state contracts; these
-    # images lock only the inspected C output. See docs/native-edge-parity.md.
+    # Images lock only the inspected C output; native fixtures remain separate.
     # Matched source controls attribute these updates to canonical team/rank
     # initialization and the original C39C layout1 branch. Every old/new pixel
-    # is reproduced; see docs/cpu-oracle-attribution.md. The static scoreboard
+    # is reproduced. The static scoreboard
     # remains an unaccepted port gap, not an original-game bug.
     # The two600/1300 anchors below were separately migrated2026-08-31
     # after accepted HUD lifecycle repair: only the old static-panel
-    # rectangle changes. See docs/hud-two-golden-migration.md for old
+    # rectangle changes. The old
     # hashes and independent review. The remaining three anchors were migrated
     # only after an immutable pre-HUD control reproduced every old value. A
     # detached accepted-HUD build accounts for3480/6932 and the pre-graphics
     # 6954 value; the accepted direction/body fix changes only6954's player
-    # pixels. See docs/remaining-golden-migration-20260831.md.
+    # pixels remain C-only image anchors.
     600: "b555afbcbfeb868b1a56b255ea15259214d9d9c49044d294b34c7d34c400853f",
     1300: "4a778fc91a809ea99e723b0054d21f499ca64beef1fb2964781ed779f8d70a01",
     3480: "805bc5705a4faa6946bf484fe670614767a0f34a2465e490343c5cbff79e6662",

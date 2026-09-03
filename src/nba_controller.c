@@ -1,8 +1,7 @@
 #include "nba_controller.h"
 
 /* Original ROM SHA256 2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870.
- * Fresh bounded recomp/Ghidra/native evidence and absolute artifact paths:
- * docs/controller-implementation-checkpoint.md.
+ * Bounded recomp/Ghidra/native vectors are enforced by the controller tests.
  * Native routines preserve fields not explicitly written below. */
 bool nba_controller_allocate(NbaControllerState *state,
     const uint16_t selection[5], const uint16_t flags[5], uint16_t override_07f8) {

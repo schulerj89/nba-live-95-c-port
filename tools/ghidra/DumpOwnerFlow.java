@@ -32,7 +32,7 @@ public class DumpOwnerFlow extends GhidraScript {
         };
         for(String[] m:maps) {
             createLabel(toAddr(Integer.parseInt(m[0],16)),m[1],true);
-            setPlateComment(toAddr(Integer.parseInt(m[0],16)),m[2]+" See docs/owner-flow-plan.md.");
+            setPlateComment(toAddr(Integer.parseInt(m[0],16)),m[2]+" C port: src/nba_owner_flow.c.");
         }
         File dir=new File(args[0]);dir.mkdirs();
         try(PrintWriter out=new PrintWriter(new File(dir,"owner_flow_bank"+args[1]+".txt"),"UTF-8")) {

@@ -49,12 +49,12 @@ public class DumpSubstitutionContinuation extends GhidraScript {
             for (String[] label : labels) {
                 int pc = Integer.parseInt(label[0], 16);
                 createLabel(toAddr(pc), label[1], true);
-                setPlateComment(toAddr(pc), label[2] + " See docs/substitution-continuation-audit.md.");
+                setPlateComment(toAddr(pc), label[2] + " C port: src/nba_gameplay_foul.c.");
             }
         } else if (bank == 0x85) {
             createLabel(toAddr(0xc0f6), "RebuildTenCourtActorsAfterLineupChange", true);
             setPlateComment(toAddr(0xc0f6),
-                "Reconstruct ten active actors from repaired lineups; returns at $C37C. See docs/substitution-continuation-audit.md.");
+                "Reconstruct ten active actors from repaired lineups; returns at $C37C. C port: src/nba_gameplay_foul.c.");
         } else if (bank == 0x87) {
             createLabel(toAddr(0x8c66), "RebuildActiveAppearanceWrapper", true);
             createLabel(toAddr(0xaf75), "BindTenActivePlayerResources", true);

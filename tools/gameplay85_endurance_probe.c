@@ -181,9 +181,8 @@ int main(int argc, char **argv) {
      * factory configuration corrections plus the $85:C39C inbound fix.
      * All three 16,000-frame paths retain scoring, both-team motion, multiple
      * possessions, dead-ball recoveries and changing resources/renders. The
-     * exact ROM fixtures and these semantic guards are separate from hashes;
-     * See docs/gameplay85-regression-attribution.md for isolated old-source,
-     * configuration and layout controls; no native trajectory is rebaselined. */
+     * exact ROM fixtures and these semantic guards are separate from hashes.
+     * No native trajectory is rebaselined by these C-only controls. */
     const uint64_t expected[] = {
         0xbe9fb0edcea0d524ull,
         0x2a8877c0056dc49dull,

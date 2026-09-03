@@ -21,13 +21,11 @@ def main():
     for key,want in json.loads(native.read_text())['files'].items():
         assert identity(Path(want['path']))==want,('native identity changed',key);files['native/'+key]=want
     files['native/freeze.json']=identity(native)
-    for name in ('include/nba_period_roles.h','src/nba_period_roles.c','tools/period_roles_probe.c','tools/period_roles_probe_fields.inc','tools/build_period_roles_probe.ps1','tools/verify_period_roles.py','tools/test_period_roles.py','tools/freeze_period_roles.py','tools/verify_period_restart_v2.py','docs/period-role-prefix-source-helper.md','.analysis/period-roles-preservation-v1.json','.analysis/period-restart-freeze-v2.json'):
+    for name in ('include/nba_period_roles.h','src/nba_period_roles.c','tools/period_roles_probe.c','tools/period_roles_probe_fields.inc','tools/build_period_roles_probe.ps1','tools/verify_period_roles.py','tools/test_period_roles.py','tools/freeze_period_roles.py','tools/verify_period_restart_v2.py','.analysis/period-roles-preservation-v1.json','.analysis/period-restart-freeze-v2.json'):
         files[name]=identity(ROOT/name)
     for directory in ('period-roles-build-v3','period-roles-native-v1','period-roles-tests-v1'):
         for p in sorted((ROOT/'.analysis'/directory).rglob('*')):
             if p.is_file():files[p.relative_to(ROOT).as_posix()]=identity(p)
-    p=ROOT.parent/'completion-auditor/docs/completion-period-restart-v2-independent-audit.md'
-    files['auditor/accepted-native-guard-review.md']=identity(p)
     out.write_text(json.dumps({'schema':1,'scope':'paired BC07 initial scan/F34F/cadence only; typed before-state native differential; explicit BD0D/BE06 stops; no full planner, production or timing acceptance; independent audit pending','files':files},indent=2)+'\n')
     print(len(files),identity(out)['sha256'])
 if __name__=='__main__':main()

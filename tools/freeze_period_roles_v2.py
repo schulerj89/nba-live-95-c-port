@@ -13,7 +13,7 @@ def main():
  for key,want in old['files'].items():
   assert identity(Path(want['path']))==want,('prior identity changed',key);files['v1/'+key]=want
  files['v1/freeze.json']=identity(previous)
- names=['include/nba_period_roles_v2.h','src/nba_period_roles_v2.c','tools/period_roles_probe_v2.c','tools/period_roles_probe_fields_v2.inc','tools/build_period_roles_probe_v2.ps1','tools/verify_period_roles_v2.py','tools/test_period_roles_v2.py','tools/period_roles_rom_reference_v2.py','tools/test_period_roles_protocol_v2.py','tools/freeze_period_roles_v2.py','docs/period-role-continuation-v2.md']
+ names=['include/nba_period_roles_v2.h','src/nba_period_roles_v2.c','tools/period_roles_probe_v2.c','tools/period_roles_probe_fields_v2.inc','tools/build_period_roles_probe_v2.ps1','tools/verify_period_roles_v2.py','tools/test_period_roles_v2.py','tools/period_roles_rom_reference_v2.py','tools/test_period_roles_protocol_v2.py','tools/freeze_period_roles_v2.py']
  for name in names:files[name]=identity(ROOT/name)
  for directory in ['period-roles-v2-build-v1','period-roles-v2-native-v1','period-roles-v2-tests-v1','period-roles-v2-protocol-v1']:
   for p in sorted((ROOT/'.analysis'/directory).rglob('*')):

@@ -1,4 +1,4 @@
-"""Regression checks for checked-in ROM census and feature matrix artifacts."""
+"""Regression checks for checked-in ROM census artifacts."""
 
 import argparse
 import json
@@ -125,14 +125,6 @@ def main():
             require(live_progress.read_text(encoding="utf-8") ==
                     (ROOT / "docs/progress.md").read_text(encoding="utf-8"),
                     "checked-in progress.md is stale")
-
-    subprocess.run([sys.executable, str(ROOT / "tools/feature_capture_matrix.py"),
-                    "--capture-root", str(args.capture_root)],
-                   cwd=ROOT, check=True)
-    matrix = json.loads((ROOT / "docs/feature-capture-matrix.json").read_text())
-    require(sum(row["weight"] for row in matrix["features"]) == 100,
-            "feature weights must total 100")
-    require(len(matrix["features"]) >= 10, "whole-game matrix is unexpectedly narrow")
 
     census = json.loads((ROOT / "docs/full-rom-instruction-census.json").read_text())
     require(census["schema"] == 1, "unexpected census schema")

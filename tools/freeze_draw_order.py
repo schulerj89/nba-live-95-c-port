@@ -14,7 +14,7 @@ def main():
  preservation.write_text(json.dumps(dict(prior_freeze=identity(prior),identities_rechecked=len(old),unchanged=True),indent=2)+'\n')
  files={}
  def add(name,p):files[name]=identity(p)
- for name in ['include/nba_draw_order.h','src/nba_draw_order.c','tools/draw_order_probe.c','tools/build_draw_order_probe.ps1','tools/capture_draw_order.py','tools/capture_draw_order.lua','tools/mesen_portable.py','tools/draw_order_rom_reference.py','tools/verify_draw_order.py','tools/test_draw_order.py','tools/test_draw_order_protocol.py','tools/freeze_draw_order.py','docs/draw-order-source-state.md','.analysis/draw-order-preservation-v1.json']:
+ for name in ['include/nba_draw_order.h','src/nba_draw_order.c','tools/draw_order_probe.c','tools/build_draw_order_probe.ps1','tools/capture_draw_order.py','tools/capture_draw_order.lua','tools/mesen_portable.py','tools/draw_order_rom_reference.py','tools/verify_draw_order.py','tools/test_draw_order.py','tools/test_draw_order_protocol.py','tools/freeze_draw_order.py','.analysis/draw-order-preservation-v1.json']:
   add(name,ROOT/name)
  for directory in ['native-draw-order-v1','draw-order-build-v1','draw-order-build-v2','draw-order-native-v1','draw-order-native-v2','draw-order-source-v1','draw-order-protocol-v1']:
   for p in sorted((ROOT/'.analysis'/directory).rglob('*')):

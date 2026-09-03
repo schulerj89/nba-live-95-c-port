@@ -22,7 +22,7 @@ public class DumpShotStateMap extends GhidraScript {
         for(String seed:args[3].split(":")) {
             long pc=Long.parseLong(seed,16);disassemble(toAddr(pc));
             createLabel(toAddr(pc),"ShotStateMap_"+args[1]+"_"+seed,true);
-            setPlateComment(toAddr(pc),"Shot-state mapping. Count decoded instructions, excluding data; labels alone do not claim verification. See docs/shot-state-plan.md.");
+            setPlateComment(toAddr(pc),"Shot-state mapping. Count decoded instructions, excluding data; labels alone do not claim verification. C port: src/nba_shot_state.c.");
         }
         String[][] maps={
             {"85","A081","MadeShotRunCounters","nba_shot_momentum_make: increment shooter actor +B2; clear opposing five +B2/+B4. Runs BEFORE score increment. 342 writer replays: tests/fixtures/shot-state-witnesses.json."},

@@ -16,9 +16,8 @@ bool nba_setup_screen_validate_publications(const uint8_t *trace, size_t size,
  * NBA Live '95 Game Setup screen.
  *
  * Native ownership below is checked against instruction bytes and callers.
- * Executing concurrently is not evidence of ownership: older documentation
- * mislabeled the $80:A2BF audio-loop tail as the graphics constructor.
- * See docs/rules-reentry-resource-audit.md for evidence and remaining gaps.
+ * Executing concurrently is not evidence of ownership: the $80:A2BF
+ * audio-loop tail is separate from the graphics constructor.
  *
  * Routines observed executing while the screen is live (bank $80 unless noted):
  *   $81:BA8E  main Setup constructor ($81:CF62 builds Rules)

@@ -18,7 +18,7 @@ EXPECTED_ASSETS = {
 EXPECTED_FRAMES = {
     # C-only images: canonical home/visitor ratings, jerseys and sorted ranks
     # replace the old reversed team context. Matched-source counterfactuals
-    # reproduce every old/new pixel; see docs/tipoff-image-attribution.md.
+    # reproduce every old/new pixel; this is an inspected C-only anchor.
     # The unchanged captured WEST/ORLANDO score panel is still a port gap.
     # Updated only after the EC32 actor launch and ROM countdown/scratch
     # scheduler were bound to production movement/render state.
@@ -41,7 +41,7 @@ EXPECTED_FRAMES = {
     # Resource $081D's native (-3,-4) tile origin changes exactly 90 ball
     # pixels at frame170. At frame220, literal +$3A bounce timing and the
     # descriptor change 100 ball pixels. Every other pixel in both reviewed
-    # pack configurations is unchanged; see docs/dribble-animation.md.
+    # pack configurations is unchanged.
     170: ("TIP PH:POSSESSION", {
         "fallback": "97d7036c1b5561871759450465767125d56e33da6e95e70cd802355fbde8f4dd",
         "literal": "7bf685f3bf12b68806ab4b85d35cd7c66d0db246dc2b518b045b127fb559c85e",

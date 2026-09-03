@@ -18,7 +18,7 @@ public class DumpOwnerPoseAnimation extends GhidraScript {
         if(upper) {
             disassemble(toAddr(0xAE89));
             createLabel(toAddr(0xAD5B),"SpecialAnimationCadence",true);
-            setPlateComment(toAddr(0xAD5B),"nba_player_animation_step_channels / animation_channel_advance: mode 2 lower reset, upper states 7/13/18; DP C6 is byte-swapped delta; actor +44 doubles as upper duration. docs/owner-pose-animation-plan.md.");
+            setPlateComment(toAddr(0xAD5B),"nba_player_animation_step_channels / animation_channel_advance: mode 2 lower reset, upper states 7/13/18; DP C6 is byte-swapped delta; actor +44 doubles as upper duration. C port: src/nba_gameplay_ai.c.");
             createLabel(toAddr(0xADBE),"HeldBallEightPhaseCadence",true);
             setPlateComment(toAddr(0xADBE),"Upper state 18: actor +B0 low 15 bits target (0..7), high bit decreasing phase. One step only; normalize target/timer, preserve wrapped accumulator subtraction and 07F6 RNG order. Reaching target chooses opposite half and toggles traversal direction.");
             createLabel(toAddr(0xAE89),"HeldBallTwoPhaseCadence",true);

@@ -472,14 +472,13 @@ int main(int argc, char **argv) {
      * (57344 active pixels), under explicitly state-aligned input journeys.
      * Rules Custom marking is also checked through real C menu callers from
      * explicit native prestates; no whole-game/whole-state parity is implied.
-     * See docs/closure-digest-attribution.md. Further
-     * transition changes require fresh attribution, never automatic refresh. */
+     * Further transition changes require fresh attribution, never automatic
+     * refresh. */
 #ifndef NBA_CLOSURE_EXPECTED_DIGEST
 /* Released menu presses, native factory configuration, canonical teams/ranks
  * and the C39C layout repair have separate before/after controls. The old
- * fdbdd69c21271f89 remains exactly reproducible by the documented historical
- * source/configuration control. This is a C regression, not native parity;
- * see docs/closure-regression-driver-attribution.md. */
+ * fdbdd69c21271f89 remains exactly reproducible by the historical
+ * source/configuration control. This is a C regression, not native parity. */
 #define NBA_CLOSURE_EXPECTED_DIGEST 0xd26e6deec1fdc18eull
 #endif
     /* Private historical builds derive this override from that revision's

@@ -3,7 +3,7 @@
 
 /* Original ROM 2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870.
  * This module translates semantic caller stages, not CPU instructions.
- * Native source/boundary evidence: docs/human-dispatch-checkpoint.md. */
+ * Native boundary vectors are enforced by the human-dispatch verifier. */
 NbaHumanInputGate nba_human_input_gate(int16_t controller, uint16_t processed) {
     /* $87:9138-$915D: signed actor +16, then selected record +04. */
     if (controller < 0) return NBA_HUMAN_INPUT_NONE;

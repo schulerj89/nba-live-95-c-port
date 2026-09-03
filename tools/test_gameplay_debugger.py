@@ -22,7 +22,7 @@ from PIL import Image
 # ball, center court, debug HUD and telemetry text remain complete/readable.
 # Canonical home/visitor context and sorted lineup ranks change the team
 # appearance, positions and rank text. Matched old/canonical tipoff builds
-# reproduce every old/new pixel: docs/gameplay-lab-image-attribution.md.
+# The checked digest protects the inspected C image, not native parity.
 # This C-only anchor does not accept the preexisting static scoreboard gap.
 EXPECTED_LAB_RGB = "d52fd6308d82e0a60ecfcdf86648dd331c40da5c1c2e20b37c67225c0cb1dc6f"
 

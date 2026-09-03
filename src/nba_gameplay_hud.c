@@ -7,7 +7,7 @@
 /* Native `$83:D0AD-$D332`, `$81:A03D-$A241`, `$87:BAF5-$BB58` and
  * `$87:BC6A-$BD2E`. Recomp bank83 D0AD/D157/D1B1/D1FD/D2E0, bank81
  * proportional text/grid/upload wrappers, bank87 clock publisher.
- * State mappings and natural entry/exit evidence: docs/gameplay-hud.md.
+ * State mappings and natural entry/exit vectors are enforced by HUD tests.
  * The source-derived canvas and upload ranges are separate from the parent
  * graphics scheduler; no measured3/4-frame delay is synthesized here. */
 typedef struct { unsigned x, y, width, height, tile, character; } HudRegion;

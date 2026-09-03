@@ -102,8 +102,8 @@ uint32_t nba_snes_cgram_color(const uint8_t *cgram, int index, int brightness,
     /* INIDISP brightness quantizes the RGB555 result, after color math and
      * before host RGB888 expansion. Applying it to RGB888 invented colors
      * between native levels during every fade (e.g. red18 at brightness7:
-     * native66, formerly69). Mesen 2.1.1 ApplyBrightness and consecutive
-     * retail Rules-transition RGB evidence: docs/ppu-brightness.md. */
+     * native66, formerly69). Consecutive retail Rules-transition RGB fixtures
+     * enforce the Mesen 2.1.1 ApplyBrightness result. */
     r = r * brightness / 15;
     g = g * brightness / 15;
     b = b * brightness / 15;
