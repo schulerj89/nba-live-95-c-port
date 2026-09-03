@@ -233,9 +233,12 @@ reports success.
   `docs/camera-handoff-plan.md`. No-team hold is no longer a runtime shortcut.
   `verify_court_clamp_vectors.py` resumes at `$85:A692` after X
   integration and compares Y integration plus both clamp axes.
-  `verify_reaction_core_vectors.py` checks the distance/RNG tail at
-  `$85:B971-$B9D1`; `verify_pass_direction_vectors.py` checks the fine
-  16-direction result at `$85:F3C3-$F472`.
+  `verify_reaction_core_vectors.py` checks the complete reaction reload at
+  `$85:B95C-$B9D1`, including the actor flag clear, distance result and RNG;
+  `test_cpu_reaction_smoke.py` presses through setup and captures every frame
+  around the first natural live role rebuild.
+  `verify_pass_direction_vectors.py` checks the fine 16-direction result at
+  `$85:F3C3-$F472`.
   `verify_target_from_pair_vectors.py` resolves dynamic records and ROM
   formation tables for `$86:E923-$E96E`, including the X-only carried ADC.
   `verify_loose_pursuit_gate_vectors.py` covers both allow/reject exits of
@@ -249,8 +252,9 @@ reports success.
   initializer and `$86:A6B3-$A78F` mode-15 release core. The neighboring
   `verify_defense_refresh_vectors.py` covers `$85:BC07-$C0F5` across both the
   normal `$85:C0F5` return and exhausted-assignment `$85:C051` return. It
-  compares cadence/rebuild state and every represented defense-planner actor
-  output, including pair, anchor, and focal geometry.
+  compares cadence/rebuild state, shared RNG and every represented
+  defense-planner actor output, including reaction timers, behavior flags,
+  pair, anchor, and focal geometry.
   `verify_ownerless_ball_vectors.py` filters the shared `$85:9A6A` entry by
   negative `$093E`, then compares the represented ball/rim/pass/score core
   through `$85:A7C7`; owned-contact continuations and the separately scheduled

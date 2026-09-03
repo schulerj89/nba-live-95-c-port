@@ -298,12 +298,12 @@
       "date": "2026-08-25"
     },
     {
-      "range": "85B971-85B9D1",
-      "name": "nba_gameplay_reaction_threshold",
-      "source": "src/nba_gameplay_ai.c",
-      "method": "function-vectors",
-      "evidence": ".analysis/func-vectors-reaction_core-20260825 (65 live calls, 0 mismatches, 1 expected outer-entry callback; threshold and all 65 $07F6 RNG transitions compared)",
-      "date": "2026-08-25"
+      "range": "85B95C-85B9D1",
+      "name": "nba_gameplay_reaction_threshold / cpu_reload_role_reaction",
+      "source": "src/nba_gameplay_ai.c + src/nba_tipoff.c",
+      "method": "natural function vectors + full production planner replay",
+      "evidence": "build/cpu-reaction-20260903: 14 natural B95C calls match threshold and $07F6 RNG exits with every native +$7E exit clear; a separate natural BC07 planner entry matches the production exit RNG plus all ten +$60 timers and +$7E flags. The retained nine-button smoke reaches the first live rebuild without state injection and validates 37 consecutive frames/layer headers. Earlier 65 B971 vectors still pass.",
+      "date": "2026-09-03"
     },
     {
       "range": "85F5E4-85F727",

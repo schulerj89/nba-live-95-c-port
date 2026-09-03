@@ -29,6 +29,7 @@ static void load_actor(NbaTipoffActor *actor, const uint8_t *raw,
     actor->y_fp = fixed_position(raw, base + 8u);
     actor->control_mode = (uint8_t)word(raw, base + 0x5Eu);
     actor->saved_control_mode = (uint8_t)word(raw, base + 0x84u);
+    actor->reaction_threshold = word(raw, base + 0x60u);
     actor->behavior_timer = word(raw, base + 0x64u);
     actor->movement_boost_timer = word(raw, base + 0x72u);
     actor->assignment_current_raw = word(raw, base + 0x74u);
@@ -36,6 +37,7 @@ static void load_actor(NbaTipoffActor *actor, const uint8_t *raw,
     actor->assignment_alternate_raw = word(raw, base + 0x78u);
     actor->team_group_raw_6e = word(raw, base + 0x6Eu);
     actor->help_request_raw_80 = word(raw, base + 0x80u);
+    actor->behavior_flags_raw = word(raw, base + 0x7Eu);
     actor->assignment_direction = (uint8_t)word(raw, base + 0x86u);
     actor->anchor_direction_raw = (uint8_t)word(raw, base + 0x88u);
     actor->assignment_distance = word(raw, base + 0x8Au);
@@ -56,13 +58,14 @@ static void load_context(NbaGameplayTeamContext *context, const uint8_t *raw,
 }
 
 static void print_actor(const NbaTipoffActor *actor) {
-    printf(" %04x %04x %04x %04x %04x %04x %04x %04x %04x %04x %04x",
+    printf(" %04x %04x %04x %04x %04x %04x %04x %04x %04x %04x %04x %04x %04x",
            actor->control_mode, actor->saved_control_mode,
-           actor->behavior_timer, actor->movement_boost_timer,
+           actor->reaction_threshold, actor->behavior_timer,
+           actor->movement_boost_timer,
            actor->assignment_current_raw, actor->assignment_direction,
            actor->anchor_direction_raw, actor->assignment_distance,
            actor->anchor_distance_raw, actor->focal_distance_raw_8e,
-           actor->assignment_role_raw_92);
+           actor->assignment_role_raw_92, actor->behavior_flags_raw);
 }
 
 int main(void) {
@@ -80,10 +83,12 @@ int main(void) {
         load_context(&state.team_context[0], raw, 0x46EBu);
         load_context(&state.team_context[1], raw, 0x476Bu);
         state.live_state_raw = word(raw, 0x0936u);
+        state.rng.state = word(raw, 0x07F6u);
         state.camera_side_group_raw = (uint8_t)word(raw, 0x093Au);
         state.possession_actor = (int8_t)(int16_t)word(raw, 0x093Eu);
         state.pass_receiver_raw = (int16_t)word(raw, 0x0946u);
         state.inbound_state_raw = word(raw, 0x0952u);
+        state.inbound_actor_raw = word(raw, 0x0954u);
         state.role_focal_x_raw_0918 = (int16_t)word(raw, 0x0918u);
         state.role_focal_y_raw_091a = (int16_t)word(raw, 0x091Au);
         state.role_rebuild_raw_09d6 = word(raw, 0x09D6u);
@@ -96,8 +101,9 @@ int main(void) {
         state.ball.velocity_y = (int16_t)word(raw, 0x3EFDu);
 
         nba_tipoff_refresh_defense_roles_end_frame(&state);
-        printf("%04x %04x %04x", state.role_rebuild_raw_09d6,
-               state.role_ownerless_raw_09d8, state.pass_distance_raw);
+        printf("%04x %04x %04x %04x", state.role_rebuild_raw_09d6,
+               state.role_ownerless_raw_09d8, state.pass_distance_raw,
+               state.rng.state);
         for (unsigned i = 0; i < NBA_GAMEPLAY_ACTOR_COUNT; ++i)
             print_actor(&state.actors[i]);
         putchar('\n');

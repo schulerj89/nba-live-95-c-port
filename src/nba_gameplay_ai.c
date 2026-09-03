@@ -1,5 +1,4 @@
 #include "nba_gameplay_ai.h"
-#include <stdlib.h>
 #include <string.h>
 
 static int16_t arithmetic_shift_right_3(int16_t value) {
@@ -764,18 +763,24 @@ bool nba_gameplay_rng_self_test(void) {
     return nba_gameplay_rng_next(&rng) == 0x9146u;
 }
 
-/* `$85:B95C-$B9D1`: max(|dx|,|dy|) + min/4, randomized by the upper four
- * useful RNG bits and clamped to `$96`. */
+/* `$85:B971-$B9D1`: wrapped max(|dx|,|dy|) + min/4, randomized by the
+ * upper four useful RNG bits and clamped to `$96` with the original
+ * subtraction-N tests. Widening either coordinate subtraction changes the
+ * full-word edge cases before the absolute-value and clamp branches. */
 uint16_t nba_gameplay_reaction_threshold(NbaGameplayRng *rng,
                                          int16_t actor_x, int16_t actor_y,
                                          int16_t ball_x, int16_t ball_y) {
-    unsigned dx = (unsigned)abs((int)ball_x - actor_x);
-    unsigned dy = (unsigned)abs((int)ball_y - actor_y);
-    unsigned high = dx > dy ? dx : dy;
-    unsigned low = dx > dy ? dy : dx;
-    unsigned result = high + (low >> 2) +
-                      (nba_gameplay_rng_next(rng) & 0x78u);
-    return (uint16_t)(result > 0x96u ? 0x96u : result);
+    uint16_t dx = (uint16_t)((uint16_t)actor_x - (uint16_t)ball_x);
+    uint16_t dy = (uint16_t)((uint16_t)actor_y - (uint16_t)ball_y);
+    if ((dx & 0x8000u) != 0u) dx = (uint16_t)(0u - dx);
+    if ((dy & 0x8000u) != 0u) dy = (uint16_t)(0u - dy);
+    if (subtract16_is_negative(dx, dy)) {
+        uint16_t swap = dx; dx = dy; dy = swap;
+    }
+    uint16_t result = (uint16_t)(dx + (dy >> 2));
+    result = (uint16_t)(result + (nba_gameplay_rng_next(rng) & 0x78u));
+    if (!subtract16_is_negative(result, 0x0096u)) result = 0x0096u;
+    return result;
 }
 
 /* `$87:9244 -> $87:9BD3 -> $87:9BD0` behavior-mode jump table. */
@@ -1112,6 +1117,10 @@ bool nba_gameplay_court_finish_y_step(
 
 bool nba_gameplay_ai_self_test(void) {
     int16_t x = 0, y = 0;
+    NbaGameplayRng reaction_rng = {0u};
+    if (nba_gameplay_reaction_threshold(
+            &reaction_rng, INT16_MAX, 0, INT16_MIN, 0) != 0x41u ||
+        reaction_rng.state != 0x9146u) return false;
     if (nba_gameplay_weighted_distance(16, -16) != 20u ||
         nba_gameplay_weighted_distance(-20, 10) != 22u ||
         nba_gameplay_weighted_distance(INT16_MIN, INT16_MIN) != 0xA000u)

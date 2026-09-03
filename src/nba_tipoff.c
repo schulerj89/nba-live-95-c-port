@@ -6938,6 +6938,22 @@ static bool cpu_defensive_planner_self_test(void) {
     return true;
 }
 
+/* `$85:B95C-$B9D1`: every eligible actor visited by the role-rebuild passes
+ * loses its prior behavior flags. State `$82` preserves the provisional
+ * inbounder's +$60 timer and RNG; every other call measures from the actor's
+ * integer position to the physical ball and installs the randomized delay. */
+static void cpu_reload_role_reaction(NbaTipoff *tipoff, unsigned actor) {
+    NbaTipoffActor *state = &tipoff->actors[actor];
+    state->behavior_flags_raw = 0u;
+    if (tipoff->live_state_raw == 0x82u &&
+        actor == tipoff->inbound_actor_raw) return;
+    state->reaction_threshold = nba_gameplay_reaction_threshold(
+        &tipoff->rng,
+        fp_integer_word(state->x_fp), fp_integer_word(state->y_fp),
+        fp_integer_word(tipoff->ball.x_fp),
+        fp_integer_word(tipoff->ball.y_fp));
+}
+
 void nba_tipoff_refresh_offense_roles_end_frame(NbaTipoff *tipoff) {
     unsigned offense = (tipoff->live_state_raw == 0x82u ?
         tipoff->inbound_state_raw : tipoff->camera_side_group_raw) != 0u ?
@@ -6985,25 +7001,32 @@ static void cpu_rebuild_role_assignments(NbaTipoff *tipoff,
                                          unsigned offense,
                                          unsigned defense) {
     /* `$85:BD0D-$BE03`: reset offense alternates, then restore both teams'
-     * base pairings. B95C only refreshes +$7E/+60 and therefore has no
-     * represented side effect in this planner boundary. */
+     * base pairings. Keep the three passes separate because each eligible
+     * `$85:B95C` call advances the shared RNG in actor order. */
     for (unsigned i = 0; i < 5u; ++i) {
         unsigned actor = offense * 5u + i;
         NbaTipoffActor *state = &tipoff->actors[actor];
         state->assignment_current_raw = state->assignment_alternate_raw;
         if (state->control_mode < 7u &&
-            actor != (unsigned)(uint8_t)tipoff->possession_actor)
+            actor != (unsigned)(uint8_t)tipoff->possession_actor) {
             state->behavior_timer = 0x2Fu;
+            cpu_reload_role_reaction(tipoff, actor);
+        }
     }
     for (unsigned i = 0; i < 5u; ++i) {
-        NbaTipoffActor *state = &tipoff->actors[defense * 5u + i];
+        unsigned actor = defense * 5u + i;
+        NbaTipoffActor *state = &tipoff->actors[actor];
         if (state->control_mode < 7u) state->control_mode = 2u;
         state->saved_control_mode = state->control_mode;
         state->assignment_current_raw = state->assignment_base_raw;
-        if (state->control_mode < 7u) state->behavior_timer = 0u;
+        if (state->control_mode < 7u) {
+            state->behavior_timer = 0u;
+            cpu_reload_role_reaction(tipoff, actor);
+        }
     }
     for (unsigned i = 0; i < 5u; ++i) {
-        NbaTipoffActor *state = &tipoff->actors[offense * 5u + i];
+        unsigned actor = offense * 5u + i;
+        NbaTipoffActor *state = &tipoff->actors[actor];
         if (state->control_mode < 7u) {
             state->control_mode =
                 tipoff->live_state_raw == 0x82u &&
@@ -7012,9 +7035,62 @@ static void cpu_rebuild_role_assignments(NbaTipoff *tipoff,
         }
         state->saved_control_mode = state->control_mode;
         state->assignment_current_raw = state->assignment_base_raw;
-        if (state->control_mode < 7u) state->behavior_timer = 0u;
+        if (state->control_mode < 7u) {
+            state->behavior_timer = 0u;
+            cpu_reload_role_reaction(tipoff, actor);
+        }
     }
     tipoff->role_rebuild_raw_09d6 = 0u;
+}
+
+static bool cpu_role_reaction_reload_self_test(void) {
+    static const int16_t positions[10][2] = {
+        {8, 3}, {-16, -83}, {-24, 80}, {104, -56}, {96, 59},
+        {-8, -3}, {16, 83}, {24, -80}, {-104, 56}, {-96, -59}
+    };
+    static const uint16_t expected[10] = {
+        97u, 120u, 143u, 128u, 118u, 7u, 85u, 92u, 0x1234u, 110u
+    };
+    NbaTipoff state;
+    memset(&state, 0, sizeof(state));
+    state.live_state_raw = 0x81u;
+    state.possession_actor = -1;
+    state.rng.state = 0x34EAu;
+    state.ball.x_fp = -9 * 256;
+    state.ball.y_fp = 4 * 256;
+    for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
+        NbaTipoffActor *a = &state.actors[actor];
+        a->x_fp = positions[actor][0] * 256;
+        a->y_fp = positions[actor][1] * 256;
+        a->control_mode = actor == 8u ? 10u : 2u;
+        a->reaction_threshold = actor == 8u ? 0x1234u : 0u;
+        a->behavior_flags_raw = actor == 8u ? 0x0200u : 0xFFFFu;
+    }
+    cpu_rebuild_role_assignments(&state, 1u, 0u);
+    if (state.rng.state != 0xC408u) return false;
+    for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
+        if (state.actors[actor].reaction_threshold != expected[actor] ||
+            state.actors[actor].behavior_flags_raw !=
+                (actor == 8u ? 0x0200u : 0u)) return false;
+    }
+
+    memset(&state, 0, sizeof(state));
+    state.live_state_raw = 0x82u;
+    state.inbound_state_raw = 0u;
+    state.inbound_actor_raw = 2u;
+    state.possession_actor = -1;
+    state.rng.state = 0x9146u;
+    for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
+        state.actors[actor].control_mode = 7u;
+        state.actors[actor].team_group_raw_6e = actor < 5u ? 0u : 5u;
+    }
+    state.actors[2].control_mode = 2u;
+    state.actors[2].reaction_threshold = 0x4567u;
+    state.actors[2].behavior_flags_raw = 0xFFFFu;
+    cpu_rebuild_role_assignments(&state, 0u, 1u);
+    return state.rng.state == 0x9146u &&
+           state.actors[2].reaction_threshold == 0x4567u &&
+           state.actors[2].behavior_flags_raw == 0u;
 }
 
 void nba_tipoff_refresh_defense_roles_end_frame(NbaTipoff *tipoff) {
@@ -8550,6 +8626,7 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
         cpu_contact_orchestration_self_test(assets, session));
     NBA_TIPOFF_REQUIRE("player contact", cpu_player_contact_self_test());
     NBA_TIPOFF_REQUIRE("defensive planner", cpu_defensive_planner_self_test());
+    NBA_TIPOFF_REQUIRE("role reaction reload", cpu_role_reaction_reload_self_test());
     NBA_TIPOFF_REQUIRE("expired inbound", cpu_expired_inbound_self_test());
     NBA_TIPOFF_REQUIRE("inbound recovery carrier",
         cpu_inbound_recovery_carrier_self_test(assets, session));
