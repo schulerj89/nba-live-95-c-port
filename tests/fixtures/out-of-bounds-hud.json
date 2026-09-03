@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "scope": "Original event-3 HUD hashes; no ROM graphics or rendered screenshots are embedded.",
+  "rom_sha256": "2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870",
+  "mesen_sha256": "d2eb03c2590c648bf329f127ebcfefd70130e7690a9e2ccdba8616faea1fe96b",
+  "executed_capture_sha256": "eab885d63ff72f267566cff7abd6f4ce3355ff17c7276df2edc71a7f1e7cb612",
+  "executed_runner_sha256": "73101de1f4f7851d0daec3cc2318905da63928414a259e545bf9ece31b583e62",
+  "native_manifest_sha256": "2136cc275f0e713fab85c1bd71834d68e6a8d9cdbd887f405f11554a24e12c45",
+  "reference_manifest_sha256": "0470ed221e2ed56802629c5fa6606d918814c5ed1648287d245d5538b31b4efa",
+  "scenario": {
+    "pc": 8884901,
+    "frame": 4692,
+    "court": 302,
+    "owner": 9,
+    "writes": [
+      {
+        "address": 15855,
+        "before": 22,
+        "after": 0
+      },
+      {
+        "address": 15859,
+        "before": 14,
+        "after": 209
+      },
+      {
+        "address": 15863,
+        "before": 0,
+        "after": 0
+      }
+    ]
+  },
+  "native_frames": 40,
+  "native_awarded_team": 9,
+  "native_event_actor": 9,
+  "native_teams": [
+    9,
+    17
+  ],
+  "expected": {
+    "layout.map": "740d255dd6e60837a5bb600890f43fbcb7617b05610709e1fe6e6edbf7a6162f",
+    "layout.chr": "1e86afc67a97177fc1bb99dd14b34066386b507704ce0bfc3a3f6174bf8251a8",
+    "native-text.chr": "0282a3206184634bb1499a39cee4d23b796ac81d3392cf69dc05fe11f89f0390",
+    "visible_map_09c0_0b40": "9c55e07f8d753643395f81688d68019567006e0ca0f21e04d2e70184be5a352d",
+    "published_characters_2470_2ef0": "47c6fc2abe0ad2580f80d71b19c39f8c19bfd893815f7d03e5f9bab16a2ac788"
+  }
+}

@@ -17,6 +17,10 @@ and substeps, actor boundaries, inbound/OOB rules and halftime formation
 anchors; the strict full-game differential still fails its initial-state
 comparison. See [STATUS.md](STATUS.md) for verified scopes and remaining gaps.
 
+The [out-of-bounds overlay](docs/out-of-bounds-hud.md) uses the original font,
+message and possession-team label. Its headless smoke test captures every
+frame through appearance and removal, with Ghidra/recomp and Mesen evidence.
+
 The [ownership inventory and milestone plan](docs/ownership-plan.md) records the
 2026-08-30 repository/reference audit. Separate
 [transition](docs/transition-ownership-audit.md),

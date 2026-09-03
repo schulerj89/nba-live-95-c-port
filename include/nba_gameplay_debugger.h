@@ -222,6 +222,11 @@ typedef struct {
     uint16_t whistle_timer_raw_08de;
     uint16_t presentation_gate_raw_08e2;
     uint16_t whistle_presentation_queued_raw;
+    uint16_t hud_sequence_raw_08e6;
+    uint16_t hud_kind_raw_08e8;
+    uint16_t hud_event_actor_raw_492d;
+    uint16_t hud_clear_raw_08ee;
+    uint32_t hud_pending_routine;
     uint16_t ball_activity_raw;
     int16_t pass_actor_raw;
     int16_t pass_receiver_raw;

@@ -71,7 +71,7 @@ bool nba_gameplay_hud_init(NbaGameplayHud *hud,const NbaAssetPack *assets) {
 
 static void layout(NbaGameplayHud *hud) {
     memset(hud->working_map,0,sizeof(hud->working_map));
-    memset(hud->working_characters,0,sizeof(hud->working_characters));
+    memset(hud->working_characters,0,0x850u);
     /* `$81:A05F` numbers tiles column-first within each original rectangle. */
     for(unsigned i=0;i<4u;++i) {
         const HudRegion *r=regions+i;
@@ -92,6 +92,77 @@ static bool font_for(const NbaAssetPack *assets, bool large, NbaRomFont *font) {
     const uint8_t *rows=resource(assets,2u);
     if(!item || !item->data || !rows)return false;
     *font=(NbaRomFont){item->data,item->size,rows,172u,1u,1u,0u};
+    return true;
+}
+
+/* $83:DA12/DA8C and event-3 branch DB29 use the original proportional font.
+ * Strings are extracted from $85:9491, $83:DB9D and $80:D350/D0E2. */
+static const uint8_t *oob_strings(const NbaAssetPack *assets) {
+    const NbaAssetItem *item=nba_assets_get(assets,NBA_ASSET_GAMEPLAY_OUT_OF_BOUNDS);
+    const uint8_t *data=item?(const uint8_t *)item->data:NULL;
+    if(!item || !item->data || item->size!=1008u ||
+       memcmp(data,"NBOOB001",8) || dword(data+8)!=1u ||
+       dword(data+12)!=31u)return NULL;
+    for(unsigned i=0;i<31u;++i)
+        if(!memchr(data+16u+i*32u,0,32u))return NULL;
+    return data+16u;
+}
+
+bool nba_gameplay_hud_oob_assets_valid(const NbaAssetPack *assets) {
+    return oob_strings(assets)!=NULL;
+}
+
+static void violation_layout(NbaGameplayHud *hud) {
+    static const HudRegion grids[3]={
+        {2,5,28,6,0x47,0}, {2,19,22,2,0xEF,0xA80},
+        {2,22,28,2,0x11B,0xD40}};
+    memset(hud->working_map,0,sizeof(hud->working_map));
+    memset(hud->working_characters,0,0x10C0u);
+    for(unsigned i=0;i<3u;++i) {
+        const HudRegion *r=grids+i;
+        for(unsigned y=0;y<r->height;++y)
+            for(unsigned x=0;x<r->width;++x)
+                put_word(hud->working_map+((r->y+y)*32u+r->x+x)*2u,
+                    (uint16_t)(0x2000u+r->tile+x*r->height+y));
+    }
+}
+
+static bool out_of_bounds(NbaGameplayHud *hud,const NbaAssetPack *assets,
+                          NbaGameplayHudInput *input) {
+    const uint8_t *strings=oob_strings(assets);
+    NbaRomFont font;
+    unsigned side=input->event_actor_raw_492d<5u?1u:0u;
+    unsigned team=input->teams[side];
+    if(input->latched_event_raw_08f0!=3u || team>=29u || !strings ||
+       !font_for(assets,true,&font))return false;
+    font.fixed_digit_width=12u;
+    uint8_t pixels[224u*48u]={0};
+    const uint8_t *team_text=strings+(2u+team)*32u;
+    uint16_t title_width,team_width,ball_width;
+    if(!nba_rom_font_measure(&font,strings,32u,&title_width) ||
+       !nba_rom_font_measure(&font,team_text,32u,&team_width) ||
+       !nba_rom_font_measure(&font,strings+32u,32u,&ball_width))return false;
+    /* DB61-DB6D centers the team plus a literal $2C suffix reservation.
+     * DB86-DB95 right-aligns "Ball" at 256-left. Grid origin is (16,40). */
+    int left=(int)((uint16_t)(256u-team_width-44u)>>1);
+    if(!nba_rom_font_draw(&font,pixels,224u,224,48,112-(int)(title_width/2u),0,strings,32u) ||
+       !nba_rom_font_draw(&font,pixels,224u,224,48,left-16,24,team_text,32u) ||
+       !nba_rom_font_draw(&font,pixels,224u,224,48,240-left-(int)ball_width,24,strings+32u,32u))
+        return false;
+    /* A1E7(0) uploads only grid0: 168 tiles, VRAM byte $2470. */
+    memset(hud->working_characters,0,0xA80u);
+    for(unsigned y=0;y<48u;++y)
+        for(unsigned x=0;x<224u;++x) {
+            size_t at=((x/8u)*6u+y/8u)*16u+(y&7u)*2u;
+            uint8_t color=pixels[y*224u+x];
+            hud->working_characters[at]|=(uint8_t)((color&1u)<<(7u-(x&7u)));
+            hud->working_characters[at+1u]|=(uint8_t)(((color>>1)&1u)<<(7u-(x&7u)));
+        }
+    memcpy(hud->published_characters+0x80u,hud->working_characters,0xA80u);
+    hud->violation_characters_published=true;
+    /* DB0E-DB1E: $7E:4BB0 -> VRAM word $04E0, $0180 bytes. */
+    memcpy(hud->visible_map+0x1C0u,hud->working_map+0x140u,0x180u);
+    input->presentation_sequence_raw_08e6=0xFFFFu;
     return true;
 }
 
@@ -284,7 +355,17 @@ static bool clear_panel(NbaGameplayHud *hud,const NbaGameplayHudInput *input) {
             hud->clear_raw_08ee=0xFFFFu;return true;
         }
         switch(input->presentation_kind_raw_08e8) {
-            case 17:case 22: /* actual contact/substitution continuation */
+            case 17:
+                /* EC60/EC8B/ECA4 -> EC46 without foul-out/injury pages.
+                 * ED47/ED5D entry8 clears $04E0 for $0260 words. */
+                if(input->latched_event_raw_08f0==3u &&
+                   input->contact_context_raw_497f==0u &&
+                   input->foul_out_state_raw_09ca==0u && input->injury_state_raw_09cc==0u) {
+                    memset(hud->visible_map+0x1C0u,0,0x4C0u);
+                    hud->clear_raw_08ee=0xFFFFu;return true;
+                }
+                /* fall through: explicit untranslated continuation */
+            case 22:
                 hud->pending_routine=0x83EC60u;return false;
             default:break;
         }
@@ -345,7 +426,9 @@ bool nba_gameplay_hud_dispatch(NbaGameplayHud *hud,const NbaAssetPack *assets,
             unsigned seq=input->presentation_sequence_raw_08e6;
             if(seq>=44u) { hud->pending_routine=0x83CC43u;return false; }
             ++input->presentation_sequence_raw_08e6;
-            if(seq>=6u) {
+            bool oob=input->presentation_kind_raw_08e8==17u &&
+                     input->latched_event_raw_08f0==3u && (seq==17u || seq==18u);
+            if(seq>=6u && !oob) {
                 hud->pending_routine=children[seq];hud->unsupported_child_pending=true;
                 return false;
             }
@@ -458,6 +541,8 @@ bool nba_gameplay_hud_publish(NbaGameplayHud *hud,const NbaAssetPack *assets,
         case 0x83EBDBu:ok=clear_panel(hud,input);break;
         case 0x87BA5Eu:ok=shot_clock(hud,assets,input);break;
         case 0x83D0ADu:layout(hud);ok=true;break;
+        case 0x83DA12u:violation_layout(hud);ok=true;break;
+        case 0x83DA8Cu:ok=out_of_bounds(hud,assets,input);break;
         case 0x83D157u:ok=names(hud,assets,input);break;
         case 0x83D1B1u:ok=scores(hud,assets,input);break;
         case 0x83D1FDu:ok=period(hud,assets,input);break;
@@ -499,6 +584,8 @@ bool nba_gameplay_hud_apply(const NbaGameplayHud *hud,const NbaAssetPack *assets
             memcpy(vram+0x23F0u+r->character,hud->published_characters+r->character,
                    r->width*r->height*16u);
         }
+    if(hud->violation_characters_published)
+        memcpy(vram+0x2470u,hud->published_characters+0x80u,0xA80u);
     memcpy(cgram+2u,palette,30u);
     return true;
 }

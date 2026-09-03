@@ -92,6 +92,10 @@ static NbaGameplayHudInput hud_input(const NbaTipoff *t) {
     in.style_raw_17ab=t->session->config.main_values[0];
     in.presentation_gate_raw_08e2=t->fouls.presentation_gate_raw_08e2;
     in.rng_raw_07f6=t->rng.state;
+    in.latched_event_raw_08f0=t->fouls.latched_event_raw_08f0;
+    in.event_actor_raw_492d=t->hud_event_actor_raw_492d;
+    in.contact_context_raw_497f=t->fouls.contact_context_raw_497f;
+    in.foul_out_state_raw_09ca=t->fouls.foul_out_state_raw_09ca;
     return in;
 }
 
@@ -5279,6 +5283,10 @@ static void cpu_dispatch_pending_event(NbaTipoff *tipoff) {
             /* `$87:93BB/$93BE` clears both axes for either edge. */
             tipoff->ball.velocity_x = tipoff->ball.velocity_y = 0;
             tipoff->fouls.foul_event_raw_0964 = 3u;
+            /* $87:93C7-$93D5 preserves the last touching actor for DA8C's
+             * possession label. The per-frame collision census is transient. */
+            tipoff->hud_event_actor_raw_492d =
+                tipoff->team_context[tipoff->camera_side_group_raw / 5u].dead_ball_actor_raw_3f;
             tipoff->inbound_layout_raw = layout;
         }
     }
@@ -5390,9 +5398,15 @@ static void cpu_process_pending_event(NbaTipoff *tipoff) {
         if(tipoff->fouls.whistle_timer_raw_08de>=0)
             hud_publish(tipoff,0x83EBDBu);
     }
-    (void)nba_gameplay_foul_consume_pending(
+    bool consumed=nba_gameplay_foul_consume_pending(
         &tipoff->fouls, tipoff->camera_side_group_raw,
         &tipoff->rim_raw_13e7, &tipoff->inbound_ready_raw, false);
+    if(consumed && tipoff->fouls.latched_event_raw_08f0==3u) {
+        /* 93F5 replaces the old overlay sequence. Retire its host diagnostic
+         * as well so an unsupported statistics page cannot block this call. */
+        tipoff->hud.pending_routine=0u;
+        tipoff->hud.unsupported_child_pending=false;
+    }
 }
 
 static bool cpu_deferred_shooting_foul_self_test(void) {
@@ -8555,6 +8569,8 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
     NBA_TIPOFF_REQUIRE("tipoff ball asset", nba_assets_get(assets, NBA_ASSET_TIPOFF_BALL));
     NBA_TIPOFF_REQUIRE("complete original HUD lifecycle resource286",
         nba_gameplay_hud_lifecycle_assets_valid(assets));
+    NBA_TIPOFF_REQUIRE("original out-of-bounds strings resource289",
+        nba_gameplay_hud_oob_assets_valid(assets));
 #undef NBA_TIPOFF_REQUIRE
     memset(tipoff, 0, sizeof(*tipoff));
     tipoff->assets = assets;
@@ -8585,6 +8601,7 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
     /* $87:B99A-B9A9 owns shared08DE/08E6 too, not only HUD-private words. */
     tipoff->fouls.whistle_timer_raw_08de=-1;
     tipoff->fouls.whistle_state_raw_08e6=0xFFFFu;
+    tipoff->hud_event_actor_raw_492d=0xFFFFu;
     static const uint8_t context_actor_order[2][5] = {
         {0x10u, 0x0Eu, 0x0Au, 0x12u, 0x0Cu},
         {0x04u, 0x06u, 0x08u, 0x00u, 0x02u}
@@ -9690,6 +9707,11 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
         tipoff->fouls.presentation_gate_raw_08e2;
     telemetry->whistle_presentation_queued_raw =
         tipoff->fouls.whistle_presentation_queued_raw;
+    telemetry->hud_sequence_raw_08e6=tipoff->fouls.whistle_state_raw_08e6;
+    telemetry->hud_kind_raw_08e8=tipoff->fouls.whistle_state_mirror_raw_08e8;
+    telemetry->hud_event_actor_raw_492d=tipoff->hud_event_actor_raw_492d;
+    telemetry->hud_clear_raw_08ee=tipoff->hud.clear_raw_08ee;
+    telemetry->hud_pending_routine=tipoff->hud.pending_routine;
     telemetry->ball_activity_raw = tipoff->ball_activity_raw;
     telemetry->pass_actor_raw = tipoff->pass_actor_raw;
     telemetry->pass_receiver_raw = tipoff->pass_receiver_raw;

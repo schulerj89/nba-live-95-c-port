@@ -1955,6 +1955,8 @@ def create_asset_pack(rom_path, output_path, capture_root=None):
     # Standard floor: the second literal 148x52 map selected by $85:8BFA.
     assets.append((288, 148, 52, 0xA0BC26,
                    rom_data[0x103C26:0x103C26 + 6 + 148 * 52 * 2]))
+    from build_oob_assets import build as build_oob_assets
+    assets.append((289, 0, 0, 0, build_oob_assets(rom_data)[0]))
 
     with open(output_path + ".hud-provenance.json", "w", encoding="utf-8") as manifest:
         json.dump(hud_provenance, manifest, indent=2)

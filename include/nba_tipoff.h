@@ -181,6 +181,7 @@ typedef struct NbaTipoff {
     uint16_t hud_clock_gate_raw_492b;
     uint16_t hud_requester_raw_095e;
     uint16_t hud_dispatch_mode_raw_0960;
+    uint16_t hud_event_actor_raw_492d; /* persistent OOB writer $87:93D5 */
     uint16_t team_pose_contact_count_raw[2]; /* team context +$50 */
     uint16_t defensive_pose_count_raw_1868; /* `$86:E39A` successful selects */
     uint16_t deferred_shot_foul_phase_raw_0a02;

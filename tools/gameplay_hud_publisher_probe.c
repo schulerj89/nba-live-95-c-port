@@ -1,7 +1,8 @@
 /* Native caller-state projection replay of production HUD child publishers.
  * Expectations are raw native output canvases, never produced by this probe.
  * Native routine IDs/inputs are supplied on stdin; output files are actual
- * working map/CHR and published map/CHR state at each completed C call. */
+ * working map/CHR and published map/CHR state at each completed C call.
+ * Keep the score witness's $0850-byte CHR range when other HUD grids grow. */
 #define _CRT_SECURE_NO_WARNINGS
 #include "nba_gameplay_hud.h"
 #include <stdio.h>
@@ -40,9 +41,9 @@ int main(int argc,char **argv) {
             (uint16_t)values[12],(uint16_t)values[13],(uint16_t)values[14]};
         if(!nba_gameplay_hud_publish(&hud,&assets,values[0],&input))return 7;
         if(!save(argv[2],count,"map",hud.working_map,sizeof(hud.working_map)) ||
-           !save(argv[2],count,"chr",hud.working_characters,sizeof(hud.working_characters)) ||
+           !save(argv[2],count,"chr",hud.working_characters,0x850u) ||
            !save(argv[2],count,"visible",hud.visible_map,sizeof(hud.visible_map)) ||
-           !save(argv[2],count,"published",hud.published_characters,sizeof(hud.published_characters)) ||
+           !save(argv[2],count,"published",hud.published_characters,0x850u) ||
            !save(argv[2],count,"clock",hud.clock_text_raw_4a60,sizeof(hud.clock_text_raw_4a60)))return 8;
         printf("HUD_PUBLICATION %u %u %u %u %u %u %u %u %u %u %u %u %u\n",count,values[0],
             hud.publication_count,hud.published_mask,hud.clock_mirror_raw_08f6,

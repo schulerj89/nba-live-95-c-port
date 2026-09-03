@@ -333,3 +333,8 @@ tools/mesen_hoop_capture.lua -text
 tools/capture_hoop.py -text
 tools/regenerate_hoop_reference.py -text
 tools/ghidra/DumpHoop.java -text
+
+# OOB evidence pins the exact native capture and hash-only witness bytes.
+tools/mesen_oob_capture.lua text eol=lf
+tools/capture_oob.py text eol=lf
+tests/fixtures/out-of-bounds-hud.json text eol=lf

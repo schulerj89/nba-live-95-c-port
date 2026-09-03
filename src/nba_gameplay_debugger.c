@@ -244,7 +244,10 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
             "\"whistle_active_raw_09b6\":%u,"
             "\"whistle_timer_raw_08de\":%u,"
             "\"presentation_gate_raw_08e2\":%u,"
-            "\"whistle_presentation_queued_raw\":%u},"
+            "\"whistle_presentation_queued_raw\":%u,"
+            "\"hud_sequence_raw_08e6\":%u,\"hud_kind_raw_08e8\":%u,"
+            "\"hud_event_actor_raw_492d\":%u,\"hud_clear_raw_08ee\":%u,"
+            "\"hud_pending_routine\":%u},"
             "\"camera\":{\"x\":%d,\"y\":%d,"
             "\"subject_raw\":%d,\"side_group_raw\":%u,"
             "\"routine\":%u,\"raw_085c\":%u,\"raw_085e\":%u,"
@@ -347,6 +350,9 @@ void nba_gameplay_telemetry_write_jsonl(FILE *stream,
             telemetry->whistle_timer_raw_08de,
             telemetry->presentation_gate_raw_08e2,
             telemetry->whistle_presentation_queued_raw,
+            telemetry->hud_sequence_raw_08e6, telemetry->hud_kind_raw_08e8,
+            telemetry->hud_event_actor_raw_492d, telemetry->hud_clear_raw_08ee,
+            telemetry->hud_pending_routine,
             telemetry->camera_x, telemetry->camera_y,
             telemetry->camera_subject_raw, telemetry->camera_side_group_raw,
             telemetry->camera_routine,

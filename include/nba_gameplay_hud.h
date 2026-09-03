@@ -7,9 +7,10 @@
  * These are indexed resources, never captured RGB or hand-drawn text. */
 typedef struct {
     uint8_t working_map[0x600];       /* `$7E:4A70-$506F` */
-    uint8_t working_characters[0x850];/* `$7E:5070-$58BF` */
+    uint8_t working_characters[0x10C0];/* `$7E:5070-$612F`, score or violation grids */
     uint8_t visible_map[0x700];       /* VRAM words `$0400-$077F` */
-    uint8_t published_characters[0x850]; /* VRAM bytes `$23F0-$2C3F` */
+    uint8_t published_characters[0xB00]; /* VRAM bytes `$23F0-$2EEF` */
+    bool violation_characters_published; /* DA8C uploads $2470-$2EEF */
     uint16_t clock_mirror_raw_08f6;
     uint16_t clear_raw_08ee;
     uint16_t clock_frame_raw_08f4;
@@ -51,10 +52,16 @@ typedef struct {
     uint16_t style_raw_17ab;
     uint16_t presentation_gate_raw_08e2;
     uint16_t rng_raw_07f6;
+    uint16_t latched_event_raw_08f0;
+    uint16_t event_actor_raw_492d;
+    uint16_t contact_context_raw_497f;
+    uint16_t foul_out_state_raw_09ca;
+    uint16_t injury_state_raw_09cc;
 } NbaGameplayHudInput;
 
 bool nba_gameplay_hud_init(NbaGameplayHud *hud, const NbaAssetPack *assets);
 bool nba_gameplay_hud_lifecycle_assets_valid(const NbaAssetPack *assets);
+bool nba_gameplay_hud_oob_assets_valid(const NbaAssetPack *assets);
 /* Native score-panel child routines, callable only after init. Publication
  * results are queued-resource projections until a portable NMI queue owns
  * scanout. The parent owns when each child runs and shared08DE/08E6/08E8. */

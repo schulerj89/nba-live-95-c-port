@@ -1,5 +1,8 @@
 # Bounded gameplay HUD repair candidate
 
+The later [out-of-bounds overlay repair](out-of-bounds-hud.md) adds event-3
+children `DA12`/`DA8C` and ordinary kind-17 retirement to this baseline.
+
 This candidate fixes the stale captured lower-court scoreboard in the current C port. The match clock already advanced: the baseline 7,200-frame run changed 43,200 to 36,796 while the captured BG3 panel remained WEST 2 / ORLANDO 0, 11:49. The candidate renders the indexed original HUD buffers using current canonical teams, scores, and clock, expires the panel, refreshes it on pause, and retains the original final-minute clock and shot-clock visibility rules. Normal human gameplay remains gated.
 
 The candidate is a private snapshot of integration dc10166; no root source or production manifest was edited here. Integration 4707a16 already contains the matching asset pipeline; do not replace its portable extractor or upgrade helper with this candidate's earlier extractor copy.

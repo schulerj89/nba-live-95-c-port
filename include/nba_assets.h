@@ -151,7 +151,8 @@ typedef enum {
     NBA_ASSET_PLAYER_DRAW_INPUTS    = 287,
     /* Literal standard-floor map selected by $85:8BFA: ROM $A0:BC26. */
     NBA_ASSET_GAMEPLAY_STANDARD_COURT_MAP = 288,
-    NBA_ASSET_MAX                   = 289
+    NBA_ASSET_GAMEPLAY_OUT_OF_BOUNDS = 289, /* Original violation and possession strings. */
+    NBA_ASSET_MAX                   = 290
 } NbaAssetId;
 
 typedef struct {
