@@ -40,7 +40,7 @@ inventory is `.analysis/ownership-20260830/inventory.json`.
 | Recomp runnable binaries | `../NBA-Live-95-Recomp/build/NBALive95Recompiled.exe`, `nba_live_95_probe.exe`; their existence does not prove full native gameplay translation (LLE remains) |
 | Ghidra projects | `ghidra-projects/` (72 `.gpr` files at inventory), including `NbaLive95FullRom80..87`, focused Setup/PlayerSetup/Tipoff/Timeout/Substitution projects |
 | Ghidra scripts and dumps | `tools/ghidra/`; ignored `.analysis/*ghidra*`, `.analysis/full-rom-census/`, and feature-specific dump directories |
-| Asset source pipeline | `tools/capture_assets.ps1`, `tools/mesen_*_capture.lua`, `tools/extract_assets.py`, `tools/snes65816_decompressor.py`; raw VRAM/CGRAM/OAM/SPC/BRR and ROM decoding inputs. Follow-up found prohibited PNG sources for legal2, EA3–6/72/73; replacement required, see `intro-exact-audit.md` |
+| Asset source pipeline | `tools/capture_assets.ps1`, `tools/mesen_*_capture.lua`, `tools/extract_assets.py`, `tools/snes65816_decompressor.py`; raw VRAM/CGRAM/OAM/SPC/BRR and ROM decoding inputs. Follow-up found prohibited PNG sources for legal2, EA3–6/72/73; replacement required; see `intro-indexed-resources.md` |
 | Production pack | `build/nba95_assets.pak`, v31, 90,057,659 bytes; SHA-256 `d6adfe3ab8a49805a2cd10921281c33541135a332b4f2b174dfe25c093c2ebfd` |
 | Other packs/audio | `build/` holds 13 other historical packs; `extracted_wavs/` and captured WAVs are not authority to substitute recorded songs for production sequencing |
 | Native capture tools | `tools/mesen_func_vectors.lua`, dedicated `mesen_*.lua` and `capture_*.ps1`; Mesen resolves on PATH to the installed WinGet Mesen2 executable |
@@ -94,8 +94,7 @@ Use seven separate labels in the workstream tables: implemented, production
 wired, bounded ROM-verified, C regression-tested, visually/audibly verified,
 approximated, and missing. A feature can carry several labels. A dormant
 helper is not a wired feature. The detailed inventories are maintained in
-`transition-ownership-audit.md`, `gameplay-ownership-audit.md` and
-`options-test-ownership-audit.md` as those audits complete.
+`transition-ownership-audit.md`; the retired gameplay and options inventories remain in Git history.
 
 | Area | Remaining release work identified from code and evidence |
 |---|---|
@@ -159,7 +158,7 @@ helper is not a wired feature. The detailed inventories are maintained in
 
 Checkpoint A2 replaces the inherited intro image sources with indexed pack
 resources75/76 and the original font. Bounded independent renderer evidence
-is in `intro-indexed-resources.md` and `intro-text-independent-audit.md`.
+is in `intro-indexed-resources.md`; the independent audit remains in Git history.
 This supersedes the intro asset-row findings in the **initial** inventory
 above; other historical paths/hashes remain identified as inventory snapshots.
 Current source counts and pack identity belong to each checkpoint manifest.

@@ -1,6 +1,6 @@
 # Period roles v3 composite acceptance
 
-**PASS for the bounded period role continuation and repaired output schema.** The two original C modules, API, probe and native fixtures are unchanged. The separate v2 source review and its original verifier rejection remain in `completion-period-roles-v2-independent-audit.md`.
+**PASS for the bounded period role continuation and repaired output schema.** The two original C modules, API, probe and native fixtures are unchanged. The separate v2 source review and its original verifier rejection remain in Git history.
 
 The scheduler freeze `.analysis/period-roles-freeze-v3.json`, SHA-256 `40f6762fa9310fa4ac83f2f8fc427e689594591952c45ce8e71bd1048f928667`, was independently rehashed: all 1,056 identities match, including all 1,013 v2 identities. The complete verifier diff changes one guard: it now applies each field's mapped byte/word width to every output row, preserving exact integer-type requirements.
 

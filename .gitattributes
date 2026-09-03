@@ -153,10 +153,6 @@ tools/hud_runtime_probe.c -text
 tools/verify_gameplay_hud_lifecycle.py -text
 tools/period_formation_dependencies_v1/nba_assets.h -text
 
-# Keep the three reviewed completion-planning reports byte-identical to handoff.
-docs/completion-gameplay-work-plan-20260831.md -text
-docs/completion-timing-work-plan-20260831.md -text
-docs/completion-plan-audit-20260831.md -text
 # Preserve the independently reviewed normal retail-entry capture identities.
 tools/capture_retail_mode_entry.py -text
 tools/mesen_retail_mode_entry.lua -text
@@ -173,8 +169,6 @@ tools/test_pass_interruption_trace.py -text
 tools/verify_pass_interruption_trace.py -text
 
 # Preserve independently accepted reset/upload/F1 component bytes.
-docs/bootstrap-integration-proposal.md -text
-docs/bootstrap-reset-upload-checkpoint.md -text
 include/nba_bootstrap.h -text
 include/nba_bootstrap_internal.h -text
 src/nba_bootstrap.c -text
@@ -195,11 +189,9 @@ tools/verify_bootstrap_v2.py -text
 tools/bootstrap_trace_protocol_v2.py -text
 tools/test_bootstrap_protocol_v2.py -text
 tools/test_bootstrap_profile_v2.py -text
-docs/bootstrap-verifier-v2.md -text
 tools/verify_bootstrap_v3.py -text
 tools/test_bootstrap_protocol_v3.py -text
 tools/test_bootstrap_profile_v3.py -text
-docs/bootstrap-verifier-v3.md -text
 include/nba_rom.h -text
 include/nba_setup_codec_work.h -text
 include/nba_setup_spc_control.h -text
@@ -215,11 +207,9 @@ src/nba_court_presentation.c -text
 tools/court_culling_probe.c -text
 tools/build_court_culling_probe.py -text
 tools/test_court_culling_source.py -text
-docs/court-culling-correction.md -text
 
 # Preserve accepted receiver child/parent source and capture identities.
 docs/receiver-graphics-queue-dependency.md -text
-docs/receiver-prepare-c2-checkpoint.md -text
 include/nba_receiver_prepare.h -text
 src/nba_receiver_prepare.c -text
 tools/build_receiver_prepare_probe.py -text
@@ -240,10 +230,8 @@ tools/build_draw_direction_caller_probe.py -text
 tools/d1_direction_rom_reference_v2.py -text
 tools/test_d1_direction_audit_v2.py -text
 tools/test_draw_direction_protocol.py -text
-docs/draw-direction-correction.md -text
 
 # Preserve independently reviewed ball render deliverables.
-docs/ball-pass-body-resource-correction.md -text
 tools/ball_pass_render_probe.c -text
 tools/build_ball_pass_render_probe.py -text
 tools/capture_ball_pass_draw.py -text
@@ -275,7 +263,6 @@ tools/test_bootstrap_profile_fill.py -text
 tools/test_bootstrap_fill_dma_protocol.py -text
 tools/bootstrap_fill_contracts.c -text
 tools/build_bootstrap_fill_contracts.ps1 -text
-docs/bootstrap-first-fill-checkpoint.md -text
 include/nba_bootstrap_tables.h -text
 src/nba_bootstrap_tables.c -text
 src/nba_bootstrap_tables_cpu.c -text
@@ -292,7 +279,6 @@ tools/test_bootstrap_tables_dma_protocol.py -text
 tools/test_bootstrap_tables_protocol.py -text
 tools/bootstrap_tables_contracts.c -text
 tools/build_bootstrap_tables_contracts.ps1 -text
-docs/bootstrap-reset-tables-checkpoint.md -text
 tools/verify_bootstrap_fill_v2.py -text
 tools/verify_bootstrap_tables_v2.py -text
 tools/test_bootstrap_tables_boundary_v2.py -text

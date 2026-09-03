@@ -21,18 +21,9 @@ The [out-of-bounds overlay](docs/out-of-bounds-hud.md) uses the original font,
 message and possession-team label. Its headless smoke test captures every
 frame through appearance and removal, with Ghidra/recomp and Mesen evidence.
 
-The [ownership inventory and milestone plan](docs/ownership-plan.md) records the
-2026-08-30 repository/reference audit. Separate
-[transition](docs/transition-ownership-audit.md),
-[gameplay](docs/gameplay-ownership-audit.md), and
-[rules/options and test-method](docs/options-test-ownership-audit.md) inventories
-distinguish production wiring, bounded native evidence, C regressions, and
-missing behavior. Captured instruction coverage is not game completion.
-
-The current [completion plan](docs/completion-plan-20260831.md) assigns the
-remaining work to the implementation and audit agents, lists dependencies and
-release gates, and covers full human play, timing/audio, all original modes and
-persistence. Its milestones are not claims that those features are finished.
+The [documentation index](docs/README.md) links the current subsystem guides,
+reproduction steps, evidence ledgers, and remaining-work reports. Historical
+task reports and dated completion plans remain available in Git history.
 
 The [known original-game bugs and preserved quirks](docs/known-original-game-bugs.md)
 catalog separates demonstrated original defects from unusual behavior and port
@@ -156,9 +147,8 @@ Team logo assets also render directly in F12 as their decoded ROM OBJ pixels.
 Gameplay Lab marks all ten actor slots and exposes actor/ball physics,
 controller ownership, camera, collision, possession, animation, and raw CPU/AI
 state. It supports pause and single-frame stepping; see
-[`docs/gameplay-debugging.md`](docs/gameplay-debugging.md). The staged,
-evidence-gated CPU-versus-CPU implementation is tracked in
-[`docs/cpu-vs-cpu-gameplay-plan.md`](docs/cpu-vs-cpu-gameplay-plan.md).
+[`docs/gameplay-debugging.md`](docs/gameplay-debugging.md). Remaining gameplay
+work is tracked in [`docs/gameplay-pending.md`](docs/gameplay-pending.md).
 
 F10 cycles through off, a compact scene/timing/input/audio overview, and a
 compact scene-detail page. Together they report Setup page/row/transition and

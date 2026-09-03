@@ -14,8 +14,7 @@ the final player-placement area as follows:
 | **bounded `$87:A357-$A479`** |  | **120** | **92** | **28 unobserved; 5 in statically translated player culling** |
 
 The broader `$87:A47A-$A98D` layer-selection census still has 92 unobserved
-rare presentation/effect starts, documented in
-`gameplay-player-appearance-differential.md`. The ordinary lower/upper/head/
+rare presentation/effect starts documented by historical native appearance evidence in Git history. The ordinary lower/upper/head/
 number compositor and live animation resource paths used here already have
 native evidence; those rare branches were not relabeled as jitter work.
 

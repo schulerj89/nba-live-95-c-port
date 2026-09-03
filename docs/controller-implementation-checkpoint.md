@@ -3,8 +3,7 @@
 This is a bounded controller-state implementation checkpoint, pending independent
 review. **Human gameplay remains disabled.** It does not establish an equivalent
 natural C gameplay journey or supersede the incomplete status in
-`controller-ownership-model.md`, `team-context-initializer.md`,
-`team-context-independent-audit.md`, or `gameplay-ownership-audit.md`.
+`controller-ownership-model.md` or `team-context-initializer.md`; the broader historical audits remain in Git history.
 
 The implementation worktree is
 `C:\Users\joshs\Projects\nba-live-95-c-port\.analysis\worktrees\completion-controllers`,

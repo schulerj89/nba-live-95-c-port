@@ -49,5 +49,4 @@ The pack helper also passes payload/metadata preservation checks and 13
 malformed/existing-resource rejection cases.
 
 This verifies asset production, not full HUD lifecycle or native publication
-timing. The [bounded gameplay repair](gameplay-hud-integration.md) is reviewed
-separately. Main's pack and the desktop executable are unchanged.
+timing. The current runtime scope is recorded in [gameplay-hud.md](gameplay-hud.md).

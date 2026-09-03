@@ -63,8 +63,7 @@ select the authentic body frames and cadence from bank `$84`.
 - Live ordinary poses now apply actor `+$A8` (the tall-player lower table) and
   actor `+$6C` (the direction-sensitive `base+$28` upper family). The asset
   extractor packs the complete derived family rather than only literal frame
-  list IDs. Per-layer evidence is in
-  `docs/gameplay-player-appearance-differential.md`.
+  list IDs. The historical per-layer evidence remains in Git history.
 - `$80:AD92-$AEC1` attaches lower body, upper body, and head using the signed
   resource offsets at `$A9:D86E/$A9:D03E`, then queues each raw descriptor via
   `$80:B348`.

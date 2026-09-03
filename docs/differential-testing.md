@@ -2,7 +2,7 @@
 
 Implemented 2026-08-28: **phase 1, a partial-state baseline gate and real
 actor-sweep trace comparison**. It is not yet synchronized whole-game lockstep.
-First implementation trial: `pending-gameplay-differential-plan.md`. The ball
+The first implementation trial is retained in Git history. The ball
 initializer now has a same-entry, full-WRAM bounded comparison and runtime
 binding. Its correction removes one of the default baseline mismatches
 (82->81); the historical phase1 results below are retained as before-evidence.

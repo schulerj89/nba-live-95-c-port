@@ -26,12 +26,12 @@ The intro follow-up runs in root's separate worktree; no agents push alone.
 | Recomp reference | `../NBA-Live-95-Recomp/generated/` currently banks00/80/81/82 only; not a Git repository; bounded generated references under its `.analysis/` and this checkout's `.analysis/` |
 | Ghidra | `ghidra-projects/`, `tools/ghidra/`; correct raster dumps `.analysis/gameplay100-closure-ghidra/gameplay100_bank80_listing.txt` and `gameplay100_bank81_listing.txt`; arrow owner in `.analysis/gameplay85-closure-ghidra/gameplay85_bank87_listing.txt` |
 | Historical frontend evidence | `.analysis/intro_capture`, `title_capture`, `title_verify`, `setup_capture`, `setup_transition`, `setup_main`, `setup_rules`, `setup_options`, `setup_rules_scroll`, `team_select_ghidra`, `team_select_navigation`, `player_setup`, `player_intro_ghidra` |
-| Extraction/production sources | `tools/extract_assets.py`, `tools/snes65816_decompressor.py`, `tools/mesen_*_capture.lua`; production pack is raw ROM-derived tile/palette/OAM/SPC/BRR and decoded resource data; intro violations discovered independently remain tracked in `intro-exact-audit.md` |
+| Extraction/production sources | `tools/extract_assets.py`, `tools/snes65816_decompressor.py`, `tools/mesen_*_capture.lua`; production pack is raw ROM-derived tile/palette/OAM/SPC/BRR and decoded resource data; intro violations discovered independently remain tracked in `intro-indexed-resources.md` |
 | Fresh exact evidence | `.analysis/transition-ownership-20260830/`; canonical native capture directories and C frame sequences named below; screenshots and RGB remain evidence only |
 | Capture runner | `tools/capture_setup_transition_exact.ps1`, `tools/mesen_setup_menus_capture.lua`; strict raw/provenance helper `tools/setup_transition_capture.py` |
 | Native gates | `tools/test_setup_rules_reveal.py`, `test_setup_rules_settled.py`, `test_setup_rules_return.py`, their `tests/fixtures/setup-rules-*-native.json` witnesses |
 | Deterministic regressions | `tools/test_setup_transition.py`; other `test_*` and C probes are not independent ROM evidence merely because they pass |
-| Independent audit | `docs/transition-independent-audit.md`, `.analysis/transition-auditor-20260830/`, `tools/test_setup_transition_integrity.py` |
+| Independent audit | Historical report in Git history; evidence remains under `.analysis/transition-auditor-20260830/` and `tools/test_setup_transition_integrity.py` |
 
 ## Screen and return-path inventory
 
@@ -42,7 +42,7 @@ not a progress percentage. No row implies all branches, configurations or frames
 
 | Directed edge / subsystem | Present evidence and remaining work |
 |---|---|
-| Legal / EA / title cold boot | I/W/T/A; fresh root evidence finds omitted second legal wait and EA motion divergence; prohibited PNG production inputs must be replaced. See intro-exact-audit.md. |
+| Legal / EA / title cold boot | I/W/T/A; fresh root evidence finds omitted second legal wait and EA motion divergence; prohibited PNG production inputs must be replaced. See `intro-indexed-resources.md`. |
 | Title dismissal -> Game Setup | I/W/T/A; native brightness-only initial-frame corrections accepted, complete normal transition parity still M. Existing delayed screenshot alignment is not proof. |
 | Setup -> Rules first configured entry | I/W/R/T/V; exact147-frame configured witness below. Packed trace/caller translation remains A. |
 | Rules -> Setup first return | I/W/R/T/V for unchanged Simulation and changed row2/Custom,171 frames each. Other return phases/values and invisible write ordering remain M. |
@@ -199,8 +199,7 @@ checkpoint; the whole directed Rules transition is **not complete**.
 All other remaining inventory items above remain open unless separately updated
 by their owner: Options transitions, all bar settings and return phases, main
 presets/Custom storage semantics, Team/Player Setup, intro/gameplay handoffs,
-regulation/overtime and other game modes. The independent audit record is
-`docs/transition-independent-audit.md`. Passing instruction or C hash census
+regulation/overtime and other game modes. The independent audit record remains in Git history. Passing instruction or C hash census
 percentages do not reduce these scope exclusions.
 
 

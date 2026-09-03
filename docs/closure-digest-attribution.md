@@ -189,7 +189,7 @@ Its capture-manifest SHA-256 is
 `be2ecf800ef4b6a82c52893fd013500d4ce91731fe821ed2e9c657946ad482eb`.
 The separate native Rules44 witness and its field/image evidence did not
 change. This final replay supersedes final-v3 for checkpoint source identity.
-`docs/rules-return-dispatch-audit.md` independently covers the actual Start
+A historical rules-return audit in Git history independently covers the actual Start
 frame and following171-frame return; the closure's sparse samples alone do
 not cover that repair.
 

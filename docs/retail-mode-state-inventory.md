@@ -136,5 +136,5 @@ References: current `nba_game.c` mode/postgame callers; original
 `.analysis/full-rom-census/listings/bank_80_instructions.tsv` and bank81/82
 listings checked against canonical ROM bytes; regenerated
 `.analysis/setup-config-native-20260830/reference/bank81.c`; existing
-[configuration native contract](setup-config-native-contract.md) and
-[independent completion matrix](completion-plan-audit-20260831.md).
+[configuration native contract](setup-config-native-contract.md) and the
+[current feature matrix](feature-capture-matrix.md).

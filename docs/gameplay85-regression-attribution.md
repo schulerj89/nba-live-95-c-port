@@ -70,7 +70,7 @@ and independently verified native first-court identity. Those source changes
 are the tipoff difference in the 52c2899 controls; pause/substitution paths are
 not exercised by these zero-input sustained-period fixtures.
 `setup-config-native-contract.md` documents original factory Arcade/12-minute
-configuration. `inbound-layout-integration.md` and its independent audits bind
+configuration. Historical inbound-layout reports bind
 the C39C correction to nine native cases/54 output words; the old helper fails
 the five controlled layout1 cases.
 

@@ -1,5 +1,5 @@
 {
-  "comment": "Routines verified against emulator ground truth. Byte ranges are 24-bit SNES bus addresses. evidence points at the capture/replay artifacts; tools/progress.py counts these bytes as verified.",
+  "comment": "Routines verified against emulator ground truth. Byte ranges are 24-bit SNES bus addresses. evidence points at capture/replay artifacts; tools/progress.py counts these bytes as verified. Evidence strings may name historical reports removed from the working tree during documentation cleanup; those paths remain recoverable from Git history.",
   "routines": [
     {
       "range": "80AD92-80AEC1",

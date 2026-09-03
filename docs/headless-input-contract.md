@@ -52,8 +52,7 @@ The independent audit initially rejected a scene-union crash, ignored missing
 arguments, misreported committed-versus-working Main state, silent conflicting
 button scripts and permissive trace columns. These are corrected host defects,
 not original-game quirks. Original native input release/repeat quirks remain
-preserved and commented in `nba_menu_input.c`. Final audit:
-`completion-headless-input-independent-audit.md`; final owner logs/reports are
+preserved and commented in `nba_menu_input.c`. The final independent audit remains in Git history; owner logs/reports are
 under `build/headless-input-v5/` and `build/config-resume-v1/` in the integration
 worktree. Whole-game completion, human play and configured runtime effects are
 not accepted by this checkpoint.

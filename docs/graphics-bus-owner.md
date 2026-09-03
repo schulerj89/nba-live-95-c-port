@@ -40,5 +40,4 @@ palette owners, source-ordered writes, NMI/DMA timing, persistent placement in
 `NbaGame`, B468 wiring or full draw order. The T1 NMI owner must call a future
 stepwise drain at the reached source location; this endpoint adapter cannot be
 used as timing/order evidence. Those production tasks remain required by the
-current full-game plan. Max's initialization-cut analysis is recorded in
-`completion-graphics-queue-consultation-20260831.md`.
+current remaining-work inventory. The initialization-cut consultation remains in Git history.

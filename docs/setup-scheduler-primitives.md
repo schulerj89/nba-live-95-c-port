@@ -1,6 +1,6 @@
 # Bounded Setup queue and epoch primitives
 
-Latest verifier revision: see `docs/setup-scheduler-integrity-audit-fixes.md`.
+The latest verifier revision is recorded in Git history.
 The independent audit rejected freeze-v2's verifier integrity despite its
 passing bounded primitive replay. The new freeze retains source behavior,
 repairs the verifier/probe boundary, and has a fresh native replay plus32
@@ -113,7 +113,7 @@ python tools/test_setup_scheduler.py --native .analysis/native-scheduler-v3 --ro
 
 In each shell, stop after an unsuccessful command; do not allow a later
 success to mask it. Source/artifact hashes and bounded reentry diagnosis
-are in `docs/setup-scheduler-complex-blocker.md`.
+are retained in the historical scheduler report in Git history.
 
 ## Explicit remaining limits
 

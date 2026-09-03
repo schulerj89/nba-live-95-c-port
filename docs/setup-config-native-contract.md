@@ -49,7 +49,7 @@ The independently regenerated references are:
 
 ## Exposed defaults and presets
 
-Rules order is the thirteen-row order in `docs/options-test-ownership-audit.md`.
+Rules use the thirteen-row order listed in this contract.
 The 24 exposed cold-boot values, plus the separately saved Custom profile,
 are independently observed and consistent with `$81:C19A-$C231`:
 

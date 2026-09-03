@@ -81,7 +81,7 @@ Both projections were also compared directly with the stronger native
 `team-context/build/native-hud-default-v2` and `native-hud-alternate-v1` WRAM:
 another128 exact words. This supplemental comparison rechecks snapshot hashes,
 classification and exit0; it does not repeat the older complete754-artifact
-provenance audit recorded in `team-context-independent-audit.md`. None of these
+provenance audit retained in Git history. None of these
 identity projections proves 1,000-frame native motion or camera equivalence.
 
 An additional explicit counterfactual holds corrected teams/appearance/ratings

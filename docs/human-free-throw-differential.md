@@ -118,5 +118,4 @@ contract.
   `docs/differential-testing.md`.
 
 CPU aim, attempt cadence, make/miss resolution, and rebound/inbound behavior
-retain their independent evidence in
-`docs/free-throw-completion-differential.md`.
+retain their independent evidence in Git history.

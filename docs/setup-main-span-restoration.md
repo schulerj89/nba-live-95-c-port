@@ -46,8 +46,7 @@ the destination canvas's own tile map for every write and clear. The new
 `test_setup_main_span.py` checks full RGB and the complete 65,536-byte raw
 canvas with the same deliberate source-map mutation. It is wired into the
 full build test path. Fresh verification and independent re-review are pending.
-Final independent review accepts revised freezev2 for the bounded span scope;
-see `completion-main-span-independent-audit.md`. All18 independent cases pass,
+Final independent review accepts revised freezev2 for the bounded span scope; the audit remains in Git history. All18 independent cases pass,
 including14 distinct actual row/value journeys, RGB poison resistance and raw
 canvas poison resistance. The owner's14 journeys also cover distinct values:
 the retained quarter telemetry for0/1/2/3Right presses is3/0/1/2. Main values

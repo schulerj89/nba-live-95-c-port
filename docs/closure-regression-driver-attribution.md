@@ -18,7 +18,7 @@ and compares two complete runs. No configuration is injected by the checked-in
 test; it starts from the corrected native factory state.
 
 That migration exposed the separate Philadelphia startup self-test defect
-documented in `match-initialization-fixture-repair.md`. Fixing that isolated
+documented in a historical report retained in Git history. Fixing that isolated
 precondition lets the unchanged selected away28/home19 pair reach gameplay.
 No team is substituted in the real closure session.
 

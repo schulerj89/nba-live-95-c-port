@@ -1,6 +1,6 @@
 # Period render tail v2 composite acceptance
 
-**PASS for the bounded owned-data component and repaired verifier.** The original C/header/probe/native inputs are unchanged. This acceptance supplements `completion-period-render-tail-independent-audit.md` (SHA-256 `b144d06298ded876597b46885958ad3589a886a81c9e398170213c5c6c235481`); its original verifier rejection remains valid and retained.
+**PASS for the bounded owned-data component and repaired verifier.** The original C/header/probe/native inputs are unchanged. This acceptance supplements an earlier audit retained in Git history (SHA-256 `b144d06298ded876597b46885958ad3589a886a81c9e398170213c5c6c235481`); its original verifier rejection remains valid.
 
 The final owner freeze `build/period-render-tail-freeze-v2.json`, SHA-256 `b9362eab95705e0b0c4fcab5a8f6ce85b846de9f32a28a1dfc90dcdc79e90e96`, was independently rehashed: all 2,100 identities match, including all 2,082 original identities. Results and the exact new verifier snapshot are in auditor `build/period-render-tail-audit-v2`.
 
