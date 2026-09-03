@@ -346,15 +346,17 @@ static void draw_gameplay_goal_bg(const NbaTipoff *tipoff, NbaRenderer *ren,
         /* Gameplay PPU state proves BG1 map word $0000 / CHR word $1000,
          * with `$0882` and `$0880` copied to the active clip window by
          * `$87:A81D-$A845`. Color zero exposes BG2 beneath the structure. */
-        /* `$80:8440` publishes TM=$17 for scanout. `$85:EF37` changes it to
-         * $16 at scanline 123, so BG1 is selected solely by its hardware
-         * window in the upper raster. The old projected rectangle was not a
-         * native input and clipped valid board/support tiles at camera edges. */
-        for (int sy = 0; sy < 123; ++sy) {
+        /* The raster IRQ follows $087E. A fixed scanline 123 only matched
+         * camera Y=-220 and exposed the wrapped second board on the floor
+         * as the camera moved. Apply both baskets' native TM/WH3 schedule. */
+        for (int sy = 0; sy < NBA_SNES_HEIGHT; ++sy) {
+            uint8_t line_window_right;
+            if (!nba_court_goal_scanline(&tipoff->court_presentation,
+                    tipoff->camera_x, (unsigned)sy, &line_window_right)) continue;
             unsigned py = ((unsigned)sy + vscroll + 1u) & 0xffu;
             for (int sx = 0; sx < NBA_SNES_WIDTH; ++sx) {
                 if (!nba_snes_window_visible(sx, (uint8_t)window_low,
-                                              (uint8_t)window_high, true))
+                                              line_window_right, true))
                     continue;
                 unsigned px = ((unsigned)sx + hscroll) & 0xffu;
                 size_t map_offset = (((py >> 3) * 32u + (px >> 3)) * 2u);

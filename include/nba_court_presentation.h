@@ -27,6 +27,10 @@ typedef void (*NbaCourtTransfer)(void *context, uint16_t source,
 /* 85:8E28-8EDC, after subject resolver/audio/camera calls. */
 void nba_court_presentation_update(NbaCourtPresentation *state,
     int16_t x, int16_t y, uint16_t period, int16_t left_basket, int16_t right_basket);
+/* $80:8410-$84A0 and $85:EEEE-$EF39. BG1's enable and right window
+ * edge change during scanout; the timer follows the current goal scroll. */
+bool nba_court_goal_scanline(const NbaCourtPresentation *state,
+    int16_t camera_x, unsigned scanline, uint8_t *window_right);
 void nba_court_stream_init(NbaCourtStream *state, int16_t x, int16_t y);
 void nba_court_stream_init_home(NbaCourtStream *state, int16_t x, int16_t y,
                                 uint8_t home_team);

@@ -33,8 +33,10 @@ already exact.
 
 The mismatch was not a tile decoder, palette, OAM, or priority-ladder bug.
 The ROM writes `$212C = $17` during the post-scanout upload and then calls
-`$85:EF37`, which writes `$212C = $16` at scanline 123. It therefore enables
-BG1 for the upper raster and disables it for the lower raster. In addition,
+the `$85:EF2E` handler, which writes `$212C = $16` at scanline 123 in that
+camera view. The split follows `$087E`; it is not a fixed row. The
+[basket raster correction](hoop-raster.md) adds moving views at both baskets
+and replaces the mistakenly fixed runtime cutoff. In addition,
 the ordinary end-frame VRAM dump may already contain the next upload. Capturing
 at `$80:8188` preserves the bytes used by the completed scanout. Replaying that
 memory with the scanline TM schedule produces a 57,344/57,344 match.
@@ -52,7 +54,7 @@ memory with the scanline TM schedule produces a 57,344/57,344 match.
 The runtime now consumes pack v31's `NBPPUIN1` entry for all 29 home teams.
 BG2 is sampled as indexed ROM-map/CHR data, color zero remains transparent,
 BG3 and backdrop are submitted, and BG1 uses the native hardware window plus
-the scanline-123 TM split. The `$0822` rim/net resource uses native OBJ priority
+the camera-dependent TM/WH3 raster schedule. The `$0822` rim/net resource uses native OBJ priority
 3 and OAM witness slots 33/34. At camera `(135,-220)`, every non-player pixel
 and every native goal OBJ pixel matches the original scanout. Remaining parity
 work is player/ball OBJ state and additional moving-camera witness frames.

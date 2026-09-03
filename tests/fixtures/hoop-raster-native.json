@@ -1,0 +1,1550 @@
+{
+  "schema": 1,
+  "rom_sha256": "2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870",
+  "state_injection": false,
+  "mesen_sha256": "d2eb03c2590c648bf329f127ebcfefd70130e7690a9e2ccdba8616faea1fe96b",
+  "script_sha256": "c3b5cd01e423ac5cb7705431326f2a8d8d393807a010fd8ab5adcbea524720c9",
+  "capture_manifest_sha256": "1ae5978087a34644a8321eba98d96b0d09ee7b797ac4eced0316e92d870b11b7",
+  "routine_ranges": [
+    "80:8410-84A0",
+    "85:EEEE-EF39"
+  ],
+  "cases": [
+    {
+      "name": "north_001",
+      "frame": 5039,
+      "court": 649,
+      "camera": [
+        357,
+        -92
+      ],
+      "scroll": [
+        135,
+        65169
+      ],
+      "window": [
+        201,
+        255
+      ],
+      "timer": 622,
+      "narrow_source": null,
+      "writes": [
+        [
+          110,
+          8492,
+          22,
+          8777527
+        ]
+      ],
+      "initial_tm": 23,
+      "image_sha256": "08c295c09309c622f3b4fa84a5e108f0fe8820a7a257f22e7f24bbe8a49e8f44"
+    },
+    {
+      "name": "north_002",
+      "frame": 5040,
+      "court": 650,
+      "camera": [
+        102,
+        -209
+      ],
+      "scroll": [
+        137,
+        65167
+      ],
+      "window": [
+        201,
+        255
+      ],
+      "timer": 624,
+      "narrow_source": null,
+      "writes": [
+        [
+          112,
+          8492,
+          22,
+          8777527
+        ]
+      ],
+      "initial_tm": 23,
+      "image_sha256": "08c295c09309c622f3b4fa84a5e108f0fe8820a7a257f22e7f24bbe8a49e8f44"
+    },
+    {
+      "name": "north_003",
+      "frame": 5041,
+      "court": 651,
+      "camera": [
+        102,
+        -209
+      ],
+      "scroll": [
+        137,
+        65167
+      ],
+      "window": [
+        199,
+        255
+      ],
+      "timer": 624,
+      "narrow_source": null,
+      "writes": [
+        [
+          112,
+          8492,
+          22,
+          8777527
+        ]
+      ],
+      "initial_tm": 23,
+      "image_sha256": "7c9130d132c1032afba4197e49363a11c0958590dc4e92862c869b1bed6f2f48"
+    },
+    {
+      "name": "north_004",
+      "frame": 5042,
+      "court": 652,
+      "camera": [
+        106,
+        -210
+      ],
+      "scroll": [
+        141,
+        65166
+      ],
+      "window": [
+        199,
+        255
+      ],
+      "timer": 625,
+      "narrow_source": null,
+      "writes": [
+        [
+          113,
+          8492,
+          22,
+          8777527
+        ]
+      ],
+      "initial_tm": 23,
+      "image_sha256": "7c9130d132c1032afba4197e49363a11c0958590dc4e92862c869b1bed6f2f48"
+    },
+    {
+      "name": "north_005",
+      "frame": 5043,
+      "court": 653,
+      "camera": [
+        106,
+        -210
+      ],
+      "scroll": [
+        141,
+        65166
+      ],
+      "window": [
+        195,
+        255
+      ],
+      "timer": 625,
+      "narrow_source": null,
+      "writes": [
+        [
+          113,
+          8492,
+          22,
+          8777527
+        ]
+      ],
+      "initial_tm": 23,
+      "image_sha256": "967ab69c2e6fc90e2540bc2e56accc69e4e86547d54c3e7e1a2f80ccb95a7715"
+    },
+    {
+      "name": "north_006",
+      "frame": 5044,
+      "court": 654,
+      "camera": [
+        112,
+        -210
+      ],
+      "scroll": [
+        147,
+        65166
+      ],
+      "window": [
+        195,
+        255
+      ],
+      "timer": 625,
+      "narrow_source": null,
+      "writes": [
+        [
+          113,
+          8492,
+          22,
+          8777527
+        ]
+      ],
+      "initial_tm": 23,
+      "image_sha256": "967ab69c2e6fc90e2540bc2e56accc69e4e86547d54c3e7e1a2f80ccb95a7715"
+    },
+    {
+      "name": "north_007",
+      "frame": 5045,
+      "court": 655,
+      "camera": [
+        112,
+        -210
+      ],
+      "scroll": [
+        147,
+        65166
+      ],
+      "window": [
+        189,
+        255
+      ],
+      "timer": 625,
+      "narrow_source": null,
+      "writes": [
+        [
+          113,
+          8492,
+          22,
+          8777527
+        ]
+      ],
+      "initial_tm": 23,
+      "image_sha256": "1a6e64807ab41f6d5b61731275886cdbe75aca37d097d6a4a061c3b5d8e1a035"
+    },
+    {
+      "name": "north_008",
+      "frame": 5046,
+      "court": 656,
+      "camera": [
+        120,
+        -210
+      ],
+      "scroll": [
+        155,
+        65166
+      ],
+      "window": [
+        189,
+        255
+      ],
+      "timer": 625,
+      "narrow_source": null,
+      "writes": [
+        [
+          113,
+          8492,
+          22,
+          8777527
+        ]
+      ],
+      "initial_tm": 23,
+      "image_sha256": "1a6e64807ab41f6d5b61731275886cdbe75aca37d097d6a4a061c3b5d8e1a035"
+    },
+    {
+      "name": "north_009",
+      "frame": 5047,
+      "court": 657,
+      "camera": [
+        120,
+        -210
+      ],
+      "scroll": [
+        155,
+        65166
+      ],
+      "window": [
+        189,
+        255
+      ],
+      "timer": 625,
+      "narrow_source": null,
+      "writes": [
+        [
+          113,
+          8492,
+          22,
+          8777527
+        ]
+      ],
+      "initial_tm": 23,
+      "image_sha256": "34b102bd2729f842f8795421f49851d4cc9ca18012c5fb847dd508fc84a373e5"
+    },
+    {
+      "name": "north_010",
+      "frame": 5048,
+      "court": 658,
+      "camera": [
+        120,
+        -210
+      ],
+      "scroll": [
+        155,
+        65166
+      ],
+      "window": [
+        181,
+        255
+      ],
+      "timer": 625,
+      "narrow_source": null,
+      "writes": [
+        [
+          113,
+          8492,
+          22,
+          8777527
+        ]
+      ],
+      "initial_tm": 23,
+      "image_sha256": "3b4238a24849a121f271e61149b6e3e0ceb7550a8594a3e3a56024709108fb28"
+    },
+    {
+      "name": "north_011",
+      "frame": 5049,
+      "court": 659,
+      "camera": [
+        130,
+        -210
+      ],
+      "scroll": [
+        165,
+        65166
+      ],
+      "window": [
+        181,
+        255
+      ],
+      "timer": 625,
+      "narrow_source": null,
+      "writes": [
+        [
+          113,
+          8492,
+          22,
+          8777527
+        ]
+      ],
+      "initial_tm": 23,
+      "image_sha256": "3b4238a24849a121f271e61149b6e3e0ceb7550a8594a3e3a56024709108fb28"
+    },
+    {
+      "name": "north_012",
+      "frame": 5050,
+      "court": 660,
+      "camera": [
+        130,
+        -210
+      ],
+      "scroll": [
+        165,
+        65166
+      ],
+      "window": [
+        171,
+        255
+      ],
+      "timer": 625,
+      "narrow_source": null,
+      "writes": [
+        [
+          113,
+          8492,
+          22,
+          8777527
+        ]
+      ],
+      "initial_tm": 23,
+      "image_sha256": "896ee89f48102d18f116771957732a3292463654ff61aff846ee1704afd3ba83"
+    },
+    {
+      "name": "north_013",
+      "frame": 5051,
+      "court": 661,
+      "camera": [
+        130,
+        -210
+      ],
+      "scroll": [
+        165,
+        65166
+      ],
+      "window": [
+        171,
+        255
+      ],
+      "timer": 625,
+      "narrow_source": null,
+      "writes": [
+        [
+          113,
+          8492,
+          22,
+          8777527
+        ]
+      ],
+      "initial_tm": 23,
+      "image_sha256": "896ee89f48102d18f116771957732a3292463654ff61aff846ee1704afd3ba83"
+    },
+    {
+      "name": "north_014",
+      "frame": 5052,
+      "court": 662,
+      "camera": [
+        138,
+        -210
+      ],
+      "scroll": [
+        173,
+        65166
+      ],
+      "window": [
+        171,
+        255
+      ],
+      "timer": 625,
+      "narrow_source": null,
+      "writes": [
+        [
+          113,
+          8492,
+          22,
+          8777527
+        ]
+      ],
+      "initial_tm": 23,
+      "image_sha256": "896ee89f48102d18f116771957732a3292463654ff61aff846ee1704afd3ba83"
+    },
+    {
+      "name": "north_015",
+      "frame": 5053,
+      "court": 663,
+      "camera": [
+        138,
+        -210
+      ],
+      "scroll": [
+        173,
+        65166
+      ],
+      "window": [
+        163,
+        255
+      ],
+      "timer": 625,
+      "narrow_source": null,
+      "writes": [
+        [
+          113,
+          8492,
+          22,
+          8777527
+        ]
+      ],
+      "initial_tm": 23,
+      "image_sha256": "5b13463c7eabbca1e0974a5b707f16dbe285679f5090addbf1236ca5c1e99b5f"
+    },
+    {
+      "name": "north_016",
+      "frame": 5054,
+      "court": 664,
+      "camera": [
+        140,
+        -210
+      ],
+      "scroll": [
+        175,
+        65166
+      ],
+      "window": [
+        163,
+        255
+      ],
+      "timer": 625,
+      "narrow_source": null,
+      "writes": [
+        [
+          113,
+          8492,
+          22,
+          8777527
+        ]
+      ],
+      "initial_tm": 23,
+      "image_sha256": "5b13463c7eabbca1e0974a5b707f16dbe285679f5090addbf1236ca5c1e99b5f"
+    },
+    {
+      "name": "north_017",
+      "frame": 5055,
+      "court": 665,
+      "camera": [
+        140,
+        -210
+      ],
+      "scroll": [
+        175,
+        65166
+      ],
+      "window": [
+        163,
+        255
+      ],
+      "timer": 625,
+      "narrow_source": null,
+      "writes": [
+        [
+          113,
+          8492,
+          22,
+          8777527
+        ]
+      ],
+      "initial_tm": 23,
+      "image_sha256": "5b13463c7eabbca1e0974a5b707f16dbe285679f5090addbf1236ca5c1e99b5f"
+    },
+    {
+      "name": "north_018",
+      "frame": 5056,
+      "court": 666,
+      "camera": [
+        140,
+        -210
+      ],
+      "scroll": [
+        175,
+        65166
+      ],
+      "window": [
+        161,
+        255
+      ],
+      "timer": 625,
+      "narrow_source": null,
+      "writes": [
+        [
+          113,
+          8492,
+          22,
+          8777527
+        ]
+      ],
+      "initial_tm": 23,
+      "image_sha256": "b28d842ae1d12821252e28b0e88020558af64eb93a14907f2fa577d7a4e6e8a2"
+    },
+    {
+      "name": "north_019",
+      "frame": 5057,
+      "court": 667,
+      "camera": [
+        142,
+        -210
+      ],
+      "scroll": [
+        177,
+        65166
+      ],
+      "window": [
+        161,
+        255
+      ],
+      "timer": 625,
+      "narrow_source": null,
+      "writes": [
+        [
+          113,
+          8492,
+          22,
+          8777527
+        ]
+      ],
+      "initial_tm": 23,
+      "image_sha256": "b28d842ae1d12821252e28b0e88020558af64eb93a14907f2fa577d7a4e6e8a2"
+    },
+    {
+      "name": "north_020",
+      "frame": 5058,
+      "court": 668,
+      "camera": [
+        142,
+        -210
+      ],
+      "scroll": [
+        177,
+        65166
+      ],
+      "window": [
+        159,
+        255
+      ],
+      "timer": 625,
+      "narrow_source": null,
+      "writes": [
+        [
+          113,
+          8492,
+          22,
+          8777527
+        ]
+      ],
+      "initial_tm": 23,
+      "image_sha256": "906aea0c4fc8c3860fcbba88a9ac1dbd79283ff561520c36aa08b4f1f32c62a2"
+    },
+    {
+      "name": "north_021",
+      "frame": 5059,
+      "court": 669,
+      "camera": [
+        142,
+        -210
+      ],
+      "scroll": [
+        177,
+        65166
+      ],
+      "window": [
+        159,
+        255
+      ],
+      "timer": 625,
+      "narrow_source": null,
+      "writes": [
+        [
+          113,
+          8492,
+          22,
+          8777527
+        ]
+      ],
+      "initial_tm": 23,
+      "image_sha256": "906aea0c4fc8c3860fcbba88a9ac1dbd79283ff561520c36aa08b4f1f32c62a2"
+    },
+    {
+      "name": "north_022",
+      "frame": 5060,
+      "court": 670,
+      "camera": [
+        142,
+        -210
+      ],
+      "scroll": [
+        177,
+        65166
+      ],
+      "window": [
+        159,
+        255
+      ],
+      "timer": 625,
+      "narrow_source": null,
+      "writes": [
+        [
+          113,
+          8492,
+          22,
+          8777527
+        ]
+      ],
+      "initial_tm": 23,
+      "image_sha256": "906aea0c4fc8c3860fcbba88a9ac1dbd79283ff561520c36aa08b4f1f32c62a2"
+    },
+    {
+      "name": "north_023",
+      "frame": 5061,
+      "court": 671,
+      "camera": [
+        142,
+        -210
+      ],
+      "scroll": [
+        177,
+        65166
+      ],
+      "window": [
+        159,
+        255
+      ],
+      "timer": 625,
+      "narrow_source": null,
+      "writes": [
+        [
+          113,
+          8492,
+          22,
+          8777527
+        ]
+      ],
+      "initial_tm": 23,
+      "image_sha256": "4d2aa40b75a4566b93c1f92309224717df53912c4e001d9acee7f0989aed3cbe"
+    },
+    {
+      "name": "north_024",
+      "frame": 5062,
+      "court": 672,
+      "camera": [
+        143,
+        -210
+      ],
+      "scroll": [
+        178,
+        65166
+      ],
+      "window": [
+        159,
+        255
+      ],
+      "timer": 625,
+      "narrow_source": null,
+      "writes": [
+        [
+          113,
+          8492,
+          22,
+          8777527
+        ]
+      ],
+      "initial_tm": 23,
+      "image_sha256": "4d2aa40b75a4566b93c1f92309224717df53912c4e001d9acee7f0989aed3cbe"
+    },
+    {
+      "name": "south_001",
+      "frame": 5311,
+      "court": 921,
+      "camera": [
+        -369,
+        -64
+      ],
+      "scroll": [
+        73,
+        65513
+      ],
+      "window": [
+        0,
+        42
+      ],
+      "timer": 27,
+      "narrow_source": 42,
+      "writes": [
+        [
+          27,
+          8492,
+          23,
+          8777465
+        ],
+        [
+          103,
+          8489,
+          0,
+          8777513
+        ]
+      ],
+      "initial_tm": 22,
+      "image_sha256": "f6f68fdff5f3eb4e4f6f188032a5e143361f3079dd09823dbe37f1e240721d3a"
+    },
+    {
+      "name": "south_002",
+      "frame": 5312,
+      "court": 922,
+      "camera": [
+        -369,
+        -64
+      ],
+      "scroll": [
+        73,
+        65513
+      ],
+      "window": [
+        0,
+        42
+      ],
+      "timer": 27,
+      "narrow_source": 53,
+      "writes": [
+        [
+          27,
+          8492,
+          23,
+          8777465
+        ],
+        [
+          103,
+          8489,
+          0,
+          8777513
+        ]
+      ],
+      "initial_tm": 22,
+      "image_sha256": "f6f68fdff5f3eb4e4f6f188032a5e143361f3079dd09823dbe37f1e240721d3a"
+    },
+    {
+      "name": "south_003",
+      "frame": 5313,
+      "court": 923,
+      "camera": [
+        -369,
+        -64
+      ],
+      "scroll": [
+        73,
+        65513
+      ],
+      "window": [
+        0,
+        53
+      ],
+      "timer": 27,
+      "narrow_source": 53,
+      "writes": [
+        [
+          27,
+          8492,
+          23,
+          8777465
+        ],
+        [
+          103,
+          8489,
+          0,
+          8777513
+        ]
+      ],
+      "initial_tm": 22,
+      "image_sha256": "1439e87c13884ec413da8b665c48781d0e8e842af8fd1353c60d27826c2d1075"
+    },
+    {
+      "name": "south_004",
+      "frame": 5314,
+      "court": 924,
+      "camera": [
+        -382,
+        -62
+      ],
+      "scroll": [
+        60,
+        65515
+      ],
+      "window": [
+        0,
+        53
+      ],
+      "timer": 25,
+      "narrow_source": 66,
+      "writes": [
+        [
+          25,
+          8492,
+          23,
+          8777465
+        ],
+        [
+          101,
+          8489,
+          11,
+          8777513
+        ]
+      ],
+      "initial_tm": 22,
+      "image_sha256": "1439e87c13884ec413da8b665c48781d0e8e842af8fd1353c60d27826c2d1075"
+    },
+    {
+      "name": "south_005",
+      "frame": 5315,
+      "court": 925,
+      "camera": [
+        -382,
+        -62
+      ],
+      "scroll": [
+        60,
+        65515
+      ],
+      "window": [
+        0,
+        66
+      ],
+      "timer": 25,
+      "narrow_source": 66,
+      "writes": [
+        [
+          25,
+          8492,
+          23,
+          8777465
+        ],
+        [
+          101,
+          8489,
+          11,
+          8777513
+        ]
+      ],
+      "initial_tm": 22,
+      "image_sha256": "ee6c88ad203c51a2dc58e6f94a63a556e8fbd4a773dadff87e063e45668157b1"
+    },
+    {
+      "name": "south_006",
+      "frame": 5316,
+      "court": 926,
+      "camera": [
+        -397,
+        -61
+      ],
+      "scroll": [
+        45,
+        65516
+      ],
+      "window": [
+        0,
+        66
+      ],
+      "timer": 24,
+      "narrow_source": 66,
+      "writes": [
+        [
+          24,
+          8492,
+          23,
+          8777465
+        ],
+        [
+          100,
+          8489,
+          11,
+          8777513
+        ]
+      ],
+      "initial_tm": 22,
+      "image_sha256": "ee6c88ad203c51a2dc58e6f94a63a556e8fbd4a773dadff87e063e45668157b1"
+    },
+    {
+      "name": "south_007",
+      "frame": 5317,
+      "court": 927,
+      "camera": [
+        -397,
+        -61
+      ],
+      "scroll": [
+        45,
+        65516
+      ],
+      "window": [
+        0,
+        81
+      ],
+      "timer": 24,
+      "narrow_source": 81,
+      "writes": [
+        [
+          24,
+          8492,
+          23,
+          8777465
+        ],
+        [
+          100,
+          8489,
+          26,
+          8777513
+        ]
+      ],
+      "initial_tm": 22,
+      "image_sha256": "253084c549ed3151c3a1d6726972402468a312fdcf62aaa0ea63387191e59a9d"
+    },
+    {
+      "name": "south_008",
+      "frame": 5318,
+      "court": 928,
+      "camera": [
+        -397,
+        -61
+      ],
+      "scroll": [
+        45,
+        65516
+      ],
+      "window": [
+        0,
+        81
+      ],
+      "timer": 24,
+      "narrow_source": 81,
+      "writes": [
+        [
+          24,
+          8492,
+          23,
+          8777465
+        ],
+        [
+          100,
+          8489,
+          26,
+          8777513
+        ]
+      ],
+      "initial_tm": 22,
+      "image_sha256": "9ce9f79aee36d60ee8161ab826eef3e36e34f78544d09eca9dd28b70cc3b6bd8"
+    },
+    {
+      "name": "south_009",
+      "frame": 5319,
+      "court": 929,
+      "camera": [
+        -400,
+        -60
+      ],
+      "scroll": [
+        42,
+        65517
+      ],
+      "window": [
+        0,
+        81
+      ],
+      "timer": 23,
+      "narrow_source": 84,
+      "writes": [
+        [
+          23,
+          8492,
+          23,
+          8777465
+        ],
+        [
+          99,
+          8489,
+          29,
+          8777513
+        ]
+      ],
+      "initial_tm": 22,
+      "image_sha256": "9ce9f79aee36d60ee8161ab826eef3e36e34f78544d09eca9dd28b70cc3b6bd8"
+    },
+    {
+      "name": "south_010",
+      "frame": 5320,
+      "court": 930,
+      "camera": [
+        -400,
+        -60
+      ],
+      "scroll": [
+        42,
+        65517
+      ],
+      "window": [
+        0,
+        84
+      ],
+      "timer": 23,
+      "narrow_source": 84,
+      "writes": [
+        [
+          23,
+          8492,
+          23,
+          8777465
+        ],
+        [
+          99,
+          8489,
+          29,
+          8777513
+        ]
+      ],
+      "initial_tm": 22,
+      "image_sha256": "ecf18b751793461233d4845520308e177cd1d462cdd47814ab75ac0bc18f1786"
+    },
+    {
+      "name": "south_011",
+      "frame": 5321,
+      "court": 931,
+      "camera": [
+        -404,
+        -59
+      ],
+      "scroll": [
+        38,
+        65518
+      ],
+      "window": [
+        0,
+        84
+      ],
+      "timer": 22,
+      "narrow_source": 84,
+      "writes": [
+        [
+          22,
+          8492,
+          23,
+          8777465
+        ],
+        [
+          98,
+          8489,
+          29,
+          8777513
+        ]
+      ],
+      "initial_tm": 22,
+      "image_sha256": "ecf18b751793461233d4845520308e177cd1d462cdd47814ab75ac0bc18f1786"
+    },
+    {
+      "name": "south_012",
+      "frame": 5322,
+      "court": 932,
+      "camera": [
+        -404,
+        -59
+      ],
+      "scroll": [
+        38,
+        65518
+      ],
+      "window": [
+        0,
+        88
+      ],
+      "timer": 22,
+      "narrow_source": 88,
+      "writes": [
+        [
+          22,
+          8492,
+          23,
+          8777465
+        ],
+        [
+          98,
+          8489,
+          33,
+          8777513
+        ]
+      ],
+      "initial_tm": 22,
+      "image_sha256": "6815933d8b0e3478ca39b2e74238437c01ec20fe37c39a849547f78fcd4bc179"
+    },
+    {
+      "name": "south_013",
+      "frame": 5323,
+      "court": 933,
+      "camera": [
+        -407,
+        -58
+      ],
+      "scroll": [
+        35,
+        65519
+      ],
+      "window": [
+        0,
+        88
+      ],
+      "timer": 21,
+      "narrow_source": 88,
+      "writes": [
+        [
+          21,
+          8492,
+          23,
+          8777465
+        ],
+        [
+          97,
+          8489,
+          33,
+          8777513
+        ]
+      ],
+      "initial_tm": 22,
+      "image_sha256": "6815933d8b0e3478ca39b2e74238437c01ec20fe37c39a849547f78fcd4bc179"
+    },
+    {
+      "name": "south_014",
+      "frame": 5324,
+      "court": 934,
+      "camera": [
+        -407,
+        -58
+      ],
+      "scroll": [
+        35,
+        65519
+      ],
+      "window": [
+        0,
+        91
+      ],
+      "timer": 21,
+      "narrow_source": 91,
+      "writes": [
+        [
+          21,
+          8492,
+          23,
+          8777465
+        ],
+        [
+          97,
+          8489,
+          36,
+          8777513
+        ]
+      ],
+      "initial_tm": 22,
+      "image_sha256": "a25a33fd993fc4702c70d18ccde48f1631e2b04c318de71adbd641b1c20d0dca"
+    },
+    {
+      "name": "south_015",
+      "frame": 5325,
+      "court": 935,
+      "camera": [
+        -407,
+        -58
+      ],
+      "scroll": [
+        35,
+        65519
+      ],
+      "window": [
+        0,
+        91
+      ],
+      "timer": 21,
+      "narrow_source": 91,
+      "writes": [
+        [
+          21,
+          8492,
+          23,
+          8777465
+        ],
+        [
+          97,
+          8489,
+          36,
+          8777513
+        ]
+      ],
+      "initial_tm": 22,
+      "image_sha256": "a25a33fd993fc4702c70d18ccde48f1631e2b04c318de71adbd641b1c20d0dca"
+    },
+    {
+      "name": "south_016",
+      "frame": 5326,
+      "court": 936,
+      "camera": [
+        -410,
+        -57
+      ],
+      "scroll": [
+        32,
+        65520
+      ],
+      "window": [
+        0,
+        91
+      ],
+      "timer": 20,
+      "narrow_source": 94,
+      "writes": [
+        [
+          20,
+          8492,
+          23,
+          8777465
+        ],
+        [
+          96,
+          8489,
+          39,
+          8777513
+        ]
+      ],
+      "initial_tm": 22,
+      "image_sha256": "a25a33fd993fc4702c70d18ccde48f1631e2b04c318de71adbd641b1c20d0dca"
+    },
+    {
+      "name": "south_017",
+      "frame": 5327,
+      "court": 937,
+      "camera": [
+        -410,
+        -57
+      ],
+      "scroll": [
+        32,
+        65520
+      ],
+      "window": [
+        0,
+        94
+      ],
+      "timer": 20,
+      "narrow_source": 94,
+      "writes": [
+        [
+          20,
+          8492,
+          23,
+          8777465
+        ],
+        [
+          96,
+          8489,
+          39,
+          8777513
+        ]
+      ],
+      "initial_tm": 22,
+      "image_sha256": "a8bd0c12a66115865929946575d73be5cd3db5a0af49a74dba9df23018abdb85"
+    },
+    {
+      "name": "south_018",
+      "frame": 5328,
+      "court": 938,
+      "camera": [
+        -414,
+        -56
+      ],
+      "scroll": [
+        28,
+        65521
+      ],
+      "window": [
+        0,
+        94
+      ],
+      "timer": 19,
+      "narrow_source": 98,
+      "writes": [
+        [
+          19,
+          8492,
+          23,
+          8777465
+        ],
+        [
+          95,
+          8489,
+          43,
+          8777513
+        ]
+      ],
+      "initial_tm": 22,
+      "image_sha256": "a8bd0c12a66115865929946575d73be5cd3db5a0af49a74dba9df23018abdb85"
+    },
+    {
+      "name": "south_019",
+      "frame": 5329,
+      "court": 939,
+      "camera": [
+        -414,
+        -56
+      ],
+      "scroll": [
+        28,
+        65521
+      ],
+      "window": [
+        0,
+        98
+      ],
+      "timer": 19,
+      "narrow_source": 98,
+      "writes": [
+        [
+          19,
+          8492,
+          23,
+          8777465
+        ],
+        [
+          95,
+          8489,
+          43,
+          8777513
+        ]
+      ],
+      "initial_tm": 22,
+      "image_sha256": "23d796ff31745ee10e568c289e137aead1e22636578fcbb23be34cd9d7f2b6f0"
+    },
+    {
+      "name": "south_020",
+      "frame": 5330,
+      "court": 940,
+      "camera": [
+        -417,
+        -56
+      ],
+      "scroll": [
+        25,
+        65521
+      ],
+      "window": [
+        0,
+        98
+      ],
+      "timer": 19,
+      "narrow_source": 98,
+      "writes": [
+        [
+          19,
+          8492,
+          23,
+          8777465
+        ],
+        [
+          95,
+          8489,
+          43,
+          8777513
+        ]
+      ],
+      "initial_tm": 22,
+      "image_sha256": "23d796ff31745ee10e568c289e137aead1e22636578fcbb23be34cd9d7f2b6f0"
+    },
+    {
+      "name": "south_021",
+      "frame": 5331,
+      "court": 941,
+      "camera": [
+        -417,
+        -56
+      ],
+      "scroll": [
+        25,
+        65521
+      ],
+      "window": [
+        0,
+        101
+      ],
+      "timer": 19,
+      "narrow_source": 101,
+      "writes": [
+        [
+          19,
+          8492,
+          23,
+          8777465
+        ],
+        [
+          95,
+          8489,
+          46,
+          8777513
+        ]
+      ],
+      "initial_tm": 22,
+      "image_sha256": "736f040d6191a0e9b86fbfc61cb5406bdba8f6f2031ae488ee099ce74ee09263"
+    },
+    {
+      "name": "south_022",
+      "frame": 5332,
+      "court": 942,
+      "camera": [
+        -421,
+        -55
+      ],
+      "scroll": [
+        21,
+        65522
+      ],
+      "window": [
+        0,
+        101
+      ],
+      "timer": 18,
+      "narrow_source": 101,
+      "writes": [
+        [
+          18,
+          8492,
+          23,
+          8777465
+        ],
+        [
+          94,
+          8489,
+          46,
+          8777513
+        ]
+      ],
+      "initial_tm": 22,
+      "image_sha256": "736f040d6191a0e9b86fbfc61cb5406bdba8f6f2031ae488ee099ce74ee09263"
+    },
+    {
+      "name": "south_023",
+      "frame": 5333,
+      "court": 943,
+      "camera": [
+        -421,
+        -55
+      ],
+      "scroll": [
+        21,
+        65522
+      ],
+      "window": [
+        0,
+        105
+      ],
+      "timer": 18,
+      "narrow_source": 105,
+      "writes": [
+        [
+          18,
+          8492,
+          23,
+          8777465
+        ],
+        [
+          94,
+          8489,
+          50,
+          8777513
+        ]
+      ],
+      "initial_tm": 22,
+      "image_sha256": "62863818a59eb897e5d4a101f46f975e895775ae03feaf5f869b83233e6d112b"
+    },
+    {
+      "name": "south_024",
+      "frame": 5334,
+      "court": 944,
+      "camera": [
+        -421,
+        -55
+      ],
+      "scroll": [
+        21,
+        65522
+      ],
+      "window": [
+        0,
+        105
+      ],
+      "timer": 18,
+      "narrow_source": 105,
+      "writes": [
+        [
+          18,
+          8492,
+          23,
+          8777465
+        ],
+        [
+          94,
+          8489,
+          50,
+          8777513
+        ]
+      ],
+      "initial_tm": 22,
+      "image_sha256": "62863818a59eb897e5d4a101f46f975e895775ae03feaf5f869b83233e6d112b"
+    }
+  ]
+}

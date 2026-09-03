@@ -29,6 +29,11 @@ producer; it is not counted as completed reverse-engineering coverage.
 
 The goal is split across BG1 and OBJ, not part of the static BG2 panorama:
 
+The [2026-09-02 basket raster correction](hoop-raster.md) fixes a later
+runtime regression in that composition: the historical row-123 TM witness
+had been applied as a constant. BG1 now follows the ROM's camera-dependent
+enable/disable and window-narrowing interrupts at both baskets.
+
 - The 12-entry on-court render list contains ten players plus the ball record
   at `$3EEB` and the visible basket record at `$3FEB`.
 - `$87:A73B-$A7D2` reads the current effect resource from `$4015`, projects the

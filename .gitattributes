@@ -326,3 +326,10 @@ tools/capture_dribble.py -text
 tools/mesen_dribble_capture.lua -text
 tools/regenerate_dribble_reference.py -text
 tools/ghidra/DumpDribble.java -text
+
+# Preserve reviewed native basket inputs and the executed reference scripts.
+tests/fixtures/hoop-raster-native.json -text
+tools/mesen_hoop_capture.lua -text
+tools/capture_hoop.py -text
+tools/regenerate_hoop_reference.py -text
+tools/ghidra/DumpHoop.java -text

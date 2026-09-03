@@ -31,6 +31,33 @@ void nba_court_presentation_update(NbaCourtPresentation *s, int16_t x,
     }
 }
 
+bool nba_court_goal_scanline(const NbaCourtPresentation *s,
+    int16_t camera_x, unsigned scanline, uint8_t *window_right) {
+    if (!s || !window_right) return false;
+    *window_right = (uint8_t)s->window_left_0880;
+    if (camera_x >= 0) {
+        /* $80:8442-$845D: the nine-bit VTIMER discards the upper bits
+         * of $00FF-$087E. $85:EF2E disables BG1 when that line arrives.
+         * A timer below $0200 disables it before scanout instead. */
+        uint16_t timer = (uint16_t)(0x00ffu - s->window_y_087e);
+        if ((int16_t)(uint16_t)(timer - 0x0200u) < 0) return false;
+        return scanline < (timer & 0x01ffu);
+    }
+    /* $80:8477-$849E and $85:EEEE: the other basket starts hidden,
+     * enables at $0004-$087E, then narrows its window 76 lines later.
+     * If its top is already above scanout, start with BG1 enabled. */
+    uint16_t first = (uint16_t)(4u - s->window_y_087e);
+    if ((int16_t)first >= 0 && scanline < (first & 0x01ffu)) return false;
+    unsigned narrow = (uint16_t)(first + 0x004cu) & 0x01ffu;
+    if (scanline >= narrow) {
+        /* $85:EF14 reads the window's source word, subtracts 55,
+         * clamps negative results and writes the low byte to WH3. */
+        int16_t edge = (int16_t)(uint16_t)(s->window_left_0880 - 0x0037u);
+        *window_right = edge < 0 ? 0u : (uint8_t)edge;
+    }
+    return true;
+}
+
 void nba_court_stream_init(NbaCourtStream *s,int16_t x,int16_t y) {
     memset(s,0,sizeof(*s));
     s->coarse_x=(uint16_t)((x+582)>>3);

@@ -57,15 +57,16 @@ def tile_pixel(vram, offset, bits, x, y):
     return value
 
 
-def window_visible(state, layer, x):
+def window_visible(state, layer, x, y=None):
     if not boolean(state, f"ppu.windowMaskMain[{layer}]"):
         return True
     selected = []
     for window in range(2):
         if not boolean(state, f"ppu.window[{window}].activeLayers[{layer}]"):
             continue
-        inside = (integer(state, f"ppu.window[{window}].left") <= x <=
-                  integer(state, f"ppu.window[{window}].right"))
+        right = int(state.get(f"audit.window[{window}].right[{y}]",
+                              state[f"ppu.window[{window}].right"]))
+        inside = (integer(state, f"ppu.window[{window}].left") <= x <= right)
         if boolean(state, f"ppu.window[{window}].invertedLayers[{layer}]"):
             inside = not inside
         selected.append(inside)
@@ -166,7 +167,7 @@ def render_snapshot(vram, cgram, oam, state):
         for x in range(WIDTH):
             best = (0, "BACKDROP", 0, 0, 0, 127, backdrop)
             for layer in range(3):
-                if not main & (1 << layer) or not window_visible(state, layer, x):
+                if not main & (1 << layer) or not window_visible(state, layer, x, y):
                     continue
                 candidate = background_pixel(
                     vram, cgram, state, layer, x, y, brightness)
