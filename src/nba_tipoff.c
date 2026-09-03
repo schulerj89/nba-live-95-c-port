@@ -541,9 +541,11 @@ static int cpu_select_rom_receiver(const NbaTipoff *tipoff,
     }
     int16_t special = tipoff->special_actor_raw == NBA_GAMEPLAY_UNKNOWN_WORD ?
                       -1 : (int16_t)tipoff->special_actor_raw;
+    bool attack_right =
+        tipoff->team_context[tipoff->offense_side].anchor_x_raw_0a >= 0;
     return nba_gameplay_select_pass_receiver(
         passer_slot, special, tipoff->play_selector_raw, actors,
-        NBA_GAMEPLAY_ACTOR_COUNT, tipoff->offense_side != 0u);
+        NBA_GAMEPLAY_ACTOR_COUNT, attack_right);
 }
 
 static uint16_t actor_distance(int dx, int dy) {
@@ -1358,7 +1360,7 @@ static bool cpu_active_decision_due(NbaTipoff *tipoff, unsigned slot) {
      * `$87:8EFE/$8F11` keeps DP $9E at $46EB for slots 0..4 and $476B for
      * slots 5..9; full words `$FEB0/$0150` are -336/+336. This is
      * deliberately not a ball-position or matchup comparison. */
-    int16_t side_anchor = slot < 5u ? -336 : 336;
+    int16_t side_anchor = tipoff->team_context[slot / 5u].anchor_x_raw_0a;
     bool same_half = nba_gameplay_same_x_half(actor_x, side_anchor);
     if (mode == 1u || mode == 3u || mode == 5u || mode == 11u)
         return nba_gameplay_decision_timer_step(

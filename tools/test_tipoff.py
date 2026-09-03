@@ -58,7 +58,7 @@ EXPECTED_FRAMES = {
     # ten complete players, ball, center court and an unobstructed HUD.
     220: ("TIP PH:LIVE", {
         "fallback": "13f98e7653405cbfbbe30ac5a09f02efcc62b1d5a148426084538a86a4c96869",
-        "literal": "13f98e7653405cbfbbe30ac5a09f02efcc62b1d5a148426084538a86a4c96869",
+        "literal": "4360c6ecca03535c67721581c5303c51d5dc514d58f630803f994233ce1dc00b",
     }),
 }
 EXPECTED_PLAYER_DRAW_HASH = \

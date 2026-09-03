@@ -485,12 +485,28 @@ bool nba_gameplay_defensive_pose(
 static bool receiver_is_in_forward_window(
     const NbaGameplayReceiverState *passer,
     const NbaGameplayReceiverState *receiver, bool attack_right) {
-    /* `$85:B5B0-$B5D9`: normalize X by team direction and reject only a
-     * receiver 201 or more units ahead. Signed values behind the passer are
-     * deliberately retained, matching CMP #$00C9/BPL. */
-    int16_t delta = attack_right ? (int16_t)(receiver->x - passer->x) :
-                                   (int16_t)(passer->x - receiver->x);
-    return delta < 0x00C9;
+    /* `$85:B5AF-$B5E5`: evaluate whether receiver is valid along court X.
+     * delta = passer->x - receiver->x.
+     * When attacking right (attacking basket anchor >= 0):
+     *   - Reject if receiver trails by 201+ units ($85:B5D6: CMP #$00C9/BPL).
+     *   - Accept if receiver is in attacking frontcourt ($85:B5DD: LDA receiver->x/BPL).
+     *   - In defensive backcourt (receiver->x < 0), reject if receiver trails passer
+     *     ($85:B5E1: LDA delta/BPL); backcourt passes must be forward toward halfcourt.
+     * When attacking left (attacking basket anchor < 0):
+     *   - Reject if receiver trails by 201+ units ($85:B5C1: CMP #$FF38/BMI).
+     *   - Accept if receiver is in attacking frontcourt ($85:B5C8: LDA receiver->x/BMI).
+     *   - In defensive backcourt (receiver->x >= 0), reject if receiver trails passer
+     *     ($85:B5CD: LDA delta/BMI); backcourt passes must be forward toward halfcourt. */
+    int16_t delta = (int16_t)(passer->x - receiver->x);
+    if (!attack_right) {
+        if (delta < -200) return false;
+        if (receiver->x < 0) return true;
+        return delta >= 0;
+    } else {
+        if (delta >= 201) return false;
+        if (receiver->x >= 0) return true;
+        return delta < 0;
+    }
 }
 
 /* `$85:B50E-$B60A`: `$09A2` has priority. A negative `$09AA` or one naming
@@ -1544,12 +1560,45 @@ bool nba_gameplay_ai_self_test(void) {
     selectors[2] = -1;
     receivers[9].control_mode = 1u;
     receivers[7].control_mode = 1u;
+    /* $85:B5AF-$B5E5: rightward attack accepts ahead downcourt (x=500), rejects
+     * trailing by 201+ (x=-50), rejects backcourt backward pass (x=-40 behind
+     * passer x=-20), and accepts backcourt forward pass (x=-20 ahead of x=-40). */
     receivers[5].x = 500;
     if (nba_gameplay_select_pass_receiver(
+            8u, 5, selectors, receivers, 10u, true) != 5) return false;
+    receivers[5].x = -50;
+    if (nba_gameplay_select_pass_receiver(
             8u, 5, selectors, receivers, 10u, true) != 9) return false;
-    receivers[5].x = 190;
+    receivers[8].x = -20;
+    receivers[5].x = -40;
+    if (nba_gameplay_select_pass_receiver(
+            8u, 5, selectors, receivers, 10u, true) != 9) return false;
+    receivers[8].x = -40;
+    receivers[5].x = -20;
     if (nba_gameplay_select_pass_receiver(
             8u, 5, selectors, receivers, 10u, true) != 5) return false;
+    /* Mirror tests for leftward attack: accepts downcourt (x=-500), rejects
+     * trailing by 201+ (x=50), rejects backcourt backward pass (x=40 behind
+     * passer x=20), and accepts backcourt forward pass (x=20 ahead of x=40). */
+    receivers[8].x = -160;
+    receivers[9].x = -180;
+    receivers[5].x = -500;
+    if (nba_gameplay_select_pass_receiver(
+            8u, 5, selectors, receivers, 10u, false) != 5) return false;
+    receivers[5].x = 50;
+    if (nba_gameplay_select_pass_receiver(
+            8u, 5, selectors, receivers, 10u, false) != 9) return false;
+    receivers[8].x = 20;
+    receivers[9].x = 10;
+    receivers[5].x = 40;
+    if (nba_gameplay_select_pass_receiver(
+            8u, 5, selectors, receivers, 10u, false) != 9) return false;
+    receivers[8].x = 40;
+    receivers[5].x = 20;
+    if (nba_gameplay_select_pass_receiver(
+            8u, 5, selectors, receivers, 10u, false) != 5) return false;
+    receivers[8].x = 160;
+    receivers[9].x = 180;
     uint8_t steering = 0u;
     uint16_t predicted = 0u;
     if (!nba_gameplay_predictive_arrival(
