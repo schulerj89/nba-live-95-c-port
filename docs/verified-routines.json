@@ -258,6 +258,14 @@
       "date": "2026-08-25"
     },
     {
+      "range": "85B3C9-85B401",
+      "name": "nba_gameplay_direct_arrival + nba_gameplay_velocity_step",
+      "source": "src/nba_gameplay_ai.c",
+      "method": "function-vectors",
+      "evidence": ".analysis/func-vectors-direct-arrival-step-20260904 (500 live calls, 0 mismatches, 0 orphan exits; 97 arrived and 403 continuing returns; carry, preserved steering $B6 and actor +$0E/+$10/+$72 compared; directions 0-8 observed)",
+      "date": "2026-09-04"
+    },
+    {
       "range": "85B402-85B4B8",
       "name": "nba_gameplay_predictive_arrival + nba_gameplay_velocity_step",
       "source": "src/nba_gameplay_ai.c",

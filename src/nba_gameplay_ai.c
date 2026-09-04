@@ -578,6 +578,26 @@ bool nba_gameplay_predictive_arrival(int16_t actor_x, int16_t actor_y,
     return arrived;
 }
 
+/* `$85:B3C9-$B401`: compute target direction and distance directly without
+ * velocity prediction bias, comparing against the inclusive caller tolerance.
+ * Arrived state selects direction 8 (stop/damp) and returns true (carry set);
+ * continuing state selects the fine target direction and returns false (carry clear). */
+bool nba_gameplay_direct_arrival(int16_t actor_x, int16_t actor_y,
+                                 int16_t target_x, int16_t target_y,
+                                 uint16_t tolerance,
+                                 uint8_t *steering_direction,
+                                 uint16_t *distance) {
+    int16_t dx = wrap16((int32_t)target_x - actor_x);
+    int16_t dy = wrap16((int32_t)target_y - actor_y);
+    uint16_t direct_distance = 0u;
+    uint8_t direction = nba_gameplay_target_direction(
+        dx, dy, &direct_distance);
+    bool arrived = direct_distance <= tolerance;
+    if (steering_direction) *steering_direction = arrived ? 8u : direction;
+    if (distance) *distance = direct_distance;
+    return arrived;
+}
+
 /* `$85:A82C-$AB16`: profile-scaled integer acceleration, damping and cap
  * rejection. Inputs and outputs remain signed 8.8 actor velocity words. */
 void nba_gameplay_velocity_step(int16_t *velocity_x, int16_t *velocity_y,
@@ -668,13 +688,14 @@ void nba_gameplay_inbound_motion_step(NbaGameplayInboundMotion *motion) {
         motion->velocity_x, motion->velocity_y,
         &steering_x, &steering_y);
     uint16_t distance = 0u;
-    motion->direction = nba_gameplay_target_direction(
-        wrap16((int32_t)steering_x - motion->actor_x),
-        wrap16((int32_t)steering_y - motion->actor_y), &distance);
-    /* F4DD supplies B6=8 to B3C9. Residuals inside that inclusive distance
-     * become direction 8, causing A82C's native damping path rather than a
-     * new directional acceleration. */
-    if (distance <= 8u) motion->direction = 8u;
+    uint8_t direction = 8u;
+    /* `$86:F4DD` supplies DP $B6=8 to `$85:B3C9`. Residuals inside that
+     * inclusive distance direct steering to 8 (stop/damp). */
+    (void)nba_gameplay_direct_arrival(
+        motion->actor_x, motion->actor_y,
+        steering_x, steering_y, 8u,
+        &direction, &distance);
+    motion->direction = direction;
     nba_gameplay_velocity_step(
         &motion->velocity_x, &motion->velocity_y, &motion->boost_timer,
         motion->direction, motion->profile_42, motion->dispatch_dt,
@@ -1616,6 +1637,18 @@ bool nba_gameplay_ai_self_test(void) {
     if (nba_gameplay_predictive_arrival(
             0, 0, -9, 0, 16, 0, 16u, &steering, &predicted) ||
         predicted != 17u) return false;
+    uint8_t direct_steering = 0u;
+    uint16_t direct_dist = 0u;
+    if (!nba_gameplay_direct_arrival(
+            139, 24, 142, 20, 8u,
+            &direct_steering, &direct_dist) ||
+        direct_steering != 8u || direct_dist != 4u)
+        return false;
+    if (nba_gameplay_direct_arrival(
+            -16, -83, 16, 102, 8u,
+            &direct_steering, &direct_dist) ||
+        direct_steering != 0u || direct_dist != 193u)
+        return false;
     uint16_t boost = 0u; x = 0; y = 0;
     nba_gameplay_velocity_step(&x, &y, &boost, 2u, 0x58u, 2u, false, 8);
     if (x != 97 || y != 0) return false;

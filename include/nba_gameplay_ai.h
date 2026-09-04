@@ -297,6 +297,11 @@ bool nba_gameplay_predictive_arrival(int16_t actor_x, int16_t actor_y,
                                      uint16_t tolerance,
                                      uint8_t *steering_direction,
                                      uint16_t *distance);
+bool nba_gameplay_direct_arrival(int16_t actor_x, int16_t actor_y,
+                                 int16_t target_x, int16_t target_y,
+                                 uint16_t tolerance,
+                                 uint8_t *steering_direction,
+                                 uint16_t *distance);
 bool nba_gameplay_mode11_shot_rectangle(int16_t rom_x, int16_t y, int16_t z);
 bool nba_gameplay_mode11_shot_decision(
     const NbaGameplayMode11ShotInput *input, NbaGameplayRng *rng);
