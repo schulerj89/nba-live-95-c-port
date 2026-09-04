@@ -30,12 +30,13 @@ Recent source-verified visual and gameplay fixes include:
   loose-ball pursuit;
 - native control-mode-one and control-mode-three loose-ball pursuit from the
   role-pass flag, independently of the possession record.
+- the native control-mode-two owner/receiver gate for locomotion-base repair.
 
 These paths are protected by test_tipoff_court_smoke.py,
 test_dribble_smoke.py, test_hoop_smoke.py, test_oob_smoke.py, and
 test_cpu_reaction_smoke.py, plus their native-vector verifiers, including the
-six-case defense-context, eight-case mode-five, and two-case mode-one and
-mode-three role-flag actor-parent replays.
+six-case defense-context, eight-case mode-five, two-case mode-one and
+mode-three role-flag, and three-case mode-two actor-parent replays.
 
 ## Major remaining gaps
 

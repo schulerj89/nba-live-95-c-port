@@ -1820,8 +1820,13 @@ static void cpu_dispatch_normal_actor_behavior(NbaTipoff *tipoff,
         return;
     }
     int x = fp_round(actor->x_fp), y = fp_round(actor->y_fp);
-    /* $86:E3CB-E3DD: modes 1-6 repair special locomotion bases. */
+    /* `$86:F6CD-$F6D7`: mode two calls the `$86:E3CB` locomotion-base
+     * repair only while neither the pass receiver nor owner is named. */
+    bool repair_locomotion_base = actor->control_mode != 2u ||
+        (tipoff->pass_receiver_raw < 0 && tipoff->possession_actor < 0);
+    /* $86:E3CB-E3DD: selected normal modes repair special locomotion bases. */
     if (!mode_five && actor->control_mode >= 1u && actor->control_mode <= 6u &&
+        repair_locomotion_base &&
         (actor->animation_state == 8u || actor->animation_state == 10u))
         actor->base_animation_state_raw_38 = 3u;
 

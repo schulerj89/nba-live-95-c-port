@@ -1612,11 +1612,31 @@
       "date": "2026-08-29"
     },
     {
+      "range": "86F6CD-86F6DA",
+      "name": "mode-two owner/receiver locomotion-base gate",
+      "source": "src/nba_tipoff.c",
+      "method": "controlled native wrapper-selected parent differential + fresh headless Ghidra and snesrecomp",
+      "evidence": "Three genuine mode-two calls selected by $87:9244 and observed at its $87:9C21 wrapper replay with zero represented-output mismatches. With both $0946 and $093E negative, native calls $86:E3CB and repairs animation base 10 to 3. Naming only the owner skips the call and preserves base 8; naming only the receiver independently skips it and preserves base 10. All three use the isolated $40->$20 timer-hold path through $86:F793. Controls change documented input WRAM immediately before the wrapper's native JSL; PC, stack, flags, ROM, RNG, and child results remain native. The permanent normal-actor replay now covers 79 calls overall with zero mismatches.",
+      "provenance": {
+        "rom_sha256": "2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870",
+        "raw_vectors": ".analysis/cpu-mode-two-prefix-20260904/mesen-final5/cpu_mode_two_prefix.vectors.jsonl",
+        "raw_vectors_sha256": "9e7ba2bacf2fb804eb612f9a0c06c90ac5775c975992a67a5a58660c6e9ac6cc",
+        "case_matrix_sha256": "4551c8e40706c28dc0619ad1e3ddd0921937ebd5869e2f69db1f97d8caf262bf",
+        "path_trace_sha256": "75ff2f30b903fe3485c5f83ae08f395b6eca34e7b13aa9a234a23cda92e524a3",
+        "ghidra": ".analysis/cpu-mode-two-prefix-20260904/reference/cpu_mode_two_bank86.txt",
+        "ghidra_sha256": "c87e1aef7e130aa1c0b24df906beb7417633bd9f9b06da34f32aaba692ffb915",
+        "recomp": ".analysis/cpu-mode-two-prefix-20260904/reference/cpu_mode_two_bank86.c",
+        "recomp_function": "CpuModeTwo_M0X0",
+        "recomp_sha256": "9cff2874ac054c33d164a12e410c0ff8cdf1300f4fa4ae70ac4047d1d4b30a3d"
+      },
+      "date": "2026-09-04"
+    },
+    {
       "range": "86F1B0-86F23E",
       "name": "normal mode-one CPU actor continuation",
       "source": "src/nba_tipoff.c + src/nba_gameplay_ai.c",
       "method": "natural and controlled native parent-boundary differential + fresh headless Ghidra and snesrecomp",
-      "evidence": "The original 293 uninterrupted natural $86:F1B0 calls and two controlled real-dispatch calls replay with zero parent-owned mismatches. At the genuine $87:9244 boundary, center actors make the controls behaviorally decisive: flag clear with owner $FFFF follows $86:F210/$86:E635/$85:AD6B formation fallback to $86:F23E, while flag set with named owner 8 enters $86:F225 pursuit and returns at $86:F235. This proves mode one consumes the role pass's $09D8 result rather than inferring ownerlessness from $093E. PC, stack, flags, ROM, RNG, and child results remain native. The combined permanent normal-actor replay covers 34 mode-one calls and 76 calls overall with zero represented-output mismatches. Nested bank-$85 formation and $86:E5AB direction writes remain normalized only at their independently tested child boundaries; $86:F236's parent-owned hold copy stays compared.",
+      "evidence": "The original 293 uninterrupted natural $86:F1B0 calls and two controlled real-dispatch calls replay with zero parent-owned mismatches. At the genuine $87:9244 boundary, center actors make the controls behaviorally decisive: flag clear with owner $FFFF follows $86:F210/$86:E635/$85:AD6B formation fallback to $86:F23E, while flag set with named owner 8 enters $86:F225 pursuit and returns at $86:F235. This proves mode one consumes the role pass's $09D8 result rather than inferring ownerlessness from $093E. PC, stack, flags, ROM, RNG, and child results remain native. The combined permanent normal-actor replay covers 34 mode-one calls and 79 calls overall with zero represented-output mismatches. Nested bank-$85 formation and $86:E5AB direction writes remain normalized only at their independently tested child boundaries; $86:F236's parent-owned hold copy stays compared.",
       "provenance": {
         "rom_sha256": "2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870",
         "raw_vectors": ".analysis/cpu-mode-one-role-20260904/mesen/cpu_mode_one_role.vectors.jsonl",
@@ -1644,7 +1664,7 @@
       "name": "normal mode-three CPU actor continuation",
       "source": "src/nba_tipoff.c + src/nba_gameplay_ai.c",
       "method": "natural and controlled native parent-boundary differential + fresh headless Ghidra and snesrecomp",
-      "evidence": "The original 286 uninterrupted natural $86:F23F calls and two controlled real-dispatch calls replay with zero parent-owned mismatches. At the genuine $87:9244 boundary, the controls independently oppose $09D8 and the possession record: flag clear with owner $FFFF follows $86:F29F formation fallback to $86:F2C9, while flag set with named owner 2 enters $86:F2B0 pursuit and returns at $86:F2C0. This proves mode three consumes the role pass's $09D8 result rather than inferring ownerlessness from $093E. PC, stack, flags, ROM, RNG, and child results remain native. The combined permanent normal-actor replay covers 34 mode-three calls and 76 calls overall with zero represented-output mismatches. Child-owned due-decision +$4E/+$50 writes remain normalized at their independently tested boundaries; the parent's own $86:F2C1 hold copy remains exact.",
+      "evidence": "The original 286 uninterrupted natural $86:F23F calls and two controlled real-dispatch calls replay with zero parent-owned mismatches. At the genuine $87:9244 boundary, the controls independently oppose $09D8 and the possession record: flag clear with owner $FFFF follows $86:F29F formation fallback to $86:F2C9, while flag set with named owner 2 enters $86:F2B0 pursuit and returns at $86:F2C0. This proves mode three consumes the role pass's $09D8 result rather than inferring ownerlessness from $093E. PC, stack, flags, ROM, RNG, and child results remain native. The combined permanent normal-actor replay covers 34 mode-three calls and 79 calls overall with zero represented-output mismatches. Child-owned due-decision +$4E/+$50 writes remain normalized at their independently tested boundaries; the parent's own $86:F2C1 hold copy remains exact.",
       "provenance": {
         "rom_sha256": "2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870",
         "raw_vectors": ".analysis/cpu-mode-three-role-20260904/mesen/cpu_mode_three_role.vectors.jsonl",
