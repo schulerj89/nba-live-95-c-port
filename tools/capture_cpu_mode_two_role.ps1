@@ -18,7 +18,7 @@ $variables=@{
     NBA95_CAPTURE_DIR=$capture; NBA95_TOOL_DIR=$PSScriptRoot;
     NBA95_VEC_ENTRY='86F6CD'; NBA95_VEC_EXITS='86F793';
     NBA95_VEC_READS='0000-4AFF'; NBA95_VEC_WRITES='0000-4AFF';
-    NBA95_VEC_LABEL='cpu_mode_two_role'; NBA95_VEC_MAX='3';
+    NBA95_VEC_LABEL='cpu_mode_two_role'; NBA95_VEC_MAX='4';
     NBA95_VEC_DRIVE='1'; NBA95_CPU_VS_CPU='1'; NBA95_VEC_FRAMES='12000';
     NBA95_VEC_DELAY='0'; NBA95_VEC_SHARED_EXITS='0'; NBA95_VEC_PREGAME='1';
     NBA95_VEC_FORCE_PLAY_REQUEST='0'; NBA95_VEC_FORCE_SUB_REQUEST='0'
@@ -42,7 +42,7 @@ if($process.ExitCode-ne 0-or!(Test-Path -LiteralPath $sentinel)){
     throw "Native CPU mode-two parent capture failed: exit=$($process.ExitCode)"
 }
 $complete=(Get-Content -Raw -LiteralPath $sentinel).Trim()
-if($complete-ne 'label=cpu_mode_two_role vectors=3 orphan_exits=0 shared_exit_callbacks=0'){
+if($complete-ne 'label=cpu_mode_two_role vectors=4 orphan_exits=0 shared_exit_callbacks=0'){
     throw "Incomplete CPU mode-two parent capture: $complete"
 }
 $complete

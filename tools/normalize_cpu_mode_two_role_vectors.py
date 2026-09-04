@@ -1,4 +1,4 @@
-"""Retain controlled native `$86:F721-$F739` mode-two witnesses."""
+"""Retain controlled native `$86:F721-$F78A` mode-two witnesses."""
 
 import argparse
 import hashlib
@@ -10,7 +10,8 @@ from verify_normal_actor_parent_vectors import memory, projection, word
 
 ROM_SHA256 = "2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870"
 CASE_NAMES = ("role_clear_ownerless_record", "role_set_named_owner",
-              "role_clear_uses_base_assignment")
+              "role_clear_uses_base_assignment",
+              "boosted_cpu_calls_jump_reach")
 
 
 def load_jsonl(path):
@@ -36,7 +37,7 @@ def main():
     cases = load_jsonl(args.cases)
     paths = load_jsonl(args.paths)
     if not (len(vectors) == len(cases) == len(paths) == len(CASE_NAMES)):
-        raise ValueError("expected exactly three aligned mode-two witnesses")
+        raise ValueError("expected exactly four aligned mode-two witnesses")
 
     retained = []
     for number, (vector, case, path, name) in enumerate(
@@ -52,7 +53,7 @@ def main():
         executed = path["executed"]
         if not executed or executed[0] != "86f6cd" or executed[-1] != "86f793":
             raise ValueError(f"case {number} has an incomplete PC path")
-        if number in (1, 3) and ("86f72e" not in executed or
+        if number in (1, 3, 4) and ("86f72e" not in executed or
                             any(pc in executed for pc in
                                 ("86f726", "86f72a", "86f72c"))):
             raise ValueError("role-clear case did not use the defense branch")
@@ -60,6 +61,12 @@ def main():
                                    ("86f72e", "86f730", "86f733",
                                     "86f737", "86f739")):
             raise ValueError("base-assignment case missed the selector path")
+        if number == 4 and (not all(pc in executed for pc in
+                                    ("86f780", "86f782", "86f785", "86f787")) or
+                            path.get("ec32_calls") != 1):
+            raise ValueError("boosted CPU case did not call jump/reach")
+        if number != 4 and path.get("ec32_calls") != 0:
+            raise ValueError(f"case {number} unexpectedly called jump/reach")
         if number == 2 and (not all(pc in executed for pc in
                                     ("86f721", "86f724", "86f726",
                                      "86f72a", "86f72c", "86f780")) or
@@ -81,7 +88,8 @@ def main():
             raise ValueError(f"case {number} role flag changed before entry")
         if word(before, 0x093E) != case["owner"]:
             raise ValueError(f"case {number} owner record changed before entry")
-        if word(before, 0x0936) != 0x81 or word(before, 0x0946) != 0 or \
+        if word(before, 0x0936) != 0x81 or \
+                word(before, 0x0946) != case["receiver"] or \
                 word(before, 0x0978) != 1 or \
                 word(before, 0x492F) != slot:
             raise ValueError(f"case {number} did not isolate the loose-ball child")
@@ -126,7 +134,7 @@ def main():
                 word(before, 0x46EB + 0x32) != 1 or \
                 word(before, 0x476B + 0x0A) != 0x0150:
             raise ValueError(f"case {number} team context was not normalized")
-        if number in (1, 3) and (word(after, actor + 0x56) != 148 or
+        if number in (1, 3, 4) and (word(after, actor + 0x56) != 148 or
                             word(after, actor + 0x58) != 0):
             raise ValueError("role-clear case did not refresh its target")
         if number == 2 and (word(after, actor + 0x56) !=
@@ -134,6 +142,20 @@ def main():
                             word(after, actor + 0x58) !=
                             word(before, actor + 0x58)):
             raise ValueError("accepted loose-ball gate changed the native target")
+        if word(before, actor + 0x16) != case["controller"] or \
+                word(before, actor + 0x72) != case["boost"]:
+            raise ValueError(f"case {number} controller/boost inputs changed")
+        if number == 4:
+            if word(before, 0x0910) != 0x3EEB or \
+                    word(before, 0x0948) != 0 or \
+                    word(before, 0x3EF7) != 100 or \
+                    word(before, 0x3EFD) != 0xFF9C or \
+                    word(before, actor + 0x8E) != 10:
+                raise ValueError("boosted CPU jump inputs changed")
+            if word(after, actor + 0x72) != 14 or \
+                    word(after, actor + 0x30) != 0x32 or \
+                    word(after, actor + 0x32) != 0x32:
+                raise ValueError("boosted CPU jump result changed")
 
         retained.append({
             "name": name,
@@ -150,6 +172,11 @@ def main():
                 "assignment_current": word(before, actor + 0x76),
                 "role_ownerless": word(before, 0x09D8),
                 "owner": word(before, 0x093E),
+                "receiver": word(before, 0x0946),
+                "controller": word(before, actor + 0x16),
+                "boost": [word(before, actor + 0x72),
+                          word(after, actor + 0x72)],
+                "ec32_calls": path.get("ec32_calls"),
                 "target_x": [word(before, actor + 0x56),
                              word(after, actor + 0x56)],
                 "target_y": [word(before, actor + 0x58),
@@ -160,6 +187,12 @@ def main():
                                word(after, actor + 0x0E)],
                 "velocity_y": [word(before, actor + 0x10),
                                word(after, actor + 0x10)],
+                "velocity_z": [word(before, actor + 0x12),
+                               word(after, actor + 0x12)],
+                "upper_state": [word(before, actor + 0x30),
+                                word(after, actor + 0x30)],
+                "lower_state": [word(before, actor + 0x32),
+                                word(after, actor + 0x32)],
             },
         })
 
@@ -177,7 +210,7 @@ def main():
     }
     args.output.write_text(
         json.dumps(document, separators=(",", ":")) + "\n", encoding="utf-8")
-    print("[CPU MODE TWO PARENT NORMALIZE] calls=3 entry=86f6cd exit=86f793")
+    print("[CPU MODE TWO PARENT NORMALIZE] calls=4 entry=86f6cd exit=86f793")
 
 
 if __name__ == "__main__":

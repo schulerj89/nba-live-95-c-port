@@ -1,4 +1,4 @@
--- Controlled witnesses for mode two's $86:F721-$F739 continuation.
+-- Controlled witnesses for mode two's $86:F721-$F78A continuation.
 -- Each case changes documented input WRAM at mode two's genuine $87:9C21
 -- wrapper, after $87:9244 has selected it and immediately before its native
 -- JSL to $86:F6CD. PC, stack, CPU flags, ROM, RNG, and child results remain
@@ -13,6 +13,8 @@ local cases = {
      named_owner=true},
     {name="role_clear_uses_base_assignment", role_ownerless=0,
      named_owner=false, diverge_assignment=true},
+    {name="boosted_cpu_calls_jump_reach", role_ownerless=0,
+     named_owner=false, jump_reach=true},
 }
 local index, pending_case = 0, nil
 
@@ -50,6 +52,8 @@ hook(0x879c21, function()
         change_byte(address + 1, value >> 8)
     end
     local owner = case.named_owner and ((slot + 1) % 10) or 0xffff
+    local receiver = case.jump_reach and 0xffff or 0x0000
+    local controller = case.jump_reach and 0xffff or 0x0000
     local assignment = word(actor + 0x74)
     local paired_slot = assignment >> 1
     local paired = 0x34eb + paired_slot * 0x100
@@ -67,7 +71,7 @@ hook(0x879c21, function()
     -- the opposite thing in each case.
     change_word(actor + 0x60, 0x0020)
     change_word(actor + 0x7a, 0x0000)
-    change_word(actor + 0x16, 0x0000)
+    change_word(actor + 0x16, controller)
     change_word(actor + 0x4e, 0x0001)
     change_word(actor + 0x50, 0x0006)
     change_word(actor + 0x76, current_assignment)
@@ -111,25 +115,56 @@ hook(0x879c21, function()
         change_word(current_paired + 0x8c, 0x01b4)
         change_word(current_paired + 0x92, 0x0000)
     end
+    if case.jump_reach then
+        -- Keep +$72 nonzero after E7DC's A82C movement step. EC32 does not
+        -- read this boost timer: F780 gates only on signed controller +$16.
+        -- The controlled ball arc reaches EC32's verified long-jump path and
+        -- installs state $32, making a skipped call visible at the parent exit.
+        change_word(actor + 0x0a, 0x0000)
+        change_word(actor + 0x0c, 0x0000)
+        change_word(actor + 0x0e, 0x007b)
+        change_word(actor + 0x10, 0x01c8)
+        change_word(actor + 0x12, 0x0315)
+        change_word(actor + 0x30, 0x0000)
+        change_word(actor + 0x32, 0x0000)
+        change_word(actor + 0x72, 0x0010)
+        change_word(actor + 0x8e, 0x000a)
+        change_word(0x0046, 0x0000)
+        change_word(0x07f6, 0x0001)
+        change_word(0x0910, 0x3eeb)
+        change_word(0x0948, 0x0000)
+        change_word(0x0962, 0x0000)
+        change_word(0x3eed, 0x0000)
+        change_word(0x3eef, 0x0000)
+        change_word(0x3ef1, 0x0000)
+        change_word(0x3ef3, 0x0000)
+        change_word(0x3ef5, 0x0000)
+        change_word(0x3ef7, 0x0064)
+        change_word(0x3efd, 0xff9c)
+    end
     change_word(0x46eb + 0x0a, 0xfeb0)
     change_word(0x46eb + 0x30, 0x0004)
     change_word(0x46eb + 0x32, 0x0001)
     change_word(0x476b + 0x0a, 0x0150)
     change_word(0x0936, 0x0081)
     change_word(0x093e, owner)
-    change_word(0x0946, 0x0000)
+    change_word(0x0946, receiver)
     change_word(0x0978, 0x0001)
     change_word(0x09d8, case.role_ownerless)
     change_word(0x492f, slot)
-    pending_case = {saved=saved, path={}, slot=slot, actor=actor, case=case}
+    pending_case = {saved=saved, path={}, slot=slot, actor=actor, case=case,
+                    ec32_calls=0}
     labels:write(string.format(
         '{"case":%d,"name":"%s","slot":%d,"actor":%d,' ..
         '"role_ownerless":%d,"owner":%d,"foul_actor":%d,' ..
         '"assignment_base":%d,"assignment_current":%d,' ..
+        '"receiver":%d,"controller":%d,"boost":%d,' ..
         '"paired_slot":%d,"paired":%d,"current_slot":%d,' ..
         '"current_paired":%d}\n',
         index, case.name, slot, actor, case.role_ownerless, owner, slot,
-        assignment, current_assignment, paired_slot, paired, current_slot,
+        assignment, current_assignment, receiver, controller,
+        case.jump_reach and 0x0010 or word(actor + 0x72),
+        paired_slot, paired, current_slot,
         current_paired))
     labels:flush()
 end)
@@ -143,12 +178,16 @@ emu.addMemoryCallback(function(address)
             parts[#parts + 1] = string.format('"%06x"', reached)
         end
         traces:write(string.format(
-            '{"case":%d,"executed":[%s]}\n', index,
-            table.concat(parts, ",")))
+            '{"case":%d,"ec32_calls":%d,"executed":[%s]}\n', index,
+            pending_case.ec32_calls, table.concat(parts, ",")))
         traces:flush()
     end
 end, emu.callbackType.exec, 0x86f6cd, 0x86f793,
     emu.cpuType.snes, emu.memType.snesMemory)
+
+hook(0x86ec32, function()
+    if pending_case then pending_case.ec32_calls = pending_case.ec32_calls + 1 end
+end)
 
 dofile(assert(os.getenv("NBA95_TOOL_DIR")) .. "/mesen_func_vectors.lua")
 

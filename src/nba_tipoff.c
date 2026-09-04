@@ -1932,10 +1932,12 @@ static void cpu_dispatch_normal_actor_behavior(NbaTipoff *tipoff,
      * those derived fields. Doing it here made the visible facing and
      * movement magnitude lead the ROM by one scheduled actor pass. */
     actor->action_state = tipoff->cpu_play_state;
-    /* F780/F886: the normal defensive decision continuation. */
+    /* Mode two's `$86:F780-$F78A` calls EC32 directly for a negative
+     * controller record. Modes four/six retain `$86:F886-$F895`'s +$72 gate. */
     if(decision_due && actor->controller_assignment_raw<0 &&
-       (actor->control_mode==2 || actor->control_mode==4 || actor->control_mode==6) &&
-       !actor->movement_boost_timer)
+       (actor->control_mode==2 ||
+        ((actor->control_mode==4 || actor->control_mode==6) &&
+         !actor->movement_boost_timer)))
         (void)nba_tipoff_jump_reach(tipoff,slot);
 }
 

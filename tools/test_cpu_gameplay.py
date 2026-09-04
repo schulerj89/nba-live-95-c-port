@@ -161,11 +161,14 @@ EXPECTED_RGB = {
     # Re-reviewed again on 2026-09-04 after `$86:F72E-$F739` made mode two
     # consume base assignment +$74. The resulting defensive trajectories
     # changed every anchor; the same scene elements remain intact.
+    # Re-reviewed on 2026-09-04 after `$86:F780-$F78A` allowed CPU jump/reach
+    # while movement boost +$72 remains active. Frames 600/1300 are unchanged;
+    # the later three retain a coherent court, players, ball, baskets, and HUD.
     600: "08be948229cebcb1ffdfd792f4158f446826fae09826cafc2a018752e8284a50",
     1300: "f4cbfec8ba81240978cc06a400e8580762616a97606f65e21717e2f497677148",
-    3480: "972ec96f28e11d0a43402baa8492df84e1a78470e9b1e75d797eeac70f18dd03",
-    6932: "2de59cc263c2d85e68b3a0eff3a64f642245cd21ebd9ee60aa562e5e94478a55",
-    6954: "d25d34267af12550c23c352a8191955a391af19788741f6a715910ad54de7c18",
+    3480: "8483b99f4d34844a4e0b6f7ebc6d1d0b43933fe99b3aad798bff92807660dc97",
+    6932: "12b2e4b4b8400d9173bab79154458ec532da0297c46abc3494e4a3cd23341aa8",
+    6954: "236fed10cee8120d91b114f21acdb001b53f6539a4a295beb890b54726926239",
 }
 
 
