@@ -363,6 +363,7 @@ if ($Test) {
     & python (Join-Path $Root 'tools\verify_normal_actor_parent_vectors.py') `
         --vectors (Join-Path $Root 'tests\fixtures\normal-actor-parent-witnesses.json') `
             (Join-Path $Root 'tests\fixtures\cpu-mode-five-witnesses.json') `
+            (Join-Path $Root 'tests\fixtures\cpu-mode-three-role-witnesses.json') `
         --probe (Join-Path $BuildDir 'normal_actor_parent_vector_probe.exe') --pack $AssetPack
     if ($LASTEXITCODE -ne 0) { throw 'Normal CPU actor-parent ROM replay failed.' }
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name requested_direction_vector_probe

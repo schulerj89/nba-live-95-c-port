@@ -1631,9 +1631,21 @@
       "range": "86F23F-86F2C9",
       "name": "normal mode-three CPU actor continuation",
       "source": "src/nba_tipoff.c + src/nba_gameplay_ai.c",
-      "method": "natural native parent-boundary differential + production endurance binding",
-      "evidence": "286 uninterrupted natural $86:F23F calls replay with zero parent-owned mismatches. Permanent witnesses cover both F2C0 and F2C9 returns, timer hold/due cadence, loose-pursuit acceptance/rejection, formation fallback and velocity outputs. Child-owned due-decision +$4E/+$50 writes are normalized at their independently tested boundaries; the parent's own F2C1 hold copy remains exact.",
-      "date": "2026-08-29"
+      "method": "natural and controlled native parent-boundary differential + fresh headless Ghidra and snesrecomp",
+      "evidence": "The original 286 uninterrupted natural $86:F23F calls and two controlled real-dispatch calls replay with zero parent-owned mismatches. At the genuine $87:9244 boundary, the controls independently oppose $09D8 and the possession record: flag clear with owner $FFFF follows $86:F29F formation fallback to $86:F2C9, while flag set with named owner 2 enters $86:F2B0 pursuit and returns at $86:F2C0. This proves mode three consumes the role pass's $09D8 result rather than inferring ownerlessness from $093E. PC, stack, flags, ROM, RNG, and child results remain native. The combined permanent normal-actor replay covers 34 mode-three calls and 74 calls overall with zero represented-output mismatches. Child-owned due-decision +$4E/+$50 writes remain normalized at their independently tested boundaries; the parent's own $86:F2C1 hold copy remains exact.",
+      "provenance": {
+        "rom_sha256": "2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870",
+        "raw_vectors": ".analysis/cpu-mode-three-role-20260904/mesen/cpu_mode_three_role.vectors.jsonl",
+        "raw_vectors_sha256": "4ca15214bf20afee73d86b5e862fcfd32750ac227702f673b559f3ecdd4a65d7",
+        "case_matrix_sha256": "a1043aacad4be8bfddc3b84fccdb71876c58d12be3fb93680c773a5dc7f4e8ad",
+        "path_trace_sha256": "72424bcf616d11521026c7b9da040c8723db6e89dedc3511affaceecb6a51b75",
+        "ghidra": ".analysis/cpu-mode-three-role-20260904/reference/cpu_mode_three_role_bank86.txt",
+        "ghidra_sha256": "35f30e2cf21d8a14aa31708a3130e84837851c25763b71a4acb40e722a23f6fa",
+        "recomp": ".analysis/cpu-mode-three-role-20260904/reference/cpu_mode_three_role_bank86.c",
+        "recomp_function": "CpuModeThreeRole_M0X0",
+        "recomp_sha256": "ea34b6a29ef15f82f8e75494fe37e6d05491c3b83d26faa0e6983aed236e3384"
+      },
+      "date": "2026-09-04"
     },
     {
       "range": "86F2CA-86F34E",
