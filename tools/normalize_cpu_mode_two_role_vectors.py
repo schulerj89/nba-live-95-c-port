@@ -1,4 +1,4 @@
-"""Retain controlled native `$86:F721-$F72D` role-flag witnesses."""
+"""Retain controlled native `$86:F721-$F739` mode-two witnesses."""
 
 import argparse
 import hashlib
@@ -9,7 +9,8 @@ from verify_normal_actor_parent_vectors import memory, projection, word
 
 
 ROM_SHA256 = "2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870"
-CASE_NAMES = ("role_clear_ownerless_record", "role_set_named_owner")
+CASE_NAMES = ("role_clear_ownerless_record", "role_set_named_owner",
+              "role_clear_uses_base_assignment")
 
 
 def load_jsonl(path):
@@ -35,7 +36,7 @@ def main():
     cases = load_jsonl(args.cases)
     paths = load_jsonl(args.paths)
     if not (len(vectors) == len(cases) == len(paths) == len(CASE_NAMES)):
-        raise ValueError("expected exactly two aligned mode-two witnesses")
+        raise ValueError("expected exactly three aligned mode-two witnesses")
 
     retained = []
     for number, (vector, case, path, name) in enumerate(
@@ -51,10 +52,14 @@ def main():
         executed = path["executed"]
         if not executed or executed[0] != "86f6cd" or executed[-1] != "86f793":
             raise ValueError(f"case {number} has an incomplete PC path")
-        if number == 1 and ("86f72e" not in executed or
+        if number in (1, 3) and ("86f72e" not in executed or
                             any(pc in executed for pc in
                                 ("86f726", "86f72a", "86f72c"))):
             raise ValueError("role-clear case did not use the defense branch")
+        if number == 3 and not all(pc in executed for pc in
+                                   ("86f72e", "86f730", "86f733",
+                                    "86f737", "86f739")):
+            raise ValueError("base-assignment case missed the selector path")
         if number == 2 and (not all(pc in executed for pc in
                                     ("86f721", "86f724", "86f726",
                                      "86f72a", "86f72c", "86f780")) or
@@ -80,13 +85,21 @@ def main():
                 word(before, 0x0978) != 1 or \
                 word(before, 0x492F) != slot:
             raise ValueError(f"case {number} did not isolate the loose-ball child")
-        if word(before, actor + 0x74) != case["assignment"] or \
-                word(before, actor + 0x76) != case["assignment"]:
-            raise ValueError(f"case {number} assignment inputs diverged")
-        paired_slot = case["assignment"] >> 1
+        if word(before, actor + 0x74) != case["assignment_base"] or \
+                word(before, actor + 0x76) != case["assignment_current"]:
+            raise ValueError(f"case {number} assignment inputs changed")
+        if (number == 3) != (case["assignment_base"] !=
+                             case["assignment_current"]):
+            raise ValueError(f"case {number} has the wrong assignment relation")
+        paired_slot = case["assignment_base"] >> 1
         paired = 0x34EB + paired_slot * 0x100
         if paired_slot != case["paired_slot"] or paired != case["paired"]:
             raise ValueError(f"case {number} paired actor identity changed")
+        current_slot = case["assignment_current"] >> 1
+        current_paired = 0x34EB + current_slot * 0x100
+        if current_slot != case["current_slot"] or \
+                current_paired != case["current_paired"]:
+            raise ValueError(f"case {number} current actor identity changed")
         if any(word(before, actor + offset) != 0 for offset in
                (0x02, 0x04, 0x06, 0x08)) or \
                 word(before, paired + 0x02) != 0 or \
@@ -104,12 +117,16 @@ def main():
                 word(before, paired + 0x8C) != 236 or \
                 word(before, paired + 0x92) != 0:
             raise ValueError(f"case {number} pair cache was not normalized")
+        if number == 3 and (current_slot == paired_slot or
+                            word(before, current_paired + 0x04) != 0xFF9C or
+                            word(before, current_paired + 0x08) != 0):
+            raise ValueError("base-assignment case did not oppose its targets")
         if word(before, 0x46EB + 0x0A) != 0xFEB0 or \
                 word(before, 0x46EB + 0x30) != 4 or \
                 word(before, 0x46EB + 0x32) != 1 or \
                 word(before, 0x476B + 0x0A) != 0x0150:
             raise ValueError(f"case {number} team context was not normalized")
-        if number == 1 and (word(after, actor + 0x56) != 148 or
+        if number in (1, 3) and (word(after, actor + 0x56) != 148 or
                             word(after, actor + 0x58) != 0):
             raise ValueError("role-clear case did not refresh its target")
         if number == 2 and (word(after, actor + 0x56) !=
@@ -128,6 +145,9 @@ def main():
             "observed": {
                 "slot": slot,
                 "paired_slot": paired_slot,
+                "current_slot": current_slot,
+                "assignment_base": word(before, actor + 0x74),
+                "assignment_current": word(before, actor + 0x76),
                 "role_ownerless": word(before, 0x09D8),
                 "owner": word(before, 0x093E),
                 "target_x": [word(before, actor + 0x56),
@@ -157,7 +177,7 @@ def main():
     }
     args.output.write_text(
         json.dumps(document, separators=(",", ":")) + "\n", encoding="utf-8")
-    print("[CPU MODE TWO ROLE NORMALIZE] calls=2 entry=86f6cd exit=86f793")
+    print("[CPU MODE TWO PARENT NORMALIZE] calls=3 entry=86f6cd exit=86f793")
 
 
 if __name__ == "__main__":

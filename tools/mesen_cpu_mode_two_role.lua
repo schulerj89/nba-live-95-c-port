@@ -1,4 +1,4 @@
--- Controlled `$09D8` witnesses for mode two's $86:F721-$F72D branch.
+-- Controlled witnesses for mode two's $86:F721-$F739 continuation.
 -- Each case changes documented input WRAM at mode two's genuine $87:9C21
 -- wrapper, after $87:9244 has selected it and immediately before its native
 -- JSL to $86:F6CD. PC, stack, CPU flags, ROM, RNG, and child results remain
@@ -11,6 +11,8 @@ local cases = {
      named_owner=false},
     {name="role_set_named_owner", role_ownerless=1,
      named_owner=true},
+    {name="role_clear_uses_base_assignment", role_ownerless=0,
+     named_owner=false, diverge_assignment=true},
 }
 local index, pending_case = 0, nil
 
@@ -53,6 +55,12 @@ hook(0x879c21, function()
     local paired = 0x34eb + paired_slot * 0x100
     assert(paired_slot >= 5 and paired_slot < 10,
         "mode-two witness did not select an opposing actor")
+    local current_slot = paired_slot
+    if case.diverge_assignment then
+        current_slot = 5 + ((paired_slot - 5 + 1) % 5)
+    end
+    local current_assignment = current_slot * 2
+    local current_paired = 0x34eb + current_slot * 0x100
     -- A nonzero free-throw state makes the already verified $86:F0FD child
     -- accept exactly the actor named at $7E492F. This isolates whether the
     -- parent calls that child from $09D8; the owner record deliberately says
@@ -62,7 +70,7 @@ hook(0x879c21, function()
     change_word(actor + 0x16, 0x0000)
     change_word(actor + 0x4e, 0x0001)
     change_word(actor + 0x50, 0x0006)
-    change_word(actor + 0x76, assignment)
+    change_word(actor + 0x76, current_assignment)
     -- Keep the later, independently verified $86:E7DC target child neutral.
     -- The C bridge refreshes the pair cache at this boundary, while native
     -- code consumes the cache produced by $85:BC52/$85:AFC2.  These positions
@@ -86,6 +94,23 @@ hook(0x879c21, function()
     change_word(paired + 0x8a, 0x0064)
     change_word(paired + 0x8c, 0x00ec)
     change_word(paired + 0x92, 0x0000)
+    if case.diverge_assignment then
+        -- Base +$74 names the player at (+100,0), while mutable +$76 names a
+        -- different valid opponent at (-100,0). The two choices reach
+        -- different target families, so the native result identifies which
+        -- assignment word F72E actually consumes.
+        change_word(current_paired + 0x02, 0x0000)
+        change_word(current_paired + 0x04, 0xff9c)
+        change_word(current_paired + 0x06, 0x0000)
+        change_word(current_paired + 0x08, 0x0000)
+        change_word(current_paired + 0x0e, 0x0000)
+        change_word(current_paired + 0x10, 0x0000)
+        change_word(current_paired + 0x86, 0x0002)
+        change_word(current_paired + 0x88, 0x0002)
+        change_word(current_paired + 0x8a, 0x0064)
+        change_word(current_paired + 0x8c, 0x01b4)
+        change_word(current_paired + 0x92, 0x0000)
+    end
     change_word(0x46eb + 0x0a, 0xfeb0)
     change_word(0x46eb + 0x30, 0x0004)
     change_word(0x46eb + 0x32, 0x0001)
@@ -100,9 +125,12 @@ hook(0x879c21, function()
     labels:write(string.format(
         '{"case":%d,"name":"%s","slot":%d,"actor":%d,' ..
         '"role_ownerless":%d,"owner":%d,"foul_actor":%d,' ..
-        '"assignment":%d,"paired_slot":%d,"paired":%d}\n',
+        '"assignment_base":%d,"assignment_current":%d,' ..
+        '"paired_slot":%d,"paired":%d,"current_slot":%d,' ..
+        '"current_paired":%d}\n',
         index, case.name, slot, actor, case.role_ownerless, owner, slot,
-        assignment, paired_slot, paired))
+        assignment, current_assignment, paired_slot, paired, current_slot,
+        current_paired))
     labels:flush()
 end)
 

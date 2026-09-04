@@ -158,11 +158,14 @@ EXPECTED_RGB = {
     # Re-reviewed 2026-09-04 after the native signed-word mode-two timer gate
     # changed the deterministic CPU trajectory. All five frames retain a
     # coherent court, players, ball, baskets, crowd, and HUD.
-    600: "7629d8229b360f5a3d5b39429b70f7caf9765e5a410ae8deda644d03bd3e12ea",
-    1300: "44fb58dbc153ce00a4196e9c05084950b7904f9a81db01061d5d6e114bc05e93",
-    3480: "fe0f42eb8b4540555c8587659692ccb79bf63fe075a07db2d10dc6a11b95e1f2",
-    6932: "7ceef6baf235b3ce1bb3ce79274cc9c682b24a0b54c6592739400ad286ccc300",
-    6954: "cd16b67108999e2a8bb8a2aaf66180c67bd8c55ff944ff40569cd55a81c9934f",
+    # Re-reviewed again on 2026-09-04 after `$86:F72E-$F739` made mode two
+    # consume base assignment +$74. The resulting defensive trajectories
+    # changed every anchor; the same scene elements remain intact.
+    600: "08be948229cebcb1ffdfd792f4158f446826fae09826cafc2a018752e8284a50",
+    1300: "f4cbfec8ba81240978cc06a400e8580762616a97606f65e21717e2f497677148",
+    3480: "972ec96f28e11d0a43402baa8492df84e1a78470e9b1e75d797eeac70f18dd03",
+    6932: "2de59cc263c2d85e68b3a0eff3a64f642245cd21ebd9ee60aa562e5e94478a55",
+    6954: "d25d34267af12550c23c352a8191955a391af19788741f6a715910ad54de7c18",
 }
 
 
@@ -1254,13 +1257,25 @@ def main():
                 # A lifecycle/dead-ball segment may begin after F54F already
                 # latched readiness, including a displaced-inbound F654 timer
                 # reload. It is a continuation, not a fresh A1E9/C37D seed.
+                # A canceled transfer can also carry the prior side's selector
+                # until the new segment installs its replacement. With no
+                # logical or ball owner and no transfer in progress, only the
+                # actor-range check is deferred; the loop below still requires
+                # the replacement carrier to belong to the new side.
                 legal_resumed_target = (
                     -556 <= actual_target[0] <= 561 and
                     -224 <= actual_target[1] <= 224 and
                     0 <= actual_target[2] <= 7)
+                selector_matches_side = (
+                    match["inbound_state_raw"] <= observed_actor <
+                    match["inbound_state_raw"] + 5)
+                canceled_selector_latch = (
+                    0 <= observed_actor < 10 and
+                    first["possession"]["actor"] < 0 and
+                    first["ball"]["owner"] < 0 and
+                    match["inbound_transfer_raw"] == 0)
                 if provisional_actor not in (2, 7) or \
-                        not (match["inbound_state_raw"] <= observed_actor <
-                             match["inbound_state_raw"] + 5) or \
+                        not (selector_matches_side or canceled_selector_latch) or \
                         not legal_resumed_target:
                     raise AssertionError(
                         f"resumed ready inbound state changed: {first}")

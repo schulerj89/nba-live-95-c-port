@@ -3,7 +3,7 @@
   "method": "recursive Ghidra seeds; no linear sweep; unknown bytes may be data or code",
   "inputs": {
     "text_hash_policy": "UTF-8 with LF newlines",
-    "verified_routines_sha256": "57942db24efbe6f417b964f0ba1c0635dc7b01629fb70f5528d4b5520bda3bc1",
+    "verified_routines_sha256": "450ebc53217c588b3069e00498b1acee5aca5d7f65bc4c5420e21ae99f435cb5",
     "census_tool_sha256": "8f7797c03f43ee5e9c44a24dc3ed17f0b887f7f58fc3f068729202e65566aeb5",
     "evidence_policy_sha256": "83069658610c442f6ec3861ffd73d586b5fdf2ee88f075474423cc8af242dd87"
   },
@@ -12,7 +12,7 @@
     "decoded_starts": 61031,
     "decoded_bytes": 148052,
     "observed_starts": 27501,
-    "verified_starts": 11580,
+    "verified_starts": 11585,
     "undecoded_bytes": 1424812
   },
   "banks": [
@@ -76,7 +76,7 @@
       "decoded_starts": 11960,
       "decoded_bytes": 29165,
       "observed_starts": 6503,
-      "verified_starts": 4854,
+      "verified_starts": 4859,
       "undecoded_bytes": 3603
     },
     {
