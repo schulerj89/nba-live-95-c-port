@@ -1109,15 +1109,17 @@ static void cpu_cache_predicted_ball_xy(NbaTipoff *tipoff) {
 static bool cpu_refresh_defense_target(NbaTipoff *tipoff, unsigned slot,
                                        bool *stop_velocity) {
     NbaTipoffActor *actor = &tipoff->actors[slot];
-    /* `$86:F72E-$F739`: mode two resolves the defensive matchup directly
-     * from base assignment +$74. Mutable assignment +$76 can temporarily
-     * name another valid opponent, but this parent does not consume it. */
-    bool mode_two_base_assignment = actor->control_mode == 2u;
-    unsigned paired_slot = (mode_two_base_assignment ?
+    /* `$86:F72E-$F739/$86:F7FA-$F803`: modes two and four resolve the
+     * defensive matchup directly from base assignment +$74. Mutable
+     * assignment +$76 can temporarily name another valid opponent, but
+     * these parents do not consume it. */
+    bool base_assignment_parent = actor->control_mode == 2u ||
+                                  actor->control_mode == 4u;
+    unsigned paired_slot = (base_assignment_parent ?
         actor->assignment_base_raw : actor->assignment_current_raw) >> 1;
     if (paired_slot >= NBA_GAMEPLAY_ACTOR_COUNT ||
         paired_slot / 5u == slot / 5u) {
-        if (mode_two_base_assignment) return false;
+        if (base_assignment_parent) return false;
         paired_slot = actor->assignment_base_raw >> 1;
         if (paired_slot >= NBA_GAMEPLAY_ACTOR_COUNT ||
             paired_slot / 5u == slot / 5u) return false;

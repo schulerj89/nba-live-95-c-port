@@ -1772,6 +1772,26 @@
       "date": "2026-09-04"
     },
     {
+      "range": "86F7FA-86F804",
+      "name": "mode-four base-assignment matchup selector",
+      "source": "src/nba_tipoff.c",
+      "method": "controlled native wrapper-selected parent differential + fresh headless Ghidra and snesrecomp",
+      "evidence": "One genuine mode-four call selected by $87:9244 and observed at its $87:9C2B wrapper assigns two different valid opponents to actor +$74 and +$76. Base +$74 names slot 5 at (100,0), while mutable +$76 names slot 6 at (-100,0). Native executes $86:F7FA/$F7FC/$F7FF/$F803, maps +$74 through $87:9C7B, passes the native $86:EF09 policy child, and reaches the independently verified $86:E7DC target child, which writes target (148,0). Before the C correction this controlled call followed +$76 and returned target X 48, producing the sole represented-output mismatch. With mode four bound to +$74, the permanent normal-actor replay covers 90 calls, including five mode-four calls, with zero represented parent-output mismatches. The native $86:EF09 child advances $80:CEE7 once; that raw RNG result remains in the fixture and is excluded from this parent-selector comparison. Controls change documented input WRAM immediately before the native JSL; PC, stack, flags, ROM, RNG, and native child results are not patched.",
+      "provenance": {
+        "rom_sha256": "2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870",
+        "raw_vectors": ".analysis/cpu-mode-four-assignment-20260904/mesen/cpu_mode_four_assignment.vectors.jsonl",
+        "raw_vectors_sha256": "310d95bb9e2f145f02f3f268332eba69fead008e9b9feb7c7807fd85ad5ef9c6",
+        "case_matrix_sha256": "d339a037103d6d9b209448a42e2504f4f833290fed6ff99ddc8274f9100cfe0f",
+        "path_trace_sha256": "39d99402e2a86bd0edb1d9b31423718e871131c739aa46c1a3365c8e7bf3d6ba",
+        "ghidra": ".analysis/cpu-mode-four-assignment-20260904/reference-final/cpu_mode_four_assignment_bank86.txt",
+        "ghidra_sha256": "43fa4fef1dac1a24d5618a5d6d156c854e9f6efbde1c0052d0a539fb84474085",
+        "recomp": ".analysis/cpu-mode-four-assignment-20260904/reference-final/cpu_mode_four_assignment_bank86.c",
+        "recomp_function": "CpuModeFourAssignment_M0X0",
+        "recomp_sha256": "83201ea085e8755e50eb4b3514b5817a0edc7914337a39b6113f5a338ec841f1"
+      },
+      "date": "2026-09-04"
+    },
+    {
       "range": "86F1B0-86F23E",
       "name": "normal mode-one CPU actor continuation",
       "source": "src/nba_tipoff.c + src/nba_gameplay_ai.c",

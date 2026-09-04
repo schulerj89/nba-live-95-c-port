@@ -41,12 +41,13 @@ Recent source-verified visual and gameplay fixes include:
 - the native control-mode-four role-flag gate for locomotion-base repair.
 - the native control-mode-four role-flag gate between loose-ball pursuit and
   defensive-target refresh.
+- the native control-mode-four base-assignment selector for defensive matchups.
 
 These paths are protected by test_tipoff_court_smoke.py,
 test_dribble_smoke.py, test_hoop_smoke.py, test_oob_smoke.py, and
 test_cpu_reaction_smoke.py, plus their native-vector verifiers, including the
 six-case defense-context, eight-case mode-five, two-case mode-one and
-mode-three role-flag, nine-case mode-two, and four-case mode-four actor-parent
+mode-three role-flag, nine-case mode-two, and five-case mode-four actor-parent
 replays.
 
 ## Major remaining gaps
@@ -73,7 +74,7 @@ Current generated captured-address measurements are:
 |---|---:|---:|
 | observed in retained execution captures | 29,438 | 100.0% |
 | documented by source provenance | 29,101 | 98.9% |
-| inside evidence-eligible verified ranges | 11,601 | 39.4% |
+| inside evidence-eligible verified ranges | 11,605 | 39.4% |
 
 These are coverage measurements for retained captures. They are not a
 percentage of the ROM, retail features, or game completion. The generated
