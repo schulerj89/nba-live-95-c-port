@@ -165,11 +165,13 @@ EXPECTED_RGB = {
     # mode-four locomotion bases when role flag `$09D8` is clear. All five
     # changed with the corrected CPU trajectory and retain a coherent court,
     # players, ball, baskets, crowd, and HUD.
-    600: "18d03215322c382a1dbb256361edf2ffc0e5ea1359796ec6c158d6de42f4f94f",
-    1300: "cd6157d5a4c717ce2c39c73616bec8c920a1d6bada16cd5448bf34ccbe2d9a1a",
-    3480: "bf39045376155a76db2c42ba2ce9b60190b4b00a6fc13387c2261aff74a8771e",
-    6932: "e932b4ecc8708e890649043f94cbbfee5c34f2e1c287b415bdd87667aaaa2e99",
-    6954: "ae8f1f464fa3d98a07f6593158b25d71a0bed606d74bda2faf3abd066af73621",
+    # Re-reviewed after `$86:F7F2-$F7F9` made mode four use the role-pass flag
+    # for pursuit. The changed trajectories retain those same scene elements.
+    600: "f3ab92f810d0673e93f02caa4c50725c0b1c184d708bdf40be185d5df80cbe8a",
+    1300: "18c624aa9896e5200c5f140fc399b089f5b413f03f32e743f1caf9ee9ae98260",
+    3480: "5e471ceb0a2fbd2073414d8eacd9d0386f468ef4432f71e54a6c75d97ceb7e9a",
+    6932: "c001a8df2be4229fec09046b8d65fff7b9c0683527982bf648fcd786c01cbea6",
+    6954: "c591550d5d84c71860eb7237dab58c8188e3a26d4b5ae4b8b9ffbf8b05db7cd3",
 }
 
 

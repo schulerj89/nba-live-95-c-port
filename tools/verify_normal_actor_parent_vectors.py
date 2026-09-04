@@ -1,4 +1,4 @@
-"""Replay native `$86:F1B0-$F8AB` actor continuations through production C."""
+"""Replay native `$86:F1B0-$F8CC` actor continuations through production C."""
 import argparse,json,subprocess
 from collections import Counter
 from pathlib import Path
@@ -37,7 +37,14 @@ def main():
   # its parent-owned F78B-F790 +$50->$4E tail, so both fields remain compared.
   ignored=set()
   if word(before,base+0x60)<=0x20 and word(before,base+0x5e)!=2:
-   actor_start=4+slot*14;ignored={actor_start+8,actor_start+9}
+   actor_start=4+slot*14;ignored.update((actor_start+8,actor_start+9))
+  # Mode four's role-clear route calls the still-unported `$86:EF09` policy
+  # child before writing the defensive target. That child owns one `$80:CEE7`
+  # RNG step; retain it in the native fixture, but do not credit this parent
+  # gate with reproducing the child's RNG side effect.
+  if v[2]=='86f794' and word(before,base+0x5e)==4 and \
+     word(before,base+0x60)<=0x20 and word(before,0x9d8)==0:
+   ignored.add(1)
   differences=[(n,x,y) for n,(x,y) in enumerate(zip(v[1],g))
                if n not in ignored and x!=y]
   if differences:bad.append((i,v[2],v[3],differences[:16]))

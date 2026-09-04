@@ -1867,7 +1867,7 @@ static void cpu_dispatch_normal_actor_behavior(NbaTipoff *tipoff,
     /* `$86:F1FE-$F225/$86:F28D-$F2B0/$86:F312-$F335`: modes one, three,
      * and five enter the loose-ball child from the role pass's `$09D8`
      * result, independently of the possession record. `$86:F721-$F72D`
-     * uses that same flag to gate mode two's defensive-target refresh.
+     * and `$86:F7F2-$F7F9` use that same flag to gate modes two and four.
      * Modes one and three bypass their controller-sign test in live/dead-ball
      * states; mode five always requires a CPU actor. */
     bool pursuit_context;
@@ -1880,7 +1880,7 @@ static void cpu_dispatch_normal_actor_behavior(NbaTipoff *tipoff,
             (tipoff->live_state_raw >= 0x80u ||
              actor->controller_assignment_raw < 0) &&
             tipoff->role_ownerless_raw_09d8 != 0u;
-    else if (actor->control_mode == 2u)
+    else if (actor->control_mode == 2u || actor->control_mode == 4u)
         pursuit_context = tipoff->role_ownerless_raw_09d8 != 0u;
     else
         pursuit_context = tipoff->ball.owner_actor < 0;

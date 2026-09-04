@@ -1752,6 +1752,26 @@
       "date": "2026-09-04"
     },
     {
+      "range": "86F7F2-86F7F9",
+      "name": "mode-four role-flag loose-ball pursuit gate",
+      "source": "src/nba_tipoff.c",
+      "method": "controlled native wrapper-selected parent differential + fresh headless Ghidra and snesrecomp",
+      "evidence": "Two genuine mode-four calls selected by $87:9244 and observed at its $87:9C2B wrapper deliberately oppose the role-pass flag $09D8 and possession record $093E. Flag clear with owner $FFFF executes $86:F7F2/$F7F5 to $F7FA, skips $86:F0FD, and reaches $86:E7DC, changing target (-24,80) to (148,0) before the $F8AB exit. Flag set with named owner 6 executes $86:F7F2/$F7F5/$F7F7 to $F8AC, calls $86:F0FD once, accepts the scheduled actor, preserves target (-24,80), and exits through $F8CC. Identical actor and pair geometry isolates the role branch. Before the C correction both cases take the opposite parent route; with mode four bound to $09D8, the permanent normal-actor replay covers 89 calls, including four mode-four calls, with zero represented parent-output mismatches. The role-clear native route also calls the still-unported $86:EF09 policy child, whose $86:EF18 call advances $80:CEE7 once; that raw RNG result remains in the fixture and is explicitly excluded from this parent gate comparison. Controls change documented input WRAM immediately before the native JSL; PC, stack, flags, ROM, RNG, and native child results are not patched.",
+      "provenance": {
+        "rom_sha256": "2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870",
+        "raw_vectors": ".analysis/cpu-mode-four-pursuit-gate-20260904/mesen-proof-callers/cpu_mode_four_pursuit.vectors.jsonl",
+        "raw_vectors_sha256": "4c4ae281e74d908dd900259f8f7b9ae9cff1ab711af9576afbece711c2391951",
+        "case_matrix_sha256": "4496c45610eddd4a34cb6ae9ce91678fb72aa4d3334c23013ac8f2e5ff0b73d5",
+        "path_trace_sha256": "73c2e90a721c3b4cbe004f245fef1a8a0a0f3f3078e845f530e7c7f11735ff3e",
+        "ghidra": ".analysis/cpu-mode-four-pursuit-gate-20260904/reference-final/cpu_mode_four_pursuit_bank86.txt",
+        "ghidra_sha256": "43fa4fef1dac1a24d5618a5d6d156c854e9f6efbde1c0052d0a539fb84474085",
+        "recomp": ".analysis/cpu-mode-four-pursuit-gate-20260904/reference-final/cpu_mode_four_pursuit_bank86.c",
+        "recomp_function": "CpuModeFourPursuit_M0X0",
+        "recomp_sha256": "3cea6db6f7053e2f04032f9f0d6e3e4909962d2af686e0e970a3f1f5ca5c1202"
+      },
+      "date": "2026-09-04"
+    },
+    {
       "range": "86F1B0-86F23E",
       "name": "normal mode-one CPU actor continuation",
       "source": "src/nba_tipoff.c + src/nba_gameplay_ai.c",
