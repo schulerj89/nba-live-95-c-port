@@ -1786,6 +1786,23 @@ static void cpu_dispatch_normal_actor_behavior(NbaTipoff *tipoff,
      * F79F's jump/reach branch is a later action decision, not a replacement
      * for this parent dispatcher. */
 
+    bool mode_five = actor->control_mode == 5u;
+    if (mode_five) {
+        /* `$86:F2CA-$F2E3`: mode five has its own normal-actor parent. It
+         * repairs the locomotion base first, then bypasses the cutter/timer
+         * work unless state `$82` is active or the actor belongs to `$093A`.
+         * The bypass copies requested +$50 to facing +$4E and preserves mode
+         * five, its timers, and the complete behavior-flags word. */
+        if (actor->animation_state == 8u || actor->animation_state == 10u)
+            actor->base_animation_state_raw_38 = 3u;
+        if (tipoff->live_state_raw != 0x82u &&
+            actor->team_group_raw_6e != tipoff->camera_side_group_raw) {
+            actor->movement_direction = actor->requested_direction;
+            actor->action_state = tipoff->cpu_play_state;
+            return;
+        }
+    }
+
     cpu_update_special_actor(tipoff, slot);
     if (actor->control_mode == 11u) {
         CpuOwnerContext context={tipoff,slot};
@@ -1802,17 +1819,9 @@ static void cpu_dispatch_normal_actor_behavior(NbaTipoff *tipoff,
         actor->action_state=tipoff->cpu_play_state;
         return;
     }
-    if (actor->control_mode == 5u &&
-        slot != (unsigned)tipoff->possession_actor) {
-        actor->control_mode = 1u;
-        actor->behavior_timer = 47u;
-        actor->reaction_threshold = 0u;
-        actor->behavior_flags_raw = 0u;
-    }
-
     int x = fp_round(actor->x_fp), y = fp_round(actor->y_fp);
     /* $86:E3CB-E3DD: modes 1-6 repair special locomotion bases. */
-    if (actor->control_mode >= 1u && actor->control_mode <= 6u &&
+    if (!mode_five && actor->control_mode >= 1u && actor->control_mode <= 6u &&
         (actor->animation_state == 8u || actor->animation_state == 10u))
         actor->base_animation_state_raw_38 = 3u;
 

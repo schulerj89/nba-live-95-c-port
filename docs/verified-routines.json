@@ -1636,6 +1636,25 @@
       "date": "2026-08-29"
     },
     {
+      "range": "86F2CA-86F334;86F346-86F34E",
+      "name": "normal mode-five CPU actor continuation",
+      "source": "src/nba_tipoff.c + src/nba_gameplay_ai.c",
+      "method": "controlled native real-dispatch differential + fresh headless Ghidra and snesrecomp",
+      "evidence": "Six genuine $86:F2CA calls selected by the native $87:9244 behavior dispatcher replay with zero represented-output mismatches. The cases cover the opposite-group bypass, timer hold, CPU and human due decisions, recovery inhibition, and live state $82. They prove mode five is preserved and that the bypass skips the cutter/timer work while copying requested +$50 to facing +$4E. Controls change documented input WRAM only; PC, stack, flags, ROM, RNG, and child results remain native. The union executes all 47 instruction starts credited in this row; the unobserved $86:F335-$F345 pursuit branch is excluded. tests/fixtures/cpu-mode-five-witnesses.json and the normal actor-parent production probe make the six cases permanent.",
+      "provenance": {
+        "rom_sha256": "2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870",
+        "raw_vectors": ".analysis/cpu-mode-five-20260904/mesen-controlled/cpu_mode_five.vectors.jsonl",
+        "raw_vectors_sha256": "b7161eddf5c87d2489f77a4c81bd6c0904b0e3743ca3ea7ea809839aee061508",
+        "path_trace_sha256": "d45fadf89c85ffeaad4e97bec7918277ba0949748a84cb3a3dbd2eb4f23d47ed",
+        "ghidra": ".analysis/cpu-mode-five-20260904/reference-final/cpu_mode_five_bank86.txt",
+        "ghidra_sha256": "bef60b62079f19539db9d769e93648c0e0c8aae2220dd3cdb90e506f5c05d695",
+        "recomp": ".analysis/cpu-mode-five-20260904/reference-final/cpu_mode_five_bank86.c",
+        "recomp_function": "CpuModeFive_M0X0",
+        "recomp_sha256": "26a593178d7eb847ed473b3e68a87d32d3209fbbb0f3d1c781fc03fe6523e57d"
+      },
+      "date": "2026-09-04"
+    },
+    {
       "range": "86E7B3-86E7DB",
       "name": "weak-side absolute-X defensive target branch",
       "source": "src/nba_gameplay_ai.c + src/nba_tipoff.c",
