@@ -1355,8 +1355,9 @@ static bool cpu_active_decision_due(NbaTipoff *tipoff, unsigned slot) {
     (void)nba_player_gameplay_decision_profiles(
         tipoff->assets, team, actor->roster_slot,
         &profile_3f, &profile_40);
-    int16_t actor_x = fp_round(actor->x_fp);
-    /* Modes 2/4/6 compare signed-word actor +$04 against side context +$0A.
+    int16_t actor_x = fp_integer_word(actor->x_fp);
+    /* `$86:F6EF-$F703`: modes 2/4/6 compare signed-word actor +$04 against
+     * side context +$0A.
      * `$87:8EFE/$8F11` keeps DP $9E at $46EB for slots 0..4 and $476B for
      * slots 5..9; full words `$FEB0/$0150` are -336/+336. This is
      * deliberately not a ball-position or matchup comparison. */

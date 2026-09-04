@@ -155,11 +155,14 @@ EXPECTED_RGB = {
     # detached accepted-HUD build accounts for3480/6932 and the pre-graphics
     # 6954 value; the accepted direction/body fix changes only6954's player
     # pixels remain C-only image anchors.
-    600: "b555afbcbfeb868b1a56b255ea15259214d9d9c49044d294b34c7d34c400853f",
-    1300: "4a778fc91a809ea99e723b0054d21f499ca64beef1fb2964781ed779f8d70a01",
-    3480: "805bc5705a4faa6946bf484fe670614767a0f34a2465e490343c5cbff79e6662",
-    6932: "c9e82ab29223a7b5953fc795a48ce010c1a6314819f189216cc36f2f6fbf584e",
-    6954: "9cad6d013aca98e32b28e4cb792ddcfc95b3ea7d61621d3b92b4b9857c6553cf",
+    # Re-reviewed 2026-09-04 after the native signed-word mode-two timer gate
+    # changed the deterministic CPU trajectory. All five frames retain a
+    # coherent court, players, ball, baskets, crowd, and HUD.
+    600: "7629d8229b360f5a3d5b39429b70f7caf9765e5a410ae8deda644d03bd3e12ea",
+    1300: "44fb58dbc153ce00a4196e9c05084950b7904f9a81db01061d5d6e114bc05e93",
+    3480: "fe0f42eb8b4540555c8587659692ccb79bf63fe075a07db2d10dc6a11b95e1f2",
+    6932: "7ceef6baf235b3ce1bb3ce79274cc9c682b24a0b54c6592739400ad286ccc300",
+    6954: "cd16b67108999e2a8bb8a2aaf66180c67bd8c55ff944ff40569cd55a81c9934f",
 }
 
 
@@ -1481,7 +1484,14 @@ def main():
         def signed16(value):
             return value - 0x10000 if value & 0x8000 else value
 
-        prior_dx = prior_dy = 0
+        # Seed the cadence comparison from the actual preceding trace row.
+        # A valid trajectory may already be more than two pixels from its
+        # target when this bounded camera check begins at row 199.
+        prior_camera = rows[198]["camera"]
+        prior_dx = abs(signed16(prior_camera["raw_085c"]) -
+                       signed16(prior_camera["raw_085e"]))
+        prior_dy = abs(signed16(prior_camera["raw_0860"]) -
+                       signed16(prior_camera["raw_0862"]))
         camera_positions = set()
         for row in rows[199:]:
             camera = row["camera"]
@@ -1580,8 +1590,10 @@ def main():
                     # A518-A52F resets to B953's height offset alone;
                     # unlike B66A, it does not add the actor's integer Z.
                     actual = actual[:2] + (ball_z,)
+                native_upper_phase = \
+                    actor["raw"]["animation_rom"]["upper_phase_3a"]
                 attached.append((row["frame"], actual, expected,
-                                 actor["raw"]["upper_phase"],
+                                 native_upper_phase,
                                  low_resource, ball_z))
         def attachment_matches(pair):
             _, actual, expected, upper_phase, low_resource, ball_z = pair
