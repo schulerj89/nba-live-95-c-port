@@ -1,4 +1,4 @@
-/* Generated from canonical ROM only by tools/generate_setup_sound_prefix_work.py.
+/* Generated from canonical ROM only by tools/generate_setup_sound_prefix.py.
  * No capture, fitted cost, opcode dispatcher or runtime ROM execution.
  * Each label is static C source flow; SUSPEND labels are C continuations. */
 static bool advance(NbaSetupSoundPrefix *s)

@@ -82,7 +82,7 @@ Focused smoke tests press buttons or configure gameplay state, capture every
 frame inside the renderer, and validate the resulting sequence:
 
 ~~~powershell
-./tools/run_dribble_smoke.ps1 -RomPath '<path-to-rom>' -TipoffOnly
+./tools/run_dribble_smoke.ps1 -RomPath '<path-to-rom>'
 ./tools/run_hoop_smoke.ps1 -RomPath '<path-to-rom>'
 ./tools/run_oob_smoke.ps1 -RomPath '<path-to-rom>'
 python tools/test_cpu_reaction_smoke.py --rom '<path-to-rom>'

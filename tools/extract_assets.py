@@ -1665,8 +1665,9 @@ def create_asset_pack(rom_path, output_path, capture_root=None):
                        ("player_setup_oam.bin", 0x220)):
         path = os.path.join(player_setup_capture_dir, name)
         if not os.path.exists(path):
-            raise RuntimeError(f"Missing Player Setup PPU asset: {path}. Run "
-                               "mesen_player_setup_capture.lua against the verified ROM.")
+            raise RuntimeError(
+                f"Missing Player Setup PPU asset: {path}. Provide a verified "
+                "capture through NBA95_PLAYER_SETUP_CAPTURE_DIR.")
         payload = open(path, "rb").read()
         if len(payload) != size:
             raise RuntimeError(f"Invalid Player Setup PPU asset {path}: "

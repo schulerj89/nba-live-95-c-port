@@ -37,7 +37,7 @@ the shortest route to the target state, press buttons where the route requires
 them, and capture frames inside the renderer:
 
 ~~~powershell
-./tools/run_dribble_smoke.ps1 -RomPath '<path-to-rom>' -TipoffOnly
+./tools/run_dribble_smoke.ps1 -RomPath '<path-to-rom>'
 ./tools/run_hoop_smoke.ps1 -RomPath '<path-to-rom>'
 ./tools/run_oob_smoke.ps1 -RomPath '<path-to-rom>'
 python tools/test_cpu_reaction_smoke.py --rom '<path-to-rom>'
@@ -84,12 +84,15 @@ with the selected verified ROM:
 
 ## Regression entry points
 
-The full configured suite is:
+The configured suite runs harness integrity checks, the current CPU native
+replays, and complete product-route regressions:
 
 ~~~powershell
 ./build.ps1 -RomPath '<path-to-rom>' -AssetPack 'build/nba95_assets.pak' -Test
 ~~~
 
+Superseded one-routine probes and wrappers remain available in Git history;
+their durable native fixtures stay under tests/fixtures/ for provenance.
 Useful focused tests include:
 
 - test_intro_sequence.py, test_title_pipeline.py, and
