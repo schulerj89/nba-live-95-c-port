@@ -56,9 +56,12 @@ EXPECTED_FRAMES = {
     # Re-reviewed after exact `$86:F1B0-$F2C9` actor-parent timing stopped
     # publishing derived movement one actor pass early. The live frame retains
     # ten complete players, ball, center court and an unobstructed HUD.
+    # Re-reviewed after `$86:F794-$F799` preserved mode-four locomotion bases
+    # while role flag `$09D8` is clear. The corrected CPU positions retain
+    # the same complete live scene.
     220: ("TIP PH:LIVE", {
         "fallback": "13f98e7653405cbfbbe30ac5a09f02efcc62b1d5a148426084538a86a4c96869",
-        "literal": "4360c6ecca03535c67721581c5303c51d5dc514d58f630803f994233ce1dc00b",
+        "literal": "89abbcfd9c19ee0c9b716402f57704d0755e2f5cb45d141264d934c5e2595cbf",
     }),
 }
 EXPECTED_PLAYER_DRAW_HASH = \

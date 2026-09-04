@@ -38,12 +38,14 @@ Recent source-verified visual and gameplay fixes include:
 - the native control-mode-two signed-controller gate for jump/reach attempts,
   including while a movement boost remains active.
 - the native control-mode-two final requested-direction commit.
+- the native control-mode-four role-flag gate for locomotion-base repair.
 
 These paths are protected by test_tipoff_court_smoke.py,
 test_dribble_smoke.py, test_hoop_smoke.py, test_oob_smoke.py, and
 test_cpu_reaction_smoke.py, plus their native-vector verifiers, including the
 six-case defense-context, eight-case mode-five, two-case mode-one and
-mode-three role-flag, and nine-case mode-two actor-parent replays.
+mode-three role-flag, nine-case mode-two, and two-case mode-four actor-parent
+replays.
 
 ## Major remaining gaps
 
@@ -69,7 +71,7 @@ Current generated captured-address measurements are:
 |---|---:|---:|
 | observed in retained execution captures | 29,438 | 100.0% |
 | documented by source provenance | 29,101 | 98.9% |
-| inside evidence-eligible verified ranges | 11,595 | 39.4% |
+| inside evidence-eligible verified ranges | 11,598 | 39.4% |
 
 These are coverage measurements for retained captures. They are not a
 percentage of the ROM, retail features, or game completion. The generated

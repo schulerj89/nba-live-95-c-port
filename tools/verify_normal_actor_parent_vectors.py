@@ -1,4 +1,4 @@
-"""Replay native `$86:F1B0-$F2C9` actor continuations through production C."""
+"""Replay native `$86:F1B0-$F8AB` actor continuations through production C."""
 import argparse,json,subprocess
 from collections import Counter
 from pathlib import Path

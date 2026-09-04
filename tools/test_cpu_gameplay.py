@@ -161,17 +161,15 @@ EXPECTED_RGB = {
     # Re-reviewed again on 2026-09-04 after `$86:F72E-$F739` made mode two
     # consume base assignment +$74. The resulting defensive trajectories
     # changed every anchor; the same scene elements remain intact.
-    # Re-reviewed on 2026-09-04 after `$86:F780-$F78A` allowed CPU jump/reach
-    # while movement boost +$72 remains active. Frames 600/1300 are unchanged;
-    # the later three retain a coherent court, players, ball, baskets, and HUD.
-    # Re-reviewed on 2026-09-04 after `$86:F78B-$F790` committed mode-two
-    # requested direction. Frame 3480 is unchanged; the other four reflect
-    # the corrected trajectory and retain every expected scene element.
-    600: "d1c0d47f02eb552d862f76af18504fc52fea235130e14df843ba783c5f4aceb8",
-    1300: "50f48bc6459c8f0dea6d766a0d3d3ce1632e9fd5173e85dbaed6e45c4820ed47",
-    3480: "8483b99f4d34844a4e0b6f7ebc6d1d0b43933fe99b3aad798bff92807660dc97",
-    6932: "74614d884f4dce5b9eb1ef216b7f5779480d902621713be20fb81d658fcb284a",
-    6954: "f98cc868ca5123d3a080be3abacf78fe4cfb6c255a9e42f8d56ea2e180abaf5c",
+    # Re-reviewed on 2026-09-04 after `$86:F794-$F799` stopped repairing
+    # mode-four locomotion bases when role flag `$09D8` is clear. All five
+    # changed with the corrected CPU trajectory and retain a coherent court,
+    # players, ball, baskets, crowd, and HUD.
+    600: "18d03215322c382a1dbb256361edf2ffc0e5ea1359796ec6c158d6de42f4f94f",
+    1300: "cd6157d5a4c717ce2c39c73616bec8c920a1d6bada16cd5448bf34ccbe2d9a1a",
+    3480: "bf39045376155a76db2c42ba2ce9b60190b4b00a6fc13387c2261aff74a8771e",
+    6932: "e932b4ecc8708e890649043f94cbbfee5c34f2e1c287b415bdd87667aaaa2e99",
+    6954: "ae8f1f464fa3d98a07f6593158b25d71a0bed606d74bda2faf3abd066af73621",
 }
 
 
