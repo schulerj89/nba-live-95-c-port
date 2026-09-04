@@ -164,11 +164,14 @@ EXPECTED_RGB = {
     # Re-reviewed on 2026-09-04 after `$86:F780-$F78A` allowed CPU jump/reach
     # while movement boost +$72 remains active. Frames 600/1300 are unchanged;
     # the later three retain a coherent court, players, ball, baskets, and HUD.
-    600: "08be948229cebcb1ffdfd792f4158f446826fae09826cafc2a018752e8284a50",
-    1300: "f4cbfec8ba81240978cc06a400e8580762616a97606f65e21717e2f497677148",
+    # Re-reviewed on 2026-09-04 after `$86:F78B-$F790` committed mode-two
+    # requested direction. Frame 3480 is unchanged; the other four reflect
+    # the corrected trajectory and retain every expected scene element.
+    600: "d1c0d47f02eb552d862f76af18504fc52fea235130e14df843ba783c5f4aceb8",
+    1300: "50f48bc6459c8f0dea6d766a0d3d3ce1632e9fd5173e85dbaed6e45c4820ed47",
     3480: "8483b99f4d34844a4e0b6f7ebc6d1d0b43933fe99b3aad798bff92807660dc97",
-    6932: "12b2e4b4b8400d9173bab79154458ec532da0297c46abc3494e4a3cd23341aa8",
-    6954: "236fed10cee8120d91b114f21acdb001b53f6539a4a295beb890b54726926239",
+    6932: "74614d884f4dce5b9eb1ef216b7f5779480d902621713be20fb81d658fcb284a",
+    6954: "f98cc868ca5123d3a080be3abacf78fe4cfb6c255a9e42f8d56ea2e180abaf5c",
 }
 
 

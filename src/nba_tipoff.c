@@ -1841,6 +1841,7 @@ static void cpu_dispatch_normal_actor_behavior(NbaTipoff *tipoff,
     uint8_t direction = actor->movement_direction;
     bool stop_velocity = false;
     bool apply_velocity_step = false;
+    bool mode_two_defense_refresh = false;
     NbaGameplayLoosePursuitGateInput pursuit = {
         .live_state_raw_0936 = tipoff->live_state_raw,
         .ball_activity_raw_0948 = tipoff->ball_activity_raw,
@@ -1899,6 +1900,7 @@ static void cpu_dispatch_normal_actor_behavior(NbaTipoff *tipoff,
                  (mode == 2u || mode == 4u || mode == 6u) &&
                  actor->recovery_inhibit_raw == 0u) {
             (void)cpu_refresh_defense_target(tipoff, slot, &stop_velocity);
+            mode_two_defense_refresh = mode == 2u;
             direction = stop_velocity ? 8u : nba_gameplay_target_direction(
                 (int16_t)(actor->target_x - x),
                 (int16_t)(actor->target_y - y), NULL);
@@ -1922,11 +1924,13 @@ static void cpu_dispatch_normal_actor_behavior(NbaTipoff *tipoff,
      * This happens even though no velocity decision ran. */
     if (!decision_due)
         actor->movement_direction = actor->requested_direction;
-    else if (loose_pursuit)
-        /* `$86:F22D-$F235`: accepted pursuit retains +$4E in +$50. */
-        actor->requested_direction = actor->movement_direction;
-    else
-        cpu_finalize_requested_direction(tipoff, slot);
+    else if (actor->control_mode != 2u || mode_two_defense_refresh) {
+        if (loose_pursuit)
+            /* `$86:F22D-$F235`: accepted pursuit retains +$4E in +$50. */
+            actor->requested_direction = actor->movement_direction;
+        else
+            cpu_finalize_requested_direction(tipoff, slot);
+    }
     /* F1B0/F23F install next-pass velocity but do not publish +$4C, +$4E
      * or +$A2 from that velocity. The following `$85:963D` actor commit owns
      * those derived fields. Doing it here made the visible facing and
@@ -1939,6 +1943,10 @@ static void cpu_dispatch_normal_actor_behavior(NbaTipoff *tipoff,
         ((actor->control_mode==4 || actor->control_mode==6) &&
          !actor->movement_boost_timer)))
         (void)nba_tipoff_jump_reach(tipoff,slot);
+    /* `$86:F78B-$F790`: mode two commits +$50 to +$4E after the optional
+     * EC32 call; accepted-pursuit and recovery-bypass paths preserve +$50. */
+    if (decision_due && actor->control_mode == 2u)
+        actor->movement_direction = actor->requested_direction;
 }
 
 bool nba_tipoff_replay_normal_actor(NbaTipoff *tipoff, uint8_t actor) {

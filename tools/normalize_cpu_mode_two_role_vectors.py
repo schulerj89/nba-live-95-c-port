@@ -1,4 +1,4 @@
-"""Retain controlled native `$86:F721-$F78A` mode-two witnesses."""
+"""Retain controlled native `$86:F721-$F793` mode-two witnesses."""
 
 import argparse
 import hashlib
@@ -53,6 +53,8 @@ def main():
         executed = path["executed"]
         if not executed or executed[0] != "86f6cd" or executed[-1] != "86f793":
             raise ValueError(f"case {number} has an incomplete PC path")
+        if not all(pc in executed for pc in ("86f78b", "86f78d", "86f790")):
+            raise ValueError(f"case {number} missed the direction-commit tail")
         if number in (1, 3, 4) and ("86f72e" not in executed or
                             any(pc in executed for pc in
                                 ("86f726", "86f72a", "86f72c"))):
@@ -142,6 +144,11 @@ def main():
                             word(after, actor + 0x58) !=
                             word(before, actor + 0x58)):
             raise ValueError("accepted loose-ball gate changed the native target")
+        if number == 2 and (word(before, actor + 0x4E) != 1 or
+                            word(before, actor + 0x50) != 6 or
+                            word(after, actor + 0x4E) != 6 or
+                            word(after, actor + 0x50) != 6):
+            raise ValueError("mode-two direction-commit result changed")
         if word(before, actor + 0x16) != case["controller"] or \
                 word(before, actor + 0x72) != case["boost"]:
             raise ValueError(f"case {number} controller/boost inputs changed")
@@ -189,6 +196,10 @@ def main():
                                word(after, actor + 0x10)],
                 "velocity_z": [word(before, actor + 0x12),
                                word(after, actor + 0x12)],
+                "movement_direction": [word(before, actor + 0x4E),
+                                       word(after, actor + 0x4E)],
+                "requested_direction": [word(before, actor + 0x50),
+                                        word(after, actor + 0x50)],
                 "upper_state": [word(before, actor + 0x30),
                                 word(after, actor + 0x30)],
                 "lower_state": [word(before, actor + 0x32),

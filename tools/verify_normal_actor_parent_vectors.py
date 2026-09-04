@@ -31,12 +31,12 @@ def main():
  bad=[]
  for i,(v,g) in enumerate(zip(vs,got),1):
   before=bytearray(v[0]);slot=word(before,0xc2);base=0x34eb+slot*0x100
-  # A due decision calls child routines in banks $85/$86. Their +$4E/+50
-  # writes are protected by their own differential gates and are not owned
-  # by the F1B0/F23F parent. Timer-hold calls execute the parent's own
-  # F236/F2C1 +$50->$4E copy, so those direction fields remain compared.
+  # A due mode-one/three/five decision calls child routines in banks $85/$86.
+  # Their +$4E/+50 writes are protected by their own differential gates and
+  # are not owned by the F1B0/F23F/F2CA parent. Mode two always finishes at
+  # its parent-owned F78B-F790 +$50->$4E tail, so both fields remain compared.
   ignored=set()
-  if word(before,base+0x60)<=0x20:
+  if word(before,base+0x60)<=0x20 and word(before,base+0x5e)!=2:
    actor_start=4+slot*14;ignored={actor_start+8,actor_start+9}
   differences=[(n,x,y) for n,(x,y) in enumerate(zip(v[1],g))
                if n not in ignored and x!=y]

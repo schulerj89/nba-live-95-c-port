@@ -1,4 +1,4 @@
--- Controlled witnesses for mode two's $86:F721-$F78A continuation.
+-- Controlled witnesses for mode two's $86:F721-$F793 continuation.
 -- Each case changes documented input WRAM at mode two's genuine $87:9C21
 -- wrapper, after $87:9244 has selected it and immediately before its native
 -- JSL to $86:F6CD. PC, stack, CPU flags, ROM, RNG, and child results remain

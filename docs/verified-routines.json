@@ -1712,6 +1712,26 @@
       "date": "2026-09-04"
     },
     {
+      "range": "86F78B-86F792",
+      "name": "mode-two requested-direction commit tail",
+      "source": "src/nba_tipoff.c",
+      "method": "controlled native wrapper-selected parent differential + fresh headless Ghidra and snesrecomp",
+      "evidence": "Four genuine mode-two calls selected by $87:9244 and observed at its $87:9C21 wrapper all execute $86:F78B/$F78D/$F790. The behavior-deciding accepted-pursuit case enters with current direction +$4E=1 and requested direction +$50=6, takes $86:F726/$F72C directly to the jump/reach gate without a defense-target child, and exits with both words equal to 6. Before the C correction the shared loose-pursuit finalizer overwrote +$50 and returned 1/1. Comparing the parent-owned direction fields also exposed the same missing tail in two retained recovery-inhibit calls. Preserving mode-two +$50 when no defense child ran and committing it after the optional $86:EC32 call makes all 85 permanent normal-actor replays pass with zero represented-output mismatches. Controls change documented input WRAM immediately before the native JSL; PC, stack, flags, ROM, RNG, and child results remain native.",
+      "provenance": {
+        "rom_sha256": "2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870",
+        "raw_vectors": ".analysis/cpu-mode-two-direction-tail-20260904/mesen/cpu_mode_two_role.vectors.jsonl",
+        "raw_vectors_sha256": "b26632868aaad9a95cee8353cc55b32fe8b135f4272bf1f04f4df15e2850fe8f",
+        "case_matrix_sha256": "8876f80512a1667312507a87da9a263e824e0da7d4021f6653d79795f9fb16b7",
+        "path_trace_sha256": "c1add0c690cb3d7feb11e895599c620eed6dcf9dd82cbea79539a7105bcf9f46",
+        "ghidra": ".analysis/cpu-mode-two-direction-tail-20260904/reference/cpu_mode_two_bank86.txt",
+        "ghidra_sha256": "c87e1aef7e130aa1c0b24df906beb7417633bd9f9b06da34f32aaba692ffb915",
+        "recomp": ".analysis/cpu-mode-two-direction-tail-20260904/reference/cpu_mode_two_bank86.c",
+        "recomp_function": "CpuModeTwo_M0X0",
+        "recomp_sha256": "9cff2874ac054c33d164a12e410c0ff8cdf1300f4fa4ae70ac4047d1d4b30a3d"
+      },
+      "date": "2026-09-04"
+    },
+    {
       "range": "86F1B0-86F23E",
       "name": "normal mode-one CPU actor continuation",
       "source": "src/nba_tipoff.c + src/nba_gameplay_ai.c",
