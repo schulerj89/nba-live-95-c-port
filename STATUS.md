@@ -32,12 +32,14 @@ Recent source-verified visual and gameplay fixes include:
   role-pass flag, independently of the possession record.
 - the native control-mode-two owner/receiver gate for locomotion-base repair.
 - the native control-mode-two signed half-court gate for decision-timer reloads.
+- the native control-mode-two role-flag gate between loose-ball pursuit and
+  defensive-target refresh.
 
 These paths are protected by test_tipoff_court_smoke.py,
 test_dribble_smoke.py, test_hoop_smoke.py, test_oob_smoke.py, and
 test_cpu_reaction_smoke.py, plus their native-vector verifiers, including the
 six-case defense-context, eight-case mode-five, two-case mode-one and
-mode-three role-flag, and five-case mode-two actor-parent replays.
+mode-three role-flag, and seven-case mode-two actor-parent replays.
 
 ## Major remaining gaps
 
@@ -63,7 +65,7 @@ Current generated captured-address measurements are:
 |---|---:|---:|
 | observed in retained execution captures | 29,438 | 100.0% |
 | documented by source provenance | 29,101 | 98.9% |
-| inside evidence-eligible verified ranges | 11,578 | 39.3% |
+| inside evidence-eligible verified ranges | 11,583 | 39.3% |
 
 These are coverage measurements for retained captures. They are not a
 percentage of the ROM, retail features, or game completion. The generated
