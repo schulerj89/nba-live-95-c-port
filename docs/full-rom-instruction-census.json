@@ -3,54 +3,54 @@
   "method": "recursive Ghidra seeds; no linear sweep; unknown bytes may be data or code",
   "inputs": {
     "text_hash_policy": "UTF-8 with LF newlines",
-    "verified_routines_sha256": "65cb69840bf651c054c37031298de1f5acec6183523c2902e455daf532534845",
+    "verified_routines_sha256": "a6e41791b4dddc8ddd22972f45803cca69219aff9b1f4d24b7ed249344de90aa",
     "census_tool_sha256": "8f7797c03f43ee5e9c44a24dc3ed17f0b887f7f58fc3f068729202e65566aeb5",
     "evidence_policy_sha256": "83069658610c442f6ec3861ffd73d586b5fdf2ee88f075474423cc8af242dd87"
   },
   "totals": {
     "rom_bytes": 1572864,
-    "decoded_starts": 60346,
-    "decoded_bytes": 146425,
-    "observed_starts": 27478,
-    "verified_starts": 11534,
-    "undecoded_bytes": 1426439
+    "decoded_starts": 60977,
+    "decoded_bytes": 147919,
+    "observed_starts": 27501,
+    "verified_starts": 11561,
+    "undecoded_bytes": 1424945
   },
   "banks": [
     {
       "bank": "80",
       "rom_bytes": 32768,
-      "decoded_starts": 9481,
-      "decoded_bytes": 20864,
+      "decoded_starts": 9519,
+      "decoded_bytes": 20937,
       "observed_starts": 5977,
       "verified_starts": 366,
-      "undecoded_bytes": 11904
+      "undecoded_bytes": 11831
     },
     {
       "bank": "81",
       "rom_bytes": 32768,
-      "decoded_starts": 6716,
-      "decoded_bytes": 16148,
-      "observed_starts": 2845,
+      "decoded_starts": 7267,
+      "decoded_bytes": 17492,
+      "observed_starts": 2855,
       "verified_starts": 0,
-      "undecoded_bytes": 16620
+      "undecoded_bytes": 15276
     },
     {
       "bank": "82",
       "rom_bytes": 32768,
-      "decoded_starts": 5021,
-      "decoded_bytes": 13254,
+      "decoded_starts": 5031,
+      "decoded_bytes": 13266,
       "observed_starts": 1988,
       "verified_starts": 0,
-      "undecoded_bytes": 19514
+      "undecoded_bytes": 19502
     },
     {
       "bank": "83",
       "rom_bytes": 32768,
-      "decoded_starts": 5439,
-      "decoded_bytes": 14093,
+      "decoded_starts": 5443,
+      "decoded_bytes": 14100,
       "observed_starts": 1052,
       "verified_starts": 0,
-      "undecoded_bytes": 18675
+      "undecoded_bytes": 18668
     },
     {
       "bank": "84",
@@ -64,11 +64,11 @@
     {
       "bank": "85",
       "rom_bytes": 32768,
-      "decoded_starts": 7584,
-      "decoded_bytes": 17616,
-      "observed_starts": 5337,
-      "verified_starts": 4130,
-      "undecoded_bytes": 15152
+      "decoded_starts": 7607,
+      "decoded_bytes": 17664,
+      "observed_starts": 5345,
+      "verified_starts": 4157,
+      "undecoded_bytes": 15104
     },
     {
       "bank": "86",
@@ -82,11 +82,11 @@
     {
       "bank": "87",
       "rom_bytes": 32768,
-      "decoded_starts": 8155,
-      "decoded_bytes": 20700,
-      "observed_starts": 3599,
+      "decoded_starts": 8160,
+      "decoded_bytes": 20710,
+      "observed_starts": 3604,
       "verified_starts": 2203,
-      "undecoded_bytes": 12068
+      "undecoded_bytes": 12058
     },
     {
       "bank": "88",

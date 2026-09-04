@@ -1339,11 +1339,19 @@ bool nba_gameplay_ai_self_test(void) {
         return false;
     context_mode = 4u;
     if (!nba_gameplay_defense_context_reselect(
-            2u, 4u, 3u, 1u, 0u, &context_mode) || context_mode != 3u)
+            2u, 4u, 3u, 1u, 0u, &context_mode) || context_mode != 0u)
+        return false;
+    context_mode = 4u;
+    if (!nba_gameplay_defense_context_reselect(
+            2u, 4u, 3u, 1u, 1u, &context_mode) || context_mode != 2u)
         return false;
     context_mode = 4u;
     if (!nba_gameplay_defense_context_reselect(
             4u, 4u, 0u, 1u, 1u, &context_mode) || context_mode != 1u)
+        return false;
+    context_mode = 4u;
+    if (!nba_gameplay_defense_context_reselect(
+            4u, 4u, 0u, 1u, 2u, &context_mode) || context_mode != 3u)
         return false;
     context_mode = 4u;
     if (nba_gameplay_defense_context_reselect(
@@ -1803,18 +1811,25 @@ void nba_gameplay_actor_commit(NbaGameplayActorCommit *actor,
         actor->facing_raw_4e = direction;
 }
 
-/* `$85:B13F-$B16A`: when a play request is consumed, update the opposing
- * `$46EB/$476B` context mode. The score comparison is the 65816 subtraction
- * N bit, not C's unsigned less-than and not an overflow-corrected compare. */
+/* `$85:B13F-$B173`: when a play request is consumed, update the opposing
+ * `$46EB/$476B` context mode. A trailing team uses mode 1 before raw period
+ * three; from period three onward it uses mode 2 unless the RNG word's low
+ * seven bits are zero, which selects mode 0. The score comparison is the
+ * 65816 subtraction N bit, not C's unsigned less-than and not an
+ * overflow-corrected compare. */
 bool nba_gameplay_defense_context_reselect(
     uint16_t current_score, uint16_t opponent_score,
     uint16_t period_raw_0926, uint16_t opponent_activity_raw_39,
     uint16_t random_word, uint16_t *opponent_mode_raw_30) {
     if (!opponent_mode_raw_30 || opponent_activity_raw_39 == 0u) return false;
-    if ((int16_t)(uint16_t)(current_score - opponent_score) < 0 &&
-        period_raw_0926 < 3u)
-        *opponent_mode_raw_30 = 1u;
-    else
+    if ((int16_t)(uint16_t)(current_score - opponent_score) < 0) {
+        if (period_raw_0926 < 3u)
+            *opponent_mode_raw_30 = 1u;
+        else
+            *opponent_mode_raw_30 =
+                (random_word & 0x007Fu) != 0u ? 2u : 0u;
+    } else {
         *opponent_mode_raw_30 = (random_word & 1u) != 0u ? 1u : 3u;
+    }
     return true;
 }

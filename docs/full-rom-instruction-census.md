@@ -11,25 +11,25 @@ and tables. Undecoded bytes are unknown—not pending instructions.
 | metric | count |
 |---|---:|
 | ROM bytes | 1,572,864 |
-| Conservatively decoded instruction starts | 60,346 |
-| Bytes owned by decoded instructions | 146,425 |
-| Decoded starts observed in retained execution | 27,478 |
-| Decoded starts both observed and verified | 11,534 |
-| Verified / conservatively decoded starts | 19.11% |
-| Undecoded ROM bytes (data or undiscovered code) | 1,426,439 |
+| Conservatively decoded instruction starts | 60,977 |
+| Bytes owned by decoded instructions | 147,919 |
+| Decoded starts observed in retained execution | 27,501 |
+| Decoded starts both observed and verified | 11,561 |
+| Verified / conservatively decoded starts | 18.96% |
+| Undecoded ROM bytes (data or undiscovered code) | 1,424,945 |
 
 ## Per physical LoROM bank
 
 | bank | decoded starts | code bytes | observed starts | verified starts | undecoded bytes |
 |---|---:|---:|---:|---:|---:|
-| `$80` | 9481 | 20864 | 5977 | 366 | 11904 |
-| `$81` | 6716 | 16148 | 2845 | 0 | 16620 |
-| `$82` | 5021 | 13254 | 1988 | 0 | 19514 |
-| `$83` | 5439 | 14093 | 1052 | 0 | 18675 |
+| `$80` | 9519 | 20937 | 5977 | 366 | 11831 |
+| `$81` | 7267 | 17492 | 2855 | 0 | 15276 |
+| `$82` | 5031 | 13266 | 1988 | 0 | 19502 |
+| `$83` | 5443 | 14100 | 1052 | 0 | 18668 |
 | `$84` | 6044 | 14718 | 177 | 0 | 18050 |
-| `$85` | 7584 | 17616 | 5337 | 4130 | 15152 |
+| `$85` | 7607 | 17664 | 5345 | 4157 | 15104 |
 | `$86` | 11906 | 29032 | 6503 | 4835 | 3736 |
-| `$87` | 8155 | 20700 | 3599 | 2203 | 12068 |
+| `$87` | 8160 | 20710 | 3604 | 2203 | 12058 |
 | `$88` | 0 | 0 | 0 | 0 | 32768 |
 | `$89` | 0 | 0 | 0 | 0 | 32768 |
 | `$8A` | 0 | 0 | 0 | 0 | 32768 |

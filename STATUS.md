@@ -24,11 +24,13 @@ Recent source-verified visual and gameplay fixes include:
 - native dribble animation timing and ball attachment;
 - north and south basket raster clipping;
 - the original out-of-bounds violation and possession overlay;
-- native CPU role-rebuild reaction delays, flag clearing, and RNG order.
+- native CPU role-rebuild reaction delays, flag clearing, and RNG order;
+- native late-game CPU defense-mode selection when consuming a play request.
 
 These paths are protected by test_tipoff_court_smoke.py,
 test_dribble_smoke.py, test_hoop_smoke.py, test_oob_smoke.py, and
-test_cpu_reaction_smoke.py, plus their native-vector verifiers.
+test_cpu_reaction_smoke.py, plus their native-vector verifiers, including the
+six-case defense-context branch replay.
 
 ## Major remaining gaps
 
@@ -54,7 +56,7 @@ Current generated captured-address measurements are:
 |---|---:|---:|
 | observed in retained execution captures | 29,438 | 100.0% |
 | documented by source provenance | 29,101 | 98.9% |
-| inside evidence-eligible verified ranges | 11,537 | 39.2% |
+| inside evidence-eligible verified ranges | 11,564 | 39.3% |
 
 These are coverage measurements for retained captures. They are not a
 percentage of the ROM, retail features, or game completion. The generated

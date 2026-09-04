@@ -1654,10 +1654,10 @@
     {
       "range": "85B120-85B18A",
       "name": "play-request prefix and made-score stream rewind branch",
-      "source": "src/nba_tipoff.c",
-      "method": "controlled native caller-boundary differential + production binding",
-      "evidence": "100 B120->B352 native calls with request $0994=1 at the real B116 caller boundary pass exactly for the made-score state. The control changes only request; PC, stack, ROM and RNG remain native. This found and fixed two port errors: active side must derive from DP $9E rather than camera proxy $093A, and $09A2 survives B377. Twenty-five spread witnesses protect globals, both context modes, RNG and ten actor readiness words. The separate live-state B18A-B244 selector remains explicitly unverified.",
-      "date": "2026-08-29"
+      "source": "src/nba_tipoff.c + src/nba_gameplay_ai.c",
+      "method": "controlled native caller-boundary differential + focused branch replay + production binding",
+      "evidence": "100 B120->B352 native calls with request $0994=1 at the real B116 caller boundary pass exactly for the made-score state. The control changes only request; PC, stack, ROM and RNG remain native. This found and fixed two port errors: active side must derive from DP $9E rather than camera proxy $093A, and $09A2 survives B377. Twenty-five spread witnesses protect globals, both context modes, RNG and ten actor readiness words. tests/fixtures/cpu-defense-context-witnesses.json adds six genuine B130->B176 Mesen calls covering early trailing mode 1, late trailing low-seven-bit nonzero mode 2, late trailing zero mode 0, tied odd/even modes 1/3, and the inactive no-write path; the compiled helper replays every RNG result and mode exactly. The separate live-state B18A-B244 selector has its own verified row.",
+      "date": "2026-09-04"
     },
     {
       "range": "85B245-85B249",

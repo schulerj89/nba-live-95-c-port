@@ -337,6 +337,11 @@ if ($Test) {
         --vectors (Join-Path $Root 'tests\fixtures\play-request-witnesses.json') `
         --probe (Join-Path $BuildDir 'play_request_vector_probe.exe') --pack $AssetPack
     if ($LASTEXITCODE -ne 0) { throw 'Play-request dispatcher ROM replay failed.' }
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name cpu_defense_context_vector_probe
+    & python (Join-Path $Root 'tools\verify_cpu_defense_context_vectors.py') `
+        --vectors (Join-Path $Root 'tests\fixtures\cpu-defense-context-witnesses.json') `
+        --probe (Join-Path $BuildDir 'cpu_defense_context_vector_probe.exe')
+    if ($LASTEXITCODE -ne 0) { throw 'CPU defense-context ROM replay failed.' }
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name formation_route_vector_probe
     & python (Join-Path $Root 'tools\verify_formation_route_vectors.py') `
         --vectors (Join-Path $Root 'tests\fixtures\formation-route-witnesses.json') `

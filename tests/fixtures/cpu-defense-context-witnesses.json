@@ -1,0 +1,229 @@
+{
+  "schema": 1,
+  "source": {
+    "oracle": "original USA ROM executed by Mesen 2",
+    "controlled": true,
+    "protocol": "Six genuine $85:B130 calls at the reached play-request boundary. Scores, raw period, opposing activity/mode, and RNG seed are controlled at entry and restored after the $85:B176 exit snapshot. No PC, stack, CPU-flag, or ROM edits.",
+    "rom_sha256": "2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870",
+    "mesen_sha256": "d2eb03c2590c648bf329f127ebcfefd70130e7690a9e2ccdba8616faea1fe96b",
+    "capture_sha256": "383bd6fdba0ddd4ae358ca77c40171c962ca30c990149f842cdf53fb589d31b9",
+    "cases_sha256": "af1e679f4c340e1127ab3d1db2cff1792e007435b65fddc9eced7731a9007c49",
+    "pcs_sha256": "7e1c788cdb891d14f7a32fa87143b970eec70a71af61597b9864be49e61ac9b5",
+    "meta_sha256": "a9b0bb5819c7fe9da824345c5f6998bb00a5791e01a96c1a48264ffe9af117d5"
+  },
+  "calls": [
+    {
+      "name": "early_trailing",
+      "entry_pc": "85b130",
+      "exit_pc": "85b176",
+      "input": {
+        "current_score": 2,
+        "opponent_score": 4,
+        "period_raw_0926": 2,
+        "opponent_activity_raw_39": 1,
+        "rng_seed": 64,
+        "initial_mode_raw_30": 4
+      },
+      "native": {
+        "random_word": 128,
+        "selected": true,
+        "mode_raw_30": 1,
+        "executed": [
+          "85b130",
+          "85b134",
+          "85b136",
+          "85b139",
+          "85b13a",
+          "85b13d",
+          "85b13f",
+          "85b142",
+          "85b145",
+          "85b147",
+          "85b14a",
+          "85b14d",
+          "85b161",
+          "85b164",
+          "85b173",
+          "85b176"
+        ]
+      }
+    },
+    {
+      "name": "late_trailing_nonzero",
+      "entry_pc": "85b130",
+      "exit_pc": "85b176",
+      "input": {
+        "current_score": 2,
+        "opponent_score": 4,
+        "period_raw_0926": 3,
+        "opponent_activity_raw_39": 1,
+        "rng_seed": 1,
+        "initial_mode_raw_30": 4
+      },
+      "native": {
+        "random_word": 2,
+        "selected": true,
+        "mode_raw_30": 2,
+        "executed": [
+          "85b130",
+          "85b134",
+          "85b136",
+          "85b139",
+          "85b13a",
+          "85b13d",
+          "85b13f",
+          "85b142",
+          "85b145",
+          "85b147",
+          "85b14a",
+          "85b14d",
+          "85b14f",
+          "85b152",
+          "85b155",
+          "85b166",
+          "85b169",
+          "85b173",
+          "85b176"
+        ]
+      }
+    },
+    {
+      "name": "late_trailing_zero",
+      "entry_pc": "85b130",
+      "exit_pc": "85b176",
+      "input": {
+        "current_score": 2,
+        "opponent_score": 4,
+        "period_raw_0926": 3,
+        "opponent_activity_raw_39": 1,
+        "rng_seed": 64,
+        "initial_mode_raw_30": 4
+      },
+      "native": {
+        "random_word": 128,
+        "selected": true,
+        "mode_raw_30": 0,
+        "executed": [
+          "85b130",
+          "85b134",
+          "85b136",
+          "85b139",
+          "85b13a",
+          "85b13d",
+          "85b13f",
+          "85b142",
+          "85b145",
+          "85b147",
+          "85b14a",
+          "85b14d",
+          "85b14f",
+          "85b152",
+          "85b155",
+          "85b157",
+          "85b16b",
+          "85b16e",
+          "85b173",
+          "85b176"
+        ]
+      }
+    },
+    {
+      "name": "tied_rng_odd",
+      "entry_pc": "85b130",
+      "exit_pc": "85b176",
+      "input": {
+        "current_score": 4,
+        "opponent_score": 4,
+        "period_raw_0926": 3,
+        "opponent_activity_raw_39": 1,
+        "rng_seed": 32768,
+        "initial_mode_raw_30": 4
+      },
+      "native": {
+        "random_word": 7559,
+        "selected": true,
+        "mode_raw_30": 1,
+        "executed": [
+          "85b130",
+          "85b134",
+          "85b136",
+          "85b139",
+          "85b13a",
+          "85b13d",
+          "85b13f",
+          "85b142",
+          "85b145",
+          "85b159",
+          "85b15c",
+          "85b15f",
+          "85b161",
+          "85b164",
+          "85b173",
+          "85b176"
+        ]
+      }
+    },
+    {
+      "name": "tied_rng_even",
+      "entry_pc": "85b130",
+      "exit_pc": "85b176",
+      "input": {
+        "current_score": 4,
+        "opponent_score": 4,
+        "period_raw_0926": 3,
+        "opponent_activity_raw_39": 1,
+        "rng_seed": 1,
+        "initial_mode_raw_30": 4
+      },
+      "native": {
+        "random_word": 2,
+        "selected": true,
+        "mode_raw_30": 3,
+        "executed": [
+          "85b130",
+          "85b134",
+          "85b136",
+          "85b139",
+          "85b13a",
+          "85b13d",
+          "85b13f",
+          "85b142",
+          "85b145",
+          "85b159",
+          "85b15c",
+          "85b15f",
+          "85b170",
+          "85b173",
+          "85b176"
+        ]
+      }
+    },
+    {
+      "name": "inactive_preserves",
+      "entry_pc": "85b130",
+      "exit_pc": "85b176",
+      "input": {
+        "current_score": 2,
+        "opponent_score": 4,
+        "period_raw_0926": 3,
+        "opponent_activity_raw_39": 0,
+        "rng_seed": 1,
+        "initial_mode_raw_30": 4
+      },
+      "native": {
+        "random_word": 2,
+        "selected": false,
+        "mode_raw_30": 4,
+        "executed": [
+          "85b130",
+          "85b134",
+          "85b136",
+          "85b139",
+          "85b13a",
+          "85b13d",
+          "85b176"
+        ]
+      }
+    }
+  ]
+}
