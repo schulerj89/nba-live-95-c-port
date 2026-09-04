@@ -26,12 +26,13 @@ Recent source-verified visual and gameplay fixes include:
 - the original out-of-bounds violation and possession overlay;
 - native CPU role-rebuild reaction delays, flag clearing, and RNG order;
 - native late-game CPU defense-mode selection when consuming a play request;
-- the native control-mode-five actor continuation and active-group bypass.
+- the native control-mode-five actor continuation, including its role-flagged
+  loose-ball pursuit.
 
 These paths are protected by test_tipoff_court_smoke.py,
 test_dribble_smoke.py, test_hoop_smoke.py, test_oob_smoke.py, and
 test_cpu_reaction_smoke.py, plus their native-vector verifiers, including the
-six-case defense-context and six-case mode-five actor-parent replays.
+six-case defense-context and eight-case mode-five actor-parent replays.
 
 ## Major remaining gaps
 

@@ -18,6 +18,11 @@ local cases = {
      controller=0xffff, live=0, same_group=true},
     {name="state_82_hold", timer=0x0040, recovery=0,
      controller=0xffff, live=0x82, same_group=false},
+    {name="ownerless_rejected", timer=0x0020, recovery=0,
+     controller=0xffff, live=0, same_group=true, ownerless=1},
+    {name="state_82_center_pursuit", timer=0x0020, recovery=0,
+     controller=0xffff, live=0x82, same_group=false, ownerless=1,
+     center_pursuit=true},
 }
 local index, pending_case, active = 0, nil, false
 
@@ -70,14 +75,22 @@ hook(0x879244, function()
     change_word(0x0936, case.live)
     change_word(0x093a, case.same_group and group or (group ~ 5))
     change_word(0x093e, (slot + 1) % 10)
-    change_word(0x09d8, 0)
+    change_word(0x09d8, case.ownerless or 0)
+    if case.center_pursuit then
+        assert(slot == 7, "controlled pursuit must use a native center slot")
+        change_word(0x0952, group)
+        change_word(0x0978, 0)
+        change_word(0x0996, 0)
+        change_word(0x0948, 0)
+        change_word(0x094a, 0)
+    end
     pending_case = {saved=saved, path={}, slot=slot, actor=actor, case=case}
     labels:write(string.format(
         '{"case":%d,"name":"%s","slot":%d,"actor":%d,' ..
         '"timer":%d,"recovery":%d,"controller":%d,"live":%d,' ..
-        '"same_group":%s}\n', index, case.name, slot, actor,
+        '"same_group":%s,"ownerless":%d}\n', index, case.name, slot, actor,
         case.timer, case.recovery, case.controller, case.live,
-        case.same_group and "true" or "false"))
+        case.same_group and "true" or "false", case.ownerless or 0))
     labels:flush()
 end)
 

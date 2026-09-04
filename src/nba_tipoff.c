@@ -1843,7 +1843,16 @@ static void cpu_dispatch_normal_actor_behavior(NbaTipoff *tipoff,
         .offense_group_raw_093a = tipoff->camera_side_group_raw,
         .inbound_group_raw_0952 = (uint8_t)tipoff->inbound_state_raw
     };
-    bool loose_pursuit = tipoff->ball.owner_actor < 0 &&
+    /* `$86:F312-$F335`: mode five enters the loose-ball child only for a
+     * due, uninhibited CPU actor when the role pass set `$09D8`. The current
+     * ball-owner field is not a substitute: `$09D8` can request this scan
+     * while the possession record still names an actor. */
+    bool pursuit_context = mode_five ?
+        decision_due && actor->recovery_inhibit_raw == 0u &&
+            actor->controller_assignment_raw < 0 &&
+            tipoff->role_ownerless_raw_09d8 != 0u :
+        tipoff->ball.owner_actor < 0;
+    bool loose_pursuit = pursuit_context &&
         nba_gameplay_loose_ball_pursuit_allowed(&pursuit);
     if (loose_pursuit && decision_due &&
         actor->recovery_inhibit_raw == 0u) {

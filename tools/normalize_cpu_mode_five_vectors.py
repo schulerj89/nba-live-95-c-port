@@ -16,6 +16,8 @@ CASE_NAMES = (
     "decision_due_human",
     "decision_due_inhibited",
     "state_82_hold",
+    "ownerless_rejected",
+    "state_82_center_pursuit",
 )
 
 
@@ -42,7 +44,7 @@ def main():
     cases = load_jsonl(args.cases)
     paths = load_jsonl(args.paths)
     if not (len(vectors) == len(cases) == len(paths) == len(CASE_NAMES)):
-        raise ValueError("expected exactly six aligned mode-five witnesses")
+        raise ValueError("expected exactly eight aligned mode-five witnesses")
 
     retained = []
     for number, (vector, case, path, name) in enumerate(
@@ -53,11 +55,18 @@ def main():
             raise ValueError(f"case {number} should be {name}")
         if vector["entry_frame"] != vector["exit_frame"]:
             raise ValueError(f"case {number} crossed an emulator frame")
-        if vector["entry_pc"] != "86f2ca" or vector["exit_pc"] != "86f34e":
+        expected_exit = "86f345" if name == "state_82_center_pursuit" else "86f34e"
+        if vector["entry_pc"] != "86f2ca" or vector["exit_pc"] != expected_exit:
             raise ValueError(f"case {number} has an unexpected boundary")
         executed = path["executed"]
-        if not executed or executed[0] != "86f2ca" or executed[-1] != "86f34e":
+        if not executed or executed[0] != "86f2ca" or executed[-1] != expected_exit:
             raise ValueError(f"case {number} has an incomplete PC path")
+        if name == "ownerless_rejected" and (
+                "86f335" not in executed or "86f33d" in executed):
+            raise ValueError("rejected pursuit did not return to the normal decision")
+        if name == "state_82_center_pursuit" and not all(
+                pc in executed for pc in ("86f335", "86f33d", "86f345")):
+            raise ValueError("accepted pursuit did not use the dedicated return")
 
         before = memory(vector["entry"])
         after = memory(vector["exit"])
@@ -82,6 +91,7 @@ def main():
                 "behavior": [word(before, actor + 0x64), word(after, actor + 0x64)],
                 "flags": [word(before, actor + 0x7E), word(after, actor + 0x7E)],
                 "facing": [word(before, actor + 0x4E), word(after, actor + 0x4E)],
+                "ownerless": word(before, 0x09D8),
             },
         })
 
@@ -99,7 +109,7 @@ def main():
     }
     args.output.write_text(
         json.dumps(document, separators=(",", ":")) + "\n", encoding="utf-8")
-    print("[CPU MODE FIVE NORMALIZE] calls=6 entry=86f2ca exit=86f34e")
+    print("[CPU MODE FIVE NORMALIZE] calls=8 entry=86f2ca exits=86f345/86f34e")
 
 
 if __name__ == "__main__":
