@@ -1,139 +1,33 @@
-# This reviewed script's exact bytes are part of native capture provenance.
-tools/mesen_intro_indexed_capture.lua text eol=lf
 # The ball initializer witnesses hash these exact schema bytes. Windows
 # checkout conversion must not invalidate their unchanged native protocol.
 tools/ball_init_fields.def text eol=lf
-# Controller schema2 capabilities are tied to this executed runner identity.
-tools/capture_controller_contract.py text eol=lf
-tools/capture_human_dispatch.py text eol=lf
-# FB46 capture revisions include CRLF and mixed-ending source files. Retain
-# their audited bytes exactly; normalizing them would change provenance.
-tools/capture_setup_codec_work.py -text
-tools/mesen_setup_codec_work.lua -text
-tools/mesen_setup_scheduler.lua -text
-# Switch capture provenance also pins the original CRLF runner/helper bytes.
-tools/capture_human_switch.py -text
-tools/mesen_human_switch.lua -text
+# Portable Mesen protocol bytes are part of retained native provenance.
 tools/mesen_portable.py -text
-# Pass-stage evidence uses exact original runner/Lua bytes.
-tools/capture_human_pass.py -text
-tools/mesen_human_pass.lua -text
-tools/capture_human_pass_init.py -text
-tools/mesen_human_pass_init.lua -text
-# Controlled layout captures pin their executed source bytes.
-tools/capture_inbound_layout.py -text
-tools/mesen_inbound_layout.lua -text
-# Standalone producer/header capture provenance pins these executed bytes.
-tools/capture_setup_producer_work.py -text
-tools/mesen_setup_producer_work.lua -text
-tools/capture_setup_header_work.py -text
-tools/mesen_setup_header_work.lua -text
-# Preserve executed action/aligned capture source identities.
-tools/capture_human_pass_action.py -text
-tools/mesen_human_pass_action.lua -text
-tools/capture_human_pass_aligned.py -text
-tools/mesen_human_pass_aligned.lua -text
-# Preserve executed pose capture source identities.
-tools/capture_human_pass_pose.py -text
-tools/mesen_human_pass_pose.lua -text
-# Preserve the reviewed sound/SPC capture identities.
-tools/capture_setup_sound_prefix.py -text
-tools/mesen_setup_sound_prefix.lua -text
-tools/mesen_setup_interrupt_tail.lua -text
-tools/capture_setup_sound_init.py -text
-tools/mesen_setup_sound_init.lua -text
-tools/capture_setup_spc_resident.py -text
-tools/mesen_setup_spc_resident.lua -text
-# Preserve executed catch capture bytes.
-tools/capture_human_pass_catch.py -text
-tools/mesen_human_pass_catch.lua -text
-# Preserve executed return capture bytes.
-tools/capture_human_pass_return.py -text
-tools/mesen_human_pass_return.lua -text
-# Preserve executed mode15 release capture bytes.
-tools/capture_human_pass_release.py -text
-tools/mesen_human_pass_release.lua -text
-# Preserve the unchanged reviewed period component/probe source identities.
+# Preserve the reviewed period component source identities.
 include/period_appearance.h -text
 src/period_appearance.c -text
-tools/period_appearance_probe.c -text
 include/period_support.h -text
 src/period_support.c -text
-tools/period_support_probe.c -text
-tools/period_support_source_domain.py -text
-# Preserve executed initializer capture identities.
-tools/capture_setup_spc_init.py -text
-tools/mesen_setup_spc_init.lua -text
-# Preserve the reviewed render-tail component/probe bytes.
+# Preserve the reviewed render-tail component bytes.
 include/period_render_tail.h -text
 src/period_render_tail.c -text
-tools/period_render_tail_probe.c -text
-# Preserve executed F1 control capture identities.
-tools/capture_setup_spc_control.py -text
-tools/mesen_setup_spc_control.lua -text
-# Preserve the reviewed period entry-prefix source and verifier bytes.
+# Preserve the reviewed period entry-prefix source bytes.
 include/nba_period_entry_prefix.h -text
 src/nba_period_entry_prefix.c -text
-tools/period_entry_prefix_probe.c -text
-tools/period_entry_prefix_fields.inc -text
-tools/build_period_entry_prefix_probe.ps1 -text
-tools/regenerate_period_entry_prefix_reference.py -text
-tools/ghidra/DumpPeriodEntryPrefix.java -text
-tools/verify_period_entry_prefix.py -text
-tools/period_entry_prefix_reference.py -text
-tools/test_period_entry_prefix.py -text
 
-# Preserve the reviewed period role source and verifier bytes.
+# Preserve the reviewed period role source bytes.
 include/nba_period_roles.h -text
 src/nba_period_roles.c -text
-tools/period_roles_probe.c -text
-tools/period_roles_probe_fields.inc -text
-tools/build_period_roles_probe.ps1 -text
-tools/verify_period_roles.py -text
-tools/test_period_roles.py -text
-tools/freeze_period_roles.py -text
 include/nba_period_roles_v2.h -text
 src/nba_period_roles_v2.c -text
-tools/period_roles_probe_v2.c -text
-tools/period_roles_probe_fields_v2.inc -text
-tools/build_period_roles_probe_v2.ps1 -text
-tools/verify_period_roles_v2.py -text
-tools/test_period_roles_v2.py -text
-tools/period_roles_rom_reference_v2.py -text
-tools/test_period_roles_protocol_v2.py -text
-tools/freeze_period_roles_v2.py -text
-tools/verify_period_roles_v3.py -text
-tools/test_period_roles_verifier_v3.py -text
-tools/freeze_period_roles_v3.py -text
 
-# Preserve reviewed typed formation sources and diagnostic metadata.
+# Preserve reviewed typed formation sources.
 include/nba_period_formation.h -text
 src/nba_period_formation.c -text
-tools/period_formation_probe.c -text
-tools/period_formation_fields.inc -text
-tools/generate_period_formation_fields.py -text
-tools/build_period_formation_probe.ps1 -text
-tools/verify_period_formation.py -text
-tools/test_period_formation.py -text
-tools/test_period_formation_protocol.py -text
-tools/freeze_period_formation.py -text
-tools/period_formation_dependencies_v1.json -text
-tools/period_formation_role_alias_map_v1.json -text
-tools/prepare_period_formation_dependencies.py -text
 
-# Preserve the reviewed draw-order component and verification bytes.
+# Preserve the reviewed draw-order component bytes.
 include/nba_draw_order.h -text
 src/nba_draw_order.c -text
-tools/draw_order_probe.c -text
-tools/build_draw_order_probe.ps1 -text
-tools/capture_draw_order.py -text
-tools/capture_draw_order.lua -text
-tools/draw_order_rom_reference.py -text
-tools/verify_draw_order.py -text
-tools/test_draw_order.py -text
-tools/test_draw_order_protocol.py -text
-tools/freeze_draw_order.py -text
-tools/test_draw_order_independent_cases.py -text
 
 # HUD extraction validates these exact reviewed capture and builder bytes.
 tools/capture_gameplay_hud.py -text
@@ -141,33 +35,18 @@ tools/mesen_gameplay_hud.lua -text
 tools/build_gameplay_hud_assets.py -text
 tools/build_gameplay_hud_lifecycle_assets.py -text
 
-# Preserve accepted HUD runtime/probe sources and historical formation header.
+# Preserve accepted HUD runtime sources.
 include/nba_assets.h -text
 include/nba_gameplay_hud.h -text
 include/nba_tipoff.h -text
 src/nba_gameplay_hud.c -text
 src/nba_tipoff.c -text
-tools/hud_lifecycle_contract_probe.c -text
-tools/hud_native_lifecycle_probe.c -text
-tools/hud_runtime_probe.c -text
-tools/verify_gameplay_hud_lifecycle.py -text
-tools/period_formation_dependencies_v1/nba_assets.h -text
 
-# Preserve the independently reviewed normal retail-entry capture identities.
-tools/capture_retail_mode_entry.py -text
-tools/mesen_retail_mode_entry.lua -text
-# Preserve the C1 candidate's executed source, guard and capture identities.
+# Preserve the CPU endurance runner and accepted trace identity.
 tools/test_cpu_gameplay.py -text
-tools/build_pass_interruption_probe.py -text
-tools/capture_pass_interruption.py -text
-tools/mesen_pass_interruption.lua -text
-tools/pass_interruption_probe.c -text
 tools/pass_interruption_trace.py -text
-tools/test_pass_interruption_contract.py -text
-tools/test_pass_interruption_trace.py -text
-tools/verify_pass_interruption_trace.py -text
 
-# Preserve independently accepted reset/upload/F1 component bytes.
+# Preserve independently accepted reset/upload/F1 source bytes.
 include/nba_bootstrap.h -text
 include/nba_bootstrap_internal.h -text
 src/nba_bootstrap.c -text
@@ -175,22 +54,6 @@ src/nba_bootstrap_cpu.c -text
 src/nba_bootstrap_cpu_program.inc -text
 src/nba_bootstrap_ipl.c -text
 src/nba_bootstrap_rom.c -text
-tools/bootstrap_contracts.c -text
-tools/bootstrap_probe.c -text
-tools/build_bootstrap_contracts.ps1 -text
-tools/build_bootstrap_probe.ps1 -text
-tools/capture_bootstrap.py -text
-tools/generate_bootstrap_cpu.py -text
-tools/mesen_bootstrap.lua -text
-tools/test_bootstrap_protocol.py -text
-tools/verify_bootstrap.py -text
-tools/verify_bootstrap_v2.py -text
-tools/bootstrap_trace_protocol_v2.py -text
-tools/test_bootstrap_protocol_v2.py -text
-tools/test_bootstrap_profile_v2.py -text
-tools/verify_bootstrap_v3.py -text
-tools/test_bootstrap_protocol_v3.py -text
-tools/test_bootstrap_profile_v3.py -text
 include/nba_rom.h -text
 include/nba_setup_codec_work.h -text
 include/nba_setup_spc_control.h -text
@@ -201,121 +64,38 @@ src/nba_rom.c -text
 src/nba_setup_spc_control.c -text
 src/nba_setup_spc_init.c -text
 
-# Preserve independently reviewed culling source and tests.
+# Preserve independently reviewed culling source.
 src/nba_court_presentation.c -text
-tools/court_culling_probe.c -text
-tools/build_court_culling_probe.py -text
-tools/test_court_culling_source.py -text
 
-# Preserve accepted receiver child/parent source and capture identities.
+# Preserve accepted receiver child/parent source identities.
 include/nba_receiver_prepare.h -text
 src/nba_receiver_prepare.c -text
-tools/build_receiver_prepare_probe.py -text
-tools/capture_receiver_prepare.py -text
-tools/ghidra/DumpReceiverPrepare.java -text
-tools/mesen_receiver_prepare.lua -text
-tools/receiver_prepare_probe.c -text
-tools/regenerate_receiver_prepare_reference.py -text
-tools/test_receiver_prepare_integrity.py -text
-tools/test_receiver_prepare_source.py -text
-tools/verify_receiver_prepare.py -text
 
 # Preserve independently accepted direction deliverable bytes.
 src/nba_gameplay_ai.c -text
-src/nba_tipoff.c -text
-tools/draw_direction_caller_probe.c -text
-tools/build_draw_direction_caller_probe.py -text
-tools/d1_direction_rom_reference_v2.py -text
-tools/test_d1_direction_audit_v2.py -text
-tools/test_draw_direction_protocol.py -text
-
-# Preserve independently reviewed ball render deliverables.
-tools/ball_pass_render_probe.c -text
-tools/build_ball_pass_render_probe.py -text
-tools/capture_ball_pass_draw.py -text
-tools/capture_ball_pass_sequence.py -text
-tools/inspect_ball_pass_source.py -text
-tools/mesen_ball_pass_draw.lua -text
-tools/test_ball_pass_render.py -text
-tools/verify_ball_draw_resources.py -text
-
-# Preserve accepted base bootstrap boundary verifier repair.
-tools/bootstrap_boundary_protocol_v2.py -text
-tools/verify_bootstrap_v4.py -text
-tools/test_bootstrap_boundary_v4.py -text
-tools/test_bootstrap_guard_regressions_v2.py -text
 
 # Preserve accepted continuous bootstrap prefix through the pre-NMI boundary.
 include/nba_bootstrap_fill.h -text
 src/nba_bootstrap_fill.c -text
 src/nba_bootstrap_fill_cpu.c -text
 src/nba_bootstrap_fill_cpu_program.inc -text
-tools/generate_bootstrap_fill_cpu.py -text
-tools/bootstrap_fill_probe.c -text
-tools/build_bootstrap_fill_probe.ps1 -text
-tools/mesen_bootstrap_fill.lua -text
-tools/capture_bootstrap_fill.py -text
-tools/verify_bootstrap_fill.py -text
-tools/test_bootstrap_protocol_fill.py -text
-tools/test_bootstrap_profile_fill.py -text
-tools/test_bootstrap_fill_dma_protocol.py -text
-tools/bootstrap_fill_contracts.c -text
-tools/build_bootstrap_fill_contracts.ps1 -text
 include/nba_bootstrap_tables.h -text
 src/nba_bootstrap_tables.c -text
 src/nba_bootstrap_tables_cpu.c -text
 src/nba_bootstrap_tables_cpu_program.inc -text
-tools/generate_bootstrap_tables_cpu.py -text
-tools/bootstrap_tables_probe.c -text
-tools/build_bootstrap_tables_probe.ps1 -text
-tools/mesen_bootstrap_tables.lua -text
-tools/capture_bootstrap_tables.py -text
-tools/verify_bootstrap_tables.py -text
-tools/test_bootstrap_protocol_tables.py -text
-tools/test_bootstrap_profile_tables.py -text
-tools/test_bootstrap_tables_dma_protocol.py -text
-tools/test_bootstrap_tables_protocol.py -text
-tools/bootstrap_tables_contracts.c -text
-tools/build_bootstrap_tables_contracts.ps1 -text
-tools/verify_bootstrap_fill_v2.py -text
-tools/verify_bootstrap_tables_v2.py -text
-tools/test_bootstrap_tables_boundary_v2.py -text
-tools/bootstrap_fill_trace_protocol.py -text
 
 # Preserve literal sprite-compositor/runtime adapter source identities.
 tools/build_player_draw_inputs.py -text
-tools/build_sprite_pose_guards.py -text
-tools/build_sprite_pose_probe.py -text
-tools/build_sprite_pose_runtime_probe.py -text
-tools/inspect_sprite_pose_source.py -text
-tools/sprite_pose_guard_probe.c -text
-tools/sprite_pose_probe.c -text
-tools/sprite_pose_rom_oracle.py -text
-tools/sprite_pose_runtime_probe.c -text
-tools/test_sprite_pose.py -text
-tools/test_sprite_pose_protocol.py -text
-tools/test_sprite_pose_runtime_inputs.py -text
 tools/test_sprite_pose_runtime_source.py -text
-tools/upgrade_player_draw_pack.py -text
-tools/verify_sprite_pose_live_runtime.py -text
-tools/verify_sprite_pose_runtime.py -text
 
 # Preserve the frozen dribble fixtures and executed capture/reference bytes.
 tests/fixtures/dribble-native.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 tests/fixtures/dribble-draw-native.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
-tools/capture_dribble.py -text
-tools/mesen_dribble_capture.lua -text
-tools/regenerate_dribble_reference.py -text
-tools/ghidra/DumpDribble.java -text
 
 # Preserve reviewed native basket inputs and the executed reference scripts.
 tests/fixtures/hoop-raster-native.json -text
-tools/mesen_hoop_capture.lua -text
-tools/capture_hoop.py -text
 tools/regenerate_hoop_reference.py -text
 tools/ghidra/DumpHoop.java -text
 
 # OOB evidence pins the exact native capture and hash-only witness bytes.
-tools/mesen_oob_capture.lua text eol=lf
-tools/capture_oob.py text eol=lf
 tests/fixtures/out-of-bounds-hud.json text eol=lf
