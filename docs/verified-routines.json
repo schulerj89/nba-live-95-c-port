@@ -1932,6 +1932,26 @@
       "date": "2026-09-05"
     },
     {
+      "range": "86F962-86F96E;86F977-86F97F",
+      "name": "mode-six negative-role human hold",
+      "source": "src/nba_tipoff.c",
+      "method": "controlled native wrapper-selected signed-role differential + fresh headless Ghidra and snesrecomp",
+      "evidence": "Two byte-identical Mesen captures each record a genuine mode-six call selected by $87:9244 and observed at its $87:9C35 wrapper, with PC, stack, flags, ROM, RNG, and child code untouched. Both calls hold actor 3 in mode 6 with a due decision, recovery inhibit zero, live state 2, human controller zero, boost $0010, sentinel target (-24,80), zero velocity, and a free-throw/foul context that makes $86:F0FD accept whenever called. The control uses role result $09D8=1: native calls $86:F0FD, $85:B3AA, and $85:A82C once, accelerates to (86,-86), decrements boost to $000E, commits directions 6/6, and exits through $86:F961. Changing only $09D8 to $FFFF takes $86:F962-$F96E and $86:F977-$F97F, calls no movement, targeting, RNG, or jump/reach child, preserves zero velocity and boost $0010, copies current direction +$4E=1 to requested +$50, and exits through $86:F97F. Before the C correction the negative case treated $FFFF like a positive role, incorrectly accelerated to (86,-86), and was the sole mismatch. The permanent normal-actor replay now covers 107 calls, including ten mode-six calls, with zero represented-output mismatches. Controls change documented input WRAM immediately before the native JSL; no execution state or result is patched.",
+      "provenance": {
+        "rom_sha256": "2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870",
+        "raw_vectors": ".analysis/cpu-mode-six-negative-role-20260905/capture-v2/cpu_mode_six_negative_role.vectors.jsonl",
+        "raw_vectors_sha256": "766bc332f13179bc96f2bcef1e87075ebdb8ef04388658cb46a3397cdb21ef51",
+        "case_matrix_sha256": "466763bba1e89e46725a24339cdd932b92a569531cbcad68a3e424f3a5465088",
+        "path_trace_sha256": "2ec9bd870086ee95af912f654d838eb8e6d0b1cfe1c5ba028a96e62075e6fc74",
+        "ghidra": ".analysis/cpu-mode-six-negative-role-20260905/reference/cpu_mode_six_bank86.txt",
+        "ghidra_sha256": "27f9e4bcdce77540af5cc0fa4f257137ddec846f1ea23f2995b00585b7ca34e6",
+        "recomp": ".analysis/cpu-mode-six-negative-role-20260905/reference/cpu_mode_six_bank86.c",
+        "recomp_function": "CpuModeSix_M0X0",
+        "recomp_sha256": "f12d2a3b1fa6dbe8dde61e6048dc520330398b38ebdeb4f5f82f295bb940ed03"
+      },
+      "date": "2026-09-05"
+    },
+    {
       "range": "86F1B0-86F23E",
       "name": "normal mode-one CPU actor continuation",
       "source": "src/nba_tipoff.c + src/nba_gameplay_ai.c",

@@ -1909,6 +1909,19 @@ static void cpu_dispatch_normal_actor_behavior(NbaTipoff *tipoff,
     bool apply_velocity_step = false;
     bool mode_two_defense_refresh = false;
     bool mode_four_anticipation_override = false;
+    /* `$86:F920-$F924/$86:F962-$F96E/$86:F977-$F97F`: mode six treats a
+     * negative role result as a third state. During ordinary live play a
+     * human-controlled actor skips F0FD and defensive targeting, preserves
+     * velocity, copies current +$4E to requested +$50, and returns. */
+    if (actor->control_mode == 6u && decision_due &&
+        actor->recovery_inhibit_raw == 0u &&
+        (int16_t)tipoff->role_ownerless_raw_09d8 < 0 &&
+        tipoff->live_state_raw < 0x80u &&
+        actor->controller_assignment_raw >= 0) {
+        actor->requested_direction = actor->movement_direction;
+        actor->action_state = tipoff->cpu_play_state;
+        return;
+    }
     NbaGameplayLoosePursuitGateInput pursuit = {
         .live_state_raw_0936 = tipoff->live_state_raw,
         .ball_activity_raw_0948 = tipoff->ball_activity_raw,

@@ -31,7 +31,7 @@ Counts address positions in the captured exec intervals. Some captures record in
 - recomp-discovered functions: 136 (banks 00/80/81/82 only; static analysis stops at indirect dispatch)
 - of those observed executing in captures: 126
 - of those referenced by port provenance: 135
-- verified ledger entries: 251 total, 225 eligible for address coverage
+- verified ledger entries: 252 total, 226 eligible for address coverage
 
 ## Largest undocumented executed regions
 

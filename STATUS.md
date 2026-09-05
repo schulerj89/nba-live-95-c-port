@@ -53,12 +53,14 @@ Recent source-verified visual and gameplay fixes include:
   policy, including its reject and mode-nine handoff paths.
 - the native control-mode-six base-assignment selector for paired defensive
   targeting, even while the mutable assignment names another opponent.
+- the native control-mode-six negative role-result hold for human-controlled
+  actors during ordinary live play.
 
 These paths are protected by test_tipoff_court_smoke.py,
 test_dribble_smoke.py, test_hoop_smoke.py, test_oob_smoke.py, and
 test_cpu_reaction_smoke.py, plus their native-vector verifiers, including the
 six-case defense-context, eight-case mode-five, two-case mode-one and
-mode-three role-flag, nine-case mode-two, twelve-case mode-four, and eight-case
+mode-three role-flag, nine-case mode-two, twelve-case mode-four, and ten-case
 mode-six actor-parent replays.
 
 ## Major remaining gaps
