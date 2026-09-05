@@ -1872,6 +1872,26 @@
       "date": "2026-09-05"
     },
     {
+      "range": "86F920-86F931",
+      "name": "mode-six role-flag loose-ball pursuit gate",
+      "source": "src/nba_tipoff.c",
+      "method": "controlled native wrapper-selected parent differential + fresh headless Ghidra and snesrecomp",
+      "evidence": "Two byte-identical Mesen captures each record two genuine mode-six calls selected by $87:9244 and observed at its $87:9C35 wrapper, with PC, stack, flags, ROM, RNG, and child results untouched. Both calls hold role-pass result $09D8 at 1, reaction timer $20, recovery inhibit zero, identical paired geometry, and a free-throw gate that makes the already verified $86:F0FD child accept actor 3 deterministically. One call leaves possession $093E ownerless; the other names actor 4. Native executes $86:F920/$F925/$F92A in both cases, calls $86:F0FD once, skips $86:EF09 and $86:E9B3, preserves target (-24,80), reloads the timer to $29, and finishes through $86:F961. Before the C correction the ownerless control matched, while the named-owner case incorrectly inferred its path from $093E, entered mode-six defensive targeting, and changed the target to (116,16). With mode six bound to $09D8, the permanent normal-actor replay covers 101 calls, including four mode-six calls, with zero represented-output mismatches. Controls change documented input WRAM immediately before the native JSL; no execution state or result is patched.",
+      "provenance": {
+        "rom_sha256": "2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870",
+        "raw_vectors": ".analysis/cpu-mode-six-role-pursuit-20260905/capture-v4/cpu_mode_six_pursuit.vectors.jsonl",
+        "raw_vectors_sha256": "44b6c70a821af1ba1535423b9cc49a9f836f87c1dd1839ecd593f22b95f674cc",
+        "case_matrix_sha256": "edcbbac87b3666059650f4d6b90f94b49eba8babd5df973a108c44533d760827",
+        "path_trace_sha256": "4d2878e3146a64856a5278cbc9749592dbc41e1ae5dcb66d2828daf70a5614bf",
+        "ghidra": ".analysis/cpu-mode-six-role-pursuit-20260905/reference/cpu_mode_six_bank86.txt",
+        "ghidra_sha256": "27f9e4bcdce77540af5cc0fa4f257137ddec846f1ea23f2995b00585b7ca34e6",
+        "recomp": ".analysis/cpu-mode-six-role-pursuit-20260905/reference/cpu_mode_six_bank86.c",
+        "recomp_function": "CpuModeSix_M0X0",
+        "recomp_sha256": "f12d2a3b1fa6dbe8dde61e6048dc520330398b38ebdeb4f5f82f295bb940ed03"
+      },
+      "date": "2026-09-05"
+    },
+    {
       "range": "86F1B0-86F23E",
       "name": "normal mode-one CPU actor continuation",
       "source": "src/nba_tipoff.c + src/nba_gameplay_ai.c",
