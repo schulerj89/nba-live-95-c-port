@@ -1153,6 +1153,10 @@ static bool cpu_refresh_defense_target(NbaTipoff *tipoff, unsigned slot,
             .current_score_raw_26 = tipoff->team_context[side].score_raw_26,
             .opponent_score_raw_26 =
                 tipoff->team_context[side ^ 1u].score_raw_26,
+            .current_pose_contact_count_raw_50 =
+                tipoff->team_pose_contact_count_raw[side],
+            .opponent_pose_contact_count_raw_50 =
+                tipoff->team_pose_contact_count_raw[side ^ 1u],
             .personal_fouls_raw_14 = tipoff->fouls.personal_fouls[slot],
             .actor_assignment_distance_raw_8a = actor->assignment_distance,
             .paired_movement_raw_4c = paired->movement_magnitude_raw,
@@ -1162,16 +1166,23 @@ static bool cpu_refresh_defense_target(NbaTipoff *tipoff, unsigned slot,
             .paired_velocity_x = paired->velocity_x,
             .paired_velocity_y = paired->velocity_y
         };
-        NbaGameplayModeFourAnticipationOutput anticipation_output;
-        if (nba_gameplay_mode_four_anticipation_override(
-                &anticipation_input, &tipoff->rng, &anticipation_output)) {
+        NbaGameplayModeFourAnticipationOutput anticipation_output = {0};
+        bool anticipated = nba_gameplay_mode_four_anticipation_override(
+            &anticipation_input, &tipoff->rng, &anticipation_output);
+        /* `$86:EFCF-$EFD6` precedes the shared movement/distance rejects, so
+         * its write survives even when the target override is declined. */
+        if (anticipation_output.movement_boost_written)
+            actor->movement_boost_timer =
+                anticipation_output.movement_boost_raw_72;
+        if (anticipated) {
             actor->target_x = anticipation_output.target_x;
             actor->target_y = anticipation_output.target_y;
             actor->pass_band_raw = actor->control_mode;
             actor->control_mode = 9u;
-            actor_animation_command(
-                tipoff, actor, NBA_ANIMATION_INSTALL_UPPER,
-                anticipation_output.upper_animation_request);
+            if (anticipation_output.upper_animation_requested)
+                actor_animation_command(
+                    tipoff, actor, NBA_ANIMATION_INSTALL_UPPER,
+                    anticipation_output.upper_animation_request);
             actor->reaction_threshold = 0x001Eu;
             if (mode_four_anticipation_override) *mode_four_anticipation_override = true;
             return true;

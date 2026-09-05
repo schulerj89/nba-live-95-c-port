@@ -185,10 +185,8 @@ typedef struct {
     bool stop_velocity;
 } NbaGameplayDefenseTargetOutput;
 
-/* Inputs retained by the translated halves of mode four's `$86:EF09`
- * anticipation policy. The close branch and the far branch used while the
- * actor's team trails are represented. The tied/ahead contact-count branch
- * at `$86:EF98-$EFD6` remains separate. */
+/* Inputs retained by mode four's translated `$86:EF09-$F0B6`
+ * anticipation policy. */
 typedef struct {
     uint16_t difficulty_raw_17af;
     int16_t controller_assignment_raw_16;
@@ -197,6 +195,8 @@ typedef struct {
     uint16_t match_clock_raw_0928;
     uint16_t current_score_raw_26;
     uint16_t opponent_score_raw_26;
+    uint16_t current_pose_contact_count_raw_50;
+    uint16_t opponent_pose_contact_count_raw_50;
     uint16_t personal_fouls_raw_14;
     uint16_t actor_assignment_distance_raw_8a;
     uint16_t paired_movement_raw_4c;
@@ -207,7 +207,10 @@ typedef struct {
 
 typedef struct {
     int16_t target_x, target_y;
+    uint16_t movement_boost_raw_72;
     uint8_t upper_animation_request;
+    bool movement_boost_written;
+    bool upper_animation_requested;
 } NbaGameplayModeFourAnticipationOutput;
 
 /* Five-player side input consumed by the no-owner role pass at

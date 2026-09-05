@@ -951,23 +951,29 @@ bool nba_gameplay_defense_mode_target(
     return true;
 }
 
-/* `$86:EF09-$EF97/$86:EFD7-$F0B6`: mode four occasionally replaces its
+/* `$86:EF09-$F0B6`: mode four occasionally replaces its
  * ordinary defensive target with the assigned opponent's near-future
  * position. The difficulty table supplies masks $1F/$0F/$07. Eligible late
  * game defenders tolerate four personal fouls, or six while trailing in the
  * final clock window; earlier play uses three. Close opponents pass directly.
- * At or beyond +$8C=$78, this translated branch requires the actor's team to
- * trail, paired movement below $41, and actor +$8A in [20,48). The tied/ahead
- * contact-count and extra-RNG branch at `$86:EF98-$EFD6` remains unported.
+ * At or beyond +$8C=$78, a trailing team passes directly; a tied or leading
+ * team first needs a lower +$50 pose-contact count than its opponent, then
+ * consumes two more RNG values for animation selection and a movement-boost
+ * request. Both score paths finally require paired movement below $41 and
+ * actor +$8A in [20,48).
  *
  * Native's four CMP/ROR shifts then subtract the sign word. Reusing the
  * existing velocity_damping_div16 helper preserves its unusual negative
- * bias: -80 contributes -4, rather than an arithmetic -5. */
+ * bias: -80 contributes -4, rather than an arithmetic -5. After a valid
+ * first difficulty result, the exact LFSR can only produce animation selector
+ * 0 or 7 and cannot produce boost selector $18. The otherwise unreachable
+ * selector remaps and boost write remain translated from the static routine. */
 bool nba_gameplay_mode_four_anticipation_override(
     const NbaGameplayModeFourAnticipationInput *in, NbaGameplayRng *rng,
     NbaGameplayModeFourAnticipationOutput *out) {
     static const uint16_t difficulty_masks[3] = {0x001Fu, 0x000Fu, 0x0007u};
     if (!in || !rng || !out || in->difficulty_raw_17af >= 3u) return false;
+    *out = (NbaGameplayModeFourAnticipationOutput){0};
     if ((nba_gameplay_rng_next(rng) &
          difficulty_masks[in->difficulty_raw_17af]) != 0u) return false;
     if (in->controller_assignment_raw_16 >= 0) return false;
@@ -983,10 +989,23 @@ bool nba_gameplay_mode_four_anticipation_override(
             foul_threshold = 6u;
     }
     if (in->personal_fouls_raw_14 >= foul_threshold) return false;
+    uint16_t animation_selector = 2u;
     if (in->paired_anchor_distance_raw_8c >= 0x0078u) {
         if (!subtract16_is_negative(in->current_score_raw_26,
-                                    in->opponent_score_raw_26) ||
-            !subtract16_is_negative(in->paired_movement_raw_4c, 0x0041u) ||
+                                    in->opponent_score_raw_26)) {
+            if (!subtract16_is_negative(
+                    in->current_pose_contact_count_raw_50,
+                    in->opponent_pose_contact_count_raw_50))
+                return false;
+            animation_selector = nba_gameplay_rng_next(rng) & 0x000Fu;
+            if (animation_selector == 8u) animation_selector = 0u;
+            else if (animation_selector == 11u) animation_selector = 1u;
+            if ((nba_gameplay_rng_next(rng) & 0x001Fu) == 0x0018u) {
+                out->movement_boost_raw_72 = 0x001Eu;
+                out->movement_boost_written = true;
+            }
+        }
+        if (!subtract16_is_negative(in->paired_movement_raw_4c, 0x0041u) ||
             !subtract16_is_negative(
                 in->actor_assignment_distance_raw_8a, 0x0030u) ||
             subtract16_is_negative(
@@ -994,13 +1013,15 @@ bool nba_gameplay_mode_four_anticipation_override(
             return false;
     }
 
-    NbaGameplayModeFourAnticipationOutput next = {
-        .target_x = wrap16((int32_t)in->paired_x +
-                           velocity_damping_div16(in->paired_velocity_x)),
-        .target_y = wrap16((int32_t)in->paired_y +
-                           velocity_damping_div16(in->paired_velocity_y)),
-        .upper_animation_request = 0x13u
-    };
+    NbaGameplayModeFourAnticipationOutput next = *out;
+    next.target_x = wrap16((int32_t)in->paired_x +
+                           velocity_damping_div16(in->paired_velocity_x));
+    next.target_y = wrap16((int32_t)in->paired_y +
+                           velocity_damping_div16(in->paired_velocity_y));
+    if (animation_selector != 0u) {
+        next.upper_animation_requested = true;
+        next.upper_animation_request = animation_selector == 1u ? 0x38u : 0x13u;
+    }
     *out = next;
     return true;
 }
