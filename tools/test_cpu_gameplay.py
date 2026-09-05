@@ -171,11 +171,15 @@ EXPECTED_RGB = {
     # Re-reviewed after `$86:EF09` restored its shared-RNG gate and close
     # anticipation branch. The resulting trajectories remain coherent in all
     # five frames, with court, players, ball, baskets, crowd, and HUD intact.
-    600: "d8d74399082b6533dae4e7bbffa6fb6932562dcce447b307749408112adf01e4",
-    1300: "78622d6a98d6bd1d8ef40bd787f67b94117988b57d72b50119c078da5775293e",
-    3480: "8d2b05983ddbb5085387344c26d57a1784781d1b56c807d50f2d840423deec35",
-    6932: "99ffe9bfb956b24b27bf804d03ee2967a354df5a416afe06e99d6d14f5137ac2",
-    6954: "1f1b7a4d3d262d0be7ad248f813a5bf79f4954e3d2bcecc31842f1e5b342149f",
+    # Re-reviewed after `$86:F8CD-$F8D5` made mode six honor role flag
+    # `$09D8` before repairing locomotion bases. The frame-600 difference is
+    # confined to one defender's 22x51 sprite box; later camera and actor
+    # trajectories diverge while the complete gameplay scene remains intact.
+    600: "f015c2a5a49e25e538be5a919c0f7fc8597e26b5a9472ec24e1db81aadb9e7bb",
+    1300: "008fdc9ecf7a7be456710e23472cb769b17a7fe66bffc304a094940187abad70",
+    3480: "b7cf00326ba8900aae785207656e0fc4672882aa71a782b772c39deb00561b95",
+    6932: "cae6dad21122181e7a3a4483669429d6e9d836209cb87d6980576a4627d8dd93",
+    6954: "de13740bc6f5893930a03605f6bd021b15f065d5ce182c3861da2f6fd1266c2d",
 }
 
 

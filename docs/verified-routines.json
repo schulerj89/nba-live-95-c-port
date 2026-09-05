@@ -1852,6 +1852,26 @@
       "date": "2026-09-04"
     },
     {
+      "range": "86F8CD-86F8D5",
+      "name": "mode-six role-flag locomotion-base gate",
+      "source": "src/nba_tipoff.c",
+      "method": "controlled native wrapper-selected parent differential + fresh headless Ghidra and snesrecomp",
+      "evidence": "Two byte-identical Mesen captures each record two genuine mode-six calls selected by $87:9244 and observed at its $87:9C35 wrapper, with PC, stack, flags, ROM, RNG, and child results untouched. Both calls hold actor 3 in mode 6 with upper animation 8, locomotion base 10, reaction timer $40, movement direction 1, and requested direction 6. With role-pass flag $09D8 clear, native executes $86:F8CD/$F8D0 directly to $F8D6, skips $86:E3CB, and preserves base 10. With the flag set, it executes $86:F8D2, calls $86:E3CB once, and repairs the base to 3. Both then take the same isolated $40->$20 timer-hold route through $86:F8D8-$F8E7 and commit requested direction 6 at $86:F959-$F95E. Before the C correction the role-clear witness incorrectly repaired the base to 3 and was the sole mismatch. With mode six bound to $09D8, the permanent normal-actor replay covers 99 calls, including two mode-six calls, with zero represented-output mismatches. Controls change documented input WRAM immediately before the native JSL; no execution state or result is patched.",
+      "provenance": {
+        "rom_sha256": "2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870",
+        "raw_vectors": ".analysis/cpu-mode-six-role-gate-20260905/capture-v2/cpu_mode_six_role.vectors.jsonl",
+        "raw_vectors_sha256": "75326c1127dbe0541a2d0c3656d176af3747c82ff94782a445871d8d6a30f587",
+        "case_matrix_sha256": "b59e641d90b5e3a496036d8a624dfd3590633316c9a8f762776f792a2421275d",
+        "path_trace_sha256": "b9498376cbd29bbeb8ed6f11058ba7b175d648d45365b4bf527c9b8dea5481a2",
+        "ghidra": ".analysis/cpu-mode-six-role-gate-20260905/reference/cpu_mode_six_bank86.txt",
+        "ghidra_sha256": "27f9e4bcdce77540af5cc0fa4f257137ddec846f1ea23f2995b00585b7ca34e6",
+        "recomp": ".analysis/cpu-mode-six-role-gate-20260905/reference/cpu_mode_six_bank86.c",
+        "recomp_function": "CpuModeSix_M0X0",
+        "recomp_sha256": "f12d2a3b1fa6dbe8dde61e6048dc520330398b38ebdeb4f5f82f295bb940ed03"
+      },
+      "date": "2026-09-05"
+    },
+    {
       "range": "86F1B0-86F23E",
       "name": "normal mode-one CPU actor continuation",
       "source": "src/nba_tipoff.c + src/nba_gameplay_ai.c",

@@ -1885,13 +1885,13 @@ static void cpu_dispatch_normal_actor_behavior(NbaTipoff *tipoff,
     int x = fp_round(actor->x_fp), y = fp_round(actor->y_fp);
     /* `$86:F6CD-$F6D7`: mode two calls the `$86:E3CB` locomotion-base
      * repair only while neither the pass receiver nor owner is named.
-     * `$86:F794-$F799`: mode four gates the same repair on the role pass's
-     * `$09D8` result. */
+     * `$86:F794-$F799/$86:F8CD-$F8D5`: modes four and six gate the same
+     * repair on the role pass's `$09D8` result. */
     bool repair_locomotion_base;
     if (actor->control_mode == 2u)
         repair_locomotion_base =
             tipoff->pass_receiver_raw < 0 && tipoff->possession_actor < 0;
-    else if (actor->control_mode == 4u)
+    else if (actor->control_mode == 4u || actor->control_mode == 6u)
         repair_locomotion_base = tipoff->role_ownerless_raw_09d8 != 0u;
     else
         repair_locomotion_base = true;

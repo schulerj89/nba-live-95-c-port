@@ -64,11 +64,15 @@ def main():
             # deterministic camera and actor positions at this C-only frame.
             # The inspected scene remains complete and all winner ranks below
             # are still validated pixel by pixel.
-            assert summary["visible"]["bg1"] == 918
-            assert summary["visible"]["bg2"] == 45704
-            assert summary["visible"]["bg3"] == 0
-            assert summary["visible"]["obj"] == 2464
-            assert summary["visible"]["backdrop"] == 8258
+            # Re-reviewed after `$86:F8CD-$F8D5` made mode six honor role flag
+            # `$09D8` before repairing locomotion bases. The corrected CPU
+            # trajectory has a coherent 2-0 first-quarter scoreboard panel at
+            # frame 1000, so BG3 participates in this inspected C-only anchor.
+            assert summary["visible"]["bg1"] == 3329
+            assert summary["visible"]["bg2"] == 42174
+            assert summary["visible"]["bg3"] == 6013
+            assert summary["visible"]["obj"] == 3917
+            assert summary["visible"]["backdrop"] == 1911
             counts = {name: 0 for name in
                       ("BACKDROP", "BG1", "BG2", "BG3", "OBJ")}
             indexed = direct = rows = 0

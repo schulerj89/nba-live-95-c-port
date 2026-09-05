@@ -46,13 +46,14 @@ Recent source-verified visual and gameplay fixes include:
   matchups, including the tied/ahead team pose-contact comparison, its two
   extra RNG steps, animation choice, shared movement/distance gates, and the
   predicted mode-nine handoff.
+- the native control-mode-six role-flag gate for locomotion-base repair.
 
 These paths are protected by test_tipoff_court_smoke.py,
 test_dribble_smoke.py, test_hoop_smoke.py, test_oob_smoke.py, and
 test_cpu_reaction_smoke.py, plus their native-vector verifiers, including the
 six-case defense-context, eight-case mode-five, two-case mode-one and
-mode-three role-flag, nine-case mode-two, and twelve-case mode-four actor-parent
-replays.
+mode-three role-flag, nine-case mode-two, twelve-case mode-four, and two-case
+mode-six actor-parent replays.
 
 ## Major remaining gaps
 
@@ -78,7 +79,7 @@ Current generated captured-address measurements are:
 |---|---:|---:|
 | observed in retained execution captures | 29,438 | 100.0% |
 | documented by source provenance | 29,101 | 98.9% |
-| inside evidence-eligible verified ranges | 11,746 | 39.9% |
+| inside evidence-eligible verified ranges | 11,749 | 39.9% |
 
 These are coverage measurements for retained captures. They are not a
 percentage of the ROM, retail features, or game completion. The generated
