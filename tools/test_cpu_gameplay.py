@@ -179,11 +179,14 @@ EXPECTED_RGB = {
     # `$86:EF09` anticipation policy. Frame 600 remains byte-identical. The
     # later RNG-driven trajectories differ, while all four inspected frames
     # retain a coherent court, players, ball, baskets, crowd, and HUD.
-    600: "f015c2a5a49e25e538be5a919c0f7fc8597e26b5a9472ec24e1db81aadb9e7bb",
-    1300: "c072b0304b22727c1b7a610948f92c6bd1c3ab92584b2ac46f3f19454d4161a2",
-    3480: "8609325383586327056bb4c095c5e8f3cb944a8cb8d132da74ea194479ee0857",
-    6932: "46b7f9a8312dfcbaae2f30eb14716f40a3d2510222991e3ceb978e3713fc3e32",
-    6954: "69d99bb9d1e744552fd45c193f5e542462654f308b21549461292661c2367f17",
+    # Re-reviewed after `$86:F932-$F93C` made mode six consume stable base
+    # assignment +$74. A detached 57ed794 build reproduced every old hash;
+    # all five corrected frames retain the complete, coherent gameplay scene.
+    600: "f96f55e264aeb7cda475b332385405265ddf05c28a842cc97908453ea9f64421",
+    1300: "c51eabe45de9d4c374f1a070aad1700dc4f504642edd86884aeb3f60c8373077",
+    3480: "8e5b42567da8007c32c7fa10ec3ca6ca3309e894a9545cca2d7e2650719fe8c4",
+    6932: "bbd40630254af6290fab906a9154d6a8db522863c813b7ceb4b8bd2bae751895",
+    6954: "4fab561274c8c17f770a66c48d9446c19ede98f4ecae21c669a2a01549e732cf",
 }
 
 

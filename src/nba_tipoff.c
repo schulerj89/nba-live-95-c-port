@@ -1112,12 +1112,13 @@ static bool cpu_refresh_defense_target(NbaTipoff *tipoff, unsigned slot,
     NbaTipoffActor *actor = &tipoff->actors[slot];
     if (mode_four_anticipation_override)
         *mode_four_anticipation_override = false;
-    /* `$86:F72E-$F739/$86:F7FA-$F803`: modes two and four resolve the
-     * defensive matchup directly from base assignment +$74. Mutable
-     * assignment +$76 can temporarily name another valid opponent, but
-     * these parents do not consume it. */
+    /* `$86:F72E-$F739/$86:F7FA-$F803/$86:F932-$F93C`: modes two, four,
+     * and six resolve the defensive matchup directly from base assignment
+     * +$74. Mutable assignment +$76 can temporarily name another valid
+     * opponent, but these parents do not consume it. */
     bool base_assignment_parent = actor->control_mode == 2u ||
-                                  actor->control_mode == 4u;
+                                  actor->control_mode == 4u ||
+                                  actor->control_mode == 6u;
     unsigned paired_slot = (base_assignment_parent ?
         actor->assignment_base_raw : actor->assignment_current_raw) >> 1;
     if (paired_slot >= NBA_GAMEPLAY_ACTOR_COUNT ||

@@ -74,11 +74,14 @@ def main():
             # overlay; the complete court, players, ball, basket, and crowd
             # remain coherent, and the rank/accounting checks below still own
             # every pixel.
+            # Re-reviewed after `$86:F932-$F93C` made mode six consume stable
+            # base assignment +$74. A detached 57ed794 build reproduced every
+            # old count; the corrected wide-court frame remains coherent.
             assert summary["visible"]["bg1"] == 0
-            assert summary["visible"]["bg2"] == 51153
+            assert summary["visible"]["bg2"] == 49258
             assert summary["visible"]["bg3"] == 0
-            assert summary["visible"]["obj"] == 2707
-            assert summary["visible"]["backdrop"] == 3484
+            assert summary["visible"]["obj"] == 2644
+            assert summary["visible"]["backdrop"] == 5442
             counts = {name: 0 for name in
                       ("BACKDROP", "BG1", "BG2", "BG3", "OBJ")}
             indexed = direct = rows = 0

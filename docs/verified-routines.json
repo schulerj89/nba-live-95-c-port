@@ -1912,6 +1912,26 @@
       "date": "2026-09-05"
     },
     {
+      "range": "86F932-86F93C",
+      "name": "mode-six base-assignment opponent selector",
+      "source": "src/nba_tipoff.c",
+      "method": "controlled native wrapper-selected assignment differential + fresh headless Ghidra and snesrecomp",
+      "evidence": "Two byte-identical Mesen captures each record a genuine mode-six call selected by $87:9244 and observed at its $87:9C35 wrapper, with PC, stack, flags, ROM, RNG, and child code untouched. Both calls hold actor 3 in mode 6, make its decision due with role-pass flag $09D8 clear, use base assignment slot 8, and enter the same rejected $86:EF09 anticipation path followed by $86:E9B3. The control also names slot 8 in mutable assignment +$76; the differential changes only +$76 to valid opponent slot 9 and gives that actor distinct geometry. Native $86:F932-$F93C reads base assignment +$74 in both calls, places slot 8's $3CEB record in direct-page $9A at both child boundaries, advances RNG $0001->$0002, and produces the same fallback target (313,3). Before the C correction the differential case consumed mutable slot 9, targeted (74,106), and changed its resulting movement; it was the sole mismatch. Binding mode six to the stable base-assignment selector makes the permanent normal-actor replay cover 105 calls, including eight mode-six calls, with zero represented-output mismatches. Controls change documented input WRAM immediately before the native JSL; no execution state or result is patched.",
+      "provenance": {
+        "rom_sha256": "2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870",
+        "raw_vectors": ".analysis/cpu-mode-six-base-assignment-20260905/capture-v2/cpu_mode_six_assignment.vectors.jsonl",
+        "raw_vectors_sha256": "267915fc42b405fb40ed6acd4890205e418e4921b535144e213e9320b6d3bd3d",
+        "case_matrix_sha256": "1847426e34f0725b5b9deb41f55b8140a6d8eab0b5474e3611548d2164cf2c7c",
+        "path_trace_sha256": "3d74016f657dec1eb66540127ce2ffcacf6cc4e77c9d89655719c310e006fa03",
+        "ghidra": ".analysis/cpu-mode-six-base-assignment-20260905/reference/cpu_mode_six_bank86.txt",
+        "ghidra_sha256": "27f9e4bcdce77540af5cc0fa4f257137ddec846f1ea23f2995b00585b7ca34e6",
+        "recomp": ".analysis/cpu-mode-six-base-assignment-20260905/reference/cpu_mode_six_bank86.c",
+        "recomp_function": "CpuModeSix_M0X0",
+        "recomp_sha256": "f12d2a3b1fa6dbe8dde61e6048dc520330398b38ebdeb4f5f82f295bb940ed03"
+      },
+      "date": "2026-09-05"
+    },
+    {
       "range": "86F1B0-86F23E",
       "name": "normal mode-one CPU actor continuation",
       "source": "src/nba_tipoff.c + src/nba_gameplay_ai.c",
