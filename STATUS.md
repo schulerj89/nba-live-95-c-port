@@ -42,15 +42,15 @@ Recent source-verified visual and gameplay fixes include:
 - the native control-mode-four role-flag gate between loose-ball pursuit and
   defensive-target refresh.
 - the native control-mode-four base-assignment selector for defensive matchups.
-- the native control-mode-four close-range anticipation override, including its
-  difficulty-scaled RNG gate, foul threshold, predicted target, animation, and
-  timed mode-nine handoff.
+- the native control-mode-four anticipation override for close matchups and
+  far matchups while its team trails, including difficulty-scaled RNG, foul,
+  score, movement, and distance gates plus the predicted mode-nine handoff.
 
 These paths are protected by test_tipoff_court_smoke.py,
 test_dribble_smoke.py, test_hoop_smoke.py, test_oob_smoke.py, and
 test_cpu_reaction_smoke.py, plus their native-vector verifiers, including the
 six-case defense-context, eight-case mode-five, two-case mode-one and
-mode-three role-flag, nine-case mode-two, and seven-case mode-four actor-parent
+mode-three role-flag, nine-case mode-two, and eight-case mode-four actor-parent
 replays.
 
 ## Major remaining gaps
@@ -77,7 +77,7 @@ Current generated captured-address measurements are:
 |---|---:|---:|
 | observed in retained execution captures | 29,438 | 100.0% |
 | documented by source provenance | 29,101 | 98.9% |
-| inside evidence-eligible verified ranges | 11,725 | 39.8% |
+| inside evidence-eligible verified ranges | 11,742 | 39.9% |
 
 These are coverage measurements for retained captures. They are not a
 percentage of the ROM, retail features, or game completion. The generated

@@ -1796,7 +1796,7 @@
       "name": "mode-four close-range anticipation override",
       "source": "src/nba_gameplay_ai.c + src/nba_tipoff.c",
       "method": "controlled native wrapper-selected differential + fresh headless Ghidra and snesrecomp",
-      "evidence": "Sixteen genuine mode-four calls selected by $87:9244 and observed at its $87:9C2B wrapper execute the native $86:EF09 policy with PC, stack, flags, ROM, and RNG untouched. All use difficulty 2 (mask $07), a CPU controller, live state 2, period zero, zero personal fouls, and a cached paired-basket distance of 56. Fifteen natural RNG results reject at $86:EF1B; one accepts. The permanent fixture retains source calls 1 and 9: rejection advances RNG $9146->$3F0B and continues ordinary targeting, while acceptance advances $724C->$E498, predicts paired position (280,0) plus velocity (160,-80) with the native biased /16 result (10,-4), writes target (290,-4), saves mode 4 in +$62, enters mode 9, requests upper animation $13, sets +$60 to 30, preserves velocity, and commits requested direction 6. Before the update the accepted call instead produced ordinary target (319,-10), stayed in mode 4, accelerated, and retained animation 3. The full permanent normal-actor replay now covers 92 calls, including seven mode-four calls, with zero represented-output or RNG mismatches. The far-range $86:EF8B-$EFF8 policy remains unported and receives no coverage credit.",
+      "evidence": "Sixteen genuine mode-four calls selected by $87:9244 and observed at its $87:9C2B wrapper execute the native $86:EF09 policy with PC, stack, flags, ROM, and RNG untouched. All use difficulty 2 (mask $07), a CPU controller, live state 2, period zero, zero personal fouls, and a cached paired-basket distance of 56. Fifteen natural RNG results reject at $86:EF1B; one accepts. The permanent fixture retains source calls 1 and 9: rejection advances RNG $9146->$3F0B and continues ordinary targeting, while acceptance advances $724C->$E498, predicts paired position (280,0) plus velocity (160,-80) with the native biased /16 result (10,-4), writes target (290,-4), saves mode 4 in +$62, enters mode 9, requests upper animation $13, sets +$60 to 30, preserves velocity, and commits requested direction 6. Before the update the accepted call instead produced ordinary target (319,-10), stayed in mode 4, accelerated, and retained animation 3. With the separately verified trailing-team far branch included, the full permanent normal-actor replay now covers 93 calls, including eight mode-four calls, with zero represented-output or RNG mismatches. The tied/ahead far continuation at $86:EF98-$EFD6 remains unported and receives no coverage credit.",
       "provenance": {
         "rom_sha256": "2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870",
         "raw_vectors": ".analysis/cpu-mode-four-special-policy-20260904/capture-v5/cpu_mode_four_special_policy.vectors.jsonl",
@@ -1806,6 +1806,26 @@
         "ghidra": ".analysis/cpu-mode-four-special-policy-20260904/reference/cpu_mode_four_special_policy_bank86.txt",
         "ghidra_sha256": "a417533bafc21c13c9796c72587626df7df3145859cdf59d4b6a03255a7f78a1",
         "recomp": ".analysis/cpu-mode-four-special-policy-20260904/reference/cpu_mode_four_special_policy_bank86.c",
+        "recomp_function": "CpuModeFourSpecialPolicy_M0X0",
+        "recomp_sha256": "e7f2a676a1525511f97628567ef319281936d5907870a9b5b71fa3d90962482b"
+      },
+      "date": "2026-09-04"
+    },
+    {
+      "range": "86EF8B-86EF97;86EFD7-86EFF8",
+      "name": "mode-four far-range trailing-team anticipation gate",
+      "source": "src/nba_gameplay_ai.c + src/nba_tipoff.c",
+      "method": "controlled native wrapper-selected differential + fresh headless Ghidra and snesrecomp",
+      "evidence": "Two byte-identical Mesen captures each record 16 genuine mode-four calls selected by $87:9244 and observed at its $87:9C2B wrapper, with PC, stack, flags, ROM, and RNG untouched. Fifteen calls reject at the shared difficulty gate. Source call 9 passes the All-Star mask and takes the far trailing-team path with score 7 versus 9, paired cached anchor distance +$8C=120, paired movement +$4C=32, and actor cached assignment distance +$8A=32. Native executes $86:EF8B/$EF96, $86:EFD7, $86:EFE6, $86:EFF1, and $86:EFF9 while skipping the tied/ahead contact-count path at $86:EF98/$EFA3. Its sole RNG step is $724C->$E498; it predicts target (290,-4), saves mode 4, enters mode 9, requests upper animation $13, sets timer 30, preserves velocity, and commits requested direction 6. Before the update the permanent witness instead produced ordinary target (319,-10), remained in mode 4, accelerated, and retained animation 3. With the update the full normal-actor replay covers 93 calls, including eight mode-four calls, with zero represented-output or RNG mismatches. The tied/ahead $86:EF98-$EFD6 branch remains outside this credited range.",
+      "provenance": {
+        "rom_sha256": "2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870",
+        "raw_vectors": ".analysis/cpu-mode-four-far-policy-20260904/capture-v8/cpu_mode_four_far_policy.vectors.jsonl",
+        "raw_vectors_sha256": "fb1091c9643272c257cbedbc88a8512e9693564b4146f18a9737be928ed4d9f3",
+        "case_matrix_sha256": "b06a1b5bf9604b6f038dbc209d411745964e0ff903488933e525578a93310063",
+        "path_trace_sha256": "c58a6af506fc1c15c3c838362d1306a2c14d0e555a8e3f1dc5af6e4ff0abdf76",
+        "ghidra": ".analysis/cpu-mode-four-far-policy-20260904/reference/cpu_mode_four_special_policy_bank86.txt",
+        "ghidra_sha256": "a417533bafc21c13c9796c72587626df7df3145859cdf59d4b6a03255a7f78a1",
+        "recomp": ".analysis/cpu-mode-four-far-policy-20260904/reference/cpu_mode_four_special_policy_bank86.c",
         "recomp_function": "CpuModeFourSpecialPolicy_M0X0",
         "recomp_sha256": "e7f2a676a1525511f97628567ef319281936d5907870a9b5b71fa3d90962482b"
       },

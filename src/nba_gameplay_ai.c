@@ -951,20 +951,21 @@ bool nba_gameplay_defense_mode_target(
     return true;
 }
 
-/* `$86:EF09-$EF8A/$86:EFF9-$F0B6`: mode four occasionally replaces its
+/* `$86:EF09-$EF97/$86:EFD7-$F0B6`: mode four occasionally replaces its
  * ordinary defensive target with the assigned opponent's near-future
  * position. The difficulty table supplies masks $1F/$0F/$07. Eligible late
  * game defenders tolerate four personal fouls, or six while trailing in the
- * final clock window; earlier play uses three. This ports the close +$8C<$78
- * branch only. The unported far branch begins at `$86:EF8B` and may apply
- * additional score/contact gates and RNG effects.
+ * final clock window; earlier play uses three. Close opponents pass directly.
+ * At or beyond +$8C=$78, this translated branch requires the actor's team to
+ * trail, paired movement below $41, and actor +$8A in [20,48). The tied/ahead
+ * contact-count and extra-RNG branch at `$86:EF98-$EFD6` remains unported.
  *
  * Native's four CMP/ROR shifts then subtract the sign word. Reusing the
  * existing velocity_damping_div16 helper preserves its unusual negative
  * bias: -80 contributes -4, rather than an arithmetic -5. */
-bool nba_gameplay_mode_four_close_override(
-    const NbaGameplayModeFourCloseInput *in, NbaGameplayRng *rng,
-    NbaGameplayModeFourCloseOutput *out) {
+bool nba_gameplay_mode_four_anticipation_override(
+    const NbaGameplayModeFourAnticipationInput *in, NbaGameplayRng *rng,
+    NbaGameplayModeFourAnticipationOutput *out) {
     static const uint16_t difficulty_masks[3] = {0x001Fu, 0x000Fu, 0x0007u};
     if (!in || !rng || !out || in->difficulty_raw_17af >= 3u) return false;
     if ((nba_gameplay_rng_next(rng) &
@@ -982,9 +983,18 @@ bool nba_gameplay_mode_four_close_override(
             foul_threshold = 6u;
     }
     if (in->personal_fouls_raw_14 >= foul_threshold) return false;
-    if (in->paired_anchor_distance_raw_8c >= 0x0078u) return false;
+    if (in->paired_anchor_distance_raw_8c >= 0x0078u) {
+        if (!subtract16_is_negative(in->current_score_raw_26,
+                                    in->opponent_score_raw_26) ||
+            !subtract16_is_negative(in->paired_movement_raw_4c, 0x0041u) ||
+            !subtract16_is_negative(
+                in->actor_assignment_distance_raw_8a, 0x0030u) ||
+            subtract16_is_negative(
+                in->actor_assignment_distance_raw_8a, 0x0014u))
+            return false;
+    }
 
-    NbaGameplayModeFourCloseOutput next = {
+    NbaGameplayModeFourAnticipationOutput next = {
         .target_x = wrap16((int32_t)in->paired_x +
                            velocity_damping_div16(in->paired_velocity_x)),
         .target_y = wrap16((int32_t)in->paired_y +

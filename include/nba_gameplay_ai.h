@@ -185,10 +185,10 @@ typedef struct {
     bool stop_velocity;
 } NbaGameplayDefenseTargetOutput;
 
-/* Inputs retained by the close-range half of mode four's `$86:EF09`
- * special policy. The far-range score/contact policy remains a separate
- * branch; this boundary returns false for it after preserving the first RNG
- * gate shared by both paths. */
+/* Inputs retained by the translated halves of mode four's `$86:EF09`
+ * anticipation policy. The close branch and the far branch used while the
+ * actor's team trails are represented. The tied/ahead contact-count branch
+ * at `$86:EF98-$EFD6` remains separate. */
 typedef struct {
     uint16_t difficulty_raw_17af;
     int16_t controller_assignment_raw_16;
@@ -198,15 +198,17 @@ typedef struct {
     uint16_t current_score_raw_26;
     uint16_t opponent_score_raw_26;
     uint16_t personal_fouls_raw_14;
+    uint16_t actor_assignment_distance_raw_8a;
+    uint16_t paired_movement_raw_4c;
     uint16_t paired_anchor_distance_raw_8c;
     int16_t paired_x, paired_y;
     int16_t paired_velocity_x, paired_velocity_y;
-} NbaGameplayModeFourCloseInput;
+} NbaGameplayModeFourAnticipationInput;
 
 typedef struct {
     int16_t target_x, target_y;
     uint8_t upper_animation_request;
-} NbaGameplayModeFourCloseOutput;
+} NbaGameplayModeFourAnticipationOutput;
 
 /* Five-player side input consumed by the no-owner role pass at
  * `$85:AFB2-$B128`. */
@@ -274,9 +276,9 @@ void nba_gameplay_defense_pair_target(
 bool nba_gameplay_defense_mode_target(
     uint8_t actor_mode, const NbaGameplayDefenseTargetInput *input,
     NbaGameplayDefenseTargetOutput *output);
-bool nba_gameplay_mode_four_close_override(
-    const NbaGameplayModeFourCloseInput *input, NbaGameplayRng *rng,
-    NbaGameplayModeFourCloseOutput *output);
+bool nba_gameplay_mode_four_anticipation_override(
+    const NbaGameplayModeFourAnticipationInput *input, NbaGameplayRng *rng,
+    NbaGameplayModeFourAnticipationOutput *output);
 uint16_t nba_gameplay_weighted_distance(int16_t dx, int16_t dy);
 int8_t nba_gameplay_select_no_owner_pursuer(
     const NbaGameplayLoosePursuitActor actors[5],
