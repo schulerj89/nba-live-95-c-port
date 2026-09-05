@@ -1107,8 +1107,10 @@ static void cpu_cache_predicted_ball_xy(NbaTipoff *tipoff) {
 }
 
 static bool cpu_refresh_defense_target(NbaTipoff *tipoff, unsigned slot,
-                                       bool *stop_velocity) {
+                                       bool *stop_velocity,
+                                       bool *mode_four_close_override) {
     NbaTipoffActor *actor = &tipoff->actors[slot];
+    if (mode_four_close_override) *mode_four_close_override = false;
     /* `$86:F72E-$F739/$86:F7FA-$F803`: modes two and four resolve the
      * defensive matchup directly from base assignment +$74. Mutable
      * assignment +$76 can temporarily name another valid opponent, but
@@ -1133,6 +1135,45 @@ static bool cpu_refresh_defense_target(NbaTipoff *tipoff, unsigned slot,
     int16_t actor_y = fp_integer_word(actor->y_fp);
     int16_t paired_x = fp_integer_word(paired->x_fp);
     int16_t paired_y = fp_integer_word(paired->y_fp);
+    unsigned side = slot / 5u;
+
+    /* `$86:F7FA-$F80B` calls EF09 before ordinary defensive geometry. Its
+     * close branch consumes the already cached paired +$8C distance, predicts
+     * position at velocity/16, and enters the proven `$86:F0B7` mode-nine
+     * executor. On rejection, continue through the existing E7DC/E96F path. */
+    if (actor->control_mode == 4u) {
+        NbaGameplayModeFourCloseInput close_input = {
+            .difficulty_raw_17af = tipoff->session->config.main_values[2],
+            .controller_assignment_raw_16 =
+                actor->controller_assignment_raw,
+            .live_state_raw_0936 = tipoff->live_state_raw,
+            .period_raw_0926 = tipoff->period_raw_0926,
+            .match_clock_raw_0928 = tipoff->match_clock_raw_0928,
+            .current_score_raw_26 = tipoff->team_context[side].score_raw_26,
+            .opponent_score_raw_26 =
+                tipoff->team_context[side ^ 1u].score_raw_26,
+            .personal_fouls_raw_14 = tipoff->fouls.personal_fouls[slot],
+            .paired_anchor_distance_raw_8c = paired->anchor_distance_raw,
+            .paired_x = paired_x,
+            .paired_y = paired_y,
+            .paired_velocity_x = paired->velocity_x,
+            .paired_velocity_y = paired->velocity_y
+        };
+        NbaGameplayModeFourCloseOutput close_output;
+        if (nba_gameplay_mode_four_close_override(
+                &close_input, &tipoff->rng, &close_output)) {
+            actor->target_x = close_output.target_x;
+            actor->target_y = close_output.target_y;
+            actor->pass_band_raw = actor->control_mode;
+            actor->control_mode = 9u;
+            actor_animation_command(
+                tipoff, actor, NBA_ANIMATION_INSTALL_UPPER,
+                close_output.upper_animation_request);
+            actor->reaction_threshold = 0x001Eu;
+            if (mode_four_close_override) *mode_four_close_override = true;
+            return true;
+        }
+    }
 
     /* `$85:BC52-$BC81`: refresh coarse +$86 and shared +$8A only at the
      * bound-pair decision boundary, not by rebuilding assignments per frame. */
@@ -1161,7 +1202,6 @@ static bool cpu_refresh_defense_target(NbaTipoff *tipoff, unsigned slot,
         tipoff->assets, paired_team, paired->roster_slot,
         &rating_2pt, &rating_3pt);
     (void)rating_2pt;
-    unsigned side = slot / 5u;
     int16_t context_anchor = side == 0u ? -336 : 336;
     NbaGameplayDefenseTargetInput input = {
         .actor_x = actor_x, .actor_y = actor_y,
@@ -1233,7 +1273,7 @@ static bool cpu_refresh_defense_target(NbaTipoff *tipoff, unsigned slot,
 bool nba_tipoff_replay_defensive_pose(NbaTipoff *tipoff, uint8_t actor) {
     if (!tipoff || actor >= NBA_GAMEPLAY_ACTOR_COUNT) return false;
     bool stop_velocity = false;
-    return cpu_refresh_defense_target(tipoff, actor, &stop_velocity);
+    return cpu_refresh_defense_target(tipoff, actor, &stop_velocity, NULL);
 }
 
 /* Proven passive behavior executors from `$87:9244/$87:9BD3`. Returning
@@ -1852,6 +1892,7 @@ static void cpu_dispatch_normal_actor_behavior(NbaTipoff *tipoff,
     bool stop_velocity = false;
     bool apply_velocity_step = false;
     bool mode_two_defense_refresh = false;
+    bool mode_four_close_override = false;
     NbaGameplayLoosePursuitGateInput pursuit = {
         .live_state_raw_0936 = tipoff->live_state_raw,
         .ball_activity_raw_0948 = tipoff->ball_activity_raw,
@@ -1909,12 +1950,20 @@ static void cpu_dispatch_normal_actor_behavior(NbaTipoff *tipoff,
         else if (tipoff->cpu_play_state != NBA_CPU_PLAY_REBOUND &&
                  (mode == 2u || mode == 4u || mode == 6u) &&
                  actor->recovery_inhibit_raw == 0u) {
-            (void)cpu_refresh_defense_target(tipoff, slot, &stop_velocity);
+            (void)cpu_refresh_defense_target(
+                tipoff, slot, &stop_velocity, &mode_four_close_override);
             mode_two_defense_refresh = mode == 2u;
-            direction = stop_velocity ? 8u : nba_gameplay_target_direction(
-                (int16_t)(actor->target_x - x),
-                (int16_t)(actor->target_y - y), NULL);
-            apply_velocity_step = !stop_velocity;
+            if (mode_four_close_override) {
+                /* EF09 success jumps directly to F886; mode nine will steer
+                 * toward +$56/+$58 on its next scheduled pass. */
+                direction = actor->movement_direction;
+                apply_velocity_step = false;
+            } else {
+                direction = stop_velocity ? 8u : nba_gameplay_target_direction(
+                    (int16_t)(actor->target_x - x),
+                    (int16_t)(actor->target_y - y), NULL);
+                apply_velocity_step = !stop_velocity;
+            }
         } else
             direction = actor->movement_direction;
     }
@@ -1934,7 +1983,8 @@ static void cpu_dispatch_normal_actor_behavior(NbaTipoff *tipoff,
      * This happens even though no velocity decision ran. */
     if (!decision_due)
         actor->movement_direction = actor->requested_direction;
-    else if (actor->control_mode != 2u || mode_two_defense_refresh) {
+    else if (!mode_four_close_override &&
+             (actor->control_mode != 2u || mode_two_defense_refresh)) {
         if (loose_pursuit)
             /* `$86:F22D-$F235`: accepted pursuit retains +$4E in +$50. */
             actor->requested_direction = actor->movement_direction;
@@ -1950,12 +2000,16 @@ static void cpu_dispatch_normal_actor_behavior(NbaTipoff *tipoff,
      * controller record. Modes four/six retain `$86:F886-$F895`'s +$72 gate. */
     if(decision_due && actor->controller_assignment_raw<0 &&
        (actor->control_mode==2 ||
-        ((actor->control_mode==4 || actor->control_mode==6) &&
+        ((actor->control_mode==4 || actor->control_mode==6 ||
+          mode_four_close_override) &&
          !actor->movement_boost_timer)))
         (void)nba_tipoff_jump_reach(tipoff,slot);
     /* `$86:F78B-$F790`: mode two commits +$50 to +$4E after the optional
      * EC32 call; accepted-pursuit and recovery-bypass paths preserve +$50. */
-    if (decision_due && actor->control_mode == 2u)
+    if (mode_four_close_override && actor->movement_magnitude_raw == 0u)
+        actor->requested_direction = actor->assignment_direction;
+    if (decision_due &&
+        (actor->control_mode == 2u || mode_four_close_override))
         actor->movement_direction = actor->requested_direction;
 }
 

@@ -1756,7 +1756,7 @@
       "name": "mode-four role-flag loose-ball pursuit gate",
       "source": "src/nba_tipoff.c",
       "method": "controlled native wrapper-selected parent differential + fresh headless Ghidra and snesrecomp",
-      "evidence": "Two genuine mode-four calls selected by $87:9244 and observed at its $87:9C2B wrapper deliberately oppose the role-pass flag $09D8 and possession record $093E. Flag clear with owner $FFFF executes $86:F7F2/$F7F5 to $F7FA, skips $86:F0FD, and reaches $86:E7DC, changing target (-24,80) to (148,0) before the $F8AB exit. Flag set with named owner 6 executes $86:F7F2/$F7F5/$F7F7 to $F8AC, calls $86:F0FD once, accepts the scheduled actor, preserves target (-24,80), and exits through $F8CC. Identical actor and pair geometry isolates the role branch. Before the C correction both cases take the opposite parent route; with mode four bound to $09D8, the permanent normal-actor replay covers 89 calls, including four mode-four calls, with zero represented parent-output mismatches. The role-clear native route also calls the still-unported $86:EF09 policy child, whose $86:EF18 call advances $80:CEE7 once; that raw RNG result remains in the fixture and is explicitly excluded from this parent gate comparison. Controls change documented input WRAM immediately before the native JSL; PC, stack, flags, ROM, RNG, and native child results are not patched.",
+      "evidence": "Two genuine mode-four calls selected by $87:9244 and observed at its $87:9C2B wrapper deliberately oppose the role-pass flag $09D8 and possession record $093E. Flag clear with owner $FFFF executes $86:F7F2/$F7F5 to $F7FA, skips $86:F0FD, and reaches $86:E7DC, changing target (-24,80) to (148,0) before the $F8AB exit. Flag set with named owner 6 executes $86:F7F2/$F7F5/$F7F7 to $F8AC, calls $86:F0FD once, accepts the scheduled actor, preserves target (-24,80), and exits through $F8CC. Identical actor and pair geometry isolates the role branch. Before the C correction both cases take the opposite parent route; with mode four bound to $09D8, the permanent normal-actor replay covers 89 calls, including four mode-four calls, with zero represented parent-output mismatches. The role-clear native route also calls $86:EF09; the subsequent close-policy update reproduces its first $80:CEE7 step, so that raw RNG result is now compared. The far $86:EF8B-$EFF8 continuation remains outside this row and its own credited range. Controls change documented input WRAM immediately before the native JSL; PC, stack, flags, ROM, RNG, and native child results are not patched.",
       "provenance": {
         "rom_sha256": "2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870",
         "raw_vectors": ".analysis/cpu-mode-four-pursuit-gate-20260904/mesen-proof-callers/cpu_mode_four_pursuit.vectors.jsonl",
@@ -1776,7 +1776,7 @@
       "name": "mode-four base-assignment matchup selector",
       "source": "src/nba_tipoff.c",
       "method": "controlled native wrapper-selected parent differential + fresh headless Ghidra and snesrecomp",
-      "evidence": "One genuine mode-four call selected by $87:9244 and observed at its $87:9C2B wrapper assigns two different valid opponents to actor +$74 and +$76. Base +$74 names slot 5 at (100,0), while mutable +$76 names slot 6 at (-100,0). Native executes $86:F7FA/$F7FC/$F7FF/$F803, maps +$74 through $87:9C7B, passes the native $86:EF09 policy child, and reaches the independently verified $86:E7DC target child, which writes target (148,0). Before the C correction this controlled call followed +$76 and returned target X 48, producing the sole represented-output mismatch. With mode four bound to +$74, the permanent normal-actor replay covers 90 calls, including five mode-four calls, with zero represented parent-output mismatches. The native $86:EF09 child advances $80:CEE7 once; that raw RNG result remains in the fixture and is excluded from this parent-selector comparison. Controls change documented input WRAM immediately before the native JSL; PC, stack, flags, ROM, RNG, and native child results are not patched.",
+      "evidence": "One genuine mode-four call selected by $87:9244 and observed at its $87:9C2B wrapper assigns two different valid opponents to actor +$74 and +$76. Base +$74 names slot 5 at (100,0), while mutable +$76 names slot 6 at (-100,0). Native executes $86:F7FA/$F7FC/$F7FF/$F803, maps +$74 through $87:9C7B, passes the native $86:EF09 policy child, and reaches the independently verified $86:E7DC target child, which writes target (148,0). Before the C correction this controlled call followed +$76 and returned target X 48, producing the sole represented-output mismatch. With mode four bound to +$74, the permanent normal-actor replay covers 90 calls, including five mode-four calls, with zero represented parent-output mismatches. The $86:EF09 child advances $80:CEE7 once; the subsequent close-policy update reproduces that first step, so the raw RNG result is now compared. The far $86:EF8B-$EFF8 continuation remains outside this row and its own credited range. Controls change documented input WRAM immediately before the native JSL; PC, stack, flags, ROM, RNG, and native child results are not patched.",
       "provenance": {
         "rom_sha256": "2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870",
         "raw_vectors": ".analysis/cpu-mode-four-assignment-20260904/mesen/cpu_mode_four_assignment.vectors.jsonl",
@@ -1788,6 +1788,26 @@
         "recomp": ".analysis/cpu-mode-four-assignment-20260904/reference-final/cpu_mode_four_assignment_bank86.c",
         "recomp_function": "CpuModeFourAssignment_M0X0",
         "recomp_sha256": "83201ea085e8755e50eb4b3514b5817a0edc7914337a39b6113f5a338ec841f1"
+      },
+      "date": "2026-09-04"
+    },
+    {
+      "range": "86EF09-86EF8A;86EFF9-86F0B6",
+      "name": "mode-four close-range anticipation override",
+      "source": "src/nba_gameplay_ai.c + src/nba_tipoff.c",
+      "method": "controlled native wrapper-selected differential + fresh headless Ghidra and snesrecomp",
+      "evidence": "Sixteen genuine mode-four calls selected by $87:9244 and observed at its $87:9C2B wrapper execute the native $86:EF09 policy with PC, stack, flags, ROM, and RNG untouched. All use difficulty 2 (mask $07), a CPU controller, live state 2, period zero, zero personal fouls, and a cached paired-basket distance of 56. Fifteen natural RNG results reject at $86:EF1B; one accepts. The permanent fixture retains source calls 1 and 9: rejection advances RNG $9146->$3F0B and continues ordinary targeting, while acceptance advances $724C->$E498, predicts paired position (280,0) plus velocity (160,-80) with the native biased /16 result (10,-4), writes target (290,-4), saves mode 4 in +$62, enters mode 9, requests upper animation $13, sets +$60 to 30, preserves velocity, and commits requested direction 6. Before the update the accepted call instead produced ordinary target (319,-10), stayed in mode 4, accelerated, and retained animation 3. The full permanent normal-actor replay now covers 92 calls, including seven mode-four calls, with zero represented-output or RNG mismatches. The far-range $86:EF8B-$EFF8 policy remains unported and receives no coverage credit.",
+      "provenance": {
+        "rom_sha256": "2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870",
+        "raw_vectors": ".analysis/cpu-mode-four-special-policy-20260904/capture-v5/cpu_mode_four_special_policy.vectors.jsonl",
+        "raw_vectors_sha256": "335af7205d572507d29c51f472ad33cd431809601f6453272496b8a61c667437",
+        "case_matrix_sha256": "569e06315e84ed3f845ddacdc85882eea8ce29f2c20a9a844feb1a9ffb090288",
+        "path_trace_sha256": "c9d82e730adb6b18894de64e02e0b7c215b39bdfd6c7960860c315f1538f27b0",
+        "ghidra": ".analysis/cpu-mode-four-special-policy-20260904/reference/cpu_mode_four_special_policy_bank86.txt",
+        "ghidra_sha256": "a417533bafc21c13c9796c72587626df7df3145859cdf59d4b6a03255a7f78a1",
+        "recomp": ".analysis/cpu-mode-four-special-policy-20260904/reference/cpu_mode_four_special_policy_bank86.c",
+        "recomp_function": "CpuModeFourSpecialPolicy_M0X0",
+        "recomp_sha256": "e7f2a676a1525511f97628567ef319281936d5907870a9b5b71fa3d90962482b"
       },
       "date": "2026-09-04"
     },

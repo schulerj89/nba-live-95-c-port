@@ -168,11 +168,14 @@ EXPECTED_RGB = {
     # Re-reviewed after `$86:F7F2-$F803` restored the mode-four pursuit gate
     # and base-assignment matchup. All five changed with the corrected
     # defensive trajectories and retain the complete gameplay scene.
-    600: "43b179da7fb63f9b59f3f41488ed827b0d4ccf61230e54fd7d3de9a6481b853f",
-    1300: "80b498a643fe28e8d685ed373fd93e7159ada1dd6c6df3751a107be486b40b6a",
-    3480: "65cd7cbcbf99c498f7cad82f935c0c574aacfc25ec8ce4e6a5f3212541861fb6",
-    6932: "23e0094d478b540a5d967de921542ba70ccbf707e28956b3d9a21b29f3f46505",
-    6954: "305ca524174f17dc41965438967b4eef2c2717170667d1852193e4bfc097713a",
+    # Re-reviewed after `$86:EF09` restored its shared-RNG gate and close
+    # anticipation branch. The resulting trajectories remain coherent in all
+    # five frames, with court, players, ball, baskets, crowd, and HUD intact.
+    600: "d8d74399082b6533dae4e7bbffa6fb6932562dcce447b307749408112adf01e4",
+    1300: "78622d6a98d6bd1d8ef40bd787f67b94117988b57d72b50119c078da5775293e",
+    3480: "8d2b05983ddbb5085387344c26d57a1784781d1b56c807d50f2d840423deec35",
+    6932: "99ffe9bfb956b24b27bf804d03ee2967a354df5a416afe06e99d6d14f5137ac2",
+    6954: "1f1b7a4d3d262d0be7ad248f813a5bf79f4954e3d2bcecc31842f1e5b342149f",
 }
 
 
@@ -902,14 +905,16 @@ def main():
                 # that post-resolver player/player response.
                 # `$85:A656-$A726` can independently cancel one outward axis
                 # after +$4C was written when the record touches ±394/±224.
-                # Telemetry rounds 24.8 coordinates, while the ROM compares
-                # their signed integer word. A clamped -394 record with a
-                # positive fraction can therefore be reported as -393.
-                on_rectangular_edge = abs(actor["x"]) >= 393 or \
-                    abs(actor["y"]) >= 223
-                on_isometric_edge = actor["x"] <= -556 - actor["y"] + 1 \
-                    if actor["y"] < 0 else \
-                    actor["x"] >= 561 - actor["y"] - 1
+                # Use the signed integer word read by `$85:A656-$A726`.
+                # Display coordinates truncate toward zero, which can move
+                # both negative axes by one and hide an exact diagonal edge.
+                actor_x_word = actor["x_fp"] // 256
+                actor_y_word = actor["y_fp"] // 256
+                on_rectangular_edge = abs(actor_x_word) >= 394 or \
+                    abs(actor_y_word) >= 224
+                on_isometric_edge = actor_x_word <= -556 - actor_y_word \
+                    if actor_y_word < 0 else \
+                    actor_x_word >= 561 - actor_y_word
                 stable_movement_mode = row["scheduler"]["due_raw"] != 0 and \
                     previous is not None and \
                     previous["actors"][actor["id"]]["raw"]["control_mode"] == \

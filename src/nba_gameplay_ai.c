@@ -951,6 +951,50 @@ bool nba_gameplay_defense_mode_target(
     return true;
 }
 
+/* `$86:EF09-$EF8A/$86:EFF9-$F0B6`: mode four occasionally replaces its
+ * ordinary defensive target with the assigned opponent's near-future
+ * position. The difficulty table supplies masks $1F/$0F/$07. Eligible late
+ * game defenders tolerate four personal fouls, or six while trailing in the
+ * final clock window; earlier play uses three. This ports the close +$8C<$78
+ * branch only. The unported far branch begins at `$86:EF8B` and may apply
+ * additional score/contact gates and RNG effects.
+ *
+ * Native's four CMP/ROR shifts then subtract the sign word. Reusing the
+ * existing velocity_damping_div16 helper preserves its unusual negative
+ * bias: -80 contributes -4, rather than an arithmetic -5. */
+bool nba_gameplay_mode_four_close_override(
+    const NbaGameplayModeFourCloseInput *in, NbaGameplayRng *rng,
+    NbaGameplayModeFourCloseOutput *out) {
+    static const uint16_t difficulty_masks[3] = {0x001Fu, 0x000Fu, 0x0007u};
+    if (!in || !rng || !out || in->difficulty_raw_17af >= 3u) return false;
+    if ((nba_gameplay_rng_next(rng) &
+         difficulty_masks[in->difficulty_raw_17af]) != 0u) return false;
+    if (in->controller_assignment_raw_16 >= 0) return false;
+    if (!subtract16_is_negative(in->live_state_raw_0936, 0x0080u))
+        return false;
+
+    uint16_t foul_threshold = 3u;
+    if (in->period_raw_0926 >= 3u && in->match_clock_raw_0928 < 0x1C20u) {
+        foul_threshold = 4u;
+        if (in->match_clock_raw_0928 < 0x0E10u &&
+            subtract16_is_negative(in->current_score_raw_26,
+                                   in->opponent_score_raw_26))
+            foul_threshold = 6u;
+    }
+    if (in->personal_fouls_raw_14 >= foul_threshold) return false;
+    if (in->paired_anchor_distance_raw_8c >= 0x0078u) return false;
+
+    NbaGameplayModeFourCloseOutput next = {
+        .target_x = wrap16((int32_t)in->paired_x +
+                           velocity_damping_div16(in->paired_velocity_x)),
+        .target_y = wrap16((int32_t)in->paired_y +
+                           velocity_damping_div16(in->paired_velocity_y)),
+        .upper_animation_request = 0x13u
+    };
+    *out = next;
+    return true;
+}
+
 /* `$85:AFC2-$B103` uses the same major-plus-minor-quarter metric for its
  * predicted-ball scan as the rest of the formation planner. Arithmetic is
  * deliberately wrapped to a 16-bit word. */

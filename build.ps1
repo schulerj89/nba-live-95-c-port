@@ -148,6 +148,7 @@ if ($Test) {
         (Join-Path $Root 'tests\fixtures\cpu-mode-four-role-witnesses.json'),
         (Join-Path $Root 'tests\fixtures\cpu-mode-four-pursuit-witnesses.json'),
         (Join-Path $Root 'tests\fixtures\cpu-mode-four-assignment-witnesses.json'),
+        (Join-Path $Root 'tests\fixtures\cpu-mode-four-special-policy-witnesses.json'),
         '--probe', (Join-Path $BuildDir 'normal_actor_parent_vector_probe.exe'),
         '--pack', $AssetPack
     )

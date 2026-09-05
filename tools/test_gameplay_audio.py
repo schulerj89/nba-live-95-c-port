@@ -88,9 +88,14 @@ def main():
         raise AssertionError("live gameplay mixer did not start")
     events = re.findall(r"command=\$([0-9A-F]{2}) SRCN=\$([0-9A-F]{2})", result.stdout)
     event_set = set(events)
-    required_events = {("39", "14")}
+    # CPU parity work can change which legitimate crowd-bit variant appears
+    # in this natural run. Require the native command/source family rather
+    # than one RNG-dependent member of it.
+    crowd_events = {
+        ("38", "14"), ("38", "15"), ("39", "14"), ("39", "15")
+    }
     required_sources = {"0B", "04", "0A"}
-    if (not required_events <= event_set or
+    if (not crowd_events & event_set or
             not required_sources <= {srcn for _, srcn in event_set} or
             not ({"01", "02", "03"} & {srcn for _, srcn in event_set})):
         raise AssertionError(f"live native event dispatch incomplete: {events}")

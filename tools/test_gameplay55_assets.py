@@ -10,7 +10,9 @@ EXPECTED_SHA256 = {
     256: "64f0c37bc0b7dde634b1f5366044d74a2fa5369d9208cea91e63061183618de6",
     281: "29448386c66d1dfd0ffab649e0a3b15631db0007ce82160e8797c508052451c9",
     282: "4502fac6951baa8727a4c9e0c851608db07845ffd827221d7cfad9ce5b488834",
-    284: "cdbf0dfc99162d3703d0a2532444a8fe89bc307aa0ae42a0b550c398f82de459",
+    # The 29-team catalog now includes every home-selected court layout;
+    # team 18 remains byte-identical to the independent native witness below.
+    284: "1f0b5f5e27cba45eb60bf0275c95c312a542f35316d1381c7fb55919f5d1066e",
 }
 
 

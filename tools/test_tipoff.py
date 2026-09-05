@@ -42,9 +42,12 @@ EXPECTED_FRAMES = {
     # pixels at frame170. At frame220, literal +$3A bounce timing and the
     # descriptor change 100 ball pixels. Every other pixel in both reviewed
     # pack configurations is unchanged.
+    # `$86:EF09` consumes its first difficulty-gated RNG word before checking
+    # the live-state rejection. Restoring that call shifts the shared native
+    # sequence during formation and therefore the possession/live actors.
     170: ("TIP PH:POSSESSION", {
-        "fallback": "97d7036c1b5561871759450465767125d56e33da6e95e70cd802355fbde8f4dd",
-        "literal": "7bf685f3bf12b68806ab4b85d35cd7c66d0db246dc2b518b045b127fb559c85e",
+        "fallback": "615206ed2c824c487fc72e1e1ee2f94589b4caf49406bf9fb9a69fa658ca263c",
+        "literal": "fed1be1594862a7d63b621286285456f2a57f901fc4de1a4e0b96f8ab63d1626",
     }),
     # `$86:CF38` receiver reach now permits `$86:D365` possession at frame186.
     # Live frame re-reviewed after the exact direction-specific AD92 torso /
@@ -61,8 +64,8 @@ EXPECTED_FRAMES = {
     # player spacing; the court, center logo, ball, goal, crowd, and HUD remain
     # intact.
     220: ("TIP PH:LIVE", {
-        "fallback": "fe69caf86516ac2953e139a4351441030234c2ba8294d2f2b950bf33d2975111",
-        "literal": "fe69caf86516ac2953e139a4351441030234c2ba8294d2f2b950bf33d2975111",
+        "fallback": "a021ed166d64811fade15c7f5c55ea8b20ca37522d96f7ab85020c3a52cd7c42",
+        "literal": "a021ed166d64811fade15c7f5c55ea8b20ca37522d96f7ab85020c3a52cd7c42",
     }),
 }
 EXPECTED_PLAYER_DRAW_HASH = \

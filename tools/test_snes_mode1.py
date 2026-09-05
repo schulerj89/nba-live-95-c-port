@@ -60,11 +60,15 @@ def main():
             # pre-fix-helper + matching startup-check relink reproduces every
             # old winner count; no compositor source changes. See
             # Native expectations are unchanged by this C-only repair.
-            assert summary["visible"]["bg1"] == 0
-            assert summary["visible"]["bg2"] == 46422
-            assert summary["visible"]["bg3"] == 5641
-            assert summary["visible"]["obj"] == 1298
-            assert summary["visible"]["backdrop"] == 3983
+            # `$86:EF09` restores an early shared-RNG call, changing the
+            # deterministic camera and actor positions at this C-only frame.
+            # The inspected scene remains complete and all winner ranks below
+            # are still validated pixel by pixel.
+            assert summary["visible"]["bg1"] == 918
+            assert summary["visible"]["bg2"] == 45704
+            assert summary["visible"]["bg3"] == 0
+            assert summary["visible"]["obj"] == 2464
+            assert summary["visible"]["backdrop"] == 8258
             counts = {name: 0 for name in
                       ("BACKDROP", "BG1", "BG2", "BG3", "OBJ")}
             indexed = direct = rows = 0

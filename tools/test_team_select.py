@@ -40,6 +40,7 @@ EXPECTED_DEBUG_FRAME_HASHES = {
     "fallback": "4944e48bb54bb0c88976e02379aef296dfc239f73955d496cd952cc8743b6182",
     "literal": "628aa6decb1c13a1a62fb769b3a0996f6ea07a1522bf2e5252888d7611948041",
     "literal-court": "be6a5d5122d2534106c29781034a25aab00662092d15888ba22e7695871f1dc2",
+    "literal-court-oob": "4d4029b24f600b64a123ace014746bf088f054ec0c23ff2d5a5e29931fa9bcaa",
 }
 EXPECTED_DEBUG_STABLE_HASH = \
     "3430e5ff2ca65cc16ab37e586a92bbcc717b65be0424b19dfc8a44032ad8e95d"
@@ -135,12 +136,15 @@ def player_draw_configuration(assets):
             raise AssertionError("fallback pack is not the reviewed 264-item configuration")
         return "fallback"
     payload, width, height, flags = item
-    if len(assets) != 265 + int(288 in assets) or (len(payload), width, height, flags) != \
+    if len(assets) != 265 + int(288 in assets) + int(289 in assets) or \
+            (len(payload), width, height, flags) != \
             (2144, 0, 0, 0) or payload[:8] != b"NBPDRAW1" or \
             struct.unpack_from("<6I", payload, 8) != \
             (1, 2096, 32, 8, 2128, 2144) or \
             hashlib.sha256(payload).hexdigest() != EXPECTED_PLAYER_DRAW_HASH:
         raise AssertionError("literal player-draw resource 287 changed")
+    if 289 in assets:
+        return "literal-court-oob"
     return "literal-court" if 288 in assets else "literal"
 
 

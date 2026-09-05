@@ -24,7 +24,8 @@ from PIL import Image
 # appearance, positions and rank text. Matched old/canonical tipoff builds
 # The checked digest protects the inspected C image, not native parity.
 # This C-only anchor does not accept the preexisting static scoreboard gap.
-EXPECTED_LAB_RGB = "d52fd6308d82e0a60ecfcdf86648dd331c40da5c1c2e20b37c67225c0cb1dc6f"
+# Re-reviewed after `$86:EF09` restored its early shared-RNG consumption.
+EXPECTED_LAB_RGB = "f18ccc4368cff592b8537e371051b40cd8dbf948bda5b6facf15ab56fba47e90"
 
 
 def run(command, label):
@@ -115,7 +116,10 @@ def main():
                           "whistle_active_raw_09b6",
                           "whistle_timer_raw_08de",
                           "presentation_gate_raw_08e2",
-                          "whistle_presentation_queued_raw"}:
+                          "whistle_presentation_queued_raw",
+                          "hud_sequence_raw_08e6", "hud_kind_raw_08e8",
+                          "hud_event_actor_raw_492d", "hud_clear_raw_08ee",
+                          "hud_pending_routine"}:
             raise AssertionError(f"foul telemetry schema is incomplete: {fouls}")
         if fouls != {"event_raw": 0, "shooting_raw": 0,
                      "offender_raw": -1, "victim_raw": -1,
@@ -136,11 +140,16 @@ def main():
                      # triggered foul). Proven by ball-initialization.json.
                      "latched_event_raw_08f0": 0xFFFF,
                      "whistle_active_raw_09b6": 0,
-                     # `$85:EDB3` decrements signed `$08DE` every outer
-                     # frame, even before live gameplay begins.
-                     "whistle_timer_raw_08de": (0xFFFF - sample["scene_frame"]) & 0xFFFF,
+                     # `$87:B99A` seeds signed `$08DE` to -1; the HUD timer
+                     # tick leaves that inactive sentinel unchanged.
+                     "whistle_timer_raw_08de": 0xFFFF,
                      "presentation_gate_raw_08e2": 0,
-                     "whistle_presentation_queued_raw": 0}:
+                     "whistle_presentation_queued_raw": 0,
+                     "hud_sequence_raw_08e6": 0xFFFF,
+                     "hud_kind_raw_08e8": 0,
+                     "hud_event_actor_raw_492d": 0xFFFF,
+                     "hud_clear_raw_08ee": 0xFFFF,
+                     "hud_pending_routine": 0}:
             raise AssertionError(f"unverified foul detector activated: {fouls}")
         if not {"match_clock_raw_0928", "shot_actor_raw_09c8",
                 "interference_value_raw_096a", "shot_clock_mirror_raw_09c6",

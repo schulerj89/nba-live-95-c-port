@@ -17,6 +17,17 @@ class PassInterruptionGuard:
             # Cancellation/new initialization has a separate original owner;
             # the current mode8 executor must never manufacture a release.
             if old["control_mode"] == 8:
+                new_pass = now["control_mode"] == 15 and \
+                    p["pass_active_raw"] and \
+                    p["pass_actor_raw"] == actor_id and \
+                    p["pass_receiver_raw"] >= 0 and \
+                    (p["pass_receiver_raw"] != oldp["pass_receiver_raw"] or
+                     p["pass_distance_raw"] != oldp["pass_distance_raw"])
+                if new_pass:
+                    # AB2D owns a fresh pass initialization and may replace
+                    # the metadata retained by the interrupted executor.
+                    del self.interrupted[actor_id]
+                    continue
                 if now["pass_released"] != old["pass_released"]:
                     raise AssertionError("mode8 manufactured a pass release")
                 for name in ("pass_band_62", "pass_family_c0"):

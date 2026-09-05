@@ -43,9 +43,10 @@ int main(int argc,char **argv){NbaAssetPack assets={0};static uint8_t raw[SIZE];
  while(fread(raw,1,SIZE,stdin)==SIZE){NbaSession session;NbaTipoff s;nba_session_init(&session);
   /* Native home/context0 -> UI right; visitor/context1 -> UI left. */
   session.right_team=(uint8_t)word(raw,0x46eb);session.left_team=(uint8_t)word(raw,0x476b);
+  session.config.main_values[2]=(uint8_t)word(raw,0x17af);
   if(!nba_tipoff_init(&s,&assets,&session))return 3;
   for(unsigned i=0;i<10;i++)load_actor(&s.actors[i],raw,ACTOR_BASE+i*0x100,(uint8_t)word(raw,(i<5?0x46f9:0x4779)+(i%5)*2));
-  s.rng.state=word(raw,0x7f6);s.catch_actor_record_raw_0910=word(raw,0x910);s.live_state_raw=word(raw,0x936);s.camera_side_group_raw=(uint8_t)word(raw,0x93a);
+  s.rng.state=word(raw,0x7f6);s.catch_actor_record_raw_0910=word(raw,0x910);s.period_raw_0926=word(raw,0x926);s.match_clock_raw_0928=word(raw,0x928);s.live_state_raw=word(raw,0x936);s.camera_side_group_raw=(uint8_t)word(raw,0x93a);
   s.possession_actor=(int8_t)(int16_t)word(raw,0x93e);s.pass_receiver_raw=(int16_t)word(raw,0x946);
   s.ball_activity_raw=word(raw,0x948);s.rim_raw_094a=word(raw,0x94a);s.rim_raw_0962=word(raw,0x962);s.scratch_0046=word(raw,0x46);
   s.inbound_state_raw=(int16_t)word(raw,0x952);s.inbound_actor_raw=word(raw,0x954);s.inbound_target_x_raw=(int16_t)word(raw,0x958);s.inbound_target_y_raw=(int16_t)word(raw,0x95a);
@@ -55,7 +56,8 @@ int main(int argc,char **argv){NbaAssetPack assets={0};static uint8_t raw[SIZE];
   s.role_ownerless_raw_09d8=word(raw,0x9d8);s.formation_override_raw_005c=word(raw,0x5c);
   s.collision_actor_b_raw=(int8_t)(int16_t)word(raw,0x492f);s.ball.x_fp=fixed(raw,0x3eef);s.ball.y_fp=fixed(raw,0x3ef3);s.ball.z_fp=fixed(raw,0x3ef7);
   s.ball.velocity_x=(int16_t)word(raw,0x3ef9);s.ball.velocity_y=(int16_t)word(raw,0x3efb);s.ball.velocity_z=(int16_t)word(raw,0x3efd);s.ball.owner_actor=s.possession_actor;
-  for(unsigned side=0;side<2;side++){unsigned c=side?0x476b:0x46eb;s.team_context[side].anchor_x_raw_0a=(int16_t)word(raw,c+0xa);s.team_context[side].mode_raw_30=word(raw,c+0x30);s.team_context[side].flags_raw_32=word(raw,c+0x32);}
+  for(unsigned i=0;i<10;i++)s.fouls.personal_fouls[i]=(uint8_t)word(raw,0x40eb+i*0x40+0x14);
+  for(unsigned side=0;side<2;side++){unsigned c=side?0x476b:0x46eb;s.team_context[side].anchor_x_raw_0a=(int16_t)word(raw,c+0xa);s.team_context[side].score_raw_26=word(raw,c+0x26);s.team_context[side].mode_raw_30=word(raw,c+0x30);s.team_context[side].flags_raw_32=word(raw,c+0x32);s.team_pose_contact_count_raw[side]=word(raw,c+0x50);}
   unsigned slot=word(raw,0xc2);bool ok=nba_tipoff_replay_normal_actor(&s,(uint8_t)slot);
   printf("%04x %04x %04x %04x",ok?1:0,s.rng.state,s.special_actor_raw,s.play_step_raw);
   for(unsigned i=0;i<10;i++)print_actor(&s.actors[i]);putchar('\n');

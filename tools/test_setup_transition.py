@@ -56,7 +56,7 @@ EXPECTED_AUDIO_BAND_PPM = [889127, 48767, 32034, 14587, 14255, 1068, 162]
 EXPECTED_AUDIO_CHANNEL_RMS = [3363, 3363]
 # These C-only F12 baselines include the displayed pack count. The original
 # 263-entry indexed-intro pack is retained as provenance; later packs append
-# resources286..288 without moving or changing resources
+# resources286..289 without moving or changing resources
 # 126/128. Bind each supported directory configuration instead of silently
 # treating its expected one-digit count delta as an artwork regression. The
 # stable hashes exclude only y19..26, the count/index row. See
@@ -68,12 +68,14 @@ EXPECTED_ASSET_DEBUGGER_SHA256 = {
     # Resource288 changes only 18 pixels of the final count digit; both
     # stable-canvas hashes below remain identical (court-layout audit).
     266: "19169b1f862b4605fe43f888a1d0a7b30cf17754f951be587c3bf9bbc3183b82",
+    267: "5fa690608a2f2dbd6cdaaf8d7a2106c72c27ad6d04932160c4b8e83078f18670",
 }
 EXPECTED_OAM_DEBUGGER_SHA256 = {
     263: "919da3c071ad245b83ad027651fa2beb557038c19202f492aa6732ce124d85d9",
     264: "aa1c60ea0d9792c0feaaaddd3351888c1bbb195f57643ae7d7db0d45912ca0ea",
     265: "ee84e706b2bf4b958aa160754cbbb8802083b78f1d9823ce927aa5aed3f30fd3",
     266: "b3baf8c51d7d6910f0142c5a80aaaa4d50dcd2fd6a5ac32d04d13c4f00c693c2",
+    267: "3ee7b17cef2c8e15aabfaad4b2e465fb51629ed06ed3eb1677f850c792060ba3",
 }
 EXPECTED_ASSET_DEBUGGER_STABLE_SHA256 = \
     "5be142f182d119d6a24e3d153fcf8fcbc5a1d8b7cdfe15be33148b000744a9ec"
