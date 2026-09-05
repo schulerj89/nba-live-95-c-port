@@ -1892,6 +1892,26 @@
       "date": "2026-09-05"
     },
     {
+      "range": "86F93D-86F944",
+      "name": "mode-six shared anticipation child gate",
+      "source": "src/nba_tipoff.c; src/nba_gameplay_ai.c",
+      "method": "controlled native wrapper-selected parent differential + fresh headless Ghidra and snesrecomp",
+      "evidence": "Two byte-identical Mesen captures each record a genuine mode-six call selected by $87:9244 and observed at its $87:9C35 wrapper, with PC, stack, flags, ROM, and child code untouched. Both calls make the decision due with role-pass flag $09D8 clear, CPU control, live state 2, difficulty 2, equal base/current assignments, and identical close-range pair geometry. Seed $0001 makes native $86:F932 resolve the pair, call $86:EF09 once, consume one RNG value to $0002, reject, call $86:E9B3 once, retain mode six, and write fallback target (313,3). Seed $0004 advances to $0008, accepts, skips $86:E9B3, predicts the pair at (290,-4), saves mode six in +$62, enters mode nine, reloads +$60 to $001E, and requests upper animation $13. Before the C correction both calls missed the RNG step; the accepted case also retained mode six and the fallback target/timer/animation. Allowing mode six to invoke the already translated anticipation child makes the permanent normal-actor replay cover 103 calls, including six mode-six calls, with zero represented-output mismatches. Controls change documented input WRAM immediately before the native JSL; no execution state or result is patched.",
+      "provenance": {
+        "rom_sha256": "2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870",
+        "raw_vectors": ".analysis/cpu-mode-six-anticipation-20260905/capture-v2/cpu_mode_six_anticipation.vectors.jsonl",
+        "raw_vectors_sha256": "8e15ff326bd58a4d7a7765194fad4013c0d0f251962443e31d02752575b4ed7e",
+        "case_matrix_sha256": "64941567bfc0e6f75d3307a6c27f3f0478530e5f07a5f82d2010855c1721d75e",
+        "path_trace_sha256": "58ea57485057e9cc8c9da9ed52848c18d018b1ad5a665130608ecd5d59f12e2f",
+        "ghidra": ".analysis/cpu-mode-six-anticipation-20260905/reference/cpu_mode_six_bank86.txt",
+        "ghidra_sha256": "27f9e4bcdce77540af5cc0fa4f257137ddec846f1ea23f2995b00585b7ca34e6",
+        "recomp": ".analysis/cpu-mode-six-anticipation-20260905/reference/cpu_mode_six_bank86.c",
+        "recomp_function": "CpuModeSix_M0X0",
+        "recomp_sha256": "f12d2a3b1fa6dbe8dde61e6048dc520330398b38ebdeb4f5f82f295bb940ed03"
+      },
+      "date": "2026-09-05"
+    },
+    {
       "range": "86F1B0-86F23E",
       "name": "normal mode-one CPU actor continuation",
       "source": "src/nba_tipoff.c + src/nba_gameplay_ai.c",

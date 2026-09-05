@@ -14,7 +14,7 @@ and tables. Undecoded bytes are unknown—not pending instructions.
 | Conservatively decoded instruction starts | 61,032 |
 | Bytes owned by decoded instructions | 148,055 |
 | Decoded starts observed in retained execution | 27,502 |
-| Decoded starts both observed and verified | 11,753 |
+| Decoded starts both observed and verified | 11,756 |
 | Verified / conservatively decoded starts | 19.26% |
 | Undecoded ROM bytes (data or undiscovered code) | 1,424,809 |
 
@@ -28,7 +28,7 @@ and tables. Undecoded bytes are unknown—not pending instructions.
 | `$83` | 5443 | 14100 | 1052 | 0 | 18668 |
 | `$84` | 6044 | 14718 | 177 | 0 | 18050 |
 | `$85` | 7607 | 17664 | 5345 | 4157 | 15104 |
-| `$86` | 11961 | 29168 | 6504 | 5027 | 3600 |
+| `$86` | 11961 | 29168 | 6504 | 5030 | 3600 |
 | `$87` | 8160 | 20710 | 3604 | 2203 | 12058 |
 | `$88` | 0 | 0 | 0 | 0 | 32768 |
 | `$89` | 0 | 0 | 0 | 0 | 32768 |

@@ -951,7 +951,7 @@ bool nba_gameplay_defense_mode_target(
     return true;
 }
 
-/* `$86:EF09-$F0B6`: mode four occasionally replaces its
+/* `$86:EF09-$F0B6`: modes four and six occasionally replace their
  * ordinary defensive target with the assigned opponent's near-future
  * position. The difficulty table supplies masks $1F/$0F/$07. Eligible late
  * game defenders tolerate four personal fouls, or six while trailing in the

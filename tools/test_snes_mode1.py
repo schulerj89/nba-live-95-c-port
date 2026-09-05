@@ -68,11 +68,17 @@ def main():
             # `$09D8` before repairing locomotion bases. The corrected CPU
             # trajectory has a coherent 2-0 first-quarter scoreboard panel at
             # frame 1000, so BG3 participates in this inspected C-only anchor.
-            assert summary["visible"]["bg1"] == 3329
-            assert summary["visible"]["bg2"] == 42174
-            assert summary["visible"]["bg3"] == 6013
-            assert summary["visible"]["obj"] == 3917
-            assert summary["visible"]["backdrop"] == 1911
+            # Re-reviewed on 2026-09-05 after mode six began calling the
+            # native shared `$86:EF09` anticipation policy. Its RNG step puts
+            # frame 1000 at a wide gameplay camera with no active scoreboard
+            # overlay; the complete court, players, ball, basket, and crowd
+            # remain coherent, and the rank/accounting checks below still own
+            # every pixel.
+            assert summary["visible"]["bg1"] == 0
+            assert summary["visible"]["bg2"] == 51153
+            assert summary["visible"]["bg3"] == 0
+            assert summary["visible"]["obj"] == 2707
+            assert summary["visible"]["backdrop"] == 3484
             counts = {name: 0 for name in
                       ("BACKDROP", "BG1", "BG2", "BG3", "OBJ")}
             indexed = direct = rows = 0

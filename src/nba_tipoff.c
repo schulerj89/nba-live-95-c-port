@@ -1138,11 +1138,12 @@ static bool cpu_refresh_defense_target(NbaTipoff *tipoff, unsigned slot,
     int16_t paired_y = fp_integer_word(paired->y_fp);
     unsigned side = slot / 5u;
 
-    /* `$86:F7FA-$F80B` calls EF09 before ordinary defensive geometry. Its
-     * represented branches consume cached +$8A/+$8C and movement words,
-     * predict position at velocity/16, and enter the proven `$86:F0B7` mode-nine
-     * executor. On rejection, continue through the existing E7DC/E96F path. */
-    if (actor->control_mode == 4u) {
+    /* `$86:F7FA-$F80B/$86:F93D-$F944`: modes four and six call EF09 before
+     * ordinary defensive geometry. Its represented branches consume cached
+     * +$8A/+$8C and movement words, predict position at velocity/16, and
+     * enter the proven `$86:F0B7` mode-nine executor. On rejection, continue
+     * through the existing E7DC/E96F or E9B3 path. */
+    if (actor->control_mode == 4u || actor->control_mode == 6u) {
         NbaGameplayModeFourAnticipationInput anticipation_input = {
             .difficulty_raw_17af = tipoff->session->config.main_values[2],
             .controller_assignment_raw_16 =

@@ -175,11 +175,15 @@ EXPECTED_RGB = {
     # `$09D8` before repairing locomotion bases. The frame-600 difference is
     # confined to one defender's 22x51 sprite box; later camera and actor
     # trajectories diverge while the complete gameplay scene remains intact.
+    # Re-reviewed on 2026-09-05 after mode six began calling the native shared
+    # `$86:EF09` anticipation policy. Frame 600 remains byte-identical. The
+    # later RNG-driven trajectories differ, while all four inspected frames
+    # retain a coherent court, players, ball, baskets, crowd, and HUD.
     600: "f015c2a5a49e25e538be5a919c0f7fc8597e26b5a9472ec24e1db81aadb9e7bb",
-    1300: "008fdc9ecf7a7be456710e23472cb769b17a7fe66bffc304a094940187abad70",
-    3480: "b7cf00326ba8900aae785207656e0fc4672882aa71a782b772c39deb00561b95",
-    6932: "cae6dad21122181e7a3a4483669429d6e9d836209cb87d6980576a4627d8dd93",
-    6954: "de13740bc6f5893930a03605f6bd021b15f065d5ce182c3861da2f6fd1266c2d",
+    1300: "c072b0304b22727c1b7a610948f92c6bd1c3ab92584b2ac46f3f19454d4161a2",
+    3480: "8609325383586327056bb4c095c5e8f3cb944a8cb8d132da74ea194479ee0857",
+    6932: "46b7f9a8312dfcbaae2f30eb14716f40a3d2510222991e3ceb978e3713fc3e32",
+    6954: "69d99bb9d1e744552fd45c193f5e542462654f308b21549461292661c2367f17",
 }
 
 
