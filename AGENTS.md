@@ -2,6 +2,40 @@
 
 These instructions apply to all work in this repository.
 
+## Manager and sub-agent responsibilities
+
+- The manager assigns each sub-agent an exact native subroutine address range,
+  its C implementation location, permitted changes, and required verification.
+  Only one subroutine implementation may be active at a time.
+- Sub-agents must use GPT-5.6 Sol (`gpt-5.6-sol`) with high reasoning. Do not
+  substitute another model or reasoning level or delegate further.
+- Sub-agents must read this file before working, stay within their assignment,
+  and return the changed paths, behavioral findings, test commands/results, and
+  unresolved limitations. Sub-agents must never stage, commit, or push changes.
+- Only the manager reviews and stages changes, commits, and pushes. The manager
+  verifies scope, test evidence, function comments, and the absence of assets
+  before accepting an iteration and assigning the next subroutine.
+
+## Function comments and system documentation
+
+- Every new or modified C function must have a comment immediately above its
+  definition stating its native ROM address/range, system (for example gameplay,
+  CPU logic, menu, rendering, or audio), and a short behavioral description.
+  Preserve accurate existing comments. For a host-only helper, explicitly state
+  that there is no direct native address and identify the routine it supports;
+  never invent an address. Add missing comments as functions are touched rather
+  than bundling a repository-wide cleanup into a subroutine iteration.
+- Maintain a concise workflow document for each system being changed, such as
+  `docs/cpu-logic.md`. Describe entry points, state inputs and outputs, dispatch
+  and child-call flow, asset-pack dependencies, tests, and remaining gaps.
+  Update it with the assigned routine's verified behavior, not speculation.
+- Keep machine-readable routine progress in `docs/verified-routines.json` and
+  regenerate affected coverage reports through the existing tools. Use the
+  system workflow document for the next bounded routine and open questions;
+  do not create conflicting completion ledgers or claim whole-game parity from
+  isolated tests. System workflow documents are maintained documentation and
+  are permitted alongside the existing status and generated evidence files.
+
 ## One subroutine per iteration
 
 - Implement, port, or fix exactly one subroutine at a time. Identify its native
