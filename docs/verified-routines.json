@@ -1972,6 +1972,26 @@
       "date": "2026-09-06"
     },
     {
+      "range": "86C6AD-86C758",
+      "name": "mode-eight knockdown recovery",
+      "source": "src/nba_tipoff.c",
+      "method": "controlled genuine-entry native differential + strict direct replay + production scheduler/contact integration + headless Ghidra listing/decompilation",
+      "evidence": "Two byte-identical Mesen captures each record 19 genuine entries at $86:C6AD with zero orphan exits and PC, stack, flags, ROM, RNG, and child results untouched. The compact fixture retains all 19 calls and all 27 represented input/output words, including overlapping DP $0046/$0047, X/Y/Z integer and fractional words, unchanged actor +$56/+$7A/+$A8, and both host projections of native actor +$60. It reaches the sole $86:C758 exit, covers the exact union of all 67 instruction starts, and pins the three $86:9846 child calls. Witnesses prove selector and vertical gates, fractional-Z landing, signed planar halves, bounce/settle marker behavior, timer 2/1/0/$8002/$8001, every presentation-phase boundary, owner mode 11, actor+$6E mode 1/2 restore, and both timer projections cleared on expiry. The old implementation mismatched all 19 calls; strict production replay now has zero mismatches. Full nba_tipoff_update checks prove prior velocity and animation occur before later mode-eight behavior, signed +$5A/+$7A countdown occurs once after contacts, landing follows common physics, and a synthetic post-physics mode-nine-to-eight record receives same-pass dispatch without duplicate movement. Separate real-contact tests exercise action 35 and 36 publication through $87:B538/$B555/$B3BD, compare every animation-channel word with the verified command model, and prove action 35 survives and advances on its next actor pass. The injected transition is phase isolation, not a replay of a contact writer.",
+      "provenance": {
+        "rom_sha256": "2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870",
+        "raw_vectors": ".analysis/cpu-mode-eight-20260906/capture-v3/cpu_mode_eight.vectors.jsonl",
+        "raw_vectors_sha256": "a3a91f770fbaa79cf12ab6734e4550186c70a0c1d9155be2aa8501bccd45588f",
+        "case_matrix_sha256": "184c9ace40a62e2338f59d06945674d7a4e075e19e0b02fa90421698cfc7e411",
+        "path_trace_sha256": "46daefcb0ae8affd366ccedde3c300fd5dd804c5a04249b5515bb30a50821b5f",
+        "ghidra": ".analysis/full-rom-census/listings/bank_86_instructions.tsv",
+        "ghidra_sha256": "f642199de28e016061db579f28a28f60c772de70a6a2a6712ded609e03f7d63c",
+        "recomp": ".analysis/cpu_gameplay_ghidra/cpu_gameplay_bank86_functions.c",
+        "recomp_function": "cpu_gameplay_86_C6AD",
+        "recomp_sha256": "c3ce476090ee9a9ec970ce9b9ccb2fdeea42936f8a3ff9184880b609fff3b199"
+      },
+      "date": "2026-09-06"
+    },
+    {
       "range": "86F0B7-86F0FC",
       "name": "mode-nine timed target override",
       "source": "src/nba_tipoff.c",

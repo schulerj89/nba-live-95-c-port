@@ -60,6 +60,16 @@ python tools/regenerate_cpu_mode_two_reference.py --help
 python tools/normalize_cpu_mode_two_role_vectors.py --help
 ~~~
 
+The compact mode-eight replay and its real caller-phase checks run with:
+
+~~~powershell
+./tools/build_vector_probe.ps1 -Name cpu_mode_eight_vector_probe
+python tools/verify_cpu_mode_eight_vectors.py `
+  --vectors tests/fixtures/cpu-mode-eight-witnesses.json `
+  --probe build/cpu_mode_eight_vector_probe.exe `
+  --pack build/nba95_assets.pak
+~~~
+
 It and the permanent fixture verifiers follow the same workflow:
 
 1. Capture a real native entry and exit into a new ignored directory.

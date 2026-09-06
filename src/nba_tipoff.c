@@ -458,6 +458,7 @@ static bool cpu_update_rom_shooter(NbaTipoff *tipoff, unsigned slot);
 static bool cpu_update_rom_special_shooter(NbaTipoff *tipoff, unsigned slot);
 static bool cpu_update_rom_layup(NbaTipoff *tipoff, unsigned slot);
 static bool cpu_update_rom_special_receiver(NbaTipoff *tipoff, unsigned slot);
+static bool cpu_update_knockdown_actor(NbaTipoff *tipoff, unsigned slot);
 static bool actor_animation_resources(const NbaTipoff *tipoff,
     const NbaTipoffActor *actor, uint8_t direction,
     uint16_t *upper_resource, uint16_t *lower_resource);
@@ -675,6 +676,20 @@ static void actor_animation_command(NbaTipoff *tipoff, NbaTipoffActor *actor,
             actor_publish_body_mirror(actor);
         }
     }
+}
+
+/* Host-only shared helper; no direct native address. Implements the animation
+ * sequences at `$86:C223-$C22F/$86:CB6A-$CB76` through
+ * `$87:B538/$B555/$B3BD`: cancel both channels, then install knockdown. */
+static void actor_install_knockdown_animation(NbaTipoff *tipoff,
+                                              NbaTipoffActor *actor,
+                                              uint16_t action) {
+    (void)actor_queue_animation_command(
+        tipoff, actor, NBA_ANIMATION_CANCEL_UPPER, 0u);
+    (void)actor_queue_animation_command(
+        tipoff, actor, NBA_ANIMATION_CANCEL_LOWER, 0u);
+    (void)actor_queue_animation_command(
+        tipoff, actor, NBA_ANIMATION_INSTALL_BOTH, action);
 }
 
 /* EC32 caller binding. The focal record is 0910 (not always the ball),
@@ -1404,7 +1419,7 @@ static void cpu_apply_mode_nine(NbaTipoff *tipoff, unsigned slot) {
 }
 
 /* `$87:9244/$87:9BD3` and dispatched Bank $86 routines, CPU logic: execute
- * passive actor modes, including exact mode-seven and mode-nine children,
+ * passive actor modes, including exact modes seven through nine children,
  * and report whether the scheduled pass was consumed. */
 static bool cpu_apply_passive_mode(NbaTipoff *tipoff, unsigned slot) {
     NbaTipoffActor *actor = &tipoff->actors[slot];
@@ -1417,6 +1432,8 @@ static bool cpu_apply_passive_mode(NbaTipoff *tipoff, unsigned slot) {
         cpu_apply_mode_nine(tipoff, slot);
         return true;
     }
+    if (actor->control_mode == 8u)
+        return cpu_update_knockdown_actor(tipoff, slot);
     if (actor->control_mode == 16u) { /* `$86:B0F7-$B153`: post-shot hold. */
         /* `$86:B0F9-$B0FC` marks this actor as held before the timer pass.
          * This is not an animation install; the current pose/resources must
@@ -1747,22 +1764,14 @@ static bool cpu_move_inbound_actor(NbaTipoff *tipoff, unsigned slot) {
     return true;
 }
 
-/* `$87:9C67 -> $86:C6AD-$C74D`: mode 8 is timer-authoritative knockdown
- * recovery. The global scheduler saturates `+$5A`; this executor wraps
- * `+$60` through negative. Action $36's nonnegative `+$56` enables its
- * landing hop/settle. */
+/* `$87:9C67 -> $86:C6AD-$C758`, CPU logic: execute mode-eight knockdown
+ * landing, presentation-bit cadence, and timer-expiry recovery. */
 static bool cpu_update_knockdown_actor(NbaTipoff *tipoff, unsigned slot) {
     NbaTipoffActor *actor = &tipoff->actors[slot];
     if (actor->control_mode != 8u) return false;
-    /* Native `$85:963D` commits the velocity from the preceding behavior
-     * pass before `$87:9244` reaches C6AD. Landing writes below therefore
-     * become motion input on the next 30-Hz pass. */
-    actor->x_fp += (int32_t)actor->velocity_x * 2;
-    actor->y_fp += (int32_t)actor->velocity_y * 2;
-    cpu_integrate_actor_vertical(actor);
     actor->behavior_flags_raw |= 6u;
     if (actor->special_contact_raw_56 >= 0 &&
-        actor->velocity_z == 0 && actor->z_fp == 0) {
+        actor->velocity_z == 0 && fp_integer_word(actor->z_fp) == 0) {
         if ((int16_t)actor->pass_direction_raw >= 0) {
             tipoff->rim_raw_13e7 |= 0x0100u;
             actor->velocity_z = 0x00F0;
@@ -1778,24 +1787,24 @@ static bool cpu_update_knockdown_actor(NbaTipoff *tipoff, unsigned slot) {
     }
     actor->contact_action_timer_raw_60 = (uint16_t)(
         actor->contact_action_timer_raw_60 - 2u);
-    int16_t presentation_phase = (int16_t)(uint16_t)(
+    /* The host has two projections of native actor +$60. Keep them identical
+     * so the restored ordinary mode observes `$86:9846`'s zero immediately. */
+    actor->reaction_threshold = actor->contact_action_timer_raw_60;
+    uint16_t presentation_phase = (uint16_t)(
         actor->contact_action_timer_raw_60 - 0x36u);
     actor->actor_status_raw_28 &= 0xFFE7u;
-    if (presentation_phase >= 10 && presentation_phase < 20)
+    if ((presentation_phase & 0x8000u) == 0u &&
+        presentation_phase >= 10u && presentation_phase < 20u)
         actor->actor_status_raw_28 |= 0x0010u;
-    else if (presentation_phase >= 20 && presentation_phase < 30)
+    else if ((presentation_phase & 0x8000u) == 0u &&
+             presentation_phase >= 20u && presentation_phase < 30u)
         actor->actor_status_raw_28 |= 0x0008u;
-    else if (presentation_phase >= 30 && presentation_phase < 40)
+    else if ((presentation_phase & 0x8000u) == 0u &&
+             presentation_phase >= 30u && presentation_phase < 40u)
         actor->actor_status_raw_28 |= 0x0010u;
-
-    if ((int16_t)actor->contact_action_timer_raw_60 >= 0) return true;
-
-    uint16_t actor_group = slot >= 5u ? 5u : 0u;
-    actor->control_mode = actor_group == tipoff->camera_side_group_raw ? 1u : 2u;
-    actor->behavior_timer = 0x2Fu;
+    if ((actor->contact_action_timer_raw_60 & 0x8000u) == 0u) return true;
+    cpu_restore_normal_mode(tipoff, slot);
     actor->contact_action_timer_raw_60 = 0u;
-    actor->behavior_flags_raw = 0u;
-    actor->actor_status_raw_28 = 0u;
     actor->contact_inhibit_raw_5a = 0u;
     if (tipoff->possession_actor == (int8_t)slot)
         actor->control_mode = 11u;
@@ -2288,7 +2297,7 @@ static void cpu_commit_actor_common(NbaTipoff *tipoff, unsigned slot) {
 }
 
 /* `$85:963D-$985F`, CPU logic: commit the prior actor velocity. Modes seven
- * and nine defer their `$87:9244` behavior dispatch until after globals. */
+ * through nine defer their `$87:9244` behavior dispatch until after globals. */
 static bool cpu_move_actor(NbaTipoff *tipoff, unsigned slot) {
     NbaTipoffActor *actor = &tipoff->actors[slot];
     if (actor->control_mode == 15u &&
@@ -2321,13 +2330,13 @@ static bool cpu_move_actor(NbaTipoff *tipoff, unsigned slot) {
         (void)cpu_update_rom_special_receiver(tipoff, slot);
         return true;
     }
-    if (actor->control_mode == 7u || actor->control_mode == 9u) {
+    if (actor->control_mode == 7u || actor->control_mode == 8u ||
+        actor->control_mode == 9u) {
         /* Native `$85:963D` consumes the previous special-mode velocity here;
          * Bank $86 computes the following pass only after global work. */
         cpu_commit_actor_common(tipoff, slot);
         return true;
     }
-    if (cpu_update_knockdown_actor(tipoff, slot)) return false;
     if (cpu_apply_passive_mode(tipoff, slot)) {
         cpu_integrate_actor_vertical(actor);
         return false;
@@ -2881,10 +2890,8 @@ static bool cpu_try_player_knockdown_contact(NbaTipoff *tipoff,
     cpu_classify_player_contact(tipoff, victim_slot, hitter_slot, 0x87u);
     tipoff->rim_raw_13e7 |= 0x0080u;
     victim->action_state = action;
-    victim->animation_state = (uint8_t)action;
-    victim->upper_animation_tick = 0u;
-    victim->upper_animation_phase_raw = 0u;
     victim->contact_action_timer_raw_60 = action == 0x36u ? 174u : 30u;
+    victim->reaction_threshold = victim->contact_action_timer_raw_60;
     victim->contact_inhibit_raw_5a = victim->contact_action_timer_raw_60;
     victim->special_contact_raw_56 = action == 0x36u ? 0 : -1;
     victim->recovery_inhibit_raw = 0u;
@@ -2930,6 +2937,7 @@ static bool cpu_try_player_knockdown_contact(NbaTipoff *tipoff,
     victim->movement_direction = nba_gameplay_contact_facing(
         victim->velocity_x, victim->velocity_y);
     victim->direction = victim->movement_direction;
+    actor_install_knockdown_animation(tipoff, victim, action);
     cpu_record_player_contact(
         tipoff, victim_slot, hitter_slot, 0x86BFBAu);
     return true;
@@ -2994,11 +3002,9 @@ static void cpu_apply_pose_special_impulse(NbaTipoff *tipoff,
     }
 
     t->action_state = action;
-    t->animation_state = (uint8_t)action;
-    t->upper_animation_tick = 0u;
-    t->upper_animation_phase_raw = 0u;
     t->special_contact_raw_56 = alternate ? 0 : -1;
     t->contact_action_timer_raw_60 = alternate ? 174u : 30u;
+    t->reaction_threshold = t->contact_action_timer_raw_60;
     t->contact_inhibit_raw_5a = t->contact_action_timer_raw_60;
     t->recovery_inhibit_raw = 0u;
     if (alternate) t->velocity_z = 600;
@@ -3039,6 +3045,7 @@ static void cpu_apply_pose_special_impulse(NbaTipoff *tipoff,
     /* $86:CB5E has the same coarse F02D facing contract. */
     t->movement_direction = nba_gameplay_contact_facing(base_x,base_y);
     t->direction = t->movement_direction;
+    actor_install_knockdown_animation(tipoff, t, action);
 }
 
 /* `$86:C88F-$C91D/$86:CBC4-$CCCC`: return false only when D652 must stop
@@ -3228,7 +3235,9 @@ void nba_tipoff_replay_player_contact_sweep(NbaTipoff *tipoff) {
     cpu_update_player_contacts(tipoff);
 }
 
-static bool cpu_player_contact_self_test(void) {
+/* Host-only self-test; no direct native address. Covers CPU contact ranges
+ * `$86:BFBA-$C34B/$86:C91E-$CCCC`, including knockdown publication. */
+static bool cpu_player_contact_self_test(const NbaAssetPack *assets) {
     NbaTipoff state;
     memset(&state, 0, sizeof(state));
     for (unsigned i = 0; i < NBA_GAMEPLAY_ACTOR_COUNT; ++i) {
@@ -3366,6 +3375,7 @@ static bool cpu_player_contact_self_test(void) {
     NbaSession session;
     memset(&state, 0, sizeof(state));
     memset(&session, 0, sizeof(session));
+    state.assets = assets;
     state.session = &session;publish_exhibition_team_ids(&state);
     session.config.rules[0] = 45u;
     session.config.rules[1] = 25u;
@@ -3385,13 +3395,16 @@ static bool cpu_player_contact_self_test(void) {
         state.fouls.foul_event_raw_0964 == NBA_GAMEPLAY_FOUL_DEFENSIVE &&
         state.fouls.team_fouls[1] == 1u &&
         state.fouls.personal_fouls[5] == 1u &&
-        state.actors[0].control_mode == 8u;
+        state.actors[0].control_mode == 8u &&
+        state.actors[0].animation_state == 0x35u &&
+        state.actors[0].lower_animation_state == 0x35u;
     if (!high_speed_foul) return false;
 
     /* `$86:C99D-$CA49` standard impulse-only vector: tag 0 masks the
      * cached RNG to 1, B advances to 2 and skips all action writes. */
     memset(&state, 0, sizeof(state));
     memset(&session, 0, sizeof(session));
+    state.assets = assets;
     state.session = &session;publish_exhibition_team_ids(&state);
     state.cpu_vs_cpu = true;
     state.possession_actor = -1;
@@ -3413,6 +3426,7 @@ static bool cpu_player_contact_self_test(void) {
     /* Standard action-35/owner-drop vector: B=8, C=16, D=32. The ball
      * receives half the undoubled CB84 base vector. */
     memset(&state, 0, sizeof(state));
+    state.assets = assets;
     state.session = &session;publish_exhibition_team_ids(&state);
     state.cpu_vs_cpu = true;
     state.possession_actor = 5;
@@ -3430,6 +3444,8 @@ static bool cpu_player_contact_self_test(void) {
         state.actors[5].velocity_x == 0 &&
         state.actors[5].velocity_y == 592 &&
         state.actors[5].action_state == 0x35u &&
+        state.actors[5].animation_state == 0x35u &&
+        state.actors[5].lower_animation_state == 0x35u &&
         state.actors[5].control_mode == 8u &&
         state.actors[5].special_contact_raw_56 == -1 &&
         state.actors[5].contact_action_timer_raw_60 == 30u &&
@@ -7565,7 +7581,7 @@ void nba_tipoff_refresh_team_roles_end_frame(NbaTipoff *tipoff) {
 }
 
 /* `$87:8EFB-$8F92` parent and `$87:8F01-$8F8D/$87:AAB2/$85:963D`, actor
- * scheduler/physics: run one 30-Hz pass; modes seven and nine advance their
+ * scheduler/physics: run one 30-Hz pass; modes seven through nine advance their
  * existing animation and commit prior velocity before later behavior. */
 static void cpu_update_all_actors(NbaTipoff *tipoff) {
     if ((tipoff->simulation_tick & 1u) != 0u) return;
@@ -7582,18 +7598,21 @@ static void cpu_update_all_actors(NbaTipoff *tipoff) {
     for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
         NbaTipoffActor *state = &tipoff->actors[actor];
         bool deferred_behavior = state->control_mode == 7u ||
+                                 state->control_mode == 8u ||
                                  state->control_mode == 9u;
         cpu_ease_display_direction(state);
         /* `$87:8F13-$8F5E` eases +$52 before `$87:AAB2` resolves the pose;
          * `$85:963D` then begins the actor physics sweep. Preserve that order
-         * for modes seven and nine without changing other modes' model. */
+         * for modes seven through nine without changing other modes' model. */
         if (deferred_behavior)
             cpu_advance_actor_animation(tipoff, state);
-        if (state->contact_inhibit_raw_5a != 0u)
+        if (state->control_mode != 8u &&
+            state->contact_inhibit_raw_5a != 0u)
             state->contact_inhibit_raw_5a =
                 state->contact_inhibit_raw_5a > 2u ?
                 (uint16_t)(state->contact_inhibit_raw_5a - 2u) : 0u;
-        if (state->control_mode != 9u && state->recovery_inhibit_raw != 0u)
+        if (state->control_mode != 8u && state->control_mode != 9u &&
+            state->recovery_inhibit_raw != 0u)
             state->recovery_inhibit_raw = state->recovery_inhibit_raw > 2u ?
                 (uint16_t)(state->recovery_inhibit_raw - 2u) : 0u;
         bool common_committed = cpu_move_actor(tipoff, actor);
@@ -7619,24 +7638,30 @@ static void cpu_update_all_actors(NbaTipoff *tipoff) {
         tipoff->differential_observer(tipoff, "actors.end", tipoff->differential_context);
 }
 
-/* `$87:90A5-$90B2` mode-nine slice, actor scheduler: decrement recovery
- * inhibit after physics/globals and before `$87:9244` dispatches `$86:F0B7`.
- * Native applies this range to every actor; adjacent modes retain their
- * existing scheduler model. */
-static void cpu_prepare_mode_nine_behavior(NbaTipoff *tipoff) {
+/* `$87:90A5-$90C2`, actor scheduler: apply mode-eight/mode-nine signed
+ * inhibit countdowns after contacts and before `$87:9244` dispatch. */
+static void cpu_prepare_mode_eight_nine_behavior(NbaTipoff *tipoff) {
     for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
         NbaTipoffActor *state = &tipoff->actors[actor];
-        if (state->control_mode == 9u && state->recovery_inhibit_raw != 0u) {
+        if ((state->control_mode == 8u || state->control_mode == 9u) &&
+            state->recovery_inhibit_raw != 0u) {
             uint16_t remaining =
                 (uint16_t)(state->recovery_inhibit_raw - 2u);
             state->recovery_inhibit_raw =
-                (int16_t)remaining >= 0 ? remaining : 0u;
+                (remaining & 0x8000u) == 0u ? remaining : 0u;
+        }
+        if (state->control_mode == 8u &&
+            state->contact_inhibit_raw_5a != 0u) {
+            uint16_t remaining =
+                (uint16_t)(state->contact_inhibit_raw_5a - 2u);
+            state->contact_inhibit_raw_5a =
+                (remaining & 0x8000u) == 0u ? remaining : 0u;
         }
     }
 }
 
 /* `$87:9075-$9086/$87:9244`, actor scheduler/behavior: clear controller
- * sweep latches, then dispatch modes seven/nine and normal actors after
+ * sweep latches, then dispatch modes seven through nine and normal actors after
  * physics and the intervening global ball/contact/role work. */
 static void cpu_update_actor_behaviors(NbaTipoff *tipoff) {
     nba_controller_begin_sweep(&tipoff->controllers);
@@ -7645,6 +7670,7 @@ static void cpu_update_actor_behaviors(NbaTipoff *tipoff) {
         if(pad>=0 && pad<5 && !tipoff->controllers.record[pad].processed)
             nba_tipoff_publish_controller_input(tipoff,actor,pad==0?tipoff->pad_held_raw:0);
         if (tipoff->actors[actor].control_mode == 7u ||
+            tipoff->actors[actor].control_mode == 8u ||
             tipoff->actors[actor].control_mode == 9u)
             (void)cpu_apply_passive_mode(tipoff, actor);
         else {
@@ -7667,7 +7693,7 @@ static void cpu_schedule_actor_behaviors(NbaTipoff *tipoff,
      * the next even pass both consumes and replaces that motion. Preserve
      * that single deferred dispatch without delaying every behavior pass. */
     if ((tipoff->simulation_tick & 1u) == 0u) {
-        cpu_prepare_mode_nine_behavior(tipoff);
+        cpu_prepare_mode_eight_nine_behavior(tipoff);
         if (acquisition_boundary) {
             tipoff->actor_behavior_pending = 1u;
             return;
@@ -8540,7 +8566,7 @@ static void cpu_update_possession(NbaTipoff *tipoff) {
         cpu_update_player_contacts(tipoff);
         nba_tipoff_update_play_control_end_frame(tipoff);
         nba_tipoff_refresh_team_roles_end_frame(tipoff);
-        cpu_prepare_mode_nine_behavior(tipoff);
+        cpu_prepare_mode_eight_nine_behavior(tipoff);
         cpu_update_actor_behaviors(tipoff);
         if (tipoff->possession_actor >= 0 &&
             tipoff->possession_actor < NBA_GAMEPLAY_ACTOR_COUNT &&
@@ -8896,7 +8922,7 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
     NBA_TIPOFF_REQUIRE("out-of-bounds dispatch", cpu_out_of_bounds_dispatch_self_test());
     NBA_TIPOFF_REQUIRE("contact orchestration",
         cpu_contact_orchestration_self_test(assets, session));
-    NBA_TIPOFF_REQUIRE("player contact", cpu_player_contact_self_test());
+    NBA_TIPOFF_REQUIRE("player contact", cpu_player_contact_self_test(assets));
     NBA_TIPOFF_REQUIRE("defensive planner", cpu_defensive_planner_self_test());
     NBA_TIPOFF_REQUIRE("role reaction reload", cpu_role_reaction_reload_self_test());
     NBA_TIPOFF_REQUIRE("expired inbound", cpu_expired_inbound_self_test());
@@ -9701,7 +9727,7 @@ void nba_tipoff_update(NbaTipoff *tipoff, const NbaInput *input) {
         cpu_commit_ball_acquisition(tipoff,(uint8_t)tipoff->tip_contact_actor);
     }
     if(!advancing_tip && !(tipoff->simulation_tick&1u)) {
-        cpu_prepare_mode_nine_behavior(tipoff);
+        cpu_prepare_mode_eight_nine_behavior(tipoff);
         cpu_update_actor_behaviors(tipoff);
     }
     if (advancing_tip) {

@@ -58,6 +58,9 @@ Recent source-verified visual and gameplay fixes include:
 - the native control-mode-seven dead-ball hold, including exact live-state,
   integer-height, and signed-timer gates, CPU origin steering, animation and
   direction-latch branches, and its post-global production dispatch order.
+- the native control-mode-eight knockdown recovery, including fractional-Z
+  landing, signed timer and presentation phases, actor-group restore, exact
+  two-channel contact animation publication, and late cooldown/dispatch order.
 - the native control-mode-nine timed target override, including late signed
   recovery countdown, signed timer boundaries, saved-target and final-window
   velocity selection, saved-mode restore, and post-global animation timing.
@@ -67,8 +70,9 @@ test_dribble_smoke.py, test_hoop_smoke.py, test_oob_smoke.py, and
 test_cpu_reaction_smoke.py, plus their native-vector verifiers, including the
 six-case defense-context, eight-case mode-five, two-case mode-one and
 mode-three role-flag, nine-case mode-two, twelve-case mode-four, and ten-case
-mode-six actor-parent replays, plus the nineteen-case mode-seven and
-sixteen-case mode-nine direct replays and their full-scheduler phase checks.
+  mode-six actor-parent replays, plus the nineteen-case mode-seven,
+  nineteen-case mode-eight, and sixteen-case mode-nine direct replays and
+  their full-scheduler phase checks.
 
 ## Major remaining gaps
 
@@ -94,7 +98,7 @@ Current generated captured-address measurements are:
 |---|---:|---:|
 | observed in retained execution captures | 29,438 | 100.0% |
 | documented by source provenance | 29,101 | 98.9% |
-| inside evidence-eligible verified ranges | 11,829 | 40.2% |
+| inside evidence-eligible verified ranges | 11,854 | 40.3% |
 
 These are coverage measurements for retained captures. They are not a
 percentage of the ROM, retail features, or game completion. The generated

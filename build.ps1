@@ -142,6 +142,14 @@ if ($Test) {
         '--pack', $AssetPack
     )
 
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name cpu_mode_eight_vector_probe
+    if ($LASTEXITCODE -ne 0) { throw 'CPU mode-eight probe build failed.' }
+    Invoke-PythonRegression -Script 'verify_cpu_mode_eight_vectors.py' -Arguments @(
+        '--vectors', (Join-Path $Root 'tests\fixtures\cpu-mode-eight-witnesses.json'),
+        '--probe', (Join-Path $BuildDir 'cpu_mode_eight_vector_probe.exe'),
+        '--pack', $AssetPack
+    )
+
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name cpu_mode_nine_vector_probe
     if ($LASTEXITCODE -ne 0) { throw 'CPU mode-nine probe build failed.' }
     Invoke-PythonRegression -Script 'verify_cpu_mode_nine_vectors.py' -Arguments @(

@@ -7,9 +7,9 @@ animation; `$85:963D-$985F` then resolves locomotion and commits the velocity
 selected on the previous actor pass. Global ball, contact, and role work
 follows. The later `$87:9244 -> $87:9BD3/$9BD0` mode jump table dispatches the
 actor's current `+$5E` behavior. Production preserves this complete phase
-order for modes seven and nine: `cpu_update_all_actors` eases and advances the
+order for modes seven through nine: `cpu_update_all_actors` eases and advances the
 existing animation before committing old velocity, while the later behavior
-sweep runs `$86:994C` or `$86:F0B7` after globals. Direct native-vector
+sweep runs `$86:994C`, `$86:C6AD`, or `$86:F0B7` after globals. Direct native-vector
 adapters intentionally call only the bounded behavior being replayed.
 
 The dispatch table currently maps modes 0 through 17 to no-op, ordinary CPU
@@ -88,6 +88,67 @@ correction is deliberately scoped; other behavior modes retain the existing
 partial whole-game scheduler model. Whole-game launch state, scheduler
 history, and RNG history also remain outside this bounded routine result.
 
+## Mode eight knockdown recovery
+
+`$86:C6AD-$C758` consumes the selected actor, canonical physical delta
+`$C6=2`, integer Z `+$0C`, velocity `+$0E/+$10/+$12`, status `+$28`, signed
+landing selector `+$56`, contact timer `+$60`, landing marker `+$66`, actor
+team group `+$6E`, and flags `+$7E`. It also reads offense group `$093A`,
+owner `$093E`, and ORs the shared event word `$13E7` on the bounce branch.
+
+Every call ORs flags with 6. A nonnegative selector, zero vertical velocity,
+and zero integer Z trigger landing even when fractional Z is nonzero. A
+nonnegative marker sets event bit `$0100`, installs vertical velocity `$00F0`,
+and arithmetically halves planar velocity; a negative marker clears planar
+velocity while the landing gate has already required vertical velocity zero.
+Both paths write marker `$FFFF`. The routine then subtracts
+two from `+$60`. Its phase relative to `$36` clears status bits `$18`, setting
+`$10` for phases 10-19 and 30-39 or `$08` for 20-29. A negative timer calls
+`$86:9846`: actor group `+$6E` versus `$093A` selects mode 1 or 2, behavior
+timer becomes `$2F`, and timer, flags, and status clear. Contact inhibit
+`+$5A` clears before the current-owner override changes the mode to 11. The host has two
+projections of native actor `+$60`; `contact_action_timer_raw_60` and
+`reaction_threshold` are synchronized on contact, every mode-eight decrement,
+and expiry.
+
+The scheduler advances the existing animation and commits prior velocity
+before contacts. Its bounded `$87:90A5-$90C2` integration skips early
+countdown for actors already in mode eight, then applies signed wrapping
+countdowns to mode-eight `+$7A` and `+$5A` after contacts and before dispatch.
+Thus a contact-installed value 30 becomes 28 once in that pass, while an
+initial mode-eight record is not counted twice. Contact writers
+`$86:C223-$C22F` and `$86:CB6A-$CB76` cancel upper and lower channels through
+`$87:B538/$B555`, then install action 35 or 36 on both through `$87:B3BD`.
+The new action begins its cadence on the next actor pass.
+
+`tests/fixtures/cpu-mode-eight-witnesses.json` contains 19 compact calls from
+two byte-identical genuine-entry Mesen captures. Every call enters at
+`$86:C6AD`, exits at the sole `$86:C758` return, and collectively covers all
+67 instruction starts. The 27-word projection includes overlapping DP
+`$0046/$0047`, X/Y/Z integer and fractional words, both host timer
+projections, unchanged `+$56/+$7A/+$A8`, and the complete affected actor
+state. It covers selector and vertical early gates, fractional landing,
+signed halves, bounce and settle, timer `2/1/0/$8002/$8001`, all presentation
+phase boundaries, owner mode 11, and actor-group mode 1/2 restore. Exact child
+counts pin the three `$86:9846` calls. The prior production leaf mismatched all
+19 final-shape replays; the corrected direct replay has zero mismatches.
+
+The production probe separately checks an initial mode-eight pass, signed
+`+$5A/+$7A` countdown, fractional landing after common physics, and the two
+real high-speed contact actions against the verified animation command model.
+It follows action 35 through its next pass to prove both channels and resources
+remain on the knockdown. A synthetic observer-injected mode-nine-to-eight
+record isolates the post-physics phase and proves same-pass cooldown and
+dispatch without a second coordinate commit; that case is not an actual
+contact-writer replay. The natural C trace first diverges at frame 2686 when a
+real `$86:C91E` pose contact installs mode eight on actor 6.
+
+The leaf itself has no asset dependency. Contact animation and later cadence
+require the ROM-derived animation tables in `build/nba95_assets.pak`. Parity is
+limited to canonical `$C6=2`, the captured word domain, and the bounded late
+mode-eight/mode-nine cooldown slice. Broader scheduler state and contact/RNG
+history remain outside the routine claim.
+
 ## Mode nine timed target override
 
 `$86:F0B7-$F0FC` consumes the scheduler-selected actor pointer and physical
@@ -141,12 +202,11 @@ Parity is limited to the canonical `$C6=2` actor pass, valid pack-backed
 movement/animation tables, the captured target and direction word domain, and
 saved modes 4/6 produced by the verified anticipation callers. The host
 narrows directions to its established byte fields. A mode already equal to 9
-is decremented at the verified late point. A mode-9 actor changed to mode 8 by
-contact before that point inherits the existing broader contact/scheduler
-timing gap; no adjacent mode behavior is claimed here. Whole-game launch
+is decremented at the verified late point. The bounded mode-eight integration
+also handles a mode-9 actor changed to mode 8 before that point, including the
+native `+$5A/+$7A` countdown and same-pass mode-eight dispatch. Whole-game launch
 state, scheduler history, and RNG history also remain outside this bounded
 routine result.
 
-Mode eight `$86:C6AD-$C758` remains the next contained dispatch target. It has
-production behavior and existing C tests but still lacks its own
-coverage-crediting genuine-entry differential and production-phase proof.
+The next bounded dispatch target is mode-ten receiver
+`$86:A5B0-$A628`; it remains unverified here.

@@ -187,11 +187,17 @@ EXPECTED_RGB = {
     # five old hashes; collectively the corrected frames retain the complete
     # court, players, ball, baskets, crowd, event overlays, and readable HUD,
     # with their per-frame timing shifted by the corrected trajectory.
+    # Re-reviewed after `$86:C6AD-$C758` restored mode-eight recovery and the
+    # two contact writers installed both native animation channels. Frames
+    # 600/1300 remain byte-identical; at the first changed trace row, frame
+    # 2686, a real `$86:C91E` contact installs mode eight on actor 6. The later
+    # three anchors retain a coherent court, players, ball, baskets, crowd,
+    # event overlay, and readable HUD under the corrected trajectory.
     600: "868b26b40f94ca3668d63a76f6c938403a12bb8e92c52393feb9ee8e04e871ec",
     1300: "5c17e72d13384f64afaf3df547cce396eb56bc3f44a9aa3f4b947bd342df08e2",
-    3480: "b60c5d9b3a36ace88fdfb82449f6ce3fe2203928ebe11d1113acb2a90124c42c",
-    6932: "26700838fbbbf4873b509769b0579384ed52d9484897aba8b86a210d1837d918",
-    6954: "95a65d8cc0c096fe60d61970bc2ed58f3055345c2d02241ea8c5049402887e57",
+    3480: "0c67676c928e83bb3650119feae935a509a5280c34fb5c8827414ee26b39dfb1",
+    6932: "84d122742faa1d7a71a66ea8315ec0afadc69e4ae37825d608cce30af0629e80",
+    6954: "a330dc79c0d1d114ce65131abfea8b3d7ccfb32ccecab3974d97f1d6b6c8bac2",
 }
 
 
@@ -1905,7 +1911,7 @@ def main():
                    "cpu_try_player_knockdown_contact",
                    "$86:C4FE-$C6AC", "nba_gameplay_foul_classify_contact",
                    "cpu_classify_player_contact",
-                   "$87:9C67", "$86:C6AD-$C74D",
+                   "$87:9C67", "$86:C6AD-$C758",
                    "cpu_update_knockdown_actor",
                    "cpu_update_player_contacts",
                    "$86:CD97-$D1D6", "cpu_try_detached_shot_contact",
