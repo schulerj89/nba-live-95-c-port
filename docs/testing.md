@@ -143,3 +143,29 @@ Both runs used the preserved mode-twelve executable and pack with their
 matching trace; unfinished mode-thirteen runtime edits were excluded from
 this comparison. The bounded-loader checks also pass, and all 126 explicit
 failure checks in the verifier are unchanged.
+
+## Contact and play summary reuse
+
+The verifier also collects player-contact records and the human-selection flag
+inside the existing frame-220 contact scan, before any collision-specific
+early continue. Play-$01 possession records are collected during the existing
+all-frame appearance scan. Their original validation remains at the same
+checkpoints, with identical ordering, frame boundaries, and predicates.
+
+This removes three additional full-trace passes: 190,962 row visits for the
+63,800-frame capture. The contact and possession lists retain the same selected
+records as before; the human-selection summary adds only one boolean. Python
+remains the test harness, and production C native-replay probes remain in use.
+
+Review confirmed all 126 failure statements are unchanged. A synthetic
+comparison of the original expressions and new collection statements checked
+the frame-219/220 boundary, collision early-continue paths, human selection,
+pending play requests, and the final frame; selected values and ordering match.
+
+On September 6, 2026, the complete retained-trace CPU gate passed in 294.32
+seconds before and 267.14 seconds after (27.18 seconds, or 9.2%, less wall
+time). Output was byte-identical, including sustained analysis and all five
+RGB checks. Both runs used the mode-fourteen executable and pack from
+`f4d451f`, the same verified ROM, and the matching 63,800-frame trace. Capture
+time and unrelated suite gates are excluded; these are observed gate timings,
+not a total-suite benchmark. Bounded-loader and analyzer checks also pass.

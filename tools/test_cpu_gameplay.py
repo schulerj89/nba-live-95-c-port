@@ -593,7 +593,12 @@ def main():
                 "player OAM origins shake between native presentation passes: "
                 f"{presentation_reversals[:12]}")
         draw_direction_changes = []
+        play_01_rows = []
         for row in rows:
+            possession = row["possession"]
+            if possession["play_code_raw"] == 0x01 and \
+                    possession["play_request_raw"] == 0:
+                play_01_rows.append(possession)
             for actor in row["actors"]:
                 draw_direction = actor["raw"]["draw_direction"]
                 if draw_direction != actor["raw"]["direction_52"]:
@@ -673,6 +678,8 @@ def main():
         teams, modes, owners = set(), set(), set()
         play_codes, mismatch_pairs = set(), set()
         rng_states = []
+        player_contacts = []
+        human_selected = False
         for row in rows[219:]:
             teams.add(row["possession"]["team"])
             modes.add(row["ball"]["state"])
@@ -684,6 +691,9 @@ def main():
                 for actor in row["actors"]
                 if actor["animation"] != actor["lower_animation"])
             collision = row["collision"]
+            if collision["player_count"]:
+                player_contacts.append(collision)
+            human_selected = human_selected or row["control"]["actor"] != 0xFF
             if collision["routine"] not in (
                     0, 0x86CE1E, 0x86D12D, 0x86D1D9,
                     0x86D25A, 0x86D43E):
@@ -697,8 +707,6 @@ def main():
                 raise AssertionError(
                     "$86:CCFC owned-ball contact accepted a same-team or "
                     f"invalid pair: {collision}")
-        player_contacts = [row["collision"] for row in rows[219:]
-                           if row["collision"]["player_count"]]
         if not player_contacts:
             raise AssertionError("$86:D652 never produced player/player contact")
         for contact in player_contacts:
@@ -742,7 +750,7 @@ def main():
         verify_camera_subject_trace(rows)
         if any(actor["control"] != 0 for actor in frame(1900)["actors"]):
             raise AssertionError("CPU-versus-CPU mode assigned a human actor")
-        if any(row["control"]["actor"] != 0xFF for row in rows[219:]):
+        if human_selected:
             raise AssertionError("CPU-versus-CPU installed a human-selected actor")
         moved = sum((actor["x"], actor["y"]) != FORMATION[index]
                     for index, actor in enumerate(live["actors"]))
@@ -953,9 +961,6 @@ def main():
             raise AssertionError("$0994 requests ended outside the captured actor passes")
         # The score writer changes `$0996` immediately, but B377 does not load
         # record zero until `$0994` is consumed on the next logical pass.
-        play_01_rows = [row["possession"] for row in rows
-                        if row["possession"]["play_code_raw"] == 0x01 and
-                        row["possession"]["play_request_raw"] == 0]
         if not play_01_rows or play_01_rows[0]["play_step_raw"] != 0 or \
                 play_01_rows[0]["play_countdown_raw"] != 120 or \
                 play_01_rows[0]["play_selector_raw"] not in (
