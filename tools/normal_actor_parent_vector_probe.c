@@ -9,10 +9,12 @@
 #define ACTOR_BASE 0x34EBu
 static uint16_t word(const uint8_t *r,unsigned a){return (uint16_t)(r[a]|(uint16_t)r[a+1]<<8);}
 static int32_t fixed(const uint8_t *r,unsigned a){return (int32_t)(int16_t)word(r,a)*256+(word(r,a-2)>>8);}
+/* Host-only CPU-logic fixture adapter; no direct native address. Preserve
+ * full actor +$16 and +$92 words for every normal-parent replay. */
 static void load_actor(NbaTipoffActor *a,const uint8_t *r,unsigned b,uint8_t roster){
     a->roster_slot=roster;a->x_fp=fixed(r,b+4);a->y_fp=fixed(r,b+8);a->z_fp=fixed(r,b+12);
     a->velocity_x=(int16_t)word(r,b+14);a->velocity_y=(int16_t)word(r,b+16);a->velocity_z=(int16_t)word(r,b+18);
-    a->controller_assignment_raw=(int8_t)(int16_t)word(r,b+0x16);a->actor_status_raw_28=word(r,b+0x28);
+    a->controller_assignment_raw=(int16_t)word(r,b+0x16);a->actor_status_raw_28=word(r,b+0x28);
     a->animation_state=(uint8_t)word(r,b+0x30);a->lower_animation_state=(uint8_t)word(r,b+0x32);
     a->base_animation_state_raw_38=(uint8_t)word(r,b+0x38);a->movement_magnitude_raw=word(r,b+0x4c);
     a->animation_upper_queue_cursor_raw_18=word(r,b+0x18);a->animation_lower_queue_cursor_raw_1a=word(r,b+0x1a);
@@ -28,7 +30,7 @@ static void load_actor(NbaTipoffActor *a,const uint8_t *r,unsigned b,uint8_t ros
     a->team_group_raw_6e=word(r,b+0x6e);a->movement_boost_timer=word(r,b+0x72);
     a->assignment_base_raw=word(r,b+0x74);a->assignment_current_raw=word(r,b+0x76);a->behavior_flags_raw=word(r,b+0x7e);
     a->assignment_direction=(uint8_t)word(r,b+0x86);a->anchor_direction_raw=(uint8_t)word(r,b+0x88);
-    a->assignment_distance=word(r,b+0x8a);a->anchor_distance_raw=word(r,b+0x8c);a->focal_distance_raw_8e=word(r,b+0x8e);a->assignment_role_raw_92=(uint8_t)word(r,b+0x92);
+    a->assignment_distance=word(r,b+0x8a);a->anchor_distance_raw=word(r,b+0x8c);a->focal_distance_raw_8e=word(r,b+0x8e);a->assignment_role_raw_92=word(r,b+0x92);
     a->recovery_inhibit_raw=word(r,b+0x7a);a->free_throw_launch_half_raw_a8=word(r,b+0xa8);
     a->upper_phase_target_raw_b0=word(r,b+0xb0);
 }

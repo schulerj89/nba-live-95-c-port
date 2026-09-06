@@ -172,7 +172,7 @@ typedef struct {
     int16_t paired_velocity_x, paired_velocity_y;
     uint8_t paired_anchor_direction_raw_88;
     uint16_t paired_anchor_distance_raw_8c;
-    uint8_t paired_position_raw_92;
+    uint16_t paired_position_raw_92;
     int16_t context_anchor_x;
     uint16_t context_mode_raw_30;
     uint16_t context_flags_raw_32;

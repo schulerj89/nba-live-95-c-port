@@ -97,11 +97,15 @@ def main():
             # reproduces every old count; the inspected current frame1000
             # retains coherent court, players, ball, baskets and crowd. This
             # updates a C trajectory anchor, not native rendering expectations.
-            assert summary["visible"]["bg1"] == 234
-            assert summary["visible"]["bg2"] == 48993
-            assert summary["visible"]["bg3"] == 0
-            assert summary["visible"]["obj"] == 3386
-            assert summary["visible"]["backdrop"] == 4731
+            # Complete mode-two target/acceleration/pose ordering changes the
+            # C trajectory. The preserved ba7d1d1 runtime reproduces all old
+            # counts; reviewed frame1000 retains court, basket, players, ball
+            # and a readable 2-0 first-quarter HUD. Pixel rules stay intact.
+            assert summary["visible"]["bg1"] == 3126
+            assert summary["visible"]["bg2"] == 43521
+            assert summary["visible"]["bg3"] == 6013
+            assert summary["visible"]["obj"] == 2787
+            assert summary["visible"]["backdrop"] == 1897
             counts = {name: 0 for name in
                       ("BACKDROP", "BG1", "BG2", "BG3", "OBJ")}
             indexed = direct = rows = 0

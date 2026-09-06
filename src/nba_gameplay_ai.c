@@ -872,7 +872,8 @@ void nba_gameplay_defense_pair_target(
         target_x, target_y);
 }
 
-/* Portable target-writing core of defensive modes `$86:F6CD/$F794/$F8CD`.
+/* Portable CPU-logic target-writing core of defensive modes
+ * `$86:F6CD/$F794/$F8CD`.
  * Caller owns their timer/lock/action gates; this function translates the
  * exact `$E7B3/$E7DC/$E96F/$E6B7/$E9B3` geometry dispatcher. */
 bool nba_gameplay_defense_mode_target(
@@ -929,7 +930,10 @@ bool nba_gameplay_defense_mode_target(
         return true;
     }
 
-    if (in->paired_position_raw_92 >= 3u) { /* `$86:E96F` */
+    /* `$86:F775` uses `CMP #3 / BPL`: branch on the wrapped subtraction's
+     * sign, rather than an unsigned comparison. Thus $8000/$8002 select
+     * E96F while $8003 does not. */
+    if ((int16_t)(uint16_t)(in->paired_position_raw_92 - 3u) >= 0) {
         if (in->paired_anchor_distance_raw_8c < 0x60u &&
             in->actor_pair_distance_raw_8a < 0x28u) {
             uint8_t relative = (uint8_t)((

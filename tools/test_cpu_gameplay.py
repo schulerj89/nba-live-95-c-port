@@ -216,11 +216,16 @@ EXPECTED_RGB = {
     # and crowd; frame3480 has the readable 2-2 HUD. These remain C-only image
     # anchors. Immutable exe/pack and RGB provenance is retained in ignored
     # `.analysis/cpu-mode-fourteen-20260906/current-images/provenance.json`.
-    600: "868b26b40f94ca3668d63a76f6c938403a12bb8e92c52393feb9ee8e04e871ec",
-    1300: "6f9165971438e05d124efbb3a6837d86c973964a728c5094361d8c36c756118c",
-    3480: "426fbde12585edf5cc522fd0e5e332bcf04f7c30c57eff232d0b1ce1bec700c6",
-    6932: "1ad6f83b4e277a84d0b15afa56d1041c9b2d1c17ea14557b130f120a448d86f5",
-    6954: "e0726a17c712d835d9597ce25de5aa4d7c48534723eb7ae1f66e1db57d088f44",
+    # Complete mode two preserves +$64 from frame2 and accelerates before
+    # defensive pose: frame181 now selects base8 from VX97 instead of base10.
+    # The preserved ba7d1d1 runtime reproduces all previous hashes. Reviewed
+    # corrected frames retain coherent court, players, ball and baskets; HUD
+    # timing changes with the C trajectory. Native rendering rules are unchanged.
+    600: "d346154c101bdd785ed9f7d70fd3233b6baaaed79c1552f4a6b9f070b54bdade",
+    1300: "a371ff2203afa638335905519951e4af421c15fd03bbc3d993aa6b83475e70bd",
+    3480: "caaa11e0bea4504068ded9b59fdcf832a646f138ea087d9cfd4e8e18c9079506",
+    6932: "67d05043e218ce251f5e941923e062e3a467d9ec6b334235f7015bf98cf8e959",
+    6954: "b50189404572d84c77dac83ca580996f20db1d45208e22db8b7ac1a1564e3d79",
 }
 
 
@@ -1868,9 +1873,133 @@ def main():
             return (midpoint - 2 * upper_x, midpoint + 2 * upper_x,
                     upper_x - lower_z - upper_z)
 
+        bank84 = header[3]
+        roster_asset = packed_asset(251)
+        if roster_asset is None or roster_asset[:8] != b"NBPROST2":
+            raise AssertionError("NBPROST2 player appearance data is missing")
+
+        def packed_animation_resource(state, direction, phase, *, upper,
+                                      alternate_lower=False, variant=0):
+            table = 0x42FC if upper else (0x428A if alternate_lower else 0x4218)
+            pointer_at = bank84 + table + state * 2
+            if not 0 <= direction < 8 or pointer_at + 2 > len(animation):
+                raise AssertionError("invalid NBPANIM1 state lookup")
+            descriptor = int.from_bytes(
+                animation[pointer_at:pointer_at + 2], "little")
+            if descriptor < 0x8000:
+                raise AssertionError("invalid NBPANIM1 state descriptor")
+            descriptor_at = bank84 + descriptor - 0x8000
+            if descriptor_at + 24 > len(animation):
+                raise AssertionError("invalid NBPANIM1 state descriptor")
+            mode = int.from_bytes(
+                animation[descriptor_at:descriptor_at + 2], "little")
+            if upper and mode >= 0x8000:
+                raise AssertionError(
+                    "coupled NBPANIM1 upper descriptor needs lower phase")
+            count = int.from_bytes(
+                animation[descriptor_at + 6:descriptor_at + 8], "little")
+            resource_pointer = int.from_bytes(animation[
+                descriptor_at + 8 + (direction & 7) * 2:
+                descriptor_at + 10 + (direction & 7) * 2], "little")
+            if resource_pointer < 0x8000 or not count:
+                raise AssertionError("invalid NBPANIM1 state descriptor")
+            resource_at = bank84 + resource_pointer - 0x8000 + \
+                (phase % count) * 2
+            if resource_at + 2 > len(animation):
+                raise AssertionError("invalid NBPANIM1 resource list")
+            resource = int.from_bytes(
+                animation[resource_at:resource_at + 2], "little")
+            if upper and resource < 0xF0 and \
+                    (variant ^ (direction < 3)) == 0:
+                resource += 0x28
+            return resource
+
+        def mode_fourteen_fallback_resources(index, owner):
+            actor = rows[index]["actors"][owner]
+            direction = actor["direction"]
+            flags = actor["raw"]["flags"]
+            if not (actor["vx"] or actor["vy"]):
+                return None
+            predecessor = None
+            for age in range(1, 9):
+                candidate_row = rows[index - age]
+                if candidate_row["ball"]["state"] != 4 or \
+                        candidate_row["ball"]["owner"] != owner:
+                    return None
+                candidate = candidate_row["actors"][owner]
+                candidate_native = candidate["raw"]["animation_rom"]
+                if candidate["raw"]["control_mode"] != 14 or \
+                        candidate["z_fp"] != 0 or \
+                        candidate["direction"] != direction or \
+                        candidate["raw"]["flags"] != flags or \
+                        candidate["vx"] != actor["vx"] or \
+                        candidate["vy"] != actor["vy"] or \
+                        candidate["team"] != actor["team"] or \
+                        candidate["roster"] != actor["roster"]:
+                    return None
+                if candidate_native["resources_valid"]:
+                    predecessor = candidate
+                    break
+                if candidate["animation"] != 0 or \
+                        candidate["lower_animation"] != 31:
+                    return None
+            # `$87:A4F2` maps moving owner base 3 to locomotion state 5.
+            # A locked upper action may remain installed (old trace state 55),
+            # while the observed lower channel still proves that base result.
+            if predecessor is None or predecessor["lower_animation"] != 5 or \
+                    predecessor["raw"]["motion_38"] != 3:
+                return None
+            if predecessor["team"] not in (0, 1) or \
+                    not 0 <= predecessor["roster"] < 12:
+                raise AssertionError("invalid gameplay actor appearance identity")
+            # This fixed default CPU scenario uses session teams 3 and 18;
+            # actor telemetry exposes only the side, so map it back here.
+            team = (3, 18)[predecessor["team"]]
+            record_at = 24 + \
+                (team * 12 + predecessor["roster"]) * 64
+            if record_at + 64 > len(roster_asset):
+                raise AssertionError("invalid NBPANIM1 player appearance record")
+            alternate_lower = roster_asset[record_at + 6] >= 0x51
+            variant = roster_asset[record_at + 15]
+            if not alternate_lower:
+                return None
+            predecessor_native = predecessor["raw"]["animation_rom"]
+            predecessor_upper = packed_animation_resource(
+                predecessor["animation"], direction,
+                predecessor_native["upper_phase_3a"], upper=True,
+                variant=variant)
+            predecessor_lower = packed_animation_resource(
+                5, direction, predecessor_native["lower_phase_3c"],
+                upper=False, alternate_lower=True)
+            if (predecessor_native["upper_resource_2a"],
+                    predecessor_native["lower_resource_2c"]) != \
+                    (predecessor_upper, predecessor_lower):
+                return None
+            prior_native = rows[index - 1]["actors"][owner]["raw"][
+                "animation_rom"]
+            fallback = (
+                packed_animation_resource(
+                    5, direction, prior_native["upper_phase_3a"],
+                    upper=True, variant=variant),
+                packed_animation_resource(
+                    31, direction, prior_native["lower_phase_3c"],
+                    upper=False, alternate_lower=True))
+            current_native = actor["raw"]["animation_rom"]
+            invalidated = (
+                packed_animation_resource(
+                    0, direction, current_native["upper_phase_3a"],
+                    upper=True, variant=variant),
+                packed_animation_resource(
+                    31, direction, current_native["lower_phase_3c"],
+                    upper=False, alternate_lower=True))
+            if (current_native["upper_resource_2a"],
+                    current_native["lower_resource_2c"]) != invalidated:
+                return None
+            return fallback, predecessor
+
         attached = []
         invalid_mode_fourteen_attachments = 0
-        mode_fourteen_fallback_774 = False
+        mode_fourteen_fallback = False
         for index, row in enumerate(rows[219:], 219):
             owner = row["ball"]["owner"]
             if row["ball"]["state"] == 4 and owner >= 0 and \
@@ -1913,9 +2042,10 @@ def main():
                 if not native["resources_valid"]:
                     # The ordinary attachment happens before late mode-14
                     # B154 can reinstall state 0/31 and invalidate the cache.
-                    # Frame 774 pins the represented common-time fallback:
-                    # moving owner state 5 selects upper 26 while the locked
-                    # alternate lower channel retains 2000 under flags $8004.
+                    # Pin the represented common-time fallback only after a
+                    # packed valid predecessor and an uninterrupted grounded
+                    # owner interval. The prior native phases select moving
+                    # owner state 5 and the locked alternate lower state 31.
                     if not (
                             actor["raw"]["control_mode"] == 14 and
                             actor["animation"] == 0 and
@@ -1926,18 +2056,34 @@ def main():
                         raise AssertionError(
                             "unexpected invalid attachment cache state: "
                             f"{row['frame'], actor}")
-                    if row["frame"] == 774:
-                        if not (
-                                actor["raw"]["flags"] == 0x8004 and
-                                actor["vx"] == 62 and actor["vy"] == 154 and
-                                native["upper_resource_2a"] == 243 and
-                                native["lower_resource_2c"] == 2000 and
-                                actual == expected_attachment(
-                                    actor, (26, 2000)) == (-5, -1, 32)):
+                    fallback_evidence = mode_fourteen_fallback_resources(
+                        index, owner)
+                    if fallback_evidence is not None:
+                        fallback_resources, predecessor = fallback_evidence
+                        if actual != expected_attachment(
+                                actor, fallback_resources):
                             raise AssertionError(
                                 "grounded mode-14 invalid-cache attachment "
-                                f"changed at frame 774: {actor, actual}")
-                        mode_fourteen_fallback_774 = True
+                                f"changed: "
+                                f"{row['frame'], actor, actual, fallback_resources}")
+                        predecessor_native = predecessor["raw"]["animation_rom"]
+                        prior_native = rows[index - 1]["actors"][owner]["raw"][
+                            "animation_rom"]
+                        # This is the exact fresh-trajectory witness. Its
+                        # resources are still computed from the pack above;
+                        # the values pin direction, mirror and channel choice.
+                        if (actor["direction"], actor["raw"]["flags"],
+                                actor["vx"], actor["vy"],
+                                predecessor["animation"],
+                                predecessor["lower_animation"],
+                                predecessor_native["upper_resource_2a"],
+                                predecessor_native["lower_resource_2c"],
+                                prior_native["upper_phase_3a"],
+                                prior_native["lower_phase_3c"],
+                                fallback_resources, actual) == (
+                                    2, 0x8004, 614, 239, 5, 5, 10, 1722,
+                                    0, 0, (10, 1992), (4, 8, 33)):
+                            mode_fourteen_fallback = True
                     invalid_mode_fourteen_attachments += 1
                     continue
                 expected = expected_attachment(actor)
@@ -1967,7 +2113,7 @@ def main():
                 repr(next((pair for pair in attached
                            if not attachment_matches(pair)), None)))
         if not invalid_mode_fourteen_attachments or not \
-                mode_fourteen_fallback_774:
+                mode_fourteen_fallback:
             raise AssertionError(
                 "grounded mode-14 invalid-cache attachment was not exercised")
 

@@ -61,13 +61,25 @@ run_differential.py drives controlled Mesen and C runs through shared field
 schemas and reports the first mismatch. It does not claim whole-game parity
 when the initial state differs.
 
-The retained mode-two pipeline is the current working example:
+Replay the complete mode-two parent and its real production caller with:
 
 ~~~powershell
-python tools/regenerate_cpu_mode_two_reference.py --help
-./tools/capture_cpu_mode_two_role.ps1 -OutputDir '.analysis/cpu-mode-two-role'
-python tools/normalize_cpu_mode_two_role_vectors.py --help
+./tools/build_vector_probe.ps1 -Name cpu_mode_two_parent_vector_probe
+python tools/verify_cpu_mode_two_parent_vectors.py `
+  --vectors tests/fixtures/cpu-mode-two-parent-witnesses.json `
+  --probe build/cpu_mode_two_parent_vector_probe.exe `
+  --pack build/nba95_assets.pak
+python tools/test_cpu_mode_two_parent_fixture.py `
+  --vectors tests/fixtures/cpu-mode-two-parent-witnesses.json
 ~~~
+
+The verifier pins 43 repeated native calls, 197 represented words, all 81
+parent instruction starts, paths and child calls. It rejects malformed binary
+probe output and partial input records, then checks the real
+`nba_tipoff_update` rebound-state caller. The mutation test rejects fixture
+value, type, shape, provenance, path, child, domain and ROM changes before
+production replay. Capture scripts and raw vectors remain ignored; their exact
+source and output hashes are retained in the fixture.
 
 The compact mode-eight replay and its real caller-phase checks run with:
 

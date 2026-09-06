@@ -638,10 +638,119 @@ ignored `.analysis/cpu-mode-fourteen-20260906/manager-fullsuite/`, with hashes
 `5f6eba76f98aac64ee96c35816a2db030563602399def41e4df58871c9f10578`
 and `0b2790c7a42895661095bc49cb5b285a035f010235d45b2199fece81bf49ab84`.
 
-The next bounded unverified routine is the complete mode-two parent
-`$86:F6CD-$F793`. Existing ledger entries cover six isolated leaves
-`F6CD-F6DA`, `F6EF-F702`, `F721-F72D`, `F72E-F73A`, `F780-F78A`, and
-`F78B-F792`; they do not establish the parent's countdown/reload paths or the
-`F73B-F77E` context and target routing as one exact dispatcher-selected
-contract. No implementation or additional coverage is claimed for that next
-scope here.
+## Mode two defensive parent
+
+`$86:F6CD-$F793` is the complete mode-two parent selected through the
+`$87:9C21` wrapper (`JSL $86:F6CD; RTL`). It repairs locomotion base only when
+both `$0946` and `$093E` are negative, subtracts the 30-Hz delta from actor
+`+$60`, and either holds or reloads the decision timer with the player profile
+and signed half-court adjustment. Recovery inhibit bypasses the decision
+children. Accepted role pursuit goes to the shared jump gate; otherwise the
+parent selects actor `+$74`, routes through the team context mode and signed
+anchor tests, and uses the wrapped signed result of `CMP #3` on paired `+$92`
+to choose `$86:E96F` or `$86:E7DC`.
+
+The defensive target continuation follows native child order. A CPU defender
+runs `$85:B3C9` for a stationary opponent or `$85:B402` for a moving opponent,
+then `$85:A82C`, before copying `+$4E` to `+$50` and calling `$86:E3E1`.
+Movement and target direction consume integer X/Y, and the acceleration gate
+consumes integer Z; a nonzero fraction with integer Z zero remains grounded.
+Human controller words skip those movement children. The close role-target
+stop returns before copy/pose, and mode two never calls the shared `$86:E5AB`
+finalizer. Its unrelated actor `+$64` cadence remains unchanged because this
+parent does not call `$85:B4B9`. The final signed controller gate may call the
+independently verified `$86:EC32`, then the parent always copies `+$50` back to
+`+$4E`.
+
+`tests/fixtures/cpu-mode-two-parent-witnesses.json` retains 43 controlled,
+genuine `$87:9C21` dispatcher entries from repeated v17/v18 Mesen captures.
+All 197 represented entry/exit words repeat exactly, all 81 parent instruction
+starts occur, and the owned-start hash is
+`3dcf5ee5a8c6d883acbaf57dd981962a08c51889b7ee52e75095aafb888a23b2`.
+The six older leaf contracts account for 31 starts; this complete parent adds
+50 without granting credit to called children. Aggregate observations include
+20 normal, five weak and four role targets, two mode-three targets, ten jump
+calls, 30 defensive-pose calls, eight stationary approaches, one predictive
+approach, ten accelerations, one B37C animation reversal, and no E5AB call.
+
+The captures write documented WRAM controls only before the natural dispatch.
+CPU state, stack, flags, ROM and RNG are never written. No child result is
+written while the parent is observed; the exit snapshot precedes restoration
+of the original WRAM controls and state. Invalid v1/v2 runs that touched RNG
+and later runs without immutable capture-source snapshots are excluded. The
+v17/v18 raw hashes are
+`f700bf22c2e2d7616ca2e064f2b3f3a2437cbcf467e7f650bcc9574a91441e69`
+and `8f7a27063988d301c2579a196c8136c0d3a4ca67faca49d40ad2b5626546bb67`;
+the compact fixture hash is
+`6bdd4b38ff593f3ae736682355bf320f93eec657030c86718425c1ba1d10a02e`.
+Immutable capture Lua, runner, recorder, case and path hashes are pinned by the
+strict verifier.
+
+The projection covers both team contexts, assigned opponents across slots
+1-4 and 6-9, all parent-mutated actor words, RNG, `+$64`, pair/cache fields,
+full signed controller `+$16`, full paired-role `+$92`, animation channels,
+and B37C DP `$46/$47` publication. Natural controller records 0, 4 and `$FFFF`
+are represented; `$7FFF/$8000` are explicit sign witnesses. Paired `+$92`
+covers 0, 3, `$8000`, `$8002`, and `$8003`. Actor identities are immutable
+metadata. `$092E` is excluded because the host has no storage for it and these
+live-state-two paths preserve it. Period, difficulty and context anchor
+fractions remain fixed zero. These boundaries do not establish a matching
+whole-game trajectory or new child instruction coverage.
+
+`tools/verify_cpu_mode_two_parent_vectors.py` pins fixture identity, fields,
+cases, paths, child calls, source hashes and exact output shape, rejects a
+partial binary record, replays production, and exercises a real
+`nba_tipoff_update` rebound-state caller. The caller proves common movement
+occurs once, the parent still runs during rebound state and changes velocity,
+`+$64` is preserved, and full-word controller signs survive controller
+bindings. The configured
+107-call legacy normal-actor replay remains the independent leaf and jump
+integration guard. The preserved `ba7d1d1` source/header/object baseline fails
+all 41 initial complete-parent witnesses: 178 word differences include all 41
+`+$64` results plus target, direction, velocity and cache fields. Current
+production passes all 43 x 197 words. Focused replay used local pack SHA-256
+`378787f5a3b381cec616e63d34b05e3090518ba19b162e4412fbb0a6f182d504`;
+the verifier permits future compatible packs rather than pinning that whole
+file. The source reference is the Ghidra Bank-$86 export and instruction
+listing; no Bank-$86 snesrecomp source is claimed.
+
+The C-only Tipoff frame-220 anchor changes with this source correction. The
+preserved pre-change executable and pack reproduce RGB hash
+`a021ed166d64811fade15c7f5c55ea8b20ca37522d96f7ab85020c3a52cd7c42`;
+current production produces
+`60a0315e4531c93d6595f3058537f2331799a4a09ef233b740fe5bae297ce193`.
+Their debug-state summaries are identical, while 1,378 changed pixels are
+bounded to `(95,35)-(235,98)`. Visual review confirms coherent defensive
+spacing and poses near center-right with the court, center logo, ball, goals,
+and player sprites intact. No HUD claim is made for this view. The ignored
+comparison is `.analysis/cpu-mode-two-parent-20260906/frame220-review/` and
+its report SHA-256 is
+`43ffe6feaf76895847346efab5c38dff99c3910952d48cafaad301c02656d78f`.
+
+The configured suite passes across frozen-input segments: all pre-CPU gates,
+the initial CPU prefix, the corrected attachment block, and the unchanged CPU
+tail. The original stop was an obsolete frame-774 coverage requirement, not
+an attachment mismatch. The replacement derives resources from the pack and
+a bounded same-owner animation history; it retains strict invalid-cache
+classification and an exact semantic fallback witness. It checks 18,438 valid
+attachments and 213 invalid-cache rows. The tail checks 2,714 exact pass frames,
+138 automatic unlocks, sustained play, and all five reviewed RGB anchors.
+The frame-1000 C-only layer census was also reviewed; native per-pixel rules
+remain unchanged. Baseline image hashes were reproduced with the preserved
+pre-change runtime. The first trace change is mode-two +$64 preservation at
+frame 2; frame 181 then selects base 8 from post-acceleration VX 97 instead of
+base 10. Retained evidence is in
+`.analysis/cpu-mode-two-parent-20260906/manager-fullsuite/provenance.json`;
+the 63,800-row trace SHA-256 is
+`f9d371d153633607e2fab3b7aefa8ebb654f1c89d0ca191e279c80c0629d3a7c`.
+
+The next workflow priority is human Exhibition controls. First complete the
+human action parent `$84:E2AC-$E3E9`, concentrating on the missing
+`$84:E2F2-$E3E9` continuation and its directly necessary pass/shot bindings.
+The actor/control sweep `$87:9106-$92A4` unconditionally calls that parent,
+so wiring the sweep first would expose incomplete actions. Its subsequent
+integration must include the requester at `$87:9165-$91BF`, replace the
+CPU-only `cpu_update_actor_behaviors` gate, and remove Tipoff's all-neutral
+selection override only when the human branch is ready. A movement-only
+subset would not establish complete human control. Each tested routine is
+committed and pushed before the next implementation starts.

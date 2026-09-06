@@ -97,7 +97,7 @@ typedef struct {
     uint8_t assignment_actor;
     uint8_t assignment_direction;
     uint8_t anchor_direction_raw;       /* actor `+$88` */
-    uint8_t assignment_role_raw_92;     /* actor `+$92` */
+    uint16_t assignment_role_raw_92;    /* full actor `+$92` word */
     uint16_t assignment_base_raw;
     uint16_t assignment_current_raw;
     uint16_t assignment_alternate_raw;
@@ -108,7 +108,7 @@ typedef struct {
     uint16_t pair_distance;
     uint16_t reaction_threshold;
     uint16_t movement_boost_timer; /* actor `+$72`, consumed by `$85:A82C` */
-    int8_t controller_assignment_raw; /* signed actor `+$16` */
+    int16_t controller_assignment_raw; /* signed actor `+$16` word */
     uint16_t movement_magnitude_raw;  /* actor `+$4C` */
     uint16_t movement_speed_raw_4a;
     uint16_t shot_modifier_raw_b2;

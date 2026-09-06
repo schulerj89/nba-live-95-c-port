@@ -154,7 +154,7 @@ if ($Test) {
         'cpu_mode_eight_vector_probe', 'cpu_mode_nine_vector_probe',
         'cpu_mode_ten_vector_probe', 'cpu_mode_twelve_vector_probe',
         'cpu_mode_thirteen_vector_probe', 'cpu_mode_fourteen_vector_probe',
-        'normal_actor_parent_vector_probe'
+        'cpu_mode_two_parent_vector_probe', 'normal_actor_parent_vector_probe'
     )
 
     Invoke-PythonRegression -Script 'verify_cpu_defense_context_vectors.py' -Arguments @(
@@ -207,6 +207,16 @@ if ($Test) {
 
     Invoke-PythonRegression -Script 'test_cpu_mode_fourteen_fixture.py' -Arguments @(
         '--vectors', (Join-Path $Root 'tests\fixtures\cpu-mode-fourteen-witnesses.json')
+    )
+
+    Invoke-PythonRegression -Script 'verify_cpu_mode_two_parent_vectors.py' -Arguments @(
+        '--vectors', (Join-Path $Root 'tests\fixtures\cpu-mode-two-parent-witnesses.json'),
+        '--probe', (Join-Path $BuildDir 'cpu_mode_two_parent_vector_probe.exe'),
+        '--pack', $AssetPack
+    )
+
+    Invoke-PythonRegression -Script 'test_cpu_mode_two_parent_fixture.py' -Arguments @(
+        '--vectors', (Join-Path $Root 'tests\fixtures\cpu-mode-two-parent-witnesses.json')
     )
 
     Invoke-PythonRegression -Script 'test_cpu_mode_thirteen_pack.py' -Arguments @(

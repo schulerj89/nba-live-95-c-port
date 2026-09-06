@@ -63,9 +63,15 @@ EXPECTED_FRAMES = {
     # base-assignment matchup. Both compositor paths reproduce the corrected
     # player spacing; the court, center logo, ball, goal, crowd, and HUD remain
     # intact.
+    # Re-reviewed after the complete `$86:F6CD-$F793` mode-two parent restored
+    # integer geometry and ordered arrival, acceleration, pose, and animation.
+    # The baseline hash reproduces from the preserved pre-change executable;
+    # the 1,378 changed pixels are confined to defensive spacing/poses near
+    # center-right. Court, center logo, ball, goals, and player sprites remain
+    # coherent; no HUD claim is made for this view.
     220: ("TIP PH:LIVE", {
-        "fallback": "a021ed166d64811fade15c7f5c55ea8b20ca37522d96f7ab85020c3a52cd7c42",
-        "literal": "a021ed166d64811fade15c7f5c55ea8b20ca37522d96f7ab85020c3a52cd7c42",
+        "fallback": "60a0315e4531c93d6595f3058537f2331799a4a09ef233b740fe5bae297ce193",
+        "literal": "60a0315e4531c93d6595f3058537f2331799a4a09ef233b740fe5bae297ce193",
     }),
 }
 EXPECTED_PLAYER_DRAW_HASH = \

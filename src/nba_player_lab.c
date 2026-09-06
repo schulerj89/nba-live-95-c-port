@@ -1280,6 +1280,8 @@ bool nba_player_animation_command(const NbaAssetPack *assets,
         boosted,alternate_lower,NULL);
 }
 
+/* `$87:B37C-$B571`, animation logic: execute the command while exposing
+ * the native final DP $47 descriptor publication used by parent callers. */
 bool nba_player_animation_command_scratch(const NbaAssetPack *assets,
     NbaPlayerAnimationChannels *c, NbaPlayerAnimationCommand command,
     uint16_t *request, bool boosted, bool alternate_lower,uint16_t *scratch_47) {
@@ -1308,6 +1310,11 @@ bool nba_player_animation_command_scratch(const NbaAssetPack *assets,
                               PLAYER_LOWER_STATE_TABLE,
             (uint8_t)next.lower_state);
         if (!lower) return false;
+        if (scratch_47) {
+            const uint8_t *bank = animation_bank84(assets, NULL);
+            *scratch_47 = (uint16_t)(0x8000u +
+                (unsigned)(lower - bank));
+        }
         uint16_t reversed = (uint16_t)(read_u16(lower + 6) - c->lower_phase - 1u);
         next.lower_phase = (int16_t)reversed < 0 ? 0 : reversed;
         next.upper_phase = c->upper_phase;

@@ -30,14 +30,14 @@ Recent source-verified visual and gameplay fixes include:
   loose-ball pursuit;
 - native control-mode-one and control-mode-three loose-ball pursuit from the
   role-pass flag, independently of the possession record.
-- the native control-mode-two owner/receiver gate for locomotion-base repair.
-- the native control-mode-two signed half-court gate for decision-timer reloads.
-- the native control-mode-two role-flag gate between loose-ball pursuit and
-  defensive-target refresh.
-- the native control-mode-two base-assignment selector for defensive matchups;
-- the native control-mode-two signed-controller gate for jump/reach attempts,
-  including while a movement boost remains active.
-- the native control-mode-two final requested-direction commit.
+- the complete native control-mode-two defensive parent, including exact
+  countdown/reload, role pursuit, context/target routing, CPU and human
+  controller gates, ordered arrival/acceleration/pose work, jump/reach gate,
+  and final requested-direction commit;
+- full 16-bit actor controller and paired-role words at the mode-two boundary,
+  including the native wrapped signed `$8000/$8002/$8003` target split;
+- native preservation of the unrelated mode-two behavior cadence and exact
+  B37C lower-channel phase and scratch publication after defensive posing.
 - the native control-mode-four role-flag gate for locomotion-base repair.
 - the native control-mode-four role-flag gate between loose-ball pursuit and
   defensive-target refresh.
@@ -86,8 +86,9 @@ These paths are protected by test_tipoff_court_smoke.py,
 test_dribble_smoke.py, test_hoop_smoke.py, test_oob_smoke.py, and
 test_cpu_reaction_smoke.py, plus their native-vector verifiers, including the
 six-case defense-context, eight-case mode-five, two-case mode-one and
-mode-three role-flag, nine-case mode-two, twelve-case mode-four, and ten-case
-  mode-six actor-parent replays, plus the nineteen-case mode-seven,
+mode-three role-flag, the 43-case complete mode-two parent, twelve-case
+mode-four, and ten-case mode-six actor-parent replays, plus the nineteen-case
+mode-seven,
   nineteen-case mode-eight, sixteen-case mode-nine, eighteen-case mode-ten,
   thirty-seven-case mode-twelve and mode-thirteen direct replays, the
   fifty-one-case mode-fourteen direct replay, and their full-scheduler phase
