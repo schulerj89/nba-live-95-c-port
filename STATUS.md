@@ -24,6 +24,12 @@ persist across scene-union clears and new-match initialization and are released
 on shutdown. This is lifecycle support for future graphics publication; no
 native queue producer, consumer, or human action routine is credited by it.
 
+The native graphics allocator initializer `$80:AB7E-$AC0C` now runs once at
+successful Tipoff entry through the bounded `$85:8B6C-$8B75` caller contract.
+It initializes canonical allocator controls and byte tables, clears the
+`$2640-$2E71` cache through `$80:AC0D-$AC1A`, and fills/rotates the first sparse
+buffer through `$80:AC89-$ACC1`. Binding and frame updates do not trigger it.
+
 Recent source-verified visual and gameplay fixes include:
 
 - all 29 selected home-team court layouts and center logos;
@@ -105,9 +111,11 @@ mode-seven,
 - Ordinary human offense, defense, passing, shooting, inbound control, and
   controller ownership are not complete production paths. Bounded human
   helpers exist but do not make a normal matchup fully playable.
-- Canonical graphics WRAM has a production lifetime owner, but the native
-  jersey appender `$80:AD2B-$AD88`, remaining ordered producers/consumer, and
-  `$012C` provenance required by `$87:B7D8` remain unimplemented.
+- Canonical graphics WRAM has a production lifetime owner and allocator
+  initialization, but `$87:AFA2`/`$87:B05B-$B354` jersey publication, the
+  native jersey appender `$80:AD2B-$AD88`, remaining ordered
+  producers/consumer, and `$012C` provenance required by `$87:B7D8` remain
+  unimplemented.
 - The strict native/C gameplay differential begins from different launch
   state, scheduler timing, and RNG history. Passing isolated routine vectors
   does not establish an equivalent whole-game trajectory.
@@ -127,7 +135,7 @@ Current generated captured-address measurements are:
 |---|---:|---:|
 | observed in retained execution captures | 29,438 | 100.0% |
 | documented by source provenance | 29,101 | 98.9% |
-| inside evidence-eligible verified ranges | 11,902 | 40.4% |
+| inside evidence-eligible verified ranges | 12,043 | 40.9% |
 
 These are coverage measurements for retained captures. They are not a
 percentage of the ROM, retail features, or game completion. The generated

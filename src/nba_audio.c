@@ -465,10 +465,8 @@ void nba_audio_shutdown(NbaAudio *audio) {
     printf("[AUDIO] Audio Subsystem shutdown.\n");
 }
 
-/**
- * Offset/Address/Size: 0x002C89 | $80:AC89 | size: 0x30
- * Purpose: Plays a PCM/WAV sound buffer asynchronously (corresponds to SNES APU port $2140 dispatch).
- */
+/* Host-only audio adapter; no direct native address. Plays a PCM/WAV buffer
+ * asynchronously for host APU-port-derived playback requests. */
 void nba_audio_play_wav(NbaAudio *audio, const void *data, size_t size) {
     if (!audio || !data || size == 0) return;
 

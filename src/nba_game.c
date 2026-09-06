@@ -3,6 +3,7 @@
 #include "nba_font.h"
 #include "nba_audio.h"
 #include "nba_snes_ppu.h"
+#include "nba_graphics_allocator.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -291,8 +292,9 @@ void nba_game_debug_print(const NbaGame *game) {
         printf("[DEBUG STATE] %s\n", lines.line[index]);
 }
 
-/* Host scene-entry support around `$80:DA91`. The native scene dispatcher
- * changes mode-owned state while game-lifetime WRAM remains allocated. */
+/* Host scene-entry support around `$80:DA91`, plus the bounded equivalent of
+ * graphics allocator caller `$85:8B6C-$8B75` at successful Tipoff entry. The
+ * host initializes appearance state before this binding, later than native. */
 bool nba_game_enter_state(NbaGame *game, NbaGameState state) {
     if (!game) return false;
     NbaGameState previous_state = game->state;
@@ -370,6 +372,11 @@ bool nba_game_enter_state(NbaGame *game, NbaGameState state) {
         if (!nba_tipoff_bind_graphics_bus(&game->scene.tipoff,
                                           &game->graphics_bus)) {
             fprintf(stderr, "[GAME] Tip-off WRAM binding failed.\n");
+            return false;
+        }
+        if (!nba_graphics_allocator_initialize(&game->graphics_bus,
+                                                0x6000u, 0u, 0x01e0u)) {
+            fprintf(stderr, "[GAME] Graphics allocator initialization failed.\n");
             return false;
         }
         if (!nba_audio_start_gameplay(&game->audio, &game->assets)) {

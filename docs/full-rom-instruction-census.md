@@ -14,15 +14,15 @@ and tables. Undecoded bytes are unknown—not pending instructions.
 | Conservatively decoded instruction starts | 61,032 |
 | Bytes owned by decoded instructions | 148,055 |
 | Decoded starts observed in retained execution | 27,502 |
-| Decoded starts both observed and verified | 11,949 |
-| Verified / conservatively decoded starts | 19.58% |
+| Decoded starts both observed and verified | 12,040 |
+| Verified / conservatively decoded starts | 19.73% |
 | Undecoded ROM bytes (data or undiscovered code) | 1,424,809 |
 
 ## Per physical LoROM bank
 
 | bank | decoded starts | code bytes | observed starts | verified starts | undecoded bytes |
 |---|---:|---:|---:|---:|---:|
-| `$80` | 9519 | 20937 | 5977 | 366 | 11831 |
+| `$80` | 9519 | 20937 | 5977 | 457 | 11831 |
 | `$81` | 7267 | 17492 | 2855 | 0 | 15276 |
 | `$82` | 5031 | 13266 | 1988 | 0 | 19502 |
 | `$83` | 5443 | 14100 | 1052 | 0 | 18668 |

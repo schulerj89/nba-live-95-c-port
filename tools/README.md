@@ -210,6 +210,25 @@ caller scheduling. The pack test checks the current eight-range payload and
 derives temporary seven-range and five-range payloads from it; it does not
 store ROM table bytes in the repository.
 
+Replay the canonical graphics allocator initializer and its two direct
+children against the asset-free projections of repeated native writes:
+
+~~~powershell
+./tools/build_vector_probe.ps1 -Name graphics_allocator_vector_probe,game_wram_lifetime_probe
+python tools/verify_graphics_allocator_vectors.py `
+  --vectors tests/fixtures/graphics-allocator-witnesses.json `
+  --probe build/graphics_allocator_vector_probe.exe
+python tools/test_game_wram_lifetime.py `
+  --probe build/game_wram_lifetime_probe.exe `
+  --pack build/nba95_assets.pak
+~~~
+
+The first verifier covers `$80:AB7E-$AC0C`, `$80:AC0D-$AC1A`, and
+`$80:AC89-$ACC1`, including clamp, rounding, signed byte-table, 16-bit wrap,
+empty/fill/swap, preserved-hole, and invalid-view cases. The lifetime probe
+exercises the bounded `$85:8B6C-$8B75` equivalent at real Tipoff entry and
+proves binding and per-frame updates do not initialize the allocator.
+
 ## Coverage reports
 
 Regenerate captured-address progress:

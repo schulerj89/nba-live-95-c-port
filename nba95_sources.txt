@@ -26,6 +26,7 @@ src/nba_gameplay_free_throw.c
 src/nba_font.c
 src/nba_renderer.c
 src/nba_graphics_bus_view.c
+src/nba_graphics_allocator.c
 src/nba_snes_ppu.c
 src/nba_ea_intro.c
 src/nba_rom_font.c

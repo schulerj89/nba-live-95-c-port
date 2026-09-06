@@ -2287,6 +2287,33 @@
       "date": "2026-08-29"
     },
     {
+      "range": "80AB7E-80AC0C",
+      "coverage_credit": true,
+      "name": "graphics allocator canonical WRAM initializer",
+      "source": "src/nba_graphics_allocator.c",
+      "method": "repeated natural and controlled native write projection + production Tipoff caller probe",
+      "evidence": "Two natural captures with identical boundary data and repeated caller-domain boundary captures replay eight complete parent calls with zero production mismatches: boot Y=$0000/$01A0, court caller A=$6000/X=0/Y=$01E0, clamp edge $01BF/$01C0, rounded table edges $01E1->$0200 and $0201->$0220, and 16-bit wrap $FFE1->$0000. The union observes all 61 parent instruction starts, including the RTL boundary. The strict fixture projects every mapped functional native write in order onto asset-free nonzero WRAM, validates the nine excluded call-stack writes, rejects unknown writes and reordered boundaries, and compares complete memory/footprint digests. It proves the first zero then repeated-eight signed byte table, alias write order, fixed allocator words, preserved queue/ring/jersey state, and byte-only $0566 publication. CPU registers are capture context only. nba_game_enter_state invokes the bounded $85:8B6C-$8B75 equivalent once after Tipoff binding; the production probe proves no bind/tick initialization, persistence across scene clear, and reset on Tipoff reentry. Native caller $85:8B79-$8B93 follow-on writes, earlier court ordering, graphics producers, DMA/NMI consumption, and $012C provenance remain outside this row. tests/fixtures/graphics-allocator-witnesses.json; tools/normalize_graphics_allocator_vectors.py; tools/verify_graphics_allocator_vectors.py; tools/game_wram_lifetime_probe.c; docs/graphics-publication.md.",
+      "date": "2026-09-06"
+    },
+    {
+      "range": "80AC0D-80AC1A",
+      "coverage_credit": true,
+      "name": "graphics allocator cache clear",
+      "source": "src/nba_graphics_allocator.c",
+      "method": "nested native child write projection + direct production child replay",
+      "evidence": "Repeated natural and controlled parent captures observe all seven instruction starts and exact nested child entry/RTL boundaries. Each call emits exactly 2,098 ordered byte writes: $FFFF words descending from $2E70 through $2640, covering exactly 1,049 words/$2640-$2E71 while preserving both neighbors. One direct child projection plus all parent projections match the production implementation with zero mismatches. tests/fixtures/graphics-allocator-witnesses.json; tools/verify_graphics_allocator_vectors.py.",
+      "date": "2026-09-06"
+    },
+    {
+      "range": "80AC89-80ACC1",
+      "coverage_credit": true,
+      "name": "graphics allocator sparse fill and buffer rotation",
+      "source": "src/nba_graphics_allocator.c",
+      "method": "natural native empty/nonempty child write projection + source-boundary production replay",
+      "evidence": "The natural route records 49 genuine child calls and the complete 24-start path, including empty and nonempty fills. Direct native projections compare the five input endpoints, ordered $E100 sparse records, preserved two-byte holes, three endpoint swaps, and low-byte-only $0566=1 with $0567 preserved. Parent-contained calls independently cover the fixed 128-record $2000-$21FC fill. Source-boundary cases protect aligned $FFFC wrap, live-tail/live-head alias reads, misaligned active-fill rejection, and invalid bus no-write behavior without claiming those cases as naturally reached. tests/fixtures/graphics-allocator-witnesses.json; tools/verify_graphics_allocator_vectors.py.",
+      "date": "2026-09-06"
+    },
+    {
       "range": "80A7C6-80BF00",
       "coverage_credit": false,
       "name": "indexed object OAM text and resource publication host equivalents",

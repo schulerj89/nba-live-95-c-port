@@ -1,4 +1,5 @@
 #include "nba_game.h"
+#include "nba_graphics_allocator.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -57,6 +58,46 @@ static int require_sentinels(const NbaGame *value) {
     return 0;
 }
 
+/* Host-only production caller check; no direct native address. It verifies
+ * the bounded `$85:8B6C-$8B75` allocator state after real Tipoff entry while
+ * retaining bytes outside `$80:AB7E-$ACC1` functional footprints. */
+static int require_allocator_state(const NbaGame *value) {
+    const uint8_t *wram = value->graphics_wram;
+    uint16_t word = 0u;
+#define REQUIRE_WORD(address, expected) \
+    do { \
+        if (!nba_graphics_bus_read16(&value->graphics_bus, (address), &word) || \
+            word != (expected)) return 60; \
+    } while (0)
+    REQUIRE_WORD(NBA_GRAPHICS_ALLOCATOR_VRAM_BASE, 0x6000u);
+    REQUIRE_WORD(NBA_GRAPHICS_ALLOCATOR_X, 0u);
+    REQUIRE_WORD(NBA_GRAPHICS_ALLOCATOR_EXTENT, 0x01e0u);
+    REQUIRE_WORD(NBA_GRAPHICS_ALLOCATOR_COUNT, 0u);
+    REQUIRE_WORD(NBA_GRAPHICS_ALLOCATOR_STRIDE, 2u);
+    REQUIRE_WORD(NBA_GRAPHICS_ALLOCATOR_BLOCKS, 0x0080u);
+    REQUIRE_WORD(NBA_GRAPHICS_ALLOCATOR_FILL_HEAD, 0x2000u);
+    REQUIRE_WORD(NBA_GRAPHICS_ALLOCATOR_FILL_TAIL, 0x2420u);
+    REQUIRE_WORD(NBA_GRAPHICS_ALLOCATOR_SAVED_TAIL, 0x2000u);
+    REQUIRE_WORD(NBA_GRAPHICS_ALLOCATOR_ACTIVE_BASE, 0x2220u);
+    REQUIRE_WORD(NBA_GRAPHICS_ALLOCATOR_PENDING_BASE, 0x2000u);
+#undef REQUIRE_WORD
+    if (wram[NBA_GRAPHICS_ALLOCATOR_READY] != 1u ||
+        wram[NBA_GRAPHICS_ALLOCATOR_READY + 1u] != 0x45u ||
+        wram[0x263fu] != 0x31u || wram[0x2e72u] != 0x32u ||
+        wram[0x2002u] != 0x41u || wram[0x2003u] != 0x42u ||
+        wram[0x21feu] != 0x43u || wram[0x21ffu] != 0x44u ||
+        wram[0x3271u] != 8u || wram[0x32e9u] != 0u ||
+        wram[0x32eau] != 0xffu || wram[0x32f2u] != 0u ||
+        wram[0x3362u] != 0x70u || wram[0x3363u] != 0x20u ||
+        wram[0x3383u] != 0u || wram[0x33c4u] != 0xffu ||
+        wram[0x33e4u] != 0u) return 61;
+    for (size_t address = 0x2640u; address <= 0x2e71u; ++address)
+        if (wram[address] != 0xffu) return 62;
+    for (size_t address = 0x2000u; address < 0x2200u; address += 4u)
+        if (wram[address] != 0u || wram[address + 1u] != 0xe1u) return 63;
+    return 0;
+}
+
 /* Host-only transition driver; no direct native address. It uses the real
  * scene entry and checks that clearing the scene union cannot clear WRAM. */
 static int enter_and_check(NbaGame *value, NbaGameState state) {
@@ -85,6 +126,13 @@ int main(int argc, char **argv) {
     if (standalone_tipoff.graphics_bus.wram != NULL ||
         standalone_tipoff.graphics_bus.size != 0u) return 6;
 
+    game.graphics_wram[NBA_GRAPHICS_ALLOCATOR_VRAM_BASE] = 0x9au;
+    if (!nba_tipoff_bind_graphics_bus(&standalone_tipoff,
+                                      &game.graphics_bus) ||
+        game.graphics_wram[NBA_GRAPHICS_ALLOCATOR_VRAM_BASE] != 0x9au)
+        return 16;
+    (void)nba_tipoff_bind_graphics_bus(&standalone_tipoff, NULL);
+
     game.graphics_bus.wram[NBA_GRAPHICS_QUEUE_HEAD] = 0x18u;
     game.graphics_wram[NBA_GRAPHICS_QUEUE_TAIL] = 0x20u;
     game.renderer.graphics_bus.wram[NBA_GRAPHICS_QUEUE_RECORDS] = 0x5au;
@@ -92,6 +140,13 @@ int main(int argc, char **argv) {
     game.renderer.graphics_bus.wram[NBA_GRAPHICS_RECORD5_WORD + 1u] = 0x12u;
     game.graphics_wram[NBA_GRAPHICS_WRAM_BYTES - 2u] = 0xa5u;
     game.renderer.graphics_bus.wram[NBA_GRAPHICS_WRAM_BYTES - 1u] = 0x6cu;
+    game.graphics_wram[NBA_GRAPHICS_ALLOCATOR_READY + 1u] = 0x45u;
+    game.graphics_wram[0x263fu] = 0x31u;
+    game.graphics_wram[0x2e72u] = 0x32u;
+    game.graphics_wram[0x2002u] = 0x41u;
+    game.graphics_wram[0x2003u] = 0x42u;
+    game.graphics_wram[0x21feu] = 0x43u;
+    game.graphics_wram[0x21ffu] = 0x44u;
     uint16_t receiver_word = 0u;
     if (!nba_graphics_bus_receiver_word(&game.renderer.graphics_bus,
                                         &receiver_word) ||
@@ -112,11 +167,14 @@ int main(int argc, char **argv) {
         NBA_STATE_PLAYER_INTRO, NBA_STATE_TIPOFF,
         NBA_STATE_POSTGAME, NBA_STATE_TIPOFF
     };
+    unsigned tipoff_count = 0u;
     for (size_t index = 0;
          index < sizeof(match_route) / sizeof(match_route[0]); ++index) {
         code = enter_and_check(&game, match_route[index]);
         if (code) return code;
         if (match_route[index] == NBA_STATE_TIPOFF) {
+            ++tipoff_count;
+            if ((code = require_allocator_state(&game)) != 0) return code;
             if (!nba_tipoff_bind_graphics_bus(
                     &game.scene.tipoff,
                     &game.scene.tipoff.graphics_bus)) return 14;
@@ -127,6 +185,22 @@ int main(int argc, char **argv) {
                 upper_word != 0x6ca5u ||
                 nba_graphics_bus_read16(&game.scene.tipoff.graphics_bus,
                     NBA_GRAPHICS_WRAM_BYTES - 1u, &upper_word)) return 15;
+            if (tipoff_count == 1u) {
+                game.graphics_wram[NBA_GRAPHICS_ALLOCATOR_VRAM_BASE] = 0x7cu;
+                game.graphics_wram[NBA_GRAPHICS_ALLOCATOR_VRAM_BASE + 1u] = 0x6du;
+                nba_game_tick(&game, 1.0f / 60.0f);
+                if (game.graphics_wram[NBA_GRAPHICS_ALLOCATOR_VRAM_BASE] != 0x7cu ||
+                    game.graphics_wram[NBA_GRAPHICS_ALLOCATOR_VRAM_BASE + 1u] != 0x6du)
+                    return 17;
+            }
+        } else if (match_route[index] == NBA_STATE_POSTGAME) {
+            if (game.graphics_wram[NBA_GRAPHICS_ALLOCATOR_VRAM_BASE] != 0x7cu ||
+                game.graphics_wram[NBA_GRAPHICS_ALLOCATOR_VRAM_BASE + 1u] != 0x6du ||
+                game.graphics_wram[0x2640u] != 0xffu ||
+                game.graphics_wram[0x2000u] != 0u ||
+                game.graphics_wram[0x2001u] != 0xe1u) return 18;
+            game.graphics_wram[0x2640u] = 0x6du;
+            game.graphics_wram[0x2000u] = 0x2cu;
         }
     }
 

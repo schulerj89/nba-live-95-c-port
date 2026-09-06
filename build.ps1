@@ -150,7 +150,7 @@ if ($Test) {
 
     # Initialize MSVC once for all probes; each still links the current objects.
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name @(
-        'game_wram_lifetime_probe',
+        'game_wram_lifetime_probe', 'graphics_allocator_vector_probe',
         'cpu_defense_context_vector_probe', 'cpu_mode_seven_vector_probe',
         'cpu_mode_eight_vector_probe', 'cpu_mode_nine_vector_probe',
         'cpu_mode_ten_vector_probe', 'cpu_mode_twelve_vector_probe',
@@ -161,6 +161,11 @@ if ($Test) {
     Invoke-PythonRegression -Script 'test_game_wram_lifetime.py' -Arguments @(
         '--probe', (Join-Path $BuildDir 'game_wram_lifetime_probe.exe'),
         '--pack', $AssetPack
+    )
+
+    Invoke-PythonRegression -Script 'verify_graphics_allocator_vectors.py' -Arguments @(
+        '--vectors', (Join-Path $Root 'tests\fixtures\graphics-allocator-witnesses.json'),
+        '--probe', (Join-Path $BuildDir 'graphics_allocator_vector_probe.exe')
     )
 
     Invoke-PythonRegression -Script 'verify_cpu_defense_context_vectors.py' -Arguments @(

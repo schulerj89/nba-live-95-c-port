@@ -3,25 +3,40 @@
 `NbaGame` owns one zero-allocated 128 KiB WRAM buffer for the lifetime of a
 game instance. `NbaGraphicsBus` is only a borrowed view. The game, renderer,
 and active Tipoff scene point at the same bytes; none of those views owns,
-copies, seeds, or drains the publication ring.
+copies, or drains the publication ring. Binding a view never initializes the
+allocator.
 
 `nba_game_init` supplies the host zero-power-on profile and binds the game and
 renderer views. Ordinary `nba_game_enter_state` calls clear only the scene
 union, so WRAM, queue cursors, records, `$012C`, and upper WRAM persist. A
-successful Tipoff initialization receives a fresh borrowed view. Shutdown and
-initialization failure clear all live views before freeing the allocation.
+successful Tipoff initialization receives a fresh borrowed view. Immediately
+after that bind, `nba_game_enter_state` invokes the native-equivalent graphics
+allocator once with `$05EB=$6000`, X=`$0000`, and Y=`$01E0`. Ordinary Tipoff
+ticks do not repeat it; entering a later Tipoff initializes the persistent
+allocator again. Shutdown and initialization failure clear all live views
+before freeing the allocation.
 
 The source context is the native low-WRAM clearing and cursor setup at
 `$80:80C5-$8136`; that range does not establish a whole-WRAM clear. The host
 allocation is lifecycle support and carries no native routine-completion
-credit. The production manifest compiles `nba_graphics_bus_view.c` alone.
+credit. The production manifest compiles the borrowed-view and allocator
+modules.
 `nba_graphics_bus.c` still contains the dormant bounded consumer and remains
 unlinked until its real NMI ordering and sinks are represented.
 
-The next native graphics step is `$85:8B6C-$8B75` calling
-`$80:AB7E-$AC0C`, including its necessary `$80:AC0D` and `$80:AC89`
-children, to establish the real `$05EB/$05EF` allocator inputs. Next,
-`$87:AFA2` invalidates the cache and `$87:B05B-$B354` publishes the six jersey
+`nba_graphics_allocator_initialize` represents `$80:AB7E-$AC0C`, including
+the exact `$80:AC0D-$AC1A` 1,049-word cache clear and
+`$80:AC89-$ACC1` sparse fill/buffer rotation. Its signed low-byte loop,
+16-bit rounded-Y wrap, preserved record holes, and byte-only `$0566` ready
+write replay repeated native write streams. The integration is a bounded
+equivalent of caller `$85:8B6C-$8B75`; the caller's later `$8B79-$8B93`
+writes and native court initialization history remain outside this claim. The
+host currently initializes Tipoff actors and appearance before binding and
+calling the allocator, later than native, because those systems do not yet
+consume canonical allocator state.
+
+The next native graphics step is `$87:AFA2` cache invalidation followed by
+`$87:B05B-$B354`, which publishes the six jersey
 views per actor. Only then can `$80:AD2B-$AD88` append queue records from real
 sources. The remaining ordered producers and consumer must establish canonical
 `$012C` provenance before `$87:B7D8` can support the human pass catch path.
@@ -30,11 +45,17 @@ Run the focused lifetime check with:
 
 ~~~powershell
 ./build.ps1 -AssetPack build/nba95_assets.pak
-./tools/build_vector_probe.ps1 -Name game_wram_lifetime_probe
+./tools/build_vector_probe.ps1 -Name graphics_allocator_vector_probe,game_wram_lifetime_probe
+python tools/verify_graphics_allocator_vectors.py --vectors tests/fixtures/graphics-allocator-witnesses.json --probe build/graphics_allocator_vector_probe.exe
 python tools/test_game_wram_lifetime.py --probe build/game_wram_lifetime_probe.exe --pack build/nba95_assets.pak
 ~~~
 
-The probe calls the real game initializer, front-end scene entries,
+The allocator verifier projects ordered native functional WRAM writes onto
+asset-free nonzero memory and compares the complete production result and
+exact changed-byte footprint. CPU return registers remain capture context,
+since the C API exposes memory state and success only. The lifecycle probe
+calls the real game initializer, front-end scene entries,
 `nba_session_begin_match`, Tipoff initialization, shutdown, reinitialization,
-and an initialization failure. Its writes are alias/lifetime sentinels only;
-they are not native behavior fixtures.
+and an initialization failure. It also proves allocator persistence through a
+Tipoff tick and scene clear, then reinitialization on the next Tipoff. Its own
+writes are alias/lifetime sentinels only; they are not native behavior fixtures.
