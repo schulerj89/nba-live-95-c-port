@@ -77,11 +77,16 @@ def main():
             # Re-reviewed after `$86:F932-$F93C` made mode six consume stable
             # base assignment +$74. A detached 57ed794 build reproduced every
             # old count; the corrected wide-court frame remains coherent.
-            assert summary["visible"]["bg1"] == 0
-            assert summary["visible"]["bg2"] == 49258
-            assert summary["visible"]["bg3"] == 0
-            assert summary["visible"]["obj"] == 2644
-            assert summary["visible"]["backdrop"] == 5442
+            # Re-reviewed after `$86:F0B7-$F0FC` corrected mode-nine motion.
+            # Detached 149c372 reproduces all previous counts. The corrected
+            # frame shows a coherent basket scene and 2-0 first-quarter HUD;
+            # first motion divergence is the natural mode-nine call at 540.
+            # Only this C-only census changes; pixel rules below stay intact.
+            assert summary["visible"]["bg1"] == 3329
+            assert summary["visible"]["bg2"] == 42995
+            assert summary["visible"]["bg3"] == 6013
+            assert summary["visible"]["obj"] == 3015
+            assert summary["visible"]["backdrop"] == 1992
             counts = {name: 0 for name in
                       ("BACKDROP", "BG1", "BG2", "BG3", "OBJ")}
             indexed = direct = rows = 0

@@ -1972,6 +1972,26 @@
       "date": "2026-09-06"
     },
     {
+      "range": "86F0B7-86F0FC",
+      "name": "mode-nine timed target override",
+      "source": "src/nba_tipoff.c",
+      "method": "controlled genuine-entry native differential + strict direct replay + production scheduler integration + headless Ghidra listing/decompilation",
+      "evidence": "Two byte-identical Mesen captures each record 16 genuine entries at $86:F0B7 with zero orphan exits and PC, stack, flags, ROM, RNG, and child results untouched. The compact fixture retains all 16 calls and all 52 represented input/output words, including overlapping DP $0046/$0047 and actor +$A8 values 0/1, covers all three exits and the exact union of all 28 instruction starts, and pins each call's animation, target-steering, and velocity-child counts. It proves any nonzero entry +$7A restores immediately; signed timer subtraction restores 0/1/$8002 but makes $8001 become $7FFF; values >=10 steer through $85:B3AA to +$56/+$58; values 0..9 call $85:A82C with +$A2; exact live state $0081 or nonzero integer Z blocks velocity while boost still counts down; and expiry clears +$60/+$72, restores saved modes 4 and 6 from +$62, and queues both animation channels to state 3 without the broader $86:9846 reset. The old implementation mismatched all 16 calls; the strict production replay now has zero mismatches. Full nba_tipoff_update checks prove old velocity and animation run before globals, common physics refreshes a stale +$A2 before the final window consumes it, post-physics recovery values are decremented with native signed-wrap boundaries before later mode-nine dispatch, target and final windows select different directions, and a new restore animation is not advanced or resolved in the same pass.",
+      "provenance": {
+        "rom_sha256": "2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870",
+        "raw_vectors": ".analysis/cpu-mode-nine-20260906/capture-v4/cpu_mode_nine.vectors.jsonl",
+        "raw_vectors_sha256": "7647f7fc6a455223c5fecf8d21375ff8005eeb44ba2a48b22ebad9a28a21ab68",
+        "case_matrix_sha256": "69a07c9d7738a13d79ffe3a66079935d176c4da6a2cb6688af7350e844306fb4",
+        "path_trace_sha256": "fbc79cf6a8c0dfc4c1b02bf922516570d4c29d7a4d3a2a0f0b932755da641930",
+        "ghidra": ".analysis/full-rom-census/listings/bank_86_instructions.tsv",
+        "ghidra_sha256": "f642199de28e016061db579f28a28f60c772de70a6a2a6712ded609e03f7d63c",
+        "recomp": ".analysis/cpu_gameplay_ghidra/cpu_gameplay_bank86_functions.c",
+        "recomp_function": "cpu_gameplay_86_F0B7",
+        "recomp_sha256": "c3ce476090ee9a9ec970ce9b9ccb2fdeea42936f8a3ff9184880b609fff3b199"
+      },
+      "date": "2026-09-06"
+    },
+    {
       "range": "86F1B0-86F23E",
       "name": "normal mode-one CPU actor continuation",
       "source": "src/nba_tipoff.c + src/nba_gameplay_ai.c",

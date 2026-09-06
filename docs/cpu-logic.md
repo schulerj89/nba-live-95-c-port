@@ -6,12 +6,11 @@ The native gameplay scheduler separates actor physics from behavior decisions.
 animation; `$85:963D-$985F` then resolves locomotion and commits the velocity
 selected on the previous actor pass. Global ball, contact, and role work
 follows. The later `$87:9244 -> $87:9BD3/$9BD0` mode jump table dispatches the
-actor's current `+$5E` behavior. Production now preserves this complete phase
-order for mode seven: `cpu_update_all_actors` eases and advances its existing
-animation before committing physics, while
-`cpu_update_actor_behaviors` runs `$86:994C` after the globals. Direct
-native-vector adapters intentionally call only the bounded behavior being
-replayed.
+actor's current `+$5E` behavior. Production preserves this complete phase
+order for modes seven and nine: `cpu_update_all_actors` eases and advances the
+existing animation before committing old velocity, while the later behavior
+sweep runs `$86:994C` or `$86:F0B7` after globals. Direct native-vector
+adapters intentionally call only the bounded behavior being replayed.
 
 The dispatch table currently maps modes 0 through 17 to no-op, ordinary CPU
 offense/defense continuations, dead-ball and action holds, knockdown, target
@@ -88,10 +87,66 @@ controller or direction words remain outside the claim. The mode-seven phase
 correction is deliberately scoped; other behavior modes retain the existing
 partial whole-game scheduler model. Whole-game launch state, scheduler
 history, and RNG history also remain outside this bounded routine result.
-Mode eight `$86:C6AD-$C758` has production behavior and existing C tests but
-still lacks its own coverage-crediting native differential.
 
-The next planned bounded dispatch target is `$86:F0B7-$F0FC`, control mode
-nine's timed target override. Its recovery-inhibit, signed timer, steering,
-final-window damping, saved-mode restore, and animation-command branches need
-their own genuine-entry capture and strict production replay.
+## Mode nine timed target override
+
+`$86:F0B7-$F0FC` consumes the scheduler-selected actor pointer and physical
+delta `$C6=2`, plus actor integer position `+$04/+$08/+$0C`, velocity
+`+$0E/+$10`, saved target `+$56/+$58`, mode `+$5E`, timer `+$60`, saved mode
+`+$62`, boost `+$72`, recovery inhibit `+$7A`, velocity direction `+$A2`, and
+animation channels including alternate-lower selector `+$A8`. `$85:A82C`
+also reads exact live state `$0936`, owner `$093E`, and the selected player's
+movement profile from the user-supplied asset pack.
+
+After `$87:AAB2` advances the existing animation and `$85:963D` commits the
+old velocity, global ball/contact/role work runs. `$87:90A5-$90B2` then
+subtracts two from nonzero `+$7A`, storing the wrapped result only when it is
+nonnegative and otherwise zero. The later `$87:9244` dispatch follows these
+branches:
+
+1. Any still-nonzero `+$7A` restores immediately without decrementing `+$60`.
+2. Otherwise `+$60` subtracts two. A negative signed result restores. Thus
+   inputs 0, 1, and `$8002` restore, while `$8001` wraps to `$7FFF` and runs.
+3. Remaining values at least 10 load target `+$56/+$58` and call
+   `$85:B3AA -> $85:A82C` to select and install next-pass velocity.
+4. Remaining values 0 through 9 call `$85:A82C` directly with the velocity
+   direction in `+$A2`. The preceding physics pass refreshes this direction
+   from old motion, so this is distinct from steering toward the saved target.
+5. Restore clears `+$60` and `+$72`, copies saved mode `+$62` to `+$5E`, and
+   sends a both-channel state-3 command through `$87:B3BD`. It does not call
+   `$86:9846`, mutate a separate host action state, or publish new render
+   resources during the behavior pass.
+
+`tests/fixtures/cpu-mode-nine-witnesses.json` retains 16 compact calls from
+two byte-identical genuine-entry Mesen captures. Every call enters at
+`$86:F0B7` from the native dispatcher and exits at `$86:F0DC`, `$F0F2`, or
+`$F0FC`, with no PC, stack, ROM, RNG, or child result patched. The fixture
+compares 52 exact words, including overlapping DP `$0046/$0047`, and covers
+all 28 owned instruction starts, both nonzero-inhibit forms, signed timer
+boundaries, X/Y/coincident target steering, final-window directions and boost,
+live-state/integer-height movement blocking, saved modes 4 and 6, `+$A8`
+values 0 and 1, and locked animation channels.
+`tools/verify_cpu_mode_nine_vectors.py` enforces fixture identity, field and
+call counts, exact PC/path union, per-case child counts, and exact outputs.
+Its production `nba_tipoff_update` checks additionally prove old-coordinate
+commit, old-animation advancement, refreshed stale `+$A2`, different target
+and final-window directions, state-3 queue timing, and post-physics recovery
+transitions `1->0`, `3->1`, `$8002->0`, and `$8001->$7FFF` before dispatch.
+The retained C regression first reaches mode nine at frame 538. At frame 540,
+the old and corrected builds have the same committed actor position and timer
+28, while the corrected `$86:F0B7` changes the next velocity from `(19,46)` to
+`(-69,-44)` before the first frame-600 raster anchor.
+
+Parity is limited to the canonical `$C6=2` actor pass, valid pack-backed
+movement/animation tables, the captured target and direction word domain, and
+saved modes 4/6 produced by the verified anticipation callers. The host
+narrows directions to its established byte fields. A mode already equal to 9
+is decremented at the verified late point. A mode-9 actor changed to mode 8 by
+contact before that point inherits the existing broader contact/scheduler
+timing gap; no adjacent mode behavior is claimed here. Whole-game launch
+state, scheduler history, and RNG history also remain outside this bounded
+routine result.
+
+Mode eight `$86:C6AD-$C758` remains the next contained dispatch target. It has
+production behavior and existing C tests but still lacks its own
+coverage-crediting genuine-entry differential and production-phase proof.

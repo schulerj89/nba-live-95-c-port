@@ -182,11 +182,16 @@ EXPECTED_RGB = {
     # Re-reviewed after `$86:F932-$F93C` made mode six consume stable base
     # assignment +$74. A detached 57ed794 build reproduced every old hash;
     # all five corrected frames retain the complete, coherent gameplay scene.
-    600: "f96f55e264aeb7cda475b332385405265ddf05c28a842cc97908453ea9f64421",
-    1300: "c51eabe45de9d4c374f1a070aad1700dc4f504642edd86884aeb3f60c8373077",
-    3480: "8e5b42567da8007c32c7fa10ec3ca6ca3309e894a9545cca2d7e2650719fe8c4",
-    6932: "bbd40630254af6290fab906a9154d6a8db522863c813b7ceb4b8bd2bae751895",
-    6954: "4fab561274c8c17f770a66c48d9446c19ede98f4ecae21c669a2a01549e732cf",
+    # Re-reviewed after `$86:F0B7-$F0FC` restored mode-nine target and
+    # final-window velocity updates. A detached 149c372 build reproduced all
+    # five old hashes; collectively the corrected frames retain the complete
+    # court, players, ball, baskets, crowd, event overlays, and readable HUD,
+    # with their per-frame timing shifted by the corrected trajectory.
+    600: "868b26b40f94ca3668d63a76f6c938403a12bb8e92c52393feb9ee8e04e871ec",
+    1300: "5c17e72d13384f64afaf3df547cce396eb56bc3f44a9aa3f4b947bd342df08e2",
+    3480: "b60c5d9b3a36ace88fdfb82449f6ce3fe2203928ebe11d1113acb2a90124c42c",
+    6932: "26700838fbbbf4873b509769b0579384ed52d9484897aba8b86a210d1837d918",
+    6954: "95a65d8cc0c096fe60d61970bc2ed58f3055345c2d02241ea8c5049402887e57",
 }
 
 
@@ -1146,13 +1151,17 @@ def main():
                         cadence = after["vz"] == expected_vz
                     # $86:C0D7-C0EA / C127-C13A clears the GLOBAL shot
                     # activity before checking whether the knocked-down actor
-                    # owns the ball. A later collision can interrupt wind-up.
+                    # owns the ball. Player-pair scanning may record a later
+                    # ordinary contact after that knockdown, so use the new
+                    # mode-8 actor as the durable completed-frame witness.
                     contact=current["collision"]
-                    contact_reset=(contact["player_count"]>0 and contact["player_routine"]==0x86BFBA and
+                    contact_reset=(contact["player_count"]>0 and
                         current["match"]["live_state_raw"]==0 and
                         ball["activity_raw"]==0 and after["vz"]==expected_vz and
-                        any(current["actors"][i]["raw"]["control_mode"]==8
-                            for i in (contact["player_a"],contact["player_b"])))
+                        any(old_actor["raw"]["control_mode"]!=8 and
+                            new_actor["raw"]["control_mode"]==8
+                            for old_actor,new_actor in
+                            zip(previous["actors"],current["actors"])))
                     cadence = cadence or contact_reset
                     if not cadence or ball["state"] != 4 or ball["owner"] != actor_id:
                         raise AssertionError(
