@@ -899,6 +899,11 @@ def main():
                     not (0 <= row["ball"]["owner"] < 10 and
                          row["actors"][row["ball"]["owner"]]["raw"]["control_mode"] == 12 and
                          1 <= row["ball"]["activity_raw"] < 30)
+                    # `$86:A7E4` seeds mode 13 activity 1; its native
+                    # B649/B66A/B832 attachments preserve that word.
+                    and not (0 <= row["ball"]["owner"] < 10 and
+                         row["actors"][row["ball"]["owner"]]["raw"]["control_mode"] == 13 and
+                         row["ball"]["activity_raw"] == 1)
                     for row in rows):
             raise AssertionError("$0948 canonical shot/attach lifecycle changed")
         # `$86:9DBF/$9DFF` install these latches at the mode-12 release
@@ -1095,6 +1100,7 @@ def main():
         mode11_fallbacks = 0
         mode13_carried_frames = 0
         mode13_finishes = 0
+        mode13_disrupted_releases = 0
         pending_mode_twelve_releases = {}
         for previous, current in zip(due_rows, due_rows[1:]):
             for before, after in zip(previous["actors"], current["actors"]):
@@ -1118,9 +1124,27 @@ def main():
                             f"current={current['frame']}")
                     del pending_mode_twelve_releases[actor_id]
                 if new_mode == 13:
-                    if after["animation"] not in (
-                            0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E) or \
-                            after["lower_animation"] != 0x1F or \
+                    # B34F installs upper $18-$1E/lower $1F. On the next
+                    # due pass AAB2 may advance both channels before late
+                    # A7DA; timers above 36 do not reinstall the action.
+                    upper_pose = after["animation"] in (
+                        0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E)
+                    entry_pose = upper_pose and after["lower_animation"] == 0x1F
+                    continued_parent = (
+                        after["raw"]["mode13_timer_60"] ==
+                            (before["raw"]["mode13_timer_60"] - 2) & 0xFFFF and
+                        ball["activity_raw"] == 1 and
+                        after["raw"]["mode13_selector_56"] ==
+                            before["raw"]["mode13_selector_56"] and
+                        after["raw"]["mode13_variant_58"] ==
+                            before["raw"]["mode13_variant_58"] and
+                        after["raw"]["mode13_baseline_vx_ba"] ==
+                            before["raw"]["mode13_baseline_vx_ba"] and
+                        after["raw"]["mode13_baseline_vy_bc"] ==
+                            before["raw"]["mode13_baseline_vy_bc"] and
+                        (after["z_fp"] // 256 == 0 or upper_pose))
+                    if (old_mode != 13 and not entry_pose) or \
+                            (old_mode == 13 and not continued_parent) or \
                             ball["state"] != 4 or ball["owner"] != actor_id or \
                             not 0 < after["raw"]["mode13_timer_60"] <= 0x28 or \
                             after["raw"]["mode13_selector_56"] not in range(-1, 7) or \
@@ -1137,6 +1161,25 @@ def main():
                 # cross-period mode reset as a 9D6E/A9D0 release.
                 if current["match"]["period_raw_0926"] != previous["match"]["period_raw_0926"]:
                     continue
+                if old_mode == 13 and new_mode == 11:
+                    # Airborne wrong-upper recovery enters shared 9D6E after
+                    # common physics, detaching one shot without A9D0.
+                    direct_launch = (
+                        current["shot_launch"]["serial"] ==
+                            previous["shot_launch"]["serial"] + 1 and
+                        current["shot_launch"]["actor"] == actor_id)
+                    if not direct_launch or after["animation"] != 0x17 or \
+                            after["raw"]["mode13_timer_60"] != 0 or \
+                            after["raw"]["behavior_flags"] != 0 or \
+                            previous["ball"]["state"] != 4 or ball["state"] != 5 or \
+                            previous["ball"]["owner"] != actor_id or \
+                            ball["owner"] != -1 or ball["activity_raw"] != 0xFFFF or \
+                            previous["possession"]["actor"] != actor_id or \
+                            current["possession"]["actor"] != -1 or \
+                            current["match"]["shot_actor_raw_09c8"] != actor_id:
+                        raise AssertionError(
+                            f"$86:A828/9D6E disrupted finish changed: {current}")
+                    mode13_disrupted_releases += 1
                 if old_mode == 13 and new_mode == 1:
                     # A close finish positioned directly over the rim may
                     # score in the same physics substep as `$86:A9D0`.
@@ -1161,6 +1204,43 @@ def main():
                     moving_start = (after["lower_animation"] == 0x32 and
                                     after["vz"] in (0x210, 0x1E0) and
                                     ball["activity_raw"] == 0xFFFF)
+                    # An acquisition deferral can run B625 on the intervening
+                    # odd behavior sweep. A later mode-10 receiver cancel in
+                    # that sweep reaches A613 and clears 0948. The next due
+                    # sample includes 963D's first Z step and B769's 0->2.
+                    intervening = rows[current["frame"] - 2] if \
+                        current["frame"] == previous["frame"] + 2 else None
+                    deferred_moving_start = False
+                    if intervening is not None:
+                        middle = intervening["actors"][actor_id]
+                        middle_ball = intervening["ball"]
+                        continued_vz = middle["vz"] - 0x30
+                        later_receiver_cancel = any(
+                            previous["actors"][later]["raw"]["control_mode"] == 10 and
+                            intervening["actors"][later]["raw"]["control_mode"] in (1, 2)
+                            for later in range(actor_id + 1, 10))
+                        deferred_moving_start = (
+                            intervening["scheduler"]["due_raw"] == 0 and
+                            intervening["possession"]["pass_receiver_raw"] == -1 and
+                            later_receiver_cancel and
+                            middle["raw"]["control_mode"] == 12 and
+                            middle["animation"] == 0x16 and
+                            middle["lower_animation"] == 0x32 and
+                            middle["z_fp"] == 0 and middle["vz"] == 0x210 and
+                            intervening["shot_selection"]["serial"] ==
+                                previous["shot_selection"]["serial"] + 1 and
+                            current["shot_selection"]["serial"] ==
+                                intervening["shot_selection"]["serial"] and
+                            intervening["shot_selection"]["input"][6:] ==
+                                [12, actor_id] and
+                            middle_ball["state"] == ball["state"] == 4 and
+                            middle_ball["owner"] == ball["owner"] == actor_id and
+                            middle_ball["activity_raw"] == 0 and
+                            ball["activity_raw"] == 2 and
+                            after["animation"] == 0x16 and
+                            after["lower_animation"] == 0x32 and
+                            after["vz"] == continued_vz and
+                            after["z_fp"] == middle["z_fp"] + continued_vz * 2)
                     # The common actor commit can land a prior jump before
                     # the mode-11 decision starts the stationary shot later
                     # in that same pass. Its just-consumed negative VZ stays
@@ -1171,7 +1251,8 @@ def main():
                                         (after["vz"] == 0 or landing_start) and
                                         ball["activity_raw"] in (1, 3))
                     if after["animation"] != 0x16 or \
-                            not (moving_start or stationary_start) or \
+                            not (moving_start or deferred_moving_start or
+                                 stationary_start) or \
                             ball["state"] != 4 or \
                             ball["owner"] != actor_id:
                         raise AssertionError(
@@ -1652,7 +1733,9 @@ def main():
 
         def expected_attachment(actor):
             raw = actor["raw"]
-            upper, lower = raw["upper_resource"], raw["lower_resource"]
+            # B832 consumes native +$2A/+$2C; display mirrors can lag a queue.
+            native = raw["animation_rom"]
+            upper, lower = native["upper_resource_2a"], native["lower_resource_2c"]
             lower_y = signed8(animation[lower_table + lower])
             lower_z = signed8(animation[lower_table + 0x830 + lower])
             upper_x = signed8(animation[upper_x_table + upper])
@@ -1681,8 +1764,8 @@ def main():
                 signature = lambda candidate: (
                     candidate["direction"], candidate["animation"],
                     candidate["lower_animation"],
-                    candidate["raw"]["upper_resource"],
-                    candidate["raw"]["lower_resource"])
+                    candidate["raw"]["animation_rom"]["upper_resource_2a"],
+                    candidate["raw"]["animation_rom"]["lower_resource_2c"])
                 # The ball pass precedes behavior/contact pose mutation. Only
                 # compare end-of-frame resources once that pose has remained
                 # stable for a complete 30-Hz pass; transition rows are
@@ -1709,9 +1792,11 @@ def main():
                                attachment_actor[axis + "_fp"] // 256
                                for axis in ("x", "y", "z"))
                 expected = expected_attachment(actor)
-                low_resource = actor["raw"]["upper_resource"] < 0xF0
+                low_resource = actor["raw"]["animation_rom"]["upper_resource_2a"] < 0xF0
                 ball_z = row["ball"]["z_fp"] // 256
-                if low_resource:
+                # Late B769/A7DA attachment includes actor Z even for
+                # low resources; the common A4F2 driver below does not.
+                if low_resource and actor["raw"]["control_mode"] not in (12, 13):
                     # A518-A52F resets to B953's height offset alone;
                     # unlike B66A, it does not add the actor's integer Z.
                     actual = actual[:2] + (ball_z,)

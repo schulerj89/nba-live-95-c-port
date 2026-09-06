@@ -74,6 +74,10 @@ Recent source-verified visual and gameplay fixes include:
   direction ownership, complete launch publication, post-global scheduling,
   and the directly calling free-throw state-nine handoff.
 
+- the native control-mode-thirteen close-finish parent, including retained
+  ownership, signed timer boundaries, pack-backed facing, pose/ball attachment,
+  airborne fallback, terminal release, landing, and post-global scheduling.
+
 These paths are protected by test_tipoff_court_smoke.py,
 test_dribble_smoke.py, test_hoop_smoke.py, test_oob_smoke.py, and
 test_cpu_reaction_smoke.py, plus their native-vector verifiers, including the
@@ -81,7 +85,7 @@ six-case defense-context, eight-case mode-five, two-case mode-one and
 mode-three role-flag, nine-case mode-two, twelve-case mode-four, and ten-case
   mode-six actor-parent replays, plus the nineteen-case mode-seven,
   nineteen-case mode-eight, sixteen-case mode-nine, eighteen-case mode-ten,
-  and thirty-seven-case mode-twelve direct replays and their full-scheduler
+  and thirty-seven-case mode-twelve and mode-thirteen direct replays and their full-scheduler
   phase checks, plus four free-throw mode-twelve caller witnesses.
 
 ## Major remaining gaps

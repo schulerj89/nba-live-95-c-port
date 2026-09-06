@@ -138,6 +138,8 @@ static bool asset_load_error(NbaAssetPack *pack, const char *message) {
     return false;
 }
 
+/* Host-only asset loader; no direct native address. Validate each pack
+ * resource's public shape before subsystem-specific payload decoding. */
 static bool asset_metadata_valid(uint32_t id, uint32_t size, uint32_t width,
                                  uint32_t height, uint32_t flags) {
     uint64_t required;
@@ -188,7 +190,9 @@ static bool asset_metadata_valid(uint32_t id, uint32_t size, uint32_t width,
     if (id == NBA_ASSET_GAMEPLAY_CPU_TABLES)
         return size == 246u && width == 29u && height == 7u && flags == 0x85C661u;
     if (id == NBA_ASSET_GAMEPLAY_SHOT_TABLES)
-        return size == 528u && width == 5u && height == 0u && flags == 0x869EB2u;
+        return ((size == 528u && width == 5u) ||
+                (size == 620u && width == 7u)) &&
+               height == 0u && flags == 0x869EB2u;
     if (id == NBA_ASSET_GAMEPLAY_FATIGUE_TABLES)
         return size == 88u && width == 4u && height == 8u && flags == 0x8798DAu;
     if (id == NBA_ASSET_GAMEPLAY_JUMP_TABLES)

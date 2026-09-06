@@ -153,6 +153,7 @@ if ($Test) {
         'cpu_defense_context_vector_probe', 'cpu_mode_seven_vector_probe',
         'cpu_mode_eight_vector_probe', 'cpu_mode_nine_vector_probe',
         'cpu_mode_ten_vector_probe', 'cpu_mode_twelve_vector_probe',
+        'cpu_mode_thirteen_vector_probe',
         'normal_actor_parent_vector_probe'
     )
 
@@ -190,6 +191,17 @@ if ($Test) {
         '--caller-vectors', (Join-Path $Root 'tests\fixtures\cpu-mode-twelve-ft-caller-witnesses.json'),
         '--probe', (Join-Path $BuildDir 'cpu_mode_twelve_vector_probe.exe'),
         '--pack', $AssetPack
+    )
+
+    Invoke-PythonRegression -Script 'verify_cpu_mode_thirteen_vectors.py' -Arguments @(
+        '--vectors', (Join-Path $Root 'tests\fixtures\cpu-mode-thirteen-witnesses.json'),
+        '--probe', (Join-Path $BuildDir 'cpu_mode_thirteen_vector_probe.exe'),
+        '--pack', $AssetPack
+    )
+
+    Invoke-PythonRegression -Script 'test_cpu_mode_thirteen_pack.py' -Arguments @(
+        '--probe', (Join-Path $BuildDir 'cpu_mode_thirteen_vector_probe.exe'),
+        '--new-pack', $AssetPack
     )
 
     Invoke-PythonRegression -Script 'verify_normal_actor_parent_vectors.py' -Arguments @(

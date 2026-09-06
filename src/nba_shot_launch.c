@@ -8,16 +8,21 @@ static uint16_t u16(const uint8_t *p) {
 static uint32_t u32(const uint8_t *p) {
     return u16(p) | (uint32_t)u16(p+2) << 16;
 }
-static const uint16_t table_ranges[5][2] = {
-    {0x9EB2,38},{0x9F32,18},{0xA17D,64},{0xA344,144},{0xA4AB,192}
+static const uint16_t table_ranges[7][2] = {
+    {0x9EB2,38},{0x9F32,18},{0xA17D,64},{0xA344,144},{0xA4AB,192},
+    {0xA994,60},{0xB448,8}
 };
+/* Host asset validation; no direct native address. Validate the exact five-
+ * range launch payload and its seven-range close-finish extension. */
 static const uint8_t *shot_tables(const NbaAssetPack *assets) {
     const NbaAssetItem *item=nba_assets_get(assets,NBA_ASSET_GAMEPLAY_SHOT_TABLES);
-    if(!item || !item->data || item->size!=528u) return NULL;
+    if(!item || !item->data || (item->size!=528u && item->size!=620u)) return NULL;
     const uint8_t *data=item->data;
-    if(memcmp(data,"NBSHOT1",8) || u32(data+8)!=5) return NULL;
-    uint32_t offset=72;
-    for(unsigned i=0;i<5;++i) {
+    unsigned count=u32(data+8);
+    if(memcmp(data,"NBSHOT1",8) ||
+       !((count==5u && item->size==528u) || (count==7u && item->size==620u))) return NULL;
+    uint32_t offset=12u+count*12u;
+    for(unsigned i=0;i<count;++i) {
         const uint8_t *d=data+12+i*12;
         if(u32(d)!=table_ranges[i][0] || u32(d+4)!=table_ranges[i][1] ||
            u32(d+8)!=offset) return NULL;
@@ -25,8 +30,11 @@ static const uint8_t *shot_tables(const NbaAssetPack *assets) {
     }
     return data;
 }
+/* Host-only gameplay table lookup; no direct native address. Support
+ * `$86:9D6E` and mode thirteen with bounded reads from the asset pack. */
 static bool table_word(const uint8_t *data,uint16_t address,uint16_t *out) {
-    for(unsigned i=0;i<5;++i) {
+    unsigned count=u32(data+8);
+    for(unsigned i=0;i<count;++i) {
         if(address>=table_ranges[i][0] &&
            (unsigned)address+1u < (unsigned)table_ranges[i][0]+table_ranges[i][1]) {
             *out=u16(data+u32(data+20+i*12)+address-table_ranges[i][0]);
@@ -34,6 +42,37 @@ static bool table_word(const uint8_t *data,uint16_t address,uint16_t *out) {
         }
     }
     return false;
+}
+
+/* `$86:A8E5-$A8F0`, mode-thirteen close finish: read one raw byte from the
+ * inline `$86:A994-$A9CF` data tables. The data range receives no instruction
+ * credit; arbitrary odd offsets and the reachable offset 28 remain exact. */
+bool nba_shot_close_finish_turn(const NbaAssetPack *assets,bool zero_selector,
+                                uint16_t timer_offset,uint8_t *turn) {
+    const uint8_t *data=shot_tables(assets);
+    if(!data || !turn || u32(data+8)!=7u || timer_offset>=30u) return false;
+    const uint8_t *entry=data+12+5*12;
+    if(u32(entry)!=0xA994u || u32(entry+4)!=60u) return false;
+    uint32_t offset=u32(entry+8)+(zero_selector?30u:0u)+timer_offset;
+    if(offset>=620u) return false;
+    *turn=data[offset];
+    return true;
+}
+
+/* `$86:98CB-$98D3`, close-finish landing: fetch the variant-selected word
+ * from native table data `$86:B448-$B44F`; no table bytes are embedded. */
+bool nba_shot_close_finish_landing(const NbaAssetPack *assets,
+                                   uint16_t variant_offset,
+                                   uint16_t *animation) {
+    const uint8_t *data=shot_tables(assets);
+    if(!data || !animation || u32(data+8)!=7u || variant_offset>6u ||
+       (variant_offset&1u)!=0u) return false;
+    const uint8_t *entry=data+12+6*12;
+    if(u32(entry)!=0xB448u || u32(entry+4)!=8u) return false;
+    uint32_t offset=u32(entry+8)+variant_offset;
+    if(offset+1u>=620u) return false;
+    *animation=u16(data+offset);
+    return true;
 }
 static bool negative_difference(uint16_t a,uint16_t b) {
     return (int16_t)(uint16_t)(a-b)<0;

@@ -35,4 +35,9 @@ typedef struct {
 
 bool nba_shot_launch(const NbaAssetPack *assets, const NbaShotLaunchInput *input,
                       NbaShotLaunchState *state);
+bool nba_shot_close_finish_turn(const NbaAssetPack *assets, bool zero_selector,
+                                uint16_t timer_offset, uint8_t *turn);
+bool nba_shot_close_finish_landing(const NbaAssetPack *assets,
+                                   uint16_t variant_offset,
+                                   uint16_t *animation);
 #endif

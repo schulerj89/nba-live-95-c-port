@@ -67,6 +67,10 @@ typedef struct {
     uint16_t lower_animation_phase_raw;
     uint16_t rom_upper_animation_phase_raw_3a;
     uint16_t rom_lower_animation_phase_raw_3c;
+    uint16_t upper_state_snapshot_raw_34;
+    uint16_t lower_state_snapshot_raw_36;
+    uint16_t upper_phase_snapshot_raw_3e;
+    uint16_t lower_phase_snapshot_raw_40;
     uint16_t upper_animation_accumulator_raw_42;
     uint16_t lower_animation_accumulator_raw_44;
     uint16_t upper_animation_resource_raw_2a;
@@ -269,6 +273,7 @@ typedef struct NbaTipoff {
     uint16_t roster_shot_statistics[24][5];
     uint8_t roster_personal_fouls[24];
     uint16_t shot_value_raw;       /* `$094C` */
+    uint16_t close_finish_timing_raw_094e; /* `$094E`, close-action cadence */
     uint16_t live_state_raw;       /* `$0936` */
     uint16_t inbound_state_raw;    /* `$0952` */
     uint16_t inbound_actor_raw;    /* `$0954` */

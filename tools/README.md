@@ -153,6 +153,26 @@ The verifier also runs the authoritative-roster/stale-mirror launch case and
 public `nba_tipoff_update` scheduler tests. Build the production executable
 before the probe whenever production objects change.
 
+Replay the mode-thirteen carried-ball close-finish parent against its compact
+native witnesses, then exercise both supported shot-table payload layouts and
+malformed local mutations:
+
+~~~powershell
+./tools/build_vector_probe.ps1 -Name cpu_mode_thirteen_vector_probe
+python tools/verify_cpu_mode_thirteen_vectors.py `
+  --vectors tests/fixtures/cpu-mode-thirteen-witnesses.json `
+  --probe build/cpu_mode_thirteen_vector_probe.exe `
+  --pack build/nba95_assets.pak
+python tools/test_cpu_mode_thirteen_pack.py `
+  --probe build/cpu_mode_thirteen_vector_probe.exe `
+  --new-pack build/nba95_assets.pak
+~~~
+
+The verifier checks all 37 native entries across 144 represented words, the
+authoritative `$093E` owner, and the production scheduler boundary. The pack
+test derives a temporary five-range payload from the local seven-range pack;
+it does not store ROM table bytes in the repository.
+
 ## Coverage reports
 
 Regenerate captured-address progress:

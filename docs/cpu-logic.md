@@ -387,11 +387,132 @@ The pack-backed animation and launch tables come from
 free-throw caller behavior, not a matching whole-game trajectory or complete
 human-control system.
 
-The next bounded parent target is the mode-thirteen carried-ball close-finish
-executor at `$86:A7DA-$A993`, implemented by `cpu_update_rom_layup`. Its directly
-called terminal helper is `$86:A9D0-$AA69`; `$A994-$A9CF` is inline table data
-and must not receive instruction coverage credit. Existing
-evidence covers its `$86:B34F-$B624` initializer and aggregate product behavior,
-but does not pin the executor's exact genuine-entry call set, owned instruction
-starts and exits, child counts, or the ordering of its private planar/vertical
-movement and repeated pose attachment against the production actor caller.
+## Mode thirteen carried-ball close finish
+
+`$86:A7DA-$A993` is the mode-thirteen parent selected by
+`$87:9BD3[13] -> $87:9C49`. The production scheduler advances animation and
+commits `$85:963D` physics once before globals and the late parent dispatch;
+the parent owns no private motion pass. A lost raw owner `$093E` clears
+`$1866`, restores the actor through `$86:9846`, and cancels pass activity
+through `$86:A613`. A retained call clears actor `+$4A`, publishes the actor
+record in `$1866` except for selector six, subtracts canonical `$C6=2` with
+16-bit wrap, and finishes on zero or a negative result.
+
+The airborne disruption path uses signed wrapped differences from actor
+`+$BA/+$BC`, with inclusive `+/-80` retained, and lower/upper animation work
+before pose resolution and integer-only XYZ attachment. Ordinary positive
+timers resolve and attach once, set ball VZ `$FE98`, and use raw
+`timer-8` byte offsets into the two 30-byte facing tables. Values above 36
+return before facing. Remaining values resolve again through raw actor `+$4E`,
+publish displayed `+$52` except when raw facing is eight, attach through
+`$87:B832`, and leave its overlapping DP `$0046/$0047` result visible in the
+host mirrors. Ball fractions and `$0948` survive these attachment children.
+
+The terminal child `$86:A9D0-$AA69` now publishes raw owner, live/dead-ball,
+shot-value, ball-record, animation cleanup, signed special-six velocities, and
+player/controller attempt statistics without clearing unrelated `$09F8` or
+shot origins. Its adjacent `$86:986D` continuation uses authoritative
+`$3FEF/$3FF3`, selects the hold or landing action, resolves pose point one,
+and starts effect four. Mode fourteen's existing terminal caller retains its
+native A9D0-then-986D chain; no other mode-fourteen behavior is claimed here.
+The helper behavior is checked as a direct child of the parent, but its 54
+instruction starts were not separately hooked and receive no new range credit.
+
+Two repeated controlled Mesen captures retain 37 genuine A7DA entries, all
+three exits, all 172 parent instruction starts, and 144 represented words per
+entry/exit. The owned-start set hash is
+`8099d3c9748e73c57a37a44dc0ae436c6bc9b42d4ffbb641b60d4214ff7cb282`.
+The v4/v5 raw-vector hashes are
+`72cd5c59ef0f042afb2f6cee5f4c6709a7cd5ad4caf68f7ab7ccd02e6c482fee`
+and `b310ca85621089dffae7968b6cac9544ec6c457429b966c05f87061cc8b3bd46`;
+their case and path hashes are
+`96b5ec651e58a606b8a705613831dfa8c6dd8404fd3767a0882a61076ed8e989`
+and `7e95fca6af7adad344750d17562ea85868796fe67b0564e33e5f287c116bd5e3`.
+Aggregate children are eight restores, six lower cancellations, 12 upper
+installs, 49 pose resolutions, 27 XY attachments, six Z attachments, six
+launches, eight terminal helpers, eight landing continuations, 49 point
+attachments, two pass cancellations, 14 stat calls, and three effects.
+`tools/verify_cpu_mode_thirteen_vectors.py` pins all fields, cases, paths,
+hashes, boundaries, and child counts before replaying production. All 37 x 144
+comparisons pass, including stale host-owner poisoning. Eleven fixture
+mutations spanning values, types, shape, provenance, paths, children, domain,
+and ROM identity are rejected before the production subprocess runs.
+
+The native witnesses use slot/id 5, actor `$39EB`, player record `$446B`, and
+active lineup `$4779=2`; pack address `$AC:F636` maps this to host actor 5,
+context 1, roster slot 2, and persistent index 14. Controllers are `$FFFF` or
+zero. Period `$0926`, difficulty `$17AF`, and both context `+$08` basket
+fractions are fixed zero. Actor `+$00` is an identity invariant only. The
+projection retains B832 DP `$46/$47`, pose snapshots `+$34/+$36/+$3E/+$40`,
+authoritative roster/controller stats, and integer/fraction words; other DP
+and stack arithmetic scratch is excluded. The isolated `d221619` baseline
+fails all 37 cases across 135 common mutable fields with 659 word mismatches;
+seven new telemetry fields and two identity words are excluded from that
+source-compatible comparison.
+
+Inline `$86:A994-$A9CF` contains 60 table bytes and receives no instruction
+credit. Resource 277 `NBSHOT1` carries those bytes plus the eight-byte B448
+landing table in an exact seven-range, 620-byte form. The loader continues to
+accept the exact five-range, 528-byte launch form; close-finish accessors reject
+that legacy form and malformed inner directories. Pack contract tests exercise
+both through `nba_assets_load` and `nba_shot_launch` using only local temporary
+mutations. Native ROM table bytes remain absent from source and fixtures.
+
+The production caller test proves animation and common physics run once,
+intervening globals are visible to the late parent, restore consumes the pass,
+ordinary work resumes on the next due pass, and a pending odd event does not
+repeat common work. The synthetic raw-facing-eight descriptor test checks the
+AEC3 source contract but adds no native capture coverage. `$094E` is seeded to
+30 by this parent; its conditional consumer at `$87:8E5B-$8E7C` remains a
+separate scheduler-option gap. Whole-game trajectory, mode-fourteen conversion,
+controller values 1 through 4, and nonzero period/difficulty/context fractions
+remain outside this bounded claim.
+
+The long CPU capture first changes shared terminal globals at frame 808,
+where `$86:A9D0` explicitly writes `$0966=$FFFF` and `$0930=$04B0`.
+Actor and ball telemetry match the prior capture through frame 7000; their
+first divergence is frame 12658, after the first mode-thirteen entry at 12656.
+The activity regression permits attached `$0948=1` specifically for a valid
+mode-thirteen owner: `$86:A7E4` seeds it and the attachment children preserve
+it. The retained capture has 18 such rows in three six-frame bursts; the
+existing shot `$FFFF` and attached mode-twelve/seventeen checks stay intact.
+
+The integration check distinguishes B34F entry animation from subsequent
+AAB2 animation advancement before A7DA. Three entries keep the expected
+upper/lower actions; nine continuations preserve selector, variant and
+baseline velocities, decrement the timer by two, and retain attached
+ownership/activity. Grounded continuations may retain ordinary animation;
+airborne continuations require a valid close-finish upper action. Three
+subsequent disruption releases each call 9D6E once, clear timer/flags,
+install upper $17, and transfer ownership to a detached shot with $FFFF
+activity. No production change was needed for either assertion correction.
+
+The configured `build.ps1 -Test` gates passed across the initial full run
+and retained CPU sections after focused assertion corrections. The complete
+CPU prefix through scheduler checks, due-shot loop, score/inbound/camera/
+attachment section, and final pass/sustained/image/static section all passed
+with the same executable, ROM, and pack. The final trace has 69 shot starts
+and releases, 2,847 exact pass frames, 142 automatic unlocks, and one pass
+interruption/recovery. All five RGB anchors remain unchanged. The attachment
+projection checks 17,733 stable rows using authoritative `+$2A/+$2C` rather
+than delayed display mirrors, and preserves actor-relative Z for the late
+mode-twelve/thirteen parent attachments. The mode-twelve initialization check
+also proves an intervening odd-frame launch before accepting its next-due
+`$0210->$01E0` jump and `$0948` `0->2` continuation.
+An ignored instrumented copy identifies the intervening reset: actor 4
+starts the shot, then actor 7 expires its invalid mode-ten receiver and
+calls `$86:A613`. The final predicate requires that later receiver cancel;
+five malformed transition variants are rejected.
+
+Retained evidence is under ignored
+`.analysis/cpu-mode-thirteen-20260906/manager-fullsuite/`; the trace SHA-256 is
+`ac5abd618ac919a07897d910e75f8590a6b92642fdca1194d5b27f7c43a75afa`,
+executable `1ef4e5ab37e56766cdddd43e9021bf7ae281d065d248ac0b0ac265f9132affaf`,
+and pack `e22b8fde583246890ddd938f863e8cd1478ca1eea90d2c97baa7c153781857c9`.
+Raw captures, rendered images, instrumented diagnostics, and packs are local
+only. These regression results do not expand the native witness domain above.
+
+The next bounded parent is mode fourteen `$86:B154-$B334`, represented by
+`cpu_update_rom_special_receiver` in `src/nba_tipoff.c`. Assign it only after
+this mode-thirteen iteration is verified, committed, and pushed. Its existing
+terminal child integration is not evidence for the rest of the parent.

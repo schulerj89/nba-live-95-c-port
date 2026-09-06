@@ -1992,6 +1992,29 @@
       "date": "2026-09-06"
     },
     {
+      "range": "86A7DA-86A993",
+      "name": "mode-thirteen carried-ball close-finish parent",
+      "source": "src/nba_tipoff.c + src/nba_shot_launch.c",
+      "method": "controlled genuine-entry native differential + strict production replay + public scheduler and pack-contract integration + exact instruction listing",
+      "evidence": "Repeated controlled Mesen captures retain 37 genuine $86:A7DA entries, all three exits, all 172 parent instruction starts, and 144 represented words without patching PC, stack, ROM, RNG, or child results. The exact start-set hash is 8099d3c9748e73c57a37a44dc0ae436c6bc9b42d4ffbb641b60d4214ff7cb282. The fixture covers lost-owner restore/cancel, signed wrapped disturbance edges, animation and attachment order, jump/timer boundaries including $8001 and raw table offset 28, selectors -1/0/positive/6, direct shared launch, both terminal variants, authoritative $3FEF/$3FF3 landing, player/controller attempts, fraction/activity preservation, pose snapshots, and overlapping B832 DP $0046/$0047. Aggregate direct children are eight restores, six lower cancellations, 12 upper installs, 49 pose resolutions, 27 XY attachments, six Z attachments, six launches, eight $86:A9D0 terminal calls, eight $86:986D landings, 49 B832 attachments, two pass cancellations, 14 statistic calls, and three effects. Strict production replay passes all 37 x 144 comparisons and stale-owner poisoning; eleven fixture mutations are rejected before execution. Public scheduler cases prove one prior animation/physics pass, intervening globals, late parent, consumed restore, next-due work, and pending odd dispatch. An isolated d221619 build fails all 37 cases with 659 mismatches across 135 common mutable fields, excluding new telemetry and identity-only words. The native domain is actor/id5 at $39EB, player $446B, lineup $4779=2, pack roster $AC:F636 -> host context1/roster2/persistent14, controllers {-1,0}, with period/difficulty/context+$08 fixed zero. A synthetic pack-only direction-8 case checks the AEC3 preserved +$52 contract without adding native coverage. The exact 620-byte/seven-range NBSHOT1 pack supplies A994/A9B2 and B448 data; the exact legacy 528-byte/five-range launch form still loads and launches, while close access and malformed directories reject. $86:A994-$A9CF is data-only and the separately implemented 54-start $86:A9D0 helper receives no instruction-start credit here. No whole-game trajectory or mode-fourteen conversion is claimed.",
+      "provenance": {
+        "rom_sha256": "2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870",
+        "raw_vectors": ".analysis/cpu-mode-thirteen-20260906/capture-v4/cpu_mode_thirteen.vectors.jsonl",
+        "raw_vectors_sha256": "72cd5c59ef0f042afb2f6cee5f4c6709a7cd5ad4caf68f7ab7ccd02e6c482fee",
+        "repeat_vectors": ".analysis/cpu-mode-thirteen-20260906/capture-v5/cpu_mode_thirteen.vectors.jsonl",
+        "repeat_vectors_sha256": "b310ca85621089dffae7968b6cac9544ec6c457429b966c05f87061cc8b3bd46",
+        "case_matrix_sha256": "96b5ec651e58a606b8a705613831dfa8c6dd8404fd3767a0882a61076ed8e989",
+        "path_trace_sha256": "7e95fca6af7adad344750d17562ea85868796fe67b0564e33e5f287c116bd5e3",
+        "capture_script_sha256": "a6317e4a48138b608257e881e34b9dbca80177e9225f2dc670268a9078005648",
+        "mesen_script_sha256": "e4218a56a4b0b7bce6d378155cbea165c076347799df45b02db528a09066e78c",
+        "ghidra_functions": ".analysis/cpu_gameplay_ghidra/cpu_gameplay_bank86_functions.c",
+        "ghidra_functions_sha256": "c3ce476090ee9a9ec970ce9b9ccb2fdeea42936f8a3ff9184880b609fff3b199",
+        "ghidra_instructions": ".analysis/full-rom-census/listings/bank_86_instructions.tsv",
+        "ghidra_instructions_sha256": "f642199de28e016061db579f28a28f60c772de70a6a2a6712ded609e03f7d63c"
+      },
+      "date": "2026-09-06"
+    },
+    {
       "range": "86B769-86B978",
       "name": "mode-twelve shooter parent",
       "source": "src/nba_tipoff.c + src/nba_shot_launch.c",

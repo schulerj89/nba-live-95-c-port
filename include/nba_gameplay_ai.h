@@ -10,6 +10,7 @@ typedef struct {
 
 typedef struct {
     uint16_t strategy_team_raw_00;
+    uint16_t anchor_x_fraction_raw_08;
     int16_t anchor_x_raw_0a;
     uint16_t score_raw_26;
     uint16_t strategy_raw_2e;
