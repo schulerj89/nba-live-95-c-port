@@ -1972,6 +1972,26 @@
       "date": "2026-09-06"
     },
     {
+      "range": "86A5B0-86A628",
+      "name": "mode-ten receiver",
+      "source": "src/nba_tipoff.c",
+      "method": "controlled genuine-entry native differential + strict direct replay + production scheduler/pass integration + headless Ghidra listing/decompilation",
+      "evidence": "Two byte-identical Mesen captures each record 18 genuine entries at $86:A5B0, with zero orphan exits, one expected pre-entry callback at the shared $86:A628 return, and PC, stack, flags, ROM, RNG, and child results untouched. The compact fixture retains all 18 calls and all 68 represented input/output words, covers the exact union of all 48 owned instruction starts, and pins the six $86:9846 restore calls. It proves invalid-receiver exact-$0082 live preservation versus clearing, the mixed $87:9C71 controller-held/actor-integer-Y table ABI, auxiliary normalization and preservation, wrapped ($0944-5) N/Z boundaries through $8004/$8005/$FFFF, timer 2/1/0/$8002/$8001, both $17D5 expiry paths, actor-group mode 1/2 restore, complete pass-global cleanup, and preservation of owner, $09C4, lookup inputs, positions, velocities, animation channels, scratch, and the ball record. The pristine f7e95cd implementation mismatches 10 of 18 calls; strict production replay now has zero mismatches. Full nba_tipoff_update checks prove prior velocity and animation run before post-global mode-ten behavior, common edge handling can clear +$60 before receiver expiry, restore consumes the behavior pass, and ordinary animation resources advance on a later even pass without synthetic exact-jump forcing. Two passes created through nba_tipoff_begin_rom_pass exercise both preinstalled passer/receiver slot orders through one production dispatcher pass and decrement the receiver timer exactly once; they do not exercise dynamic pass installation during the actor sweep. The shared dead-ball parent now uses the same 30-Hz $87:9244 scheduler: an ordinary odd frame preserves receiver timer, physics, and animation; the next even frame performs common motion/animation then exactly one subtraction; a pending odd dispatch clears the latch and runs behavior once without another prepare pass. A real state-$82 pass installs timer $0028 and releases after 25 outer updates with $000E remaining. A retained baseline/current C trace supplies separate production phase evidence: frame 159 has no pass and actor 9 in mode 2; matching frame-160 global pass work installs receiver 9 in mode 10 with timer 39, after which only the corrected later behavior sweep stores 37. This first natural divergence demonstrates same-update consumption after global pass creation. The scheduler correction separately first differs from the initial mode-ten build at frame 947, the odd frame after live state $82 begins, by retaining all actor behavior until due frame 948. These traces establish production phase and cadence without claiming whole-game native trajectory parity.",
+      "provenance": {
+        "rom_sha256": "2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870",
+        "raw_vectors": ".analysis/cpu-mode-ten-20260906/capture-v5/cpu_mode_ten.vectors.jsonl",
+        "raw_vectors_sha256": "87457e10e7e49644e87cdb3dd1121d597a45367094b8deb19a5f20a0a635cca3",
+        "case_matrix_sha256": "27a3cc6d54ddecb08c992cdb2587eb35c8a131cc9210aaf53d8841e8ddf3ea26",
+        "path_trace_sha256": "422f29a44cb4852144ada29b72b977d426e8111906eefd8571fd2ad2cb83ac5d",
+        "ghidra": ".analysis/full-rom-census/listings/bank_86_instructions.tsv",
+        "ghidra_sha256": "f642199de28e016061db579f28a28f60c772de70a6a2a6712ded609e03f7d63c",
+        "recomp": ".analysis/cpu_gameplay_ghidra/cpu_gameplay_bank86_functions.c",
+        "recomp_function": "cpu_gameplay_86_A5B0",
+        "recomp_sha256": "c3ce476090ee9a9ec970ce9b9ccb2fdeea42936f8a3ff9184880b609fff3b199"
+      },
+      "date": "2026-09-06"
+    },
+    {
       "range": "86C6AD-86C758",
       "name": "mode-eight knockdown recovery",
       "source": "src/nba_tipoff.c",

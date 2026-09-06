@@ -70,6 +70,17 @@ python tools/verify_cpu_mode_eight_vectors.py `
   --pack build/nba95_assets.pak
 ~~~
 
+The mode-ten receiver replay, preservation checks, and production scheduler
+checks run with:
+
+~~~powershell
+./tools/build_vector_probe.ps1 -Name cpu_mode_ten_vector_probe
+python tools/verify_cpu_mode_ten_vectors.py `
+  --vectors tests/fixtures/cpu-mode-ten-witnesses.json `
+  --probe build/cpu_mode_ten_vector_probe.exe `
+  --pack build/nba95_assets.pak
+~~~
+
 It and the permanent fixture verifiers follow the same workflow:
 
 1. Capture a real native entry and exit into a new ignored directory.

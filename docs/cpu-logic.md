@@ -7,10 +7,11 @@ animation; `$85:963D-$985F` then resolves locomotion and commits the velocity
 selected on the previous actor pass. Global ball, contact, and role work
 follows. The later `$87:9244 -> $87:9BD3/$9BD0` mode jump table dispatches the
 actor's current `+$5E` behavior. Production preserves this complete phase
-order for modes seven through nine: `cpu_update_all_actors` eases and advances the
-existing animation before committing old velocity, while the later behavior
-sweep runs `$86:994C`, `$86:C6AD`, or `$86:F0B7` after globals. Direct native-vector
-adapters intentionally call only the bounded behavior being replayed.
+order for modes seven through ten: `cpu_update_all_actors` eases and advances
+the existing animation before committing old velocity, while the later
+behavior sweep runs `$86:994C`, `$86:A5B0`, `$86:C6AD`, or `$86:F0B7` after
+globals. Direct native-vector adapters intentionally call only the bounded
+behavior being replayed.
 
 The dispatch table currently maps modes 0 through 17 to no-op, ordinary CPU
 offense/defense continuations, dead-ball and action holds, knockdown, target
@@ -208,5 +209,90 @@ native `+$5A/+$7A` countdown and same-pass mode-eight dispatch. Whole-game launc
 state, scheduler history, and RNG history also remain outside this bounded
 routine result.
 
-The next bounded dispatch target is mode-ten receiver
-`$86:A5B0-$A628`; it remains unverified here.
+## Mode ten receiver
+
+`$86:A5B0-$A628` consumes the scheduler-selected actor pointer and physical
+delta `$C6=2`, actor timer `+$60`, group `+$6E`, mode `+$5E`, behavior timer
+`+$64`, flags `+$7E`, and status `+$28`. Its globals are full-word live state
+`$0936`, offense group `$093A`, owner `$093E`, pass actor `$0942`, auxiliary
+selector `$0944`, receiver `$0946`, ball activity `$0948`, attempt latch
+`$094A`, inbound transfer `$09B8`, pass-active `$09C4`, and rules word `$17D5`.
+
+With a nonnegative receiver, `$A5BA-$A5D8` first evaluates the N/Z flags from
+the wrapped subtraction `($0944-5)`. A nonnegative nonzero result masks the
+selector to three bits and follows the native `$87:9C71` pointer table.
+Indices 0 through 4 read the held-input word from controller records; indices
+5 through 7 read the signed integer Y word from actors 0 through 2. A
+nonnegative referenced word normalizes `$0944` to the masked index; a negative
+word preserves it. This includes full-word wrap cases such as `$8004`, `$8005`,
+and `$FFFF`; it is not an ordinary greater-than-five comparison.
+
+The routine then subtracts two from actor `+$60`. A nonnegative signed result
+returns without other writes. A negative result reads `$17D5`; both native
+paths call `$86:9846`, which selects mode 1 or 2 from actor group `+$6E` versus
+offense group `$093A`, writes behavior timer `$2F`, and clears timer, flags,
+and status. Both paths then clear live state. An initially negative receiver
+calls the same restore directly and preserves live state only when its exact
+full word is `$0082`. Every terminating path sets `$0942/$0944/$0946` to
+`$FFFF` and clears `$0948/$094A/$09B8`; owner `$093E`, pass-active `$09C4`,
+the ball record, coordinates, velocities, animation channels, lookup inputs,
+and represented scratch remain unchanged.
+
+`tests/fixtures/cpu-mode-ten-witnesses.json` retains 18 calls from two
+byte-identical genuine-entry Mesen captures. Every call enters at `$86:A5B0`,
+exits at the shared `$86:A628` return, and collectively covers all 48 owned
+instruction starts. The 68-word projection covers the full modeled write set
+and preservation set, including controller-held and actor-Y lookup inputs,
+coordinates, velocities, animation channels, and scratch. Exact child counts
+pin the six `$86:9846` calls. The cases cover invalid receivers with both live
+outcomes, controller and actor table signs, selector normalization and wrapped
+comparison boundaries, timer `2/1/0/$8002/$8001`, both `$17D5` paths, and
+actor-group mode 1/2 restore. The pristine `f7e95cd` implementation mismatches
+10 of 18 final-shape calls; strict replay of the corrected production leaf has
+zero mismatches.
+
+The production probe proves old velocity and animation advance before the
+later mode-ten behavior, global inputs published at the post-physics boundary
+are consumed in that pass, common edge handling can clear `+$60` before the
+leaf expires the receiver, and restore consumes the behavior pass. One further
+even pass advances a valid ordinary locomotion pose through pack-backed
+resources without synthetic exact-jump animation. Two passes installed through
+`nba_tipoff_begin_rom_pass` exercise both preinstalled passer/receiver slot
+orders through the production dispatcher and decrement the receiver timer
+exactly once. Dynamic pass installation during the actor sweep is supported by
+the reviewed phase order but is not exercised by those slot-order cases.
+
+The dead-ball possession parent now reaches that same scheduler helper instead
+of dispatching every actor behavior on every 60-Hz presentation frame. The
+focused public-entry checks prove an ordinary odd frame leaves receiver timer,
+physics, and animation unchanged; the next even pass commits motion and
+animation before one timer subtraction; and an explicitly pending odd dispatch
+clears its latch and runs behavior once without rerunning physics or the
+mode-eight/mode-nine prepare pass. A real state-`$82` pass installed by
+`nba_tipoff_begin_rom_pass` starts its receiver at `$0028`; its passer releases
+after 25 outer updates with receiver timer `$000E`, before mode-ten expiry.
+
+The retained C trace first differs at frame 160. Frame 159 has no pass and
+actor 9 is in mode 2. On frame 160, matching global pass work installs actor 9
+in mode 10 with timer 39; the corrected later behavior sweep alone subtracts
+two and stores 37. This is production phase evidence for same-update
+consumption after global pass creation, not a whole-game native trajectory
+claim.
+
+The scheduler-specific correction first differs from the initial mode-ten C
+build at frame 947. Frame 946 enters live state `$82` on an even actor pass. On
+the following odd frame, the initial build advances every normal actor decision
+while the corrected parent retains every actor until the due frame 948. This
+attributes the later corrected C-only image trajectory to the shared dead-ball
+cadence without extending the bounded `$86:A5B0-$A628` parity claim.
+
+The leaf itself has no asset dependency. The production continuation uses
+ROM-derived animation tables from `build/nba95_assets.pak`. Parity is limited
+to canonical `$C6=2`, represented full-word inputs, and the bounded late
+mode-ten dispatch. Broader scheduler, pass-creation, and whole-game RNG history
+remain outside this routine claim.
+
+The next bounded parent-composition target is the mode-twelve shooter at
+`$86:B769-$B978`. Several of its child slices already have separate evidence;
+the complete parent contract and its late-dispatch production binding remain
+pending.

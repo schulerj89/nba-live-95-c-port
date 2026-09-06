@@ -458,6 +458,7 @@ static bool cpu_update_rom_shooter(NbaTipoff *tipoff, unsigned slot);
 static bool cpu_update_rom_special_shooter(NbaTipoff *tipoff, unsigned slot);
 static bool cpu_update_rom_layup(NbaTipoff *tipoff, unsigned slot);
 static bool cpu_update_rom_special_receiver(NbaTipoff *tipoff, unsigned slot);
+static bool cpu_update_rom_receiver(NbaTipoff *tipoff, unsigned slot);
 static bool cpu_update_knockdown_actor(NbaTipoff *tipoff, unsigned slot);
 static bool actor_animation_resources(const NbaTipoff *tipoff,
     const NbaTipoffActor *actor, uint8_t direction,
@@ -1419,7 +1420,7 @@ static void cpu_apply_mode_nine(NbaTipoff *tipoff, unsigned slot) {
 }
 
 /* `$87:9244/$87:9BD3` and dispatched Bank $86 routines, CPU logic: execute
- * passive actor modes, including exact modes seven through nine children,
+ * passive actor modes, including exact modes seven through ten children,
  * and report whether the scheduled pass was consumed. */
 static bool cpu_apply_passive_mode(NbaTipoff *tipoff, unsigned slot) {
     NbaTipoffActor *actor = &tipoff->actors[slot];
@@ -1434,6 +1435,8 @@ static bool cpu_apply_passive_mode(NbaTipoff *tipoff, unsigned slot) {
     }
     if (actor->control_mode == 8u)
         return cpu_update_knockdown_actor(tipoff, slot);
+    if (actor->control_mode == 10u)
+        return cpu_update_rom_receiver(tipoff, slot);
     if (actor->control_mode == 16u) { /* `$86:B0F7-$B153`: post-shot hold. */
         /* `$86:B0F9-$B0FC` marks this actor as held before the timer pass.
          * This is not an animation install; the current pose/resources must
@@ -1488,18 +1491,37 @@ bool nba_tipoff_replay_passive_mode(NbaTipoff *tipoff, uint8_t actor) {
            cpu_apply_passive_mode(tipoff, actor);
 }
 
-/* `$87:9BD3` maps behavior mode 10 to wrapper `$87:9C3A`, which calls
- * `$86:A5B0-$A628`. A valid `$0946` receiver counts actor +$60 down by the
- * current actor delta. Once it expires, or whenever `$0946` is negative,
- * `$86:9846-$986C` restores the actor to the ordinary offense/defense mode
- * selected by actor +$6E versus `$093A`. The previous host implementation
- * skipped this executor and therefore allowed stale receivers to coast to a
- * court edge forever after A613 cleared the pass globals. */
+/* Host-only CPU-logic table adapter; no direct native address. Reproduce the exact
+ * `$87:9C71` pointer ABI consumed by `$86:A5C1-$A5D5`: entries zero through
+ * four are controller records at `$47EB+$40n`, whose +$08 is held input;
+ * entries five through seven are actor records zero through two, whose +$08
+ * is the signed integer Y word. */
+static int16_t cpu_mode_ten_table_sign_word(const NbaTipoff *tipoff,
+                                            uint16_t index) {
+    index &= 7u;
+    if (index < NBA_CONTROLLER_COUNT)
+        return (int16_t)tipoff->controllers.record[index].held;
+    return fp_integer_word(tipoff->actors[index - NBA_CONTROLLER_COUNT].y_fp);
+}
+
+/* `$86:A5B0-$A628`, CPU logic: normalize the receiver activity selector,
+ * count down mode ten, restore expired/invalid receivers through `$86:9846`,
+ * and clear the exact pass globals while preserving owner, `$09C4`, and the
+ * ball record. */
 static bool cpu_update_rom_receiver(NbaTipoff *tipoff, unsigned slot) {
     NbaTipoffActor *actor = &tipoff->actors[slot];
     if (actor->control_mode != 10u) return false;
-    bool receiver_valid = tipoff->pass_receiver_raw >= 0;
+    bool receiver_valid = (int16_t)tipoff->pass_receiver_raw >= 0;
     if (receiver_valid) {
+        uint16_t auxiliary = (uint16_t)tipoff->pass_aux_raw;
+        /* `$A5BA-$A5C1` branches on N/Z from the wrapped subtraction, not
+         * an ordinary signed or unsigned relational comparison. */
+        uint16_t compare = (uint16_t)(auxiliary - 5u);
+        if ((compare & 0x8000u) == 0u && compare != 0u) {
+            uint16_t index = auxiliary & 7u;
+            if (cpu_mode_ten_table_sign_word(tipoff, index) >= 0)
+                tipoff->pass_aux_raw = (int16_t)index;
+        }
         uint16_t remaining = (uint16_t)(actor->reaction_threshold - 2u);
         actor->reaction_threshold = remaining;
         if ((remaining & 0x8000u) == 0u) return true;
@@ -1507,7 +1529,13 @@ static bool cpu_update_rom_receiver(NbaTipoff *tipoff, unsigned slot) {
     /* `$86:9846`: offense group `$093A` receives mode 1; the other group
      * receives mode 2. It also clears +$60, +$7E and +$28. */
     cpu_restore_normal_mode(tipoff, slot);
-    return false;
+    /* `$17D5` selects two byte-distinct expiry paths, but both call the same
+     * restore child and converge before this unconditional live-state clear.
+     * The invalid-receiver path alone preserves exact live state `$0082`. */
+    if (receiver_valid || tipoff->live_state_raw != 0x0082u)
+        tipoff->live_state_raw = 0u;
+    cpu_cancel_rom_pass_activity(tipoff);
+    return true;
 }
 
 static bool cpu_active_decision_due(NbaTipoff *tipoff, unsigned slot) {
@@ -2296,8 +2324,9 @@ static void cpu_commit_actor_common(NbaTipoff *tipoff, unsigned slot) {
     actor->movement_direction = commit.facing_raw_4e;
 }
 
-/* `$85:963D-$985F`, CPU logic: commit the prior actor velocity. Modes seven
- * through nine defer their `$87:9244` behavior dispatch until after globals. */
+/* `$87:8F01-$8F8D/$85:963D-$985F`, CPU logic: run the actor's common
+ * physics prefix; modes seven through ten defer `$87:9244` behavior until
+ * after globals, while other modes retain their scoped legacy executors. */
 static bool cpu_move_actor(NbaTipoff *tipoff, unsigned slot) {
     NbaTipoffActor *actor = &tipoff->actors[slot];
     if (actor->control_mode == 15u &&
@@ -2309,29 +2338,13 @@ static bool cpu_move_actor(NbaTipoff *tipoff, unsigned slot) {
         return false;
     if (actor->control_mode == 13u && cpu_update_rom_layup(tipoff, slot))
         return false;
-    if (actor->control_mode == 10u && cpu_update_rom_receiver(tipoff, slot)) {
-        /* `$86:A5B0` (normal receiver) and `$86:B154` (special receiver)
-         * do not dispatch the generic formation accelerator. `$86:99C4`
-         * already led the pass by the receiver's existing velocity, so keep
-         * that motion through the common `$85:963D` coordinate commit. */
-        actor->x_fp += (int32_t)actor->velocity_x * 2;
-        actor->y_fp += (int32_t)actor->velocity_y * 2;
-        actor->movement_magnitude_raw = actor_distance(
-            actor->velocity_x, actor->velocity_y);
-        /* A5B8-A5BD already consumed the current actor delta inside
-         * cpu_update_rom_receiver.  ROM-COMPATIBILITY: do not apply a
-         * second host-side decrement here; the old duplicate countdown
-         * expired receivers twice as fast as the native 30-Hz pass. */
-        cpu_integrate_actor_vertical(actor);
-        return false;
-    }
     if (actor->control_mode == 14u) {
         cpu_commit_actor_common(tipoff, slot);
         (void)cpu_update_rom_special_receiver(tipoff, slot);
         return true;
     }
     if (actor->control_mode == 7u || actor->control_mode == 8u ||
-        actor->control_mode == 9u) {
+        actor->control_mode == 9u || actor->control_mode == 10u) {
         /* Native `$85:963D` consumes the previous special-mode velocity here;
          * Bank $86 computes the following pass only after global work. */
         cpu_commit_actor_common(tipoff, slot);
@@ -7581,7 +7594,7 @@ void nba_tipoff_refresh_team_roles_end_frame(NbaTipoff *tipoff) {
 }
 
 /* `$87:8EFB-$8F92` parent and `$87:8F01-$8F8D/$87:AAB2/$85:963D`, actor
- * scheduler/physics: run one 30-Hz pass; modes seven through nine advance their
+ * scheduler/physics: run one 30-Hz pass; modes seven through ten advance their
  * existing animation and commit prior velocity before later behavior. */
 static void cpu_update_all_actors(NbaTipoff *tipoff) {
     if ((tipoff->simulation_tick & 1u) != 0u) return;
@@ -7599,11 +7612,12 @@ static void cpu_update_all_actors(NbaTipoff *tipoff) {
         NbaTipoffActor *state = &tipoff->actors[actor];
         bool deferred_behavior = state->control_mode == 7u ||
                                  state->control_mode == 8u ||
-                                 state->control_mode == 9u;
+                                 state->control_mode == 9u ||
+                                 state->control_mode == 10u;
         cpu_ease_display_direction(state);
         /* `$87:8F13-$8F5E` eases +$52 before `$87:AAB2` resolves the pose;
          * `$85:963D` then begins the actor physics sweep. Preserve that order
-         * for modes seven through nine without changing other modes' model. */
+         * for modes seven through ten without changing other modes' model. */
         if (deferred_behavior)
             cpu_advance_actor_animation(tipoff, state);
         if (state->control_mode != 8u &&
@@ -7661,7 +7675,7 @@ static void cpu_prepare_mode_eight_nine_behavior(NbaTipoff *tipoff) {
 }
 
 /* `$87:9075-$9086/$87:9244`, actor scheduler/behavior: clear controller
- * sweep latches, then dispatch modes seven through nine and normal actors after
+ * sweep latches, then dispatch modes seven through ten and normal actors after
  * physics and the intervening global ball/contact/role work. */
 static void cpu_update_actor_behaviors(NbaTipoff *tipoff) {
     nba_controller_begin_sweep(&tipoff->controllers);
@@ -7671,7 +7685,8 @@ static void cpu_update_actor_behaviors(NbaTipoff *tipoff) {
             nba_tipoff_publish_controller_input(tipoff,actor,pad==0?tipoff->pad_held_raw:0);
         if (tipoff->actors[actor].control_mode == 7u ||
             tipoff->actors[actor].control_mode == 8u ||
-            tipoff->actors[actor].control_mode == 9u)
+            tipoff->actors[actor].control_mode == 9u ||
+            tipoff->actors[actor].control_mode == 10u)
             (void)cpu_apply_passive_mode(tipoff, actor);
         else {
             /* Even inbound owners enter F34F; F3DA selects the separate F43A
@@ -8566,8 +8581,11 @@ static void cpu_update_possession(NbaTipoff *tipoff) {
         cpu_update_player_contacts(tipoff);
         nba_tipoff_update_play_control_end_frame(tipoff);
         nba_tipoff_refresh_team_roles_end_frame(tipoff);
-        cpu_prepare_mode_eight_nine_behavior(tipoff);
-        cpu_update_actor_behaviors(tipoff);
+        /* `$87:9244`, CPU actor scheduler: dead-ball behavior shares the
+         * same 30-Hz post-global boundary as live play. The scheduling
+         * helper also preserves the one pending odd-frame dispatch created
+         * by the previously verified acquisition boundary. */
+        cpu_schedule_actor_behaviors(tipoff, false);
         if (tipoff->possession_actor >= 0 &&
             tipoff->possession_actor < NBA_GAMEPLAY_ACTOR_COUNT &&
             tipoff->inbound_transfer_raw == 0u) {

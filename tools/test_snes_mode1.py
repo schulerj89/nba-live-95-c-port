@@ -82,11 +82,17 @@ def main():
             # frame shows a coherent basket scene and 2-0 first-quarter HUD;
             # first motion divergence is the natural mode-nine call at 540.
             # Only this C-only census changes; pixel rules below stay intact.
-            assert summary["visible"]["bg1"] == 3329
-            assert summary["visible"]["bg2"] == 42995
+            # Re-reviewed after the mode-ten integration routed dead-ball
+            # behavior through `$87:9244`'s 30-Hz scheduler. A pristine
+            # f7e95cd build reproduces all five old counts. The cadence fix
+            # first differs from the initial mode-ten build at frame947. The
+            # current gameplay scene is coherent, and all rank, palette,
+            # indexed-color, and exact-accounting checks below are unchanged.
+            assert summary["visible"]["bg1"] == 3321
+            assert summary["visible"]["bg2"] == 41696
             assert summary["visible"]["bg3"] == 6013
-            assert summary["visible"]["obj"] == 3015
-            assert summary["visible"]["backdrop"] == 1992
+            assert summary["visible"]["obj"] == 3834
+            assert summary["visible"]["backdrop"] == 2480
             counts = {name: 0 for name in
                       ("BACKDROP", "BG1", "BG2", "BG3", "OBJ")}
             indexed = direct = rows = 0

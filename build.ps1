@@ -158,6 +158,14 @@ if ($Test) {
         '--pack', $AssetPack
     )
 
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name cpu_mode_ten_vector_probe
+    if ($LASTEXITCODE -ne 0) { throw 'CPU mode-ten probe build failed.' }
+    Invoke-PythonRegression -Script 'verify_cpu_mode_ten_vectors.py' -Arguments @(
+        '--vectors', (Join-Path $Root 'tests\fixtures\cpu-mode-ten-witnesses.json'),
+        '--probe', (Join-Path $BuildDir 'cpu_mode_ten_vector_probe.exe'),
+        '--pack', $AssetPack
+    )
+
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name normal_actor_parent_vector_probe
     if ($LASTEXITCODE -ne 0) { throw 'CPU actor-parent probe build failed.' }
     Invoke-PythonRegression -Script 'verify_normal_actor_parent_vectors.py' -Arguments @(

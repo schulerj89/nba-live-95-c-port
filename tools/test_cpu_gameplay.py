@@ -193,11 +193,20 @@ EXPECTED_RGB = {
     # 2686, a real `$86:C91E` contact installs mode eight on actor 6. The later
     # three anchors retain a coherent court, players, ball, baskets, crowd,
     # event overlay, and readable HUD under the corrected trajectory.
+    # Re-reviewed after `$86:A5B0-$A628` restored the late mode-ten receiver
+    # and the shared dead-ball parent adopted `$87:9244`'s 30-Hz cadence.
+    # Frame600 remains byte-identical. The leaf's first trace difference is
+    # frame160: global pass work changes actor9 from mode2 to mode10 with timer
+    # 39, then the later behavior stores37. The parent correction first differs
+    # from the initial mode-ten build at frame947, where an odd dead-ball frame
+    # now retains actor state until due frame948. The four changed anchors are
+    # coherent gameplay frames. The pristine f7e95cd source build reproduced
+    # every old RGB hash; native routine goldens are unchanged.
     600: "868b26b40f94ca3668d63a76f6c938403a12bb8e92c52393feb9ee8e04e871ec",
-    1300: "5c17e72d13384f64afaf3df547cce396eb56bc3f44a9aa3f4b947bd342df08e2",
-    3480: "0c67676c928e83bb3650119feae935a509a5280c34fb5c8827414ee26b39dfb1",
-    6932: "84d122742faa1d7a71a66ea8315ec0afadc69e4ae37825d608cce30af0629e80",
-    6954: "a330dc79c0d1d114ce65131abfea8b3d7ccfb32ccecab3974d97f1d6b6c8bac2",
+    1300: "af324fc5d1ec3ee111293011fc6f2eb5d30b023bee5c24f3ca91f5529ac95f0f",
+    3480: "af829ed22e8bf6b7c2d9994aebb78003221adb7139f7a99327994dc3d0677911",
+    6932: "0ce50088c96ccebef8b8fb2802ad31108a97450710b3851c1ee82201e54b96f0",
+    6954: "27dd2a52165a76486b28abc12aa2b4e883616a6b899bfb944f7164130ba8467f",
 }
 
 

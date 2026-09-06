@@ -64,6 +64,11 @@ Recent source-verified visual and gameplay fixes include:
 - the native control-mode-nine timed target override, including late signed
   recovery countdown, signed timer boundaries, saved-target and final-window
   velocity selection, saved-mode restore, and post-global animation timing.
+- the native control-mode-ten receiver, including mixed controller/actor table
+  normalization, signed-wrap timer boundaries, complete pass cleanup, exact
+  live-state handling, restore, post-global scheduler timing, and the shared
+  30-Hz dead-ball behavior boundary required to keep receiver and passer
+  progress synchronized.
 
 These paths are protected by test_tipoff_court_smoke.py,
 test_dribble_smoke.py, test_hoop_smoke.py, test_oob_smoke.py, and
@@ -71,8 +76,8 @@ test_cpu_reaction_smoke.py, plus their native-vector verifiers, including the
 six-case defense-context, eight-case mode-five, two-case mode-one and
 mode-three role-flag, nine-case mode-two, twelve-case mode-four, and ten-case
   mode-six actor-parent replays, plus the nineteen-case mode-seven,
-  nineteen-case mode-eight, and sixteen-case mode-nine direct replays and
-  their full-scheduler phase checks.
+  nineteen-case mode-eight, sixteen-case mode-nine, and eighteen-case mode-ten
+  direct replays and their full-scheduler phase checks.
 
 ## Major remaining gaps
 
