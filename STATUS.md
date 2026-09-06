@@ -55,13 +55,17 @@ Recent source-verified visual and gameplay fixes include:
   targeting, even while the mutable assignment names another opponent.
 - the native control-mode-six negative role-result hold for human-controlled
   actors during ordinary live play.
+- the native control-mode-seven dead-ball hold, including exact live-state,
+  integer-height, and signed-timer gates, CPU origin steering, animation and
+  direction-latch branches, and its post-global production dispatch order.
 
 These paths are protected by test_tipoff_court_smoke.py,
 test_dribble_smoke.py, test_hoop_smoke.py, test_oob_smoke.py, and
 test_cpu_reaction_smoke.py, plus their native-vector verifiers, including the
 six-case defense-context, eight-case mode-five, two-case mode-one and
 mode-three role-flag, nine-case mode-two, twelve-case mode-four, and ten-case
-mode-six actor-parent replays.
+mode-six actor-parent replays, plus the nineteen-case mode-seven direct replay
+and full-scheduler phase check.
 
 ## Major remaining gaps
 
@@ -87,7 +91,7 @@ Current generated captured-address measurements are:
 |---|---:|---:|
 | observed in retained execution captures | 29,438 | 100.0% |
 | documented by source provenance | 29,101 | 98.9% |
-| inside evidence-eligible verified ranges | 11,763 | 40.0% |
+| inside evidence-eligible verified ranges | 11,801 | 40.1% |
 
 These are coverage measurements for retained captures. They are not a
 percentage of the ROM, retail features, or game completion. The generated
@@ -123,3 +127,6 @@ Plans, dated checkpoints, task audits, migration notes, and screenshot reports
 are not maintained in the working tree. Git history remains their archive.
 When behavior changes, update the implementation comments, executable tests,
 this status, and the generated evidence artifacts that actually changed.
+System workflow documentation allowed by AGENTS.md, such as
+[docs/cpu-logic.md](docs/cpu-logic.md), records durable dispatch and evidence
+boundaries needed to maintain the port.

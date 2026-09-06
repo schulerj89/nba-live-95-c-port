@@ -1952,6 +1952,26 @@
       "date": "2026-09-05"
     },
     {
+      "range": "86994C-8699C3",
+      "name": "mode-seven dead-ball hold",
+      "source": "src/nba_tipoff.c",
+      "method": "controlled genuine-entry native differential + strict direct replay + production scheduler integration + headless Ghidra listing/decompilation",
+      "evidence": "Two byte-identical Mesen captures each record 19 genuine entries at $86:994C with zero orphan exits and PC, stack, flags, ROM, RNG, and child results untouched. The compact fixture retains all 19 calls and all 50 represented input/output words, covers both exits and the exact union of all 46 instruction starts, and pins each call's animation, restore, steering, and velocity-child counts. It covers exact full-word $0936 matching, positive/negative integer Z and fractional grounded Z, timer 2/1/$8002/$8001 boundaries, stationary and X/Y movement, zero versus arbitrary nonzero direction latch, human boost preservation, CPU origin damping through exact zero, off-origin steering, matching/locked animation states, and state-three boost remapping. The old production implementation mismatched all 19 calls; the strict production replay now has zero mismatches. A full nba_tipoff_update integration check also proves facing ease precedes pose resolution, prior velocity commits position before global work, a fresh state $10 is not cadence-advanced in the same pass, and post-physics live/ownership context is read by the later behavior sweep.",
+      "provenance": {
+        "rom_sha256": "2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870",
+        "raw_vectors": ".analysis/cpu-mode-seven-20260906/capture-v6/cpu_mode_seven.vectors.jsonl",
+        "raw_vectors_sha256": "716abe79f591eda00940976d70f9eb1f96075be82d92dd3fd5195fb7e08ce626",
+        "case_matrix_sha256": "f475f29cec2a77e6017823f7b3b2cfcfb886ced08f3fe6354bcf54cdb7adeb80",
+        "path_trace_sha256": "5a4dafcd8d8ba44c23cbe48c59492253b19f2c4eba66c9b05c24c798b1746266",
+        "ghidra": ".analysis/full-rom-census/listings/bank_86_instructions.tsv",
+        "ghidra_sha256": "f642199de28e016061db579f28a28f60c772de70a6a2a6712ded609e03f7d63c",
+        "recomp": ".analysis/cpu_gameplay_ghidra/cpu_gameplay_bank86_functions.c",
+        "recomp_function": "cpu_gameplay_86_994C",
+        "recomp_sha256": "c3ce476090ee9a9ec970ce9b9ccb2fdeea42936f8a3ff9184880b609fff3b199"
+      },
+      "date": "2026-09-06"
+    },
+    {
       "range": "86F1B0-86F23E",
       "name": "normal mode-one CPU actor continuation",
       "source": "src/nba_tipoff.c + src/nba_gameplay_ai.c",

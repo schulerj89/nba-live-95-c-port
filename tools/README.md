@@ -129,4 +129,7 @@ is a game-completion percentage.
 
 The checked-in documentation artifacts are limited to
 docs/verified-routines.json, docs/progress.md, and the JSON/Markdown full-ROM
-census. Product scope and remaining gaps live in STATUS.md.
+census. Product scope and remaining gaps live in STATUS.md. Durable system
+workflow documents explicitly allowed by AGENTS.md, including
+docs/cpu-logic.md, may also be maintained when they describe real production
+dispatch and evidence boundaries.

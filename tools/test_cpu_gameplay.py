@@ -989,11 +989,25 @@ def main():
         if not {(0x0B, 0x03), (0x16, 0x32)}.issubset(mismatch_pairs):
             raise AssertionError(f"independent animation pairs missing: {mismatch_pairs}")
         rng_states = [row["possession"]["rng_state_raw"] for row in rows[219:]]
-        if 0xFFFF in rng_states:
-            raise AssertionError("$80:CEE7 RNG state was not retained")
-        # `$80:CEE7` can publish zero for one idle span when a left shift
-        # exhausts the state; its next actual call reseeds to `$9146`.
-        # Preserve that native quirk while rejecting a stuck/uninitialized RNG.
+        if any(type(value) is not int or not 0 <= value <= 0xFFFF
+               for value in rng_states):
+            raise AssertionError("$80:CEE7 RNG telemetry is not a 16-bit word")
+        # This 63,800-frame C scenario expects broad variation plus both idle
+        # retention and active changes; it is a liveness regression, not an
+        # exact native call-count claim. The maximal nonzero `$80:CEE7` orbit
+        # legitimately includes $FFFF
+        # ($F13C->$FFFF->$E279). Retention therefore checks that this sustained
+        # CPU run contains both held states and broad state variation instead
+        # of reserving a valid LFSR word as an unknown-data sentinel.
+        if len(set(rng_states)) < 256 or \
+                not any(left == right for left, right in
+                        zip(rng_states, rng_states[1:])) or \
+                not any(left != right for left, right in
+                        zip(rng_states, rng_states[1:])):
+            raise AssertionError("$80:CEE7 RNG state was not retained live")
+        # The nonzero CEE7 LFSR orbit never reaches zero. Other native writers
+        # to shared `$07F6` can publish zero; the next actual CEE7 call then
+        # reseeds to `$9146`. Preserve that shared-state recovery behavior.
         for index, value in enumerate(rng_states):
             if value != 0 or (index and rng_states[index - 1] == 0):
                 continue

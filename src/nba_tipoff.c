@@ -639,18 +639,30 @@ static void actor_publish_body_mirror(NbaTipoffActor *actor) {
     if (actor->direction < 3u) actor->actor_status_raw_28 |= 0x8000u;
 }
 
-static void actor_animation_command(NbaTipoff *tipoff, NbaTipoffActor *actor,
-    NbaPlayerAnimationCommand command, uint16_t state) {
+/* `$87:B3BD-$B479`, animation system: apply a command to the actor's queued
+ * upper/lower channels without resolving the later render resource phase. */
+static bool actor_queue_animation_command(NbaTipoff *tipoff,
+    NbaTipoffActor *actor, NbaPlayerAnimationCommand command, uint16_t state) {
     NbaPlayerAnimationChannels channels = actor_animation_channels(actor);
     if (!nba_player_animation_command_scratch(tipoff->assets, &channels, command,
             &state, actor->movement_boost_timer != 0,
-            actor->free_throw_launch_half_raw_a8 != 0,&tipoff->scratch_0047)) return;
+            actor->free_throw_launch_half_raw_a8 != 0,&tipoff->scratch_0047)) return false;
     tipoff->scratch_0046=(uint16_t)((tipoff->scratch_0046&255u)|(tipoff->scratch_0047<<8));
     actor_store_animation_channels(actor, &channels);
     actor->animation_resources_valid = false;
+    return true;
+}
+
+/* `$87:B3BD-$B479` plus selected `$87:AEC3` integration, animation system:
+ * queue a command and immediately publish resources only for adopted action
+ * paths whose native caller resolves them at the same boundary. */
+static void actor_animation_command(NbaTipoff *tipoff, NbaTipoffActor *actor,
+    NbaPlayerAnimationCommand command, uint16_t state) {
+    if (!actor_queue_animation_command(tipoff, actor, command, state)) return;
     /* `$87:AEC3` refreshes the new pose without consuming a cadence tick.
      * Adopt this only for the already-integrated live-pass action path. */
     if (actor->exact_pass_animation || actor->exact_jump_animation) {
+        NbaPlayerAnimationChannels channels = actor_animation_channels(actor);
         NbaPlayerResolvedPose pose = {0};
         pose.direction = actor->direction;
         actor->animation_resources_valid = nba_player_resolve_pose(
@@ -1292,9 +1304,70 @@ bool nba_tipoff_replay_defensive_pose(NbaTipoff *tipoff, uint8_t actor) {
     return cpu_refresh_defense_target(tipoff, actor, &stop_velocity, NULL);
 }
 
-/* Proven passive behavior executors from `$87:9244/$87:9BD3`. Returning
- * true means the mode consumed this actor's scheduled pass. Modes 1-6 and
- * the active ball handlers remain in the explicitly provisional planner. */
+/* `$86:994C-$99C3`, CPU logic: execute mode seven's dead-ball hold. The
+ * caller supplies the scheduler-selected actor; native DP $C6 is two for the
+ * production actor pass represented here. */
+static void cpu_apply_mode_seven(NbaTipoff *tipoff, unsigned slot) {
+    NbaTipoffActor *actor = &tipoff->actors[slot];
+    /* `$994C-$9961`: only the exact full-word dead-ball state continues.
+     * Both this path and timer expiry install state three before `$9846`. */
+    if (tipoff->live_state_raw != 0x0082u) {
+        (void)actor_queue_animation_command(
+            tipoff, actor, NBA_ANIMATION_INSTALL_BOTH, 3u);
+        cpu_restore_normal_mode(tipoff, slot);
+        return;
+    }
+    /* `$9962-$9967` reads integer Z +$0C. A grounded actor may retain a
+     * nonzero fractional byte in +$0B and must still run the hold. */
+    if (fp_integer_word(actor->z_fp) != 0) return;
+
+    uint16_t remaining = (uint16_t)(actor->reaction_threshold - 2u);
+    actor->reaction_threshold = remaining;
+    if ((int16_t)remaining < 0) {
+        (void)actor_queue_animation_command(
+            tipoff, actor, NBA_ANIMATION_INSTALL_BOTH, 3u);
+        cpu_restore_normal_mode(tipoff, slot);
+        return;
+    }
+
+    /* `$9974-$997D`: CPU actors steer toward world origin through the
+     * already translated `$85:B3AA -> $85:A82C` movement child. Human actors
+     * preserve velocity and boost exactly. */
+    if (actor->controller_assignment_raw < 0) {
+        uint8_t direction = nba_gameplay_target_direction(
+            (int16_t)(0u - (uint16_t)fp_integer_word(actor->x_fp)),
+            (int16_t)(0u - (uint16_t)fp_integer_word(actor->y_fp)), NULL);
+        uint8_t profile_42 = 0x58u;
+        uint8_t team = team_id_for_context(tipoff, slot / 5u);
+        (void)nba_player_gameplay_movement_profile(
+            tipoff->assets, team, actor->roster_slot, &profile_42);
+        nba_gameplay_velocity_step(
+            &actor->velocity_x, &actor->velocity_y,
+            &actor->movement_boost_timer, direction, profile_42, 2u, false,
+            (int16_t)tipoff->possession_actor);
+    }
+
+    if ((uint16_t)actor->velocity_x == 0u &&
+        (uint16_t)actor->velocity_y == 0u) {
+        (void)actor_queue_animation_command(
+            tipoff, actor, NBA_ANIMATION_INSTALL_BOTH, 0x10u);
+        actor->movement_direction = actor->requested_direction;
+        actor->pass_direction_raw = 0u;
+        return;
+    }
+
+    (void)actor_queue_animation_command(
+        tipoff, actor, NBA_ANIMATION_INSTALL_BOTH, 0x0Eu);
+    if (actor->pass_direction_raw != 0u) {
+        actor->movement_direction ^= 4u;
+        actor->requested_direction = actor->movement_direction;
+    }
+    actor->pass_direction_raw = 1u;
+}
+
+/* `$87:9244/$87:9BD3` and dispatched Bank $86 routines, CPU logic: execute
+ * passive actor modes and report whether the scheduled pass was consumed.
+ * Modes 1-6 and active ball handlers remain in the normal planner. */
 static bool cpu_apply_passive_mode(NbaTipoff *tipoff, unsigned slot) {
     NbaTipoffActor *actor = &tipoff->actors[slot];
     if (actor->control_mode == 0u) { /* `$87:9C1B`: no-op wrapper. */
@@ -1369,15 +1442,8 @@ static bool cpu_apply_passive_mode(NbaTipoff *tipoff, unsigned slot) {
         }
         return true;
     }
-    if (actor->control_mode == 7u) { /* `$86:994C-$99C3`: dead-ball hold. */
-        uint16_t remaining = (uint16_t)(actor->reaction_threshold - 2u);
-        actor->reaction_threshold = remaining;
-        actor->velocity_x = actor->velocity_y = 0;
-        actor_set_animation(actor, 3u, 3u);
-        if ((remaining & 0x8000u) != 0u) {
-            actor->reaction_threshold = 0u;
-            actor->control_mode = 0u; /* `$86:9846` planner boundary. */
-        }
+    if (actor->control_mode == 7u) {
+        cpu_apply_mode_seven(tipoff, slot);
         return true;
     }
     return false;
@@ -2204,6 +2270,8 @@ static void cpu_commit_actor_common(NbaTipoff *tipoff, unsigned slot) {
     actor->movement_direction = commit.facing_raw_4e;
 }
 
+/* `$85:963D-$985F`, CPU logic: commit the prior actor velocity. Mode seven's
+ * later `$87:9244` behavior dispatch is owned by the post-global sweep. */
 static bool cpu_move_actor(NbaTipoff *tipoff, unsigned slot) {
     NbaTipoffActor *actor = &tipoff->actors[slot];
     if (actor->control_mode == 15u &&
@@ -2234,6 +2302,12 @@ static bool cpu_move_actor(NbaTipoff *tipoff, unsigned slot) {
     if (actor->control_mode == 14u) {
         cpu_commit_actor_common(tipoff, slot);
         (void)cpu_update_rom_special_receiver(tipoff, slot);
+        return true;
+    }
+    if (actor->control_mode == 7u) {
+        /* Native `$85:963D` consumes the previous mode-seven velocity here;
+         * `$86:994C` computes the following pass only after global work. */
+        cpu_commit_actor_common(tipoff, slot);
         return true;
     }
     if (cpu_update_knockdown_actor(tipoff, slot)) return false;
@@ -7473,11 +7547,11 @@ void nba_tipoff_refresh_team_roles_end_frame(NbaTipoff *tipoff) {
     nba_tipoff_refresh_defense_roles_end_frame(tipoff);
 }
 
+/* `$87:8EFB-$8F92` parent and `$87:8F01-$8F8D/$87:AAB2/$85:963D`, actor
+ * scheduler/physics: run one 30-Hz ten-actor pass with `$0938/$C6=2`; mode
+ * seven eases facing, advances its existing animation, then commits prior
+ * velocity. */
 static void cpu_update_all_actors(NbaTipoff *tipoff) {
-    /* `$87:8F01-$8F8D` updates all ten actors as one logical pass with
-     * `$C6/$0938=2`. */
-    /* `$87:8EFB-$8F92` is one global 30-Hz pass with `$0938/$C6=2`.
-     * Possession and inbound changes do not rephase it. */
     if ((tipoff->simulation_tick & 1u) != 0u) return;
     ++tipoff->actor_update_tick;
     tipoff->actor_pass_executed = true;
@@ -7491,7 +7565,13 @@ static void cpu_update_all_actors(NbaTipoff *tipoff) {
             tipoff->actors[actor].control_mode;
     for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
         NbaTipoffActor *state = &tipoff->actors[actor];
+        bool mode_seven = state->control_mode == 7u;
         cpu_ease_display_direction(state);
+        /* `$87:8F13-$8F5E` eases +$52 before `$87:AAB2` resolves the pose;
+         * `$85:963D` then begins the actor physics sweep. Preserve that order
+         * for mode seven without changing other modes' partial model. */
+        if (mode_seven)
+            cpu_advance_actor_animation(tipoff, state);
         if (state->contact_inhibit_raw_5a != 0u)
             state->contact_inhibit_raw_5a =
                 state->contact_inhibit_raw_5a > 2u ?
@@ -7507,7 +7587,8 @@ static void cpu_update_all_actors(NbaTipoff *tipoff) {
         if (!common_committed)
             cpu_clamp_actor_to_court(&state->x_fp, &state->y_fp,
                                      &state->velocity_x, &state->velocity_y);
-        cpu_advance_actor_animation(tipoff, state);
+        if (!mode_seven)
+            cpu_advance_actor_animation(tipoff, state);
         (void)cpu_actor_contact_height(
             tipoff, actor, &state->contact_height_raw_aa);
         /* The renderer resolves the post-dispatch resource phase. Mirror
@@ -7521,18 +7602,22 @@ static void cpu_update_all_actors(NbaTipoff *tipoff) {
         tipoff->differential_observer(tipoff, "actors.end", tipoff->differential_context);
 }
 
+/* `$87:9075-$9086/$87:9244`, actor scheduler/behavior: clear controller
+ * sweep latches, then dispatch mode seven and normal actors after physics and
+ * the intervening global ball/contact/role work. */
 static void cpu_update_actor_behaviors(NbaTipoff *tipoff) {
-    /* $87:9075-9086 clears the per-pad latch before the $91xx actor sweep.
-     * Human action/movement dispatch is still gated off at match creation;
-     * publishing a record here alone does not implement $84:E2AC. */
     nba_controller_begin_sweep(&tipoff->controllers);
     for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
         int pad=tipoff->actors[actor].controller_assignment_raw;
         if(pad>=0 && pad<5 && !tipoff->controllers.record[pad].processed)
             nba_tipoff_publish_controller_input(tipoff,actor,pad==0?tipoff->pad_held_raw:0);
-        /* Even inbound owners enter F34F; F3DA selects the separate F43A
-         * continuation only after the common flag/pose prefix. */
-        cpu_dispatch_normal_actor_behavior(tipoff, actor);
+        if (tipoff->actors[actor].control_mode == 7u)
+            (void)cpu_apply_passive_mode(tipoff, actor);
+        else {
+            /* Even inbound owners enter F34F; F3DA selects the separate F43A
+             * continuation only after the common flag/pose prefix. */
+            cpu_dispatch_normal_actor_behavior(tipoff, actor);
+        }
         if(pad>=0 && pad<5 && tipoff->actors[actor].controller_assignment_raw>=0)
             tipoff->controllers.record[pad].processed=1;
     }
