@@ -6,7 +6,11 @@ These instructions apply to all work in this repository.
 
 - The manager assigns each sub-agent an exact native subroutine address range,
   its C implementation location, permitted changes, and required verification.
-  Only one subroutine implementation may be active at a time.
+  Each sub-agent may implement only one assigned subroutine at a time.
+  Independent subroutines may proceed concurrently in separate worktrees or
+  explicitly disjoint files. The manager defines ownership and integration
+  order; agents must not overwrite another agent's work or assume an unmerged
+  prerequisite is already available.
 - Sub-agents must use GPT-5.6 Sol (`gpt-5.6-sol`) with high reasoning. Do not
   substitute another model or reasoning level or delegate further.
 - Sub-agents must read this file before working, stay within their assignment,
@@ -14,7 +18,7 @@ These instructions apply to all work in this repository.
   unresolved limitations. Sub-agents must never stage, commit, or push changes.
 - Only the manager reviews and stages changes, commits, and pushes. The manager
   verifies scope, test evidence, function comments, and the absence of assets
-  before accepting an iteration and assigning the next subroutine.
+  before accepting an iteration and assigning that agent its next subroutine.
 
 ## Function comments and system documentation
 
@@ -38,8 +42,9 @@ These instructions apply to all work in this repository.
 
 ## One subroutine per iteration
 
-- Implement, port, or fix exactly one subroutine at a time. Identify its native
-  ROM address or C function and the behavior being changed before editing.
+- Each sub-agent implements, ports, or fixes exactly one subroutine at a time.
+  Identify its native ROM address or C function and the behavior being changed
+  before editing. This limit applies per agent, not to the entire project.
 - Keep each iteration limited to that subroutine and the directly necessary
   caller integration, tests, and evidence updates. Do not bundle unrelated
   subroutines, refactors, or cleanup into the same iteration.
@@ -58,9 +63,11 @@ These instructions apply to all work in this repository.
   or a focused assertion correction, retain already-passing evidence only when
   its executable, ROM, asset pack, and relevant test inputs are unchanged;
   rerun the changed assertion. Never treat stale or skipped results as passes.
-- Commit and push each tested subroutine as its own commit before starting the
-  next subroutine. If validation, commit, or push is blocked, resolve or report
-  the blocker rather than accumulating additional subroutine changes.
+- The manager integrates, tests, commits, and pushes each subroutine separately
+  before assigning its agent another subroutine. Independent agents may continue
+  their current assignments while another routine is reviewed or tested. If an
+  iteration is blocked, resolve or report its blocker without bundling it with
+  another routine. Recheck affected integration after combining worktree changes.
 - Documentation-only changes do not require artificial runtime tests; review
   the diff and check formatting before committing and pushing.
 
