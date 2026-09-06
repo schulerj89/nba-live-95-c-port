@@ -1,9 +1,11 @@
-param([Parameter(Mandatory=$true)][string]$Name)
+param([Parameter(Mandatory=$true)][string[]]$Name)
 $ErrorActionPreference = 'Stop'
-if ($Name -notmatch '^[a-z0-9_]+$') { throw 'Expected a probe basename.' }
 $root = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
-$source = Join-Path $PSScriptRoot "$Name.c"
-if (!(Test-Path -LiteralPath $source)) { throw "Probe source not found: $source" }
+foreach ($probeName in $Name) {
+    if ($probeName -notmatch '^[a-z0-9_]+$') { throw 'Expected a probe basename.' }
+    $source = Join-Path $PSScriptRoot "$probeName.c"
+    if (!(Test-Path -LiteralPath $source)) { throw "Probe source not found: $source" }
+}
 $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
 $vs = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
 if (!$vs) { throw 'MSVC build tools are required.' }
@@ -15,13 +17,22 @@ $objects = Get-Content (Join-Path $root 'nba95_sources.txt') |
 foreach ($object in $objects) {
     if (!(Test-Path -LiteralPath $object)) { throw 'Run build.ps1 before compiling vector probes.' }
 }
+$commands = foreach ($probeName in $Name) {
+    $source = Join-Path $PSScriptRoot "$probeName.c"
+    @"
+cl /nologo /W4 /O2 /MD /utf-8 /I "$root\include" /Fe"$build\$probeName.exe" /Fo"$build\$probeName.obj" "$source" $(($objects | ForEach-Object { '"' + $_ + '"' }) -join ' ') user32.lib gdi32.lib winmm.lib
+if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
+"@
+}
 $command = @"
 @echo off
 call "$vcvars" >nul
-cl /nologo /W4 /O2 /MD /utf-8 /I "$root\include" /Fe"$build\$Name.exe" /Fo"$build\$Name.obj" "$source" $(($objects | ForEach-Object { '"' + $_ + '"' }) -join ' ') user32.lib gdi32.lib winmm.lib
-exit /b %ERRORLEVEL%
+if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
+$($commands -join "`r`n")
+exit /b 0
 "@
-$batch = Join-Path $build "compile_$Name.bat"
+$batchName = if ($Name.Count -eq 1) { "compile_$($Name[0]).bat" } else { 'compile_vector_probes.bat' }
+$batch = Join-Path $build $batchName
 Set-Content -LiteralPath $batch -Value $command -Encoding ASCII
 & cmd /c $batch
 if ($LASTEXITCODE -ne 0) { throw "Probe build failed: $Name" }

@@ -6,6 +6,15 @@ the current CPU reverse-engineering workflow. Completed one-off capture and
 audit helpers are archived in Git history after their durable fixture is
 checked in under tests/fixtures/.
 
+## Full-suite execution
+
+`build.ps1 -Test` runs every maintained gate and prints per-script timings.
+Logs and `timings.json` are retained in the printed `build/test-runs/<id>/`
+directory, including failures. Vector probes share one MSVC initialization;
+the long CPU regression runs after the shorter route and compositor gates.
+See [the testing workflow](../docs/testing.md) for coverage ownership and the
+bounded trace decode cache.
+
 ## Asset pipeline
 
 Enable script file I/O in Mesen, then capture the verified US ROM inputs:

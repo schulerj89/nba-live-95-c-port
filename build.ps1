@@ -101,6 +101,11 @@ if ($Test) {
         throw '-Test requires a generated asset pack.'
     }
 
+    $TestRunDir = Join-Path $BuildDir ('test-runs/' + [guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Force -Path $TestRunDir | Out-Null
+    $RegressionTimings = [Collections.Generic.List[object]]::new()
+    Write-Host "Test logs and timings: $TestRunDir"
+
     function Invoke-PythonRegression {
         param(
             [Parameter(Mandatory = $true)]
@@ -108,9 +113,23 @@ if ($Test) {
             [string[]]$Arguments = @()
         )
         $ScriptPath = Join-Path $Root "tools\$Script"
-        & python $ScriptPath @Arguments
-        if ($LASTEXITCODE -ne 0) {
-            throw "$Script failed with exit code $LASTEXITCODE"
+        $Timer = [Diagnostics.Stopwatch]::StartNew()
+        $ExitCode = -1
+        try {
+            & python $ScriptPath @Arguments 2>&1 |
+                Tee-Object -FilePath (Join-Path $TestRunDir "$Script.log")
+            $ExitCode = $LASTEXITCODE
+            if ($ExitCode -ne 0) { throw "$Script failed with exit code $ExitCode" }
+        } finally {
+            $Timer.Stop()
+            $RegressionTimings.Add([pscustomobject]@{
+                script = $Script
+                seconds = [Math]::Round($Timer.Elapsed.TotalSeconds, 3)
+                exit_code = $ExitCode
+            })
+            ConvertTo-Json -InputObject @($RegressionTimings.ToArray()) |
+                Set-Content -LiteralPath (Join-Path $TestRunDir 'timings.json') -Encoding UTF8
+            Write-Host ("[TIMING] {0}: {1:N2}s (exit {2})" -f $Script, $Timer.Elapsed.TotalSeconds, $ExitCode)
         }
     }
 
@@ -120,6 +139,7 @@ if ($Test) {
     Invoke-PythonRegression -Script 'test_differential.py'
     Invoke-PythonRegression -Script 'test_mesen_portable.py'
     Invoke-PythonRegression -Script 'test_setup_transition_integrity.py'
+    Invoke-PythonRegression -Script 'test_jsonl_rows.py'
 
     $InputReportDir = Join-Path $BuildDir ('headless-input-' + [guid]::NewGuid().ToString('N'))
     Invoke-PythonRegression -Script 'test_headless_input.py' -Arguments @(
@@ -127,47 +147,42 @@ if ($Test) {
         '--output', $InputReportDir
     )
 
-    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name cpu_defense_context_vector_probe
-    if ($LASTEXITCODE -ne 0) { throw 'CPU defense-context probe build failed.' }
+    # Initialize MSVC once for all probes; each still links the current objects.
+    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name @(
+        'cpu_defense_context_vector_probe', 'cpu_mode_seven_vector_probe',
+        'cpu_mode_eight_vector_probe', 'cpu_mode_nine_vector_probe',
+        'cpu_mode_ten_vector_probe', 'normal_actor_parent_vector_probe'
+    )
+
     Invoke-PythonRegression -Script 'verify_cpu_defense_context_vectors.py' -Arguments @(
         '--vectors', (Join-Path $Root 'tests\fixtures\cpu-defense-context-witnesses.json'),
         '--probe', (Join-Path $BuildDir 'cpu_defense_context_vector_probe.exe')
     )
 
-    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name cpu_mode_seven_vector_probe
-    if ($LASTEXITCODE -ne 0) { throw 'CPU mode-seven probe build failed.' }
     Invoke-PythonRegression -Script 'verify_cpu_mode_seven_vectors.py' -Arguments @(
         '--vectors', (Join-Path $Root 'tests\fixtures\cpu-mode-seven-witnesses.json'),
         '--probe', (Join-Path $BuildDir 'cpu_mode_seven_vector_probe.exe'),
         '--pack', $AssetPack
     )
 
-    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name cpu_mode_eight_vector_probe
-    if ($LASTEXITCODE -ne 0) { throw 'CPU mode-eight probe build failed.' }
     Invoke-PythonRegression -Script 'verify_cpu_mode_eight_vectors.py' -Arguments @(
         '--vectors', (Join-Path $Root 'tests\fixtures\cpu-mode-eight-witnesses.json'),
         '--probe', (Join-Path $BuildDir 'cpu_mode_eight_vector_probe.exe'),
         '--pack', $AssetPack
     )
 
-    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name cpu_mode_nine_vector_probe
-    if ($LASTEXITCODE -ne 0) { throw 'CPU mode-nine probe build failed.' }
     Invoke-PythonRegression -Script 'verify_cpu_mode_nine_vectors.py' -Arguments @(
         '--vectors', (Join-Path $Root 'tests\fixtures\cpu-mode-nine-witnesses.json'),
         '--probe', (Join-Path $BuildDir 'cpu_mode_nine_vector_probe.exe'),
         '--pack', $AssetPack
     )
 
-    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name cpu_mode_ten_vector_probe
-    if ($LASTEXITCODE -ne 0) { throw 'CPU mode-ten probe build failed.' }
     Invoke-PythonRegression -Script 'verify_cpu_mode_ten_vectors.py' -Arguments @(
         '--vectors', (Join-Path $Root 'tests\fixtures\cpu-mode-ten-witnesses.json'),
         '--probe', (Join-Path $BuildDir 'cpu_mode_ten_vector_probe.exe'),
         '--pack', $AssetPack
     )
 
-    & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name normal_actor_parent_vector_probe
-    if ($LASTEXITCODE -ne 0) { throw 'CPU actor-parent probe build failed.' }
     Invoke-PythonRegression -Script 'verify_normal_actor_parent_vectors.py' -Arguments @(
         '--vectors',
         (Join-Path $Root 'tests\fixtures\normal-actor-parent-witnesses.json'),
@@ -206,8 +221,7 @@ if ($Test) {
         'test_player_intro_text.py',
         'test_tipoff.py',
         'test_gameplay_audio.py',
-        'test_gameplay_debugger.py',
-        'test_cpu_gameplay.py'
+        'test_gameplay_debugger.py'
     )) {
         Invoke-PythonRegression -Script $RegressionScript -Arguments $CommonRegressionArgs
     }
@@ -232,9 +246,10 @@ if ($Test) {
         '--capture-root', $NativeCaptureRoot, '--recomp', $NativeRecompRoot
     )
 
-    # Keep the compositor regression visible while its existing BG2 mismatch
-    # is investigated; placing it last lets the maintained product routes run.
+    # Fail on inexpensive route/compositor checks before the long CPU trace.
+    # All gates still run; none is sampled or replaced by the shorter tests.
     Invoke-PythonRegression -Script 'test_snes_mode1.py' -Arguments $CommonRegressionArgs
+    Invoke-PythonRegression -Script 'test_cpu_gameplay.py' -Arguments $CommonRegressionArgs
 }
 
 if ($Headless -or $DumpFrame) {

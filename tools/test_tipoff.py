@@ -168,14 +168,9 @@ def main():
                 raise AssertionError(
                     f"tip-off frame {frame} changed for {draw_configuration} pack: {digest}")
 
-        result = subprocess.run([
-            args.exe, "--headless", "--rom", args.rom, "--assets", args.pack,
-            "--player-setup-only", "--player-setup-confirm", "--frames", "5330",
-            "--debug-state",
-        ], capture_output=True, text=True, check=False)
-        if result.returncode or "SCN:TIPOFF" not in result.stdout:
-            raise AssertionError("final lineup card did not hand off to tip-off\n" +
-                                 result.stdout + result.stderr)
+        # test_player_intro.py owns the default 5,330-frame lineup handoff,
+        # including SCN:TIPOFF and every transition image hash. The full suite
+        # runs that gate; keep this script's distinct selected-home route below.
 
         selected_home = Path(directory) / "san_antonio_tipoff.bmp"
         result = subprocess.run([

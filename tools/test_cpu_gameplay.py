@@ -1,10 +1,10 @@
 """Long-running regression checks for ROM-derived CPU-versus-CPU gameplay."""
 
 import argparse
-import ctypes
+import contextlib
 import hashlib
 import json
-import os
+import pickle
 import subprocess
 import sys
 import tempfile
@@ -15,19 +15,15 @@ from PIL import Image
 from test_shot_state_trace import verify as verify_shot_state_trace
 from pass_interruption_trace import PassInterruptionGuard
 
-if sys.platform == "win32":
-    import msvcrt
-else:
-    msvcrt = None
-
-
 class JsonlRows:
-    """Disk-indexed JSONL sequence with bounded decoded-row memory.
+    """Disk-indexed JSONL sequence with a transient binary decode cache.
 
     The gameplay trace is currently about 1.4 GiB.  Materializing its text,
     split-line list and 63,800 decoded dictionaries simultaneously can exceed
-    the Windows commit limit.  This sequence retains only byte offsets plus a
-    small random-access cache; contiguous slices stream from disk.
+    the Windows commit limit. Decode each source row once into a private pickle
+    spool, then retain only spool offsets plus a small random-access cache.
+    Repeated assertion passes avoid JSON decoding while decoded memory remains
+    bounded, and close removes the transient spool.
     """
 
     # Random-access assertions repeatedly revisit compact frame windows. Keep
@@ -35,38 +31,28 @@ class JsonlRows:
     # cycles while remaining far below eager 1.4-GiB trace materialization.
     CACHE_ROWS = 8
 
-    @staticmethod
-    def _open_random_source(path):
-        """Open a fast seek handle that does not pin Windows temp cleanup."""
-        if sys.platform != "win32":
-            return path.open("rb")
-        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
-        create_file = kernel32.CreateFileW
-        create_file.argtypes = [ctypes.c_wchar_p, ctypes.c_uint32,
-                                ctypes.c_uint32, ctypes.c_void_p,
-                                ctypes.c_uint32, ctypes.c_uint32,
-                                ctypes.c_void_p]
-        create_file.restype = ctypes.c_void_p
-        handle = create_file(str(path), 0x80000000, 0x00000007, None,
-                             3, 0x00000080, None)
-        if handle == ctypes.c_void_p(-1).value:
-            raise ctypes.WinError(ctypes.get_last_error())
-        descriptor = msvcrt.open_osfhandle(
-            handle, os.O_RDONLY | getattr(os, "O_BINARY", 0))
-        return os.fdopen(descriptor, "rb")
-
     def __init__(self, path=None, *, root=None, indices=None):
         if root is None:
             self._root = self
             self.path = Path(path)
             self.offsets = []
-            offset = 0
-            with self.path.open("rb") as source:
-                for line in source:
-                    if line.strip():
-                        self.offsets.append(offset)
-                    offset += len(line)
-            self._random_source = self._open_random_source(self.path)
+            self._spool_directory = tempfile.TemporaryDirectory(
+                prefix="nba95-cpu-trace-")
+            self._spool_path = Path(self._spool_directory.name) / "rows.pickle"
+            self._random_source = None
+            try:
+                with self.path.open("rb") as source, \
+                        self._spool_path.open("wb") as spool:
+                    for line in source:
+                        if not line.strip():
+                            continue
+                        row = json.loads(line)
+                        self.offsets.append(spool.tell())
+                        pickle.dump(row, spool, protocol=pickle.HIGHEST_PROTOCOL)
+            except BaseException:
+                self._spool_directory.cleanup()
+                raise
+            self._random_source = self._spool_path.open("rb")
             self._cache = OrderedDict()
             self._indices = range(len(self.offsets))
         else:
@@ -85,7 +71,7 @@ class JsonlRows:
             return row
         source = self._root._random_source
         source.seek(self._root.offsets[absolute])
-        row = json.loads(source.readline())
+        row = pickle.load(source)
         cache[absolute] = row
         if len(cache) > self.CACHE_ROWS:
             cache.popitem(last=False)
@@ -103,15 +89,15 @@ class JsonlRows:
     def __iter__(self):
         indices = self._indices
         if isinstance(indices, range) and indices.step == 1 and len(indices):
-            with self.path.open("rb") as source:
+            with self._root._spool_path.open("rb") as source:
                 source.seek(self._root.offsets[indices.start])
                 for _ in indices:
-                    yield json.loads(source.readline())
+                    yield pickle.load(source)
             return
-        with self.path.open("rb") as source:
+        with self._root._spool_path.open("rb") as source:
             for absolute in indices:
                 source.seek(self._root.offsets[absolute])
-                yield json.loads(source.readline())
+                yield pickle.load(source)
 
     def where(self, predicate):
         selected = []
@@ -121,9 +107,16 @@ class JsonlRows:
         return JsonlRows(root=self._root, indices=selected)
 
     def close(self):
-        if self._root is self and not self._random_source.closed:
-            self._random_source.close()
+        if self._root is not self:
+            return
+        source = getattr(self, "_random_source", None)
+        if source is not None and not source.closed:
+            source.close()
+        if hasattr(self, "_cache"):
             self._cache.clear()
+        spool_directory = getattr(self, "_spool_directory", None)
+        if spool_directory is not None:
+            spool_directory.cleanup()
 
     def __del__(self):
         if getattr(self, "_root", None) is self:
@@ -411,7 +404,8 @@ def main():
                         help="recheck an existing 63800-row capture; skip capture only")
     args = parser.parse_args()
 
-    with tempfile.TemporaryDirectory() as directory:
+    with tempfile.TemporaryDirectory() as directory, \
+            contextlib.ExitStack() as cleanup:
         root = Path(directory)
         whistle = root / "gameplay_whistle.wav"
         whistle_run = subprocess.run([
@@ -445,6 +439,7 @@ def main():
                     "BALL M:" not in result.stdout:
                 raise AssertionError(result.stdout + result.stderr)
         rows = JsonlRows(trace)
+        cleanup.callback(rows.close)
         if len(rows) != 63800:
             raise AssertionError(f"expected 63800 CPU frames, got {len(rows)}")
         # Consecutive native frames 180..620 contain no small A->B->A player

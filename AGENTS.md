@@ -51,6 +51,13 @@ These instructions apply to all work in this repository.
   before committing. Record the commands, results, and any remaining limits in
   the commit message or accompanying maintained evidence. Missing prerequisites
   or skipped tests do not count as passing verification.
+- During implementation, use the focused routine and caller checks. Start the
+  full suite after implementation and review have stabilized, so expected
+  development failures do not repeatedly consume the long gameplay run.
+  Repeat affected checks after runtime changes. For documentation-only changes
+  or a focused assertion correction, retain already-passing evidence only when
+  its executable, ROM, asset pack, and relevant test inputs are unchanged;
+  rerun the changed assertion. Never treat stale or skipped results as passes.
 - Commit and push each tested subroutine as its own commit before starting the
   next subroutine. If validation, commit, or push is blocked, resolve or report
   the blocker rather than accumulating additional subroutine changes.

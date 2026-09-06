@@ -1,6 +1,7 @@
 """Regression checks for asset-pack safety, ROM identity, and host-rate timing."""
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 import hashlib
 import struct
 import subprocess
@@ -146,16 +147,24 @@ def check_rom_identity(exe, rom_path, valid_pack, directory, capture_root=None):
 
     extractor = Path(__file__).resolve().parent / "extract_assets.py"
     capture_args = ["--capture-root", str(capture_root)] if capture_root else []
-    extracted = []
-    for label, candidate in (("clean", rom_path), ("headered", headered_path)):
-        output = directory / f"{label}.pak"
-        result = subprocess.run(
-            [sys.executable, str(extractor), "--rom", str(candidate),
-             "--output", str(output), *capture_args],
-            text=True, capture_output=True, check=False,
-        )
-        require_success(result, f"{label} ROM asset extraction")
-        extracted.append(output.read_bytes())
+    # Both complete extractions are required: downstream builders also load
+    # the ROM path. Their packs/provenance use distinct output filenames and
+    # their shared capture inputs are read-only, so run the two processes
+    # together instead of repeating the entire extraction wall time.
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        extractions = []
+        for label, candidate in (("clean", rom_path), ("headered", headered_path)):
+            output = directory / f"{label}.pak"
+            future = pool.submit(
+                subprocess.run,
+                [sys.executable, str(extractor), "--rom", str(candidate),
+                 "--output", str(output), *capture_args],
+                text=True, capture_output=True, check=False,
+            )
+            extractions.append((label, output, future))
+        for label, _, future in extractions:
+            require_success(future.result(), f"{label} ROM asset extraction")
+    extracted = [output.read_bytes() for _, output, _ in extractions]
     if extracted[0] != extracted[1]:
         raise AssertionError("clean and copier-headered ROM extraction differs")
 
