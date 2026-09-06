@@ -40,4 +40,8 @@ bool nba_shot_close_finish_turn(const NbaAssetPack *assets, bool zero_selector,
 bool nba_shot_close_finish_landing(const NbaAssetPack *assets,
                                    uint16_t variant_offset,
                                    uint16_t *animation);
+/* `$86:B1A2-$B1AA`: mode-fourteen raw-byte lookup in packed `$86:B440`. */
+bool nba_shot_special_receiver_lower_queue(const NbaAssetPack *assets,
+                                           uint16_t variant_offset,
+                                           uint16_t *animation);
 #endif

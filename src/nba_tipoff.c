@@ -496,8 +496,8 @@ static void cpu_cancel_rom_pass_activity(NbaTipoff *tipoff) {
     tipoff->inbound_transfer_raw = 0u;
 }
 
-/* `$86:9846-$986C`: restore an actor from a transient receiver/action mode.
- * Native +$60 is represented by reaction_threshold for modes 10/14. */
+/* `$86:9846-$986C`, CPU logic: restore an actor from a transient receiver or
+ * action mode and synchronize both host projections of native actor `+$60`. */
 static void cpu_restore_normal_mode(NbaTipoff *tipoff, unsigned slot) {
     NbaTipoffActor *actor = &tipoff->actors[slot];
     NbaShotAction action={0};
@@ -506,6 +506,7 @@ static void cpu_restore_normal_mode(NbaTipoff *tipoff, unsigned slot) {
     actor->control_mode=(uint8_t)action.mode;
     actor->behavior_timer=action.behavior_timer;
     actor->reaction_threshold=action.timer;
+    actor->contact_action_timer_raw_60=action.timer;
     actor->behavior_flags_raw=action.flags;
     actor->actor_status_raw_28=action.status;
 }
@@ -944,8 +945,8 @@ static uint8_t pass_band_from_distance(uint16_t distance) {
            distance < 0x191u ? 4u : 5u;
 }
 
-/* `$86:AB2D-$AF65`: grounded mode-15 setup. This includes the aligned
- * `$2A-$2C` selector at `$86:AE52-$AED7`; airborne `$AFC4` and catch-preinit
+/* `$86:AB2D-$AF65`, CPU logic: grounded mode-15 setup. This includes the
+ * aligned `$2A-$2C` selector at `$86:AE52-$AED7`; airborne `$AFC4` and catch-preinit
  * `$AF66` still depend on raw writers not represented by the port. */
 bool nba_tipoff_begin_rom_pass(NbaTipoff *tipoff, unsigned passer_slot,
                                unsigned receiver_slot) {
@@ -1091,6 +1092,10 @@ bool nba_tipoff_begin_rom_pass(NbaTipoff *tipoff, unsigned passer_slot,
     passer->behavior_flags_raw |= 0x0006u;
     receiver->control_mode = 10u;
     receiver->reaction_threshold = receiver_timer;
+    /* Native `$86:AB2D-$AF65` has one actor +$60 word. Keep the host's
+     * mode-specialized aliases synchronized before a selected receiver can
+     * be promoted to mode 14 by the owner-flow caller. */
+    receiver->contact_action_timer_raw_60 = receiver_timer;
     if (passer->exact_pass_animation) {
         actor_animation_command(tipoff, passer, NBA_ANIMATION_INSTALL_UPPER, upper);
         if (airborne_family)
@@ -1423,7 +1428,7 @@ static void cpu_apply_mode_nine(NbaTipoff *tipoff, unsigned slot) {
 }
 
 /* `$87:9244/$87:9BD3` and dispatched Bank $86 routines, CPU logic: execute
- * passive actor modes, including exact modes seven through ten, twelve, and thirteen,
+ * passive actor modes, including exact modes seven through ten and twelve through fourteen,
  * and report whether the scheduled pass was consumed. */
 static bool cpu_apply_passive_mode(NbaTipoff *tipoff, unsigned slot) {
     NbaTipoffActor *actor = &tipoff->actors[slot];
@@ -1444,6 +1449,8 @@ static bool cpu_apply_passive_mode(NbaTipoff *tipoff, unsigned slot) {
         return cpu_update_rom_shooter(tipoff, slot);
     if (actor->control_mode == 13u)
         return cpu_update_rom_layup(tipoff, slot);
+    if (actor->control_mode == 14u)
+        return cpu_update_rom_special_receiver(tipoff, slot);
     if (actor->control_mode == 16u) { /* `$86:B0F7-$B153`: post-shot hold. */
         /* `$86:B0F9-$B0FC` marks this actor as held before the timer pass.
          * This is not an animation install; the current pose/resources must
@@ -1953,6 +1960,9 @@ static void cpu_owner_accelerate(NbaTipoff *t,unsigned slot,uint8_t direction) {
     if(direction<8)a->requested_direction=direction;
 }
 
+/* Host callback bridge for the native mode-11 owner flow; no single direct
+ * native address. Dispatch pose, action, formation and selected-pass calls,
+ * including the mode-14 receiver transition after `$86:AB2D-$AF65`. */
 static bool cpu_owner_flow_call(void *context,NbaOwnerFlow *s,NbaOwnerCall call,unsigned paired) {
     CpuOwnerContext *c=context;NbaTipoff *t=c->game;
     NbaTipoffActor *a=&t->actors[c->slot];bool returns=true;
@@ -1979,6 +1989,8 @@ static bool cpu_owner_flow_call(void *context,NbaOwnerFlow *s,NbaOwnerCall call,
                 NbaTipoffActor *receiver=&t->actors[selected];
                 receiver->control_mode=special?14:10;
                 if(special) {
+                    receiver->contact_action_timer_raw_60=
+                        receiver->reaction_threshold;
                     receiver->mode13_baseline_velocity_x=receiver->velocity_x;
                     receiver->mode13_baseline_velocity_y=receiver->velocity_y;
                 }
@@ -2334,7 +2346,8 @@ static void cpu_commit_actor_common(NbaTipoff *tipoff, unsigned slot) {
         .velocity_y = actor->velocity_y,
         .velocity_z = actor->velocity_z,
         .control_mode_raw_5e = actor->control_mode,
-        .reaction_timer_raw_60 = actor->control_mode == 13u ?
+        .reaction_timer_raw_60 = (actor->control_mode == 13u ||
+                                  actor->control_mode == 14u) ?
             actor->contact_action_timer_raw_60 : actor->reaction_threshold,
         .behavior_flags_raw_7e = actor->behavior_flags_raw,
         .speed_raw_4a = (uint16_t)(actor->movement_magnitude_raw << 1),
@@ -2349,9 +2362,10 @@ static void cpu_commit_actor_common(NbaTipoff *tipoff, unsigned slot) {
     actor->velocity_x = commit.velocity_x;
     actor->velocity_y = commit.velocity_y;
     actor->velocity_z = commit.velocity_z;
-    if (actor->control_mode == 13u)
+    if (actor->control_mode == 13u || actor->control_mode == 14u) {
         actor->contact_action_timer_raw_60 = commit.reaction_timer_raw_60;
-    else
+        actor->reaction_threshold = commit.reaction_timer_raw_60;
+    } else
         actor->reaction_threshold = commit.reaction_timer_raw_60;
     actor->planar_edge_raw_a0 = commit.planar_scratch_raw_a0;
     actor->movement_speed_raw_4a = commit.speed_raw_4a;
@@ -2361,7 +2375,7 @@ static void cpu_commit_actor_common(NbaTipoff *tipoff, unsigned slot) {
 }
 
 /* `$87:8F01-$8F8D/$85:963D-$985F`, CPU logic: run the actor's common
- * physics prefix; modes seven through ten, twelve, and thirteen defer `$87:9244` behavior until
+ * physics prefix; modes seven through ten and twelve through fourteen defer `$87:9244` behavior until
  * after globals, while other modes retain their scoped legacy executors. */
 static bool cpu_move_actor(NbaTipoff *tipoff, unsigned slot) {
     NbaTipoffActor *actor = &tipoff->actors[slot];
@@ -2370,14 +2384,10 @@ static bool cpu_move_actor(NbaTipoff *tipoff, unsigned slot) {
         return false;
     if (actor->control_mode == 17u && cpu_update_rom_special_shooter(tipoff, slot))
         return false;
-    if (actor->control_mode == 14u) {
-        cpu_commit_actor_common(tipoff, slot);
-        (void)cpu_update_rom_special_receiver(tipoff, slot);
-        return true;
-    }
     if (actor->control_mode == 7u || actor->control_mode == 8u ||
         actor->control_mode == 9u || actor->control_mode == 10u ||
-        actor->control_mode == 12u || actor->control_mode == 13u) {
+        actor->control_mode == 12u || actor->control_mode == 13u ||
+        actor->control_mode == 14u) {
         /* Native `$85:963D` consumes the previous special-mode velocity here;
          * Bank $86 computes the following pass only after global work. */
         cpu_commit_actor_common(tipoff, slot);
@@ -4725,57 +4735,59 @@ static bool cpu_update_rom_layup(NbaTipoff *tipoff, unsigned slot) {
     return true;
 }
 
-/* `$87:9BD3[14] -> $87:9C4E -> $86:B154-$B334`, CPU logic: special receiver close
- * finish. Unlike mode 10, this receiver preserves its pass relationship,
- * jumps before the catch, and can finish directly after ownership changes.
- * The executor itself consumes no RNG. */
+/* `$87:9BD3[14] -> $87:9C4E -> $86:B154-$B334`, CPU logic: execute the
+ * special receiver parent after common physics and global work. It preserves
+ * a valid pass relationship, installs the grounded jump, attaches an owned
+ * airborne ball, and uses the shared close-finish terminal chain. */
 static bool cpu_update_rom_special_receiver(NbaTipoff *tipoff, unsigned slot) {
-    static const uint8_t upper_table[8] = {
-        0x18u, 0x1Cu, 0x18u, 0x1Au, 0x19u, 0x1Bu, 0x1Du, 0x1Eu
-    };
-    static const int8_t facing_table[13] = {
-        4, 4, 3, 3, 2, 2, 2, 1, 1, 1, 0, 0, 0
-    };
     NbaTipoffActor *actor = &tipoff->actors[slot];
 
     /* `$85:963D` has already committed planar/Z physics before this native
      * behavior entry. Keeping that work in the caller makes direct B154
      * differential replay and live scheduling share the same boundary. */
 
-    uint16_t timer = (uint16_t)(actor->reaction_threshold - 2u);
-    actor->reaction_threshold = timer;
-    if (timer == 0u || (timer & 0x8000u) != 0u) {
+    uint16_t timer = (uint16_t)(actor->contact_action_timer_raw_60 - 2u);
+    if ((int16_t)(uint16_t)(timer - 1u) < 0) {
         if (tipoff->possession_actor == (int8_t)slot) {
             tipoff->ball_activity_raw = 1u;
-            ball_position_at_actor(tipoff, slot);
             cpu_finish_rom_close_shot(tipoff, slot);
             cpu_finish_rom_close_shot_landing(tipoff, slot);
         } else {
+            (void)actor_queue_animation_command(tipoff,actor,
+                NBA_ANIMATION_INSTALL_BOTH,3u);
             tipoff->rim_force_raw_1866 = 0u;
             cpu_restore_normal_mode(tipoff, slot);
             cpu_cancel_rom_pass_activity(tipoff);
         }
         return true;
     }
+    actor->contact_action_timer_raw_60 = timer;
+    actor->reaction_threshold = timer;
 
     bool airborne = fp_integer_word(actor->z_fp) != 0;
     if (airborne && tipoff->possession_actor == (int8_t)slot) {
         bool wrong_upper = actor->animation_state < 0x18u ||
                            actor->animation_state >= 0x1Fu;
-        int dx = actor->velocity_x - actor->mode13_baseline_velocity_x;
-        int dy = actor->velocity_y - actor->mode13_baseline_velocity_y;
+        int16_t dx = (int16_t)(uint16_t)((uint16_t)actor->velocity_x -
+            (uint16_t)actor->mode13_baseline_velocity_x);
+        int16_t dy = (int16_t)(uint16_t)((uint16_t)actor->velocity_y -
+            (uint16_t)actor->mode13_baseline_velocity_y);
         bool disturbed = timer >= 0x12u &&
             (dx < -0x50 || dx > 0x50 || dy < -0x50 || dy > 0x50);
         if (wrong_upper || disturbed) {
             cpu_restore_normal_mode(tipoff, slot);
-            actor->direction = (uint8_t)((actor->anchor_direction_raw >> 1) & 7u);
-            actor_set_upper_animation(actor, 0x17u);
-            ball_attach_to_actor(tipoff, slot);
             tipoff->ball_activity_raw = 0xFFFFu;
-            tipoff->shot_origin_x = fp_round(actor->x_fp);
-            tipoff->shot_origin_y = fp_round(actor->y_fp);
-            cpu_enter_play_state(tipoff, NBA_CPU_PLAY_SHOT);
-            cpu_release_rom_shot(tipoff, slot, false);
+            actor->movement_direction = (uint8_t)(actor->anchor_direction_raw >> 1);
+            (void)actor_queue_animation_command(tipoff,actor,
+                NBA_ANIMATION_CANCEL_LOWER,0u);
+            (void)actor_queue_animation_command(tipoff,actor,
+                NBA_ANIMATION_INSTALL_UPPER,0x17u);
+            if(cpu_resolve_close_finish_pose(tipoff,actor))
+                (void)cpu_close_finish_attachment(tipoff,slot,0u,true,true,true,
+                    NULL,NULL,NULL);
+            tipoff->shot_origin_x = fp_integer_word(actor->x_fp);
+            tipoff->shot_origin_y = fp_integer_word(actor->y_fp);
+            cpu_release_rom_shot(tipoff, slot, true);
             return true;
         }
     }
@@ -4783,31 +4795,45 @@ static bool cpu_update_rom_special_receiver(NbaTipoff *tipoff, unsigned slot) {
     if (!airborne) {
         if (timer >= 0x28u) return true;
         if (actor->animation_state < 0x18u || actor->animation_state >= 0x1Fu) {
-            int selector = actor->special_contact_raw_56 + 1;
-            if (selector < 0 || selector > 7) selector = 0;
-            actor->pass_direction_raw = upper_table[selector];
-            actor_set_animation(actor, (uint8_t)actor->pass_direction_raw,
-                                0x1Fu);
+            (void)actor_queue_animation_command(tipoff,actor,
+                NBA_ANIMATION_CANCEL_UPPER,0u);
+            (void)actor_queue_animation_command(tipoff,actor,
+                NBA_ANIMATION_CANCEL_LOWER,0u);
+            (void)actor_queue_animation_command(tipoff,actor,
+                NBA_ANIMATION_INSTALL_UPPER,actor->pass_direction_raw);
+            actor->animation_upper_queue_raw_1c[0]=0x24u;
+            actor->animation_upper_queue_cursor_raw_18=0u;
+            (void)actor_queue_animation_command(tipoff,actor,
+                NBA_ANIMATION_INSTALL_LOWER,0x1fu);
+            uint16_t lower_queue=0u;
+            if(!nba_shot_special_receiver_lower_queue(tipoff->assets,
+                    actor->mode13_variant_raw_58,&lower_queue))return true;
+            actor->animation_lower_queue_raw_22[1]=lower_queue;
+            actor->animation_lower_queue_raw_22[0]=0x24u;
+            actor->animation_lower_queue_cursor_raw_1a=1u;
             return true;
         }
         if (actor->animation_state < 0x24u) {
             actor->velocity_z =
                 (actor->special_contact_raw_56 == 0 ||
                  (actor->special_contact_raw_56 == 6 &&
-                  actor->direction == 3u)) ? 0x0270 : 0x0264;
+                  actor->movement_direction == 3u)) ? 0x0270 : 0x0264;
         }
         return true;
     }
 
     if (actor->special_contact_raw_56 != 0) {
-        actor->direction = actor->requested_direction;
-    } else if (timer <= 8u) {
-        actor->direction = (uint8_t)(actor->requested_direction ^ 4u);
+        actor->movement_direction = actor->requested_direction;
     } else {
-        unsigned index = (unsigned)((timer - 10u) / 2u);
-        if (index > 12u) index = 12u;
-        actor->direction = (uint8_t)(
-            (actor->requested_direction + facing_table[index]) & 7u);
+        uint16_t offset=(uint16_t)(timer-8u);
+        if((int16_t)offset<=0)
+            actor->movement_direction=(uint8_t)(actor->requested_direction^4u);
+        else {
+            uint8_t turn=0u;
+            if(!nba_shot_close_finish_turn(tipoff->assets,true,offset,&turn))
+                return true;
+            actor->movement_direction=(uint8_t)((actor->requested_direction+turn)&7u);
+        }
     }
 
     bool relationship_valid;
@@ -4822,17 +4848,22 @@ static bool cpu_update_rom_special_receiver(NbaTipoff *tipoff, unsigned slot) {
             tipoff->pass_receiver_raw == (int16_t)slot;
     }
     if (!relationship_valid) {
+        (void)actor_queue_animation_command(tipoff,actor,
+            NBA_ANIMATION_INSTALL_BOTH,3u);
         tipoff->rim_force_raw_1866 = 0u;
         cpu_restore_normal_mode(tipoff, slot);
         cpu_cancel_rom_pass_activity(tipoff);
         return true;
     }
     if (tipoff->possession_actor == (int8_t)slot) {
+        tipoff->close_finish_timing_raw_094e=0x1eu;
         tipoff->live_state_raw = 2u;
+        actor->movement_speed_raw_4a=0u;
         if (actor->special_contact_raw_56 != 6)
             tipoff->rim_force_raw_1866 =
                 (uint16_t)(0x34EBu + slot * 0x100u);
-        ball_attach_to_actor(tipoff, slot);
+        (void)cpu_close_finish_attachment(tipoff,slot,0u,true,true,true,
+            NULL,NULL,NULL);
     }
     return true;
 }
@@ -4877,7 +4908,7 @@ static bool cpu_special_receiver_self_test(const NbaAssetPack *assets) {
     state.rim_raw_094a = 1u;
     state.inbound_transfer_raw = 1u;
     state.actors[0].control_mode = 14u;
-    state.actors[0].reaction_threshold = 2u;
+    state.actors[0].contact_action_timer_raw_60 = 2u;
     nba_gameplay_rng_seed(&state.rng, 0x9146u);
     seed = state.rng.state;
     if (!cpu_update_rom_special_receiver(&state, 0u) ||
@@ -4893,13 +4924,13 @@ static bool cpu_special_receiver_self_test(const NbaAssetPack *assets) {
     state.assets = assets;
     state.possession_actor = 0;
     state.actors[0].control_mode = 14u;
-    state.actors[0].reaction_threshold = 2u;
+    state.actors[0].contact_action_timer_raw_60 = 2u;
     state.actors[0].special_contact_raw_56 = 1;
     state.ball.owner_actor = 0;
     nba_gameplay_rng_seed(&state.rng, 0x9146u);
     seed = state.rng.state;
     if (!cpu_update_rom_special_receiver(&state, 0u) ||
-        state.actors[0].control_mode != 1u ||
+        state.actors[0].control_mode != 16u ||
         state.possession_actor != -1 || state.ball.owner_actor != -1 ||
         state.ball.state != NBA_BALL_SHOT || state.shot_value_raw != 2u ||
         state.ball.velocity_x != 0 || state.ball.velocity_y != 0 ||
@@ -4911,12 +4942,12 @@ static bool cpu_special_receiver_self_test(const NbaAssetPack *assets) {
     state.assets = assets;
     state.possession_actor = 0;
     state.actors[0].control_mode = 14u;
-    state.actors[0].reaction_threshold = 2u;
+    state.actors[0].contact_action_timer_raw_60 = 2u;
     state.actors[0].special_contact_raw_56 = 6;
     state.actors[0].x_fp = -256;
     state.ball.owner_actor = 0;
     if (!cpu_update_rom_special_receiver(&state, 0u) ||
-        state.ball.velocity_x != -0x01A0 ||
+        state.ball.velocity_x != 0x01A0 ||
         state.ball.velocity_y != -0x0080 ||
         state.ball.velocity_z != 0x0048) return false;
 
@@ -4926,15 +4957,17 @@ static bool cpu_special_receiver_self_test(const NbaAssetPack *assets) {
     state.possession_actor = -1;
     state.pass_receiver_raw = 0;
     state.actors[0].control_mode = 14u;
-    state.actors[0].reaction_threshold = 40u;
+    state.actors[0].contact_action_timer_raw_60 = 40u;
+    state.actors[0].reaction_threshold = 0xDEADu;
     state.actors[0].animation_state = 0x18u;
     state.actors[0].special_contact_raw_56 = 0;
     if (!cpu_update_rom_special_receiver(&state, 0u) ||
+        state.actors[0].contact_action_timer_raw_60 != 38u ||
         state.actors[0].reaction_threshold != 38u ||
         state.actors[0].velocity_z != 0x0270) return false;
     state.actors[0].velocity_z = 0;
     state.actors[0].z_fp = 0;
-    state.actors[0].reaction_threshold = 40u;
+    state.actors[0].contact_action_timer_raw_60 = 40u;
     state.actors[0].special_contact_raw_56 = 1;
     if (!cpu_update_rom_special_receiver(&state, 0u) ||
         state.actors[0].velocity_z != 0x0264) return false;
@@ -4946,7 +4979,7 @@ static bool cpu_special_receiver_self_test(const NbaAssetPack *assets) {
     state.possession_actor = 0;
     state.pass_receiver_raw = 0;
     state.actors[0].control_mode = 14u;
-    state.actors[0].reaction_threshold = 22u;
+    state.actors[0].contact_action_timer_raw_60 = 22u;
     state.actors[0].animation_state = 0x18u;
     state.actors[0].z_fp = 10 * 256;
     state.actors[0].velocity_x = 80;
@@ -4955,7 +4988,7 @@ static bool cpu_special_receiver_self_test(const NbaAssetPack *assets) {
         state.actors[0].control_mode != 14u ||
         state.ball.owner_actor != 0) return false;
     state.actors[0].control_mode = 14u;
-    state.actors[0].reaction_threshold = 22u;
+    state.actors[0].contact_action_timer_raw_60 = 22u;
     state.actors[0].animation_state = 0x18u;
     state.actors[0].z_fp = 10 * 256;
     state.actors[0].velocity_z = 0;
@@ -4974,37 +5007,18 @@ static bool cpu_special_receiver_self_test(const NbaAssetPack *assets) {
     state.pass_receiver_raw = 0;
     state.actors[1].control_mode = 15u;
     state.actors[0].control_mode = 14u;
-    state.actors[0].reaction_threshold = 22u;
+    state.actors[0].contact_action_timer_raw_60 = 22u;
     state.actors[0].animation_state = 0x18u;
     state.actors[0].z_fp = 10 * 256;
     if (!cpu_update_rom_special_receiver(&state, 0u) ||
         state.actors[0].control_mode != 14u) return false;
-    state.actors[0].reaction_threshold = 22u;
+    state.actors[0].contact_action_timer_raw_60 = 22u;
     state.actors[0].z_fp = 10 * 256;
     state.pass_receiver_raw = 2;
     if (!cpu_update_rom_special_receiver(&state, 0u) ||
         state.actors[0].control_mode != 1u ||
         state.pass_receiver_raw != -1) return false;
 
-    /* Preserve B176's adjacent A9D0 -> 986D chain after extracting the shared
-     * terminal helper: place the attachment exactly on authoritative rim XY. */
-    memset(&state,0,sizeof(state));
-    state.session=&session;publish_exhibition_team_ids(&state);state.assets=assets;
-    state.possession_actor=0;state.court_presentation.basket_x_3fef=120u;
-    state.rim_effect.reference_y_raw_3ff3=-40;
-    state.actors[0].control_mode=14u;state.actors[0].reaction_threshold=2u;
-    state.actors[0].special_contact_raw_56=1;state.ball.owner_actor=0;
-    int16_t offset_x=0,offset_y=0,offset_z=0;
-    (void)actor_ball_attachment_offsets(&state,&state.actors[0],
-        &offset_x,&offset_y,&offset_z);
-    state.actors[0].x_fp=(int32_t)(120-offset_x)*256;
-    state.actors[0].y_fp=(int32_t)(-40-offset_y)*256;
-    if(!cpu_update_rom_special_receiver(&state,0u) ||
-       state.actors[0].control_mode!=16u ||
-       state.actors[0].contact_action_timer_raw_60!=0x18u ||
-       (state.rim_raw_13e7&0x20u)==0u || state.shot_actor_raw_09c8!=0 ||
-       state.shot_display_actor_raw_493b!=0u ||
-       state.roster_shot_statistics[0][0]!=1u)return false;
     return true;
 }
 
@@ -7840,7 +7854,7 @@ void nba_tipoff_refresh_team_roles_end_frame(NbaTipoff *tipoff) {
 }
 
 /* `$87:8EFB-$8F92` parent and `$87:8F01-$8F8D/$87:AAB2/$85:963D`, actor
- * scheduler/physics: run one 30-Hz pass; modes seven through ten, twelve, and thirteen advance their
+ * scheduler/physics: run one 30-Hz pass; modes seven through ten and twelve through fourteen advance their
  * existing animation and commit prior velocity before later behavior. */
 static void cpu_update_all_actors(NbaTipoff *tipoff) {
     if ((tipoff->simulation_tick & 1u) != 0u) return;
@@ -7861,11 +7875,12 @@ static void cpu_update_all_actors(NbaTipoff *tipoff) {
                                  state->control_mode == 9u ||
                                  state->control_mode == 10u ||
                                  state->control_mode == 12u ||
-                                 state->control_mode == 13u;
+                                 state->control_mode == 13u ||
+                                 state->control_mode == 14u;
         cpu_ease_display_direction(state);
         /* `$87:8F13-$8F5E` eases +$52 before `$87:AAB2` resolves the pose;
          * `$85:963D` then begins the actor physics sweep. Preserve that order
-         * for modes seven through ten/twelve/thirteen without changing other modes. */
+         * for modes seven through ten/twelve/thirteen/fourteen without changing other modes. */
         if (deferred_behavior)
             cpu_advance_actor_animation(tipoff, state);
         if (state->control_mode != 8u &&
@@ -7923,7 +7938,7 @@ static void cpu_prepare_mode_eight_nine_behavior(NbaTipoff *tipoff) {
 }
 
 /* `$87:9075-$9086/$87:9244`, actor scheduler/behavior: clear controller
- * sweep latches, then dispatch modes seven through ten/twelve/thirteen and normal actors after
+ * sweep latches, then dispatch modes seven through ten/twelve/thirteen/fourteen and normal actors after
  * physics and the intervening global ball/contact/role work. */
 static void cpu_update_actor_behaviors(NbaTipoff *tipoff) {
     nba_controller_begin_sweep(&tipoff->controllers);
@@ -7936,7 +7951,8 @@ static void cpu_update_actor_behaviors(NbaTipoff *tipoff) {
             tipoff->actors[actor].control_mode == 9u ||
             tipoff->actors[actor].control_mode == 10u ||
             tipoff->actors[actor].control_mode == 12u ||
-            tipoff->actors[actor].control_mode == 13u)
+            tipoff->actors[actor].control_mode == 13u ||
+            tipoff->actors[actor].control_mode == 14u)
             (void)cpu_apply_passive_mode(tipoff, actor);
         else {
             /* Even inbound owners enter F34F; F3DA selects the separate F43A
@@ -10272,6 +10288,8 @@ bool nba_tipoff_launch_tip_ball(NbaTipoff *t) {
     return true;
 }
 
+/* Host-only CPU telemetry projection; no direct native address. Export the
+ * current gameplay state, including canonical native actor `+$60`. */
 void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
                                   const NbaInput *input,
                                   NbaGameplayTelemetry *telemetry) {
@@ -10646,9 +10664,8 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
         out->movement_magnitude_4c_raw = state->movement_magnitude_raw;
         bool close_finish = state->control_mode == 13u ||
                             state->control_mode == 14u;
-        out->mode13_timer_60_raw = state->control_mode == 13u ?
-            state->contact_action_timer_raw_60 :
-            state->control_mode == 14u ? state->reaction_threshold : 0u;
+        out->mode13_timer_60_raw = close_finish ?
+            state->contact_action_timer_raw_60 : 0u;
         out->mode13_selector_56_raw = close_finish ?
             state->special_contact_raw_56 : -1;
         out->mode13_variant_58_raw = close_finish ?

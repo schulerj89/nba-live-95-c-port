@@ -209,11 +209,18 @@ EXPECTED_RGB = {
     # now retains actor state until due frame948. The four changed anchors are
     # coherent gameplay frames. The pristine f7e95cd source build reproduced
     # every old RGB hash; native routine goldens are unchanged.
+    # Re-reviewed after `$86:B154-$B334` restored mode-fourteen scheduling and
+    # behavior. Frame600 remains byte-identical; the first native-phase trace
+    # difference is actor5's animation cadence at frame730 after entry728.
+    # Frames1300/3480/6932/6954 retain coherent court, players, ball, baskets
+    # and crowd; frame3480 has the readable 2-2 HUD. These remain C-only image
+    # anchors. Immutable exe/pack and RGB provenance is retained in ignored
+    # `.analysis/cpu-mode-fourteen-20260906/current-images/provenance.json`.
     600: "868b26b40f94ca3668d63a76f6c938403a12bb8e92c52393feb9ee8e04e871ec",
-    1300: "100ac79e66f6716dba685764bf27c6853c690689d6fed2d454f28264e815fc28",
-    3480: "5f37d2f9bbb63d3f384b867a8de4c123d10156b6edd871bc463f77071ee008e1",
-    6932: "42b25b08fc9290ee3c5ebbfffa89995be81ccd8869d9c75d9fe3a8e241905c90",
-    6954: "6e9516a793f546a11f9751d0c55a93c00d64a41c10bf7b08d180440d375c0cfe",
+    1300: "6f9165971438e05d124efbb3a6837d86c973964a728c5094361d8c36c756118c",
+    3480: "426fbde12585edf5cc522fd0e5e332bcf04f7c30c57eff232d0b1ce1bec700c6",
+    6932: "1ad6f83b4e277a84d0b15afa56d1041c9b2d1c17ea14557b130f120a448d86f5",
+    6954: "e0726a17c712d835d9597ce25de5aa4d7c48534723eb7ae1f66e1db57d088f44",
 }
 
 
@@ -407,6 +414,113 @@ def verify_camera_subject_trace(rows):
         previous = row
     if not {3, 5, 6}.issubset(free_states) or not actor_states:
         raise AssertionError("camera did not cover actor and free-ball proxy paths")
+
+
+def mode_thirteen_carried_transition_valid(before, after, ball, actor_id,
+                                             intervening=None):
+    """Check `$86:B34F/A7DA` entry or continuation across captured rows.
+
+    A post-global acquisition can enter mode 13 on the odd row between two
+    due scheduler rows. That intervening B34F entry must be validated before
+    the following due row is treated as an A7DA continuation.
+    """
+    upper_states = (0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E)
+    entry_pose = (after["animation"] in upper_states and
+                  after["lower_animation"] == 0x1F)
+
+    def continued_from(source):
+        return (
+            after["raw"]["mode13_timer_60"] ==
+                (source["raw"]["mode13_timer_60"] - 2) & 0xFFFF and
+            ball["activity_raw"] == 1 and
+            after["raw"]["mode13_selector_56"] ==
+                source["raw"]["mode13_selector_56"] and
+            after["raw"]["mode13_variant_58"] ==
+                source["raw"]["mode13_variant_58"] and
+            after["raw"]["mode13_baseline_vx_ba"] ==
+                source["raw"]["mode13_baseline_vx_ba"] and
+            after["raw"]["mode13_baseline_vy_bc"] ==
+                source["raw"]["mode13_baseline_vy_bc"] and
+            (after["z_fp"] // 256 == 0 or
+             after["animation"] in upper_states))
+
+    if before["raw"]["control_mode"] == 13:
+        return continued_from(before)
+    if intervening is None:
+        return entry_pose
+
+    middle = intervening["actors"][actor_id]
+    middle_ball = intervening["ball"]
+    if middle["raw"]["control_mode"] != 13:
+        return entry_pose
+    valid_middle_entry = (
+        intervening["scheduler"]["due_raw"] == 0 and
+        (intervening["simulation_tick"] & 1) == 1 and
+        intervening["possession"]["actor"] == actor_id and
+        middle["id"] == actor_id and
+        middle["animation"] in upper_states and
+        middle["lower_animation"] == 0x1F and
+        middle["raw"]["mode13_timer_60"] == 0x28 and
+        middle_ball["state"] == 4 and
+        middle_ball["owner"] == actor_id and
+        middle["raw"]["mode13_selector_56"] in range(-1, 7) and
+        middle["raw"]["mode13_variant_58"] in (0, 2, 4, 6) and
+        (middle["raw"]["mode13_baseline_vx_ba"] != 0 or
+         middle["raw"]["mode13_baseline_vy_bc"] != 0))
+    return valid_middle_entry and continued_from(middle)
+
+
+def mode_ten_stale_run_valid(before, stale_rows, after):
+    """Check bounded `$86:A5B0` cleanup latency in rendered trace rows.
+
+    The sole three-row exception requires a late pass clear after the receiver
+    already ran, followed by a real acquisition deferral and next-odd restore.
+    """
+    if len(stale_rows) <= 2:
+        return True
+    if len(stale_rows) != 3:
+        return False
+    first, middle, acquired = stale_rows
+    stale_ids = [{actor["id"] for actor in row["actors"]
+                  if actor["raw"]["control_mode"] == 10}
+                 for row in stale_rows]
+    if len(stale_ids[0]) != 1 or stale_ids[1:] != stale_ids[:1] * 2:
+        return False
+    actor_id = next(iter(stale_ids[0]))
+    old_actor = before["actors"][actor_id]
+    first_actor = first["actors"][actor_id]
+    middle_actor = middle["actors"][actor_id]
+    acquired_actor = acquired["actors"][actor_id]
+    restored_actor = after["actors"][actor_id]
+    return (
+        [row["frame"] for row in (before, first, middle, acquired, after)] ==
+            list(range(before["frame"], before["frame"] + 5)) and
+        [row["simulation_tick"] for row in
+         (before, first, middle, acquired, after)] ==
+            list(range(before["simulation_tick"],
+                       before["simulation_tick"] + 5)) and
+        [row["scheduler"]["due_raw"] for row in
+         (first, middle, acquired, after)] == [1, 0, 1, 0] and
+        before["possession"]["pass_active_raw"] != 0 and
+        before["possession"]["pass_receiver_raw"] == actor_id and
+        all(row["possession"]["pass_receiver_raw"] < 0
+            for row in stale_rows + [after]) and
+        first_actor["raw"]["reaction_threshold"] ==
+            (old_actor["raw"]["reaction_threshold"] - 2) & 0xFFFF and
+        middle_actor["raw"]["reaction_threshold"] ==
+            first_actor["raw"]["reaction_threshold"] and
+        acquired_actor["raw"]["reaction_threshold"] ==
+            middle_actor["raw"]["reaction_threshold"] and
+        middle["possession"]["actor"] == -1 and
+        middle["ball"]["state"] == 3 and middle["ball"]["owner"] == -1 and
+        acquired["possession"]["actor"] >= 0 and
+        acquired["possession"]["actor"] != actor_id and
+        acquired["ball"]["state"] == 4 and
+        acquired["ball"]["owner"] == acquired["possession"]["actor"] and
+        middle["match"]["event_bits_raw_13e7"] & 0x10 == 0 and
+        acquired["match"]["event_bits_raw_13e7"] & 0x10 != 0 and
+        restored_actor["raw"]["control_mode"] == 2 and
+        restored_actor["raw"]["reaction_threshold"] == 0)
 
 
 def main():
@@ -1127,24 +1241,20 @@ def main():
                     # B34F installs upper $18-$1E/lower $1F. On the next
                     # due pass AAB2 may advance both channels before late
                     # A7DA; timers above 36 do not reinstall the action.
-                    upper_pose = after["animation"] in (
-                        0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E)
-                    entry_pose = upper_pose and after["lower_animation"] == 0x1F
-                    continued_parent = (
-                        after["raw"]["mode13_timer_60"] ==
-                            (before["raw"]["mode13_timer_60"] - 2) & 0xFFFF and
-                        ball["activity_raw"] == 1 and
-                        after["raw"]["mode13_selector_56"] ==
-                            before["raw"]["mode13_selector_56"] and
-                        after["raw"]["mode13_variant_58"] ==
-                            before["raw"]["mode13_variant_58"] and
-                        after["raw"]["mode13_baseline_vx_ba"] ==
-                            before["raw"]["mode13_baseline_vx_ba"] and
-                        after["raw"]["mode13_baseline_vy_bc"] ==
-                            before["raw"]["mode13_baseline_vy_bc"] and
-                        (after["z_fp"] // 256 == 0 or upper_pose))
-                    if (old_mode != 13 and not entry_pose) or \
-                            (old_mode == 13 and not continued_parent) or \
+                    intervening = None
+                    if old_mode != 13 and \
+                            current["frame"] == previous["frame"] + 2:
+                        middle_index = current["frame"] - rows[0]["frame"] - 1
+                        if 0 <= middle_index < len(rows):
+                            candidate = rows[middle_index]
+                            if candidate["frame"] == previous["frame"] + 1 and \
+                                    candidate["scheduler"]["due_raw"] == 0 and \
+                                    candidate["simulation_tick"] & 1 and \
+                                    current["simulation_tick"] == \
+                                        candidate["simulation_tick"] + 1:
+                                intervening = candidate
+                    if not mode_thirteen_carried_transition_valid(
+                            before, after, ball, actor_id, intervening) or \
                             ball["state"] != 4 or ball["owner"] != actor_id or \
                             not 0 < after["raw"]["mode13_timer_60"] <= 0x28 or \
                             after["raw"]["mode13_selector_56"] not in range(-1, 7) or \
@@ -1731,11 +1841,12 @@ def main():
             header[4], header[12], header[13], header[14]
         signed8 = lambda value: value - 256 if value >= 128 else value
 
-        def expected_attachment(actor):
+        def expected_attachment(actor, resources=None):
             raw = actor["raw"]
             # B832 consumes native +$2A/+$2C; display mirrors can lag a queue.
             native = raw["animation_rom"]
-            upper, lower = native["upper_resource_2a"], native["lower_resource_2c"]
+            upper, lower = resources or (
+                native["upper_resource_2a"], native["lower_resource_2c"])
             lower_y = signed8(animation[lower_table + lower])
             lower_z = signed8(animation[lower_table + 0x830 + lower])
             upper_x = signed8(animation[upper_x_table + upper])
@@ -1753,6 +1864,8 @@ def main():
                     upper_x - lower_z - upper_z)
 
         attached = []
+        invalid_mode_fourteen_attachments = 0
+        mode_fourteen_fallback_774 = False
         for index, row in enumerate(rows[219:], 219):
             owner = row["ball"]["owner"]
             if row["ball"]["state"] == 4 and owner >= 0 and \
@@ -1791,6 +1904,37 @@ def main():
                 actual = tuple(row["ball"][axis + "_fp"] // 256 -
                                attachment_actor[axis + "_fp"] // 256
                                for axis in ("x", "y", "z"))
+                native = actor["raw"]["animation_rom"]
+                if not native["resources_valid"]:
+                    # The ordinary attachment happens before late mode-14
+                    # B154 can reinstall state 0/31 and invalidate the cache.
+                    # Frame 774 pins the represented common-time fallback:
+                    # moving owner state 5 selects upper 26 while the locked
+                    # alternate lower channel retains 2000 under flags $8004.
+                    if not (
+                            actor["raw"]["control_mode"] == 14 and
+                            actor["animation"] == 0 and
+                            actor["lower_animation"] == 31 and
+                            actor["z_fp"] == 0 and
+                            native["upper_lock_46"] == 0 and
+                            native["lower_lock_48"] == 1):
+                        raise AssertionError(
+                            "unexpected invalid attachment cache state: "
+                            f"{row['frame'], actor}")
+                    if row["frame"] == 774:
+                        if not (
+                                actor["raw"]["flags"] == 0x8004 and
+                                actor["vx"] == 62 and actor["vy"] == 154 and
+                                native["upper_resource_2a"] == 243 and
+                                native["lower_resource_2c"] == 2000 and
+                                actual == expected_attachment(
+                                    actor, (26, 2000)) == (-5, -1, 32)):
+                            raise AssertionError(
+                                "grounded mode-14 invalid-cache attachment "
+                                f"changed at frame 774: {actor, actual}")
+                        mode_fourteen_fallback_774 = True
+                    invalid_mode_fourteen_attachments += 1
+                    continue
                 expected = expected_attachment(actor)
                 low_resource = actor["raw"]["animation_rom"]["upper_resource_2a"] < 0xF0
                 ball_z = row["ball"]["z_fp"] // 256
@@ -1817,6 +1961,10 @@ def main():
                 "ball diverged from `$87:B832/$B953` resource attachment: " +
                 repr(next((pair for pair in attached
                            if not attachment_matches(pair)), None)))
+        if not invalid_mode_fourteen_attachments or not \
+                mode_fourteen_fallback_774:
+            raise AssertionError(
+                "grounded mode-14 invalid-cache attachment was not exercised")
 
         # `$86:AB2D-$B04A/$86:A6B3-$A790`: mode 15 installs a grounded or
         # boosted pass state, keeps the ball attached through the native
@@ -1962,16 +2110,29 @@ def main():
         # `$87:9C3A -> $86:A5B0 -> $86:9846`: after A613 invalidates
         # `$0946`, a normal mode-10 receiver must return to team mode on the
         # next 30-Hz actor pass. Two rendered rows are the maximum observable
-        # scheduling latency; longer runs reproduce the retired edge drift.
-        stale_receiver_run = 0
-        for row in rows[219:]:
+        # scheduling latency. One exact three-row run is allowed only when a
+        # real acquisition defers that due behavior to the following odd row.
+        stale_receiver_run = []
+        for index, row in enumerate(rows[219:], 219):
             stale = row["possession"]["pass_receiver_raw"] < 0 and any(
                 actor["raw"]["control_mode"] == 10
                 for actor in row["actors"])
-            stale_receiver_run = stale_receiver_run + 1 if stale else 0
-            if stale_receiver_run > 2:
+            if stale:
+                stale_receiver_run.append(row)
+                if len(stale_receiver_run) > 3:
+                    raise AssertionError(
+                        f"$86:A5B0 stale mode-10 receiver at frame "
+                        f"{row['frame']}")
+                continue
+            if stale_receiver_run and not mode_ten_stale_run_valid(
+                    rows[index - len(stale_receiver_run) - 1],
+                    stale_receiver_run, row):
                 raise AssertionError(
-                    f"$86:A5B0 stale mode-10 receiver at frame {row['frame']}")
+                    f"$86:A5B0 stale mode-10 receiver at frame "
+                    f"{stale_receiver_run[-1]['frame']}")
+            stale_receiver_run = []
+        if len(stale_receiver_run) > 2:
+            raise AssertionError("$86:A5B0 stale mode-10 receiver at trace end")
 
         for first in range(220, 1900, 240):
             last = min(first + 239, len(rows) - 1)

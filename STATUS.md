@@ -77,6 +77,10 @@ Recent source-verified visual and gameplay fixes include:
 - the native control-mode-thirteen close-finish parent, including retained
   ownership, signed timer boundaries, pack-backed facing, pose/ball attachment,
   airborne fallback, terminal release, landing, and post-global scheduling.
+- the native control-mode-fourteen special receiver, including exact signed
+  timer boundaries, grounded queue setup, wrapped airborne disruption,
+  ownership and relationship gates, pose/ball attachment, pass acquisition
+  deferral, and post-global scheduling.
 
 These paths are protected by test_tipoff_court_smoke.py,
 test_dribble_smoke.py, test_hoop_smoke.py, test_oob_smoke.py, and
@@ -85,8 +89,9 @@ six-case defense-context, eight-case mode-five, two-case mode-one and
 mode-three role-flag, nine-case mode-two, twelve-case mode-four, and ten-case
   mode-six actor-parent replays, plus the nineteen-case mode-seven,
   nineteen-case mode-eight, sixteen-case mode-nine, eighteen-case mode-ten,
-  and thirty-seven-case mode-twelve and mode-thirteen direct replays and their full-scheduler
-  phase checks, plus four free-throw mode-twelve caller witnesses.
+  thirty-seven-case mode-twelve and mode-thirteen direct replays, the
+  fifty-one-case mode-fourteen direct replay, and their full-scheduler phase
+  checks, plus four free-throw mode-twelve caller witnesses.
 
 ## Major remaining gaps
 

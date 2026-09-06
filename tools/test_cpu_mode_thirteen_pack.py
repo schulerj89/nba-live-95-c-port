@@ -1,4 +1,4 @@
-"""Check new/legacy shot-table packs and reject malformed local mutations."""
+"""Check mode-14, mode-13 and legacy shot-table pack compatibility."""
 
 import argparse
 import hashlib
@@ -30,24 +30,25 @@ def run(probe: Path, pack: Path, option: str, expected: int = 0) -> None:
         )
 
 
-def legacy_pack(current: bytearray, directory: int, payload: int) -> bytearray:
+def range_pack(current: bytearray, directory: int, payload: int, count: int) -> bytearray:
     ranges = []
-    for index in range(5):
+    for index in range(count):
         address, size, offset = struct.unpack_from("<III", current, payload + 12 + index * 12)
         ranges.append((address, size, bytes(current[payload + offset : payload + offset + size])))
-    legacy = bytearray(b"NBSHOT1\0" + struct.pack("<I", 5))
-    offset = 72
+    result_payload = bytearray(b"NBSHOT1\0" + struct.pack("<I", count))
+    offset = 12 + count * 12
     for address, size, _ in ranges:
-        legacy.extend(struct.pack("<III", address, size, offset))
+        result_payload.extend(struct.pack("<III", address, size, offset))
         offset += size
     for _, _, data in ranges:
-        legacy.extend(data)
-    if len(legacy) != 528:
-        raise ValueError("legacy shot-table payload did not rebuild to 528 bytes")
+        result_payload.extend(data)
+    expected = {5: 528, 7: 620}[count]
+    if len(result_payload) != expected:
+        raise ValueError(f"{count}-range shot-table payload was {len(result_payload)}, expected {expected}")
     result = bytearray(current)
-    result[payload : payload + len(legacy)] = legacy
-    struct.pack_into("<I", result, directory + 8, len(legacy))
-    struct.pack_into("<I", result, directory + 12, 5)
+    result[payload : payload + len(result_payload)] = result_payload
+    struct.pack_into("<I", result, directory + 8, len(result_payload))
+    struct.pack_into("<I", result, directory + 12, count)
     return result
 
 
@@ -60,19 +61,24 @@ def main() -> None:
 
     current = bytearray(args.new_pack.read_bytes())
     directory, payload, size = entry(current, 277)
-    if size != 620 or current[payload : payload + 8] != b"NBSHOT1\0":
+    if size != 640 or current[payload : payload + 8] != b"NBSHOT1\0":
         raise ValueError("new pack does not contain the expected shot-table extension")
     run(args.probe, args.new_pack, "--pack-new")
     with tempfile.TemporaryDirectory(prefix="nba95-mode13-pack-") as temp:
         temp_path = Path(temp)
 
         if args.old_pack:
-            old_pack_path = args.old_pack
+            mode13_pack_path = args.old_pack
         else:
-            old_pack_path = temp_path / "derived-old-shot-tables.pak"
-            old_pack_path.write_bytes(legacy_pack(current, directory, payload))
-        run(args.probe, old_pack_path, "--pack-old")
-        old_hash = hashlib.sha256(old_pack_path.read_bytes()).hexdigest()
+            mode13_pack_path = temp_path / "derived-mode13-shot-tables.pak"
+            mode13_pack_path.write_bytes(range_pack(current, directory, payload, 7))
+        run(args.probe, mode13_pack_path, "--pack-mode13")
+        mode13_hash = hashlib.sha256(mode13_pack_path.read_bytes()).hexdigest()
+
+        legacy_pack_path = temp_path / "derived-legacy-shot-tables.pak"
+        legacy_pack_path.write_bytes(range_pack(current, directory, payload, 5))
+        run(args.probe, legacy_pack_path, "--pack-old")
+        legacy_hash = hashlib.sha256(legacy_pack_path.read_bytes()).hexdigest()
 
         malformed_payload = bytearray(current)
         struct.pack_into("<I", malformed_payload, payload + 12, 0)
@@ -81,16 +87,16 @@ def main() -> None:
         run(args.probe, malformed_payload_path, "--pack-reject")
 
         malformed_metadata = bytearray(current)
-        struct.pack_into("<I", malformed_metadata, directory + 12, 6)
+        struct.pack_into("<I", malformed_metadata, directory + 12, 7)
         malformed_metadata_path = temp_path / "malformed-pack-directory.pak"
         malformed_metadata_path.write_bytes(malformed_metadata)
         run(args.probe, malformed_metadata_path, "--pack-new", expected=3)
 
     print(
-        "[CPU MODE THIRTEEN PACK] PASS: new620/7, old528/5 launch, "
-        "missing close tables, malformed payload and malformed metadata; "
-        f"new_sha256={hashlib.sha256(args.new_pack.read_bytes()).hexdigest()} "
-        f"old_sha256={old_hash}"
+        "[CPU SHOT TABLE PACK] PASS: mode14=640/8, mode13=620/7, "
+        "legacy=528/5, malformed payload and metadata rejected; "
+        f"mode14_sha256={hashlib.sha256(args.new_pack.read_bytes()).hexdigest()} "
+        f"mode13_sha256={mode13_hash} legacy_sha256={legacy_hash}"
     )
 
 

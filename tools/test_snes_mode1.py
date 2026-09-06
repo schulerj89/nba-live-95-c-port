@@ -92,11 +92,16 @@ def main():
             # poses/attachment from frame890. Reviewed frame1000 keeps the
             # basket scene and identical 2-0 HUD layer; only this C-only layer
             # census changes. All per-pixel rank/palette checks remain below.
-            assert summary["visible"]["bg1"] == 3329
-            assert summary["visible"]["bg2"] == 41848
-            assert summary["visible"]["bg3"] == 6013
-            assert summary["visible"]["obj"] == 3733
-            assert summary["visible"]["backdrop"] == 2421
+            # Mode-fourteen animation-before-common and late behavior first
+            # differ at frame730 after entry728. The preserved fbeb3e0 build
+            # reproduces every old count; the inspected current frame1000
+            # retains coherent court, players, ball, baskets and crowd. This
+            # updates a C trajectory anchor, not native rendering expectations.
+            assert summary["visible"]["bg1"] == 234
+            assert summary["visible"]["bg2"] == 48993
+            assert summary["visible"]["bg3"] == 0
+            assert summary["visible"]["obj"] == 3386
+            assert summary["visible"]["backdrop"] == 4731
             counts = {name: 0 for name in
                       ("BACKDROP", "BG1", "BG2", "BG3", "OBJ")}
             indexed = direct = rows = 0

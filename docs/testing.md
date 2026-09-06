@@ -20,7 +20,7 @@ native fixture, liveness limit, and image expectation remains checked.
 ## Work shared within a run
 
 `tools/build_vector_probe.ps1 -Name <name>` still builds a single probe. The
-full suite supplies all six probe names together, initializes MSVC once, and
+full suite supplies all configured probe names together, initializes MSVC once, and
 compiles each probe against the current production objects. Any compilation
 failure stops the batch. Production objects must be built first; no stale
 object or executable cache is introduced.

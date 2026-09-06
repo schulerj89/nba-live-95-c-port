@@ -959,11 +959,12 @@ def build_shot_gameplay_asset(rom_data):
     A02A doubles an already word-stepped Y; its final lookup can read ten
     bytes beyond A555's six-word table. Retain that ROM behavior as data.
     """
-    # `$86:A994-$A9CF` is two raw 30-byte facing tables used by mode 13.
-    # It is inline data and receives no executable routine credit.
+    # `$86:A994-$A9CF` is two raw 30-byte facing tables used by modes 13/14.
+    # `$86:B448-$B44F` and `$86:B440-$B447` are landing/setup word tables.
+    # They are data and receive no executable routine credit.
     ranges = ((0x9EB2, 38), (0x9F32, 18), (0xA17D, 64),
               (0xA344, 144), (0xA4AB, 192), (0xA994, 60),
-              (0xB448, 8))
+              (0xB448, 8), (0xB440, 8))
     offset = 12 + len(ranges) * 12
     directory, payload = bytearray(), bytearray()
     for address, size in ranges:
@@ -1852,7 +1853,7 @@ def create_asset_pack(rom_path, output_path, capture_root=None):
         (274, 61, 5, 1595, gameplay_formations),
         (275, 61, 320, 0x85C6AF, gameplay_play_control),
         (276, 29, 7, 0x85C661, gameplay_cpu_tables),
-        (277, 7, 0, 0x869EB2, gameplay_shot_tables),
+        (277, 8, 0, 0x869EB2, gameplay_shot_tables),
         (278, 4, 8, 0x8798DA, build_fatigue_gameplay_asset(rom_data)),
         (280, 72, 16, 0x86EE76, build_jump_gameplay_asset(rom_data)),
         (281, 22, 33, 0x82F02F, build_graphics_scratch_asset(rom_data)),

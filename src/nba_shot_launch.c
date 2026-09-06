@@ -8,19 +8,21 @@ static uint16_t u16(const uint8_t *p) {
 static uint32_t u32(const uint8_t *p) {
     return u16(p) | (uint32_t)u16(p+2) << 16;
 }
-static const uint16_t table_ranges[7][2] = {
+static const uint16_t table_ranges[8][2] = {
     {0x9EB2,38},{0x9F32,18},{0xA17D,64},{0xA344,144},{0xA4AB,192},
-    {0xA994,60},{0xB448,8}
+    {0xA994,60},{0xB448,8},{0xB440,8}
 };
 /* Host asset validation; no direct native address. Validate the exact five-
- * range launch payload and its seven-range close-finish extension. */
+ * range launch payload and its seven/eight-range close-finish extensions. */
 static const uint8_t *shot_tables(const NbaAssetPack *assets) {
     const NbaAssetItem *item=nba_assets_get(assets,NBA_ASSET_GAMEPLAY_SHOT_TABLES);
-    if(!item || !item->data || (item->size!=528u && item->size!=620u)) return NULL;
+    if(!item || !item->data ||
+       (item->size!=528u && item->size!=620u && item->size!=640u)) return NULL;
     const uint8_t *data=item->data;
     unsigned count=u32(data+8);
     if(memcmp(data,"NBSHOT1",8) ||
-       !((count==5u && item->size==528u) || (count==7u && item->size==620u))) return NULL;
+       !((count==5u && item->size==528u) || (count==7u && item->size==620u) ||
+         (count==8u && item->size==640u))) return NULL;
     uint32_t offset=12u+count*12u;
     for(unsigned i=0;i<count;++i) {
         const uint8_t *d=data+12+i*12;
@@ -50,11 +52,12 @@ static bool table_word(const uint8_t *data,uint16_t address,uint16_t *out) {
 bool nba_shot_close_finish_turn(const NbaAssetPack *assets,bool zero_selector,
                                 uint16_t timer_offset,uint8_t *turn) {
     const uint8_t *data=shot_tables(assets);
-    if(!data || !turn || u32(data+8)!=7u || timer_offset>=30u) return false;
+    unsigned count=data?u32(data+8):0u;
+    if(!data || !turn || (count!=7u && count!=8u) || timer_offset>=30u) return false;
     const uint8_t *entry=data+12+5*12;
     if(u32(entry)!=0xA994u || u32(entry+4)!=60u) return false;
     uint32_t offset=u32(entry+8)+(zero_selector?30u:0u)+timer_offset;
-    if(offset>=620u) return false;
+    if(offset>=(count==7u?620u:640u)) return false;
     *turn=data[offset];
     return true;
 }
@@ -65,12 +68,28 @@ bool nba_shot_close_finish_landing(const NbaAssetPack *assets,
                                    uint16_t variant_offset,
                                    uint16_t *animation) {
     const uint8_t *data=shot_tables(assets);
-    if(!data || !animation || u32(data+8)!=7u || variant_offset>6u ||
+    unsigned count=data?u32(data+8):0u;
+    if(!data || !animation || (count!=7u && count!=8u) || variant_offset>6u ||
        (variant_offset&1u)!=0u) return false;
     const uint8_t *entry=data+12+6*12;
     if(u32(entry)!=0xB448u || u32(entry+4)!=8u) return false;
     uint32_t offset=u32(entry+8)+variant_offset;
-    if(offset+1u>=620u) return false;
+    if(offset+1u>=(count==7u?620u:640u)) return false;
+    *animation=u16(data+offset);
+    return true;
+}
+
+/* `$86:B1A2-$B1AA`, mode-fourteen special receiver: fetch the unaligned-safe
+ * word at raw byte offset `+$58` from `$86:B440-$B447`. No ROM bytes live in C. */
+bool nba_shot_special_receiver_lower_queue(const NbaAssetPack *assets,
+                                           uint16_t variant_offset,
+                                           uint16_t *animation) {
+    const uint8_t *data=shot_tables(assets);
+    if(!data || !animation || u32(data+8)!=8u || variant_offset>6u) return false;
+    const uint8_t *entry=data+12+7*12;
+    if(u32(entry)!=0xB440u || u32(entry+4)!=8u) return false;
+    uint32_t offset=u32(entry+8)+variant_offset;
+    if(offset+1u>=640u) return false;
     *animation=u16(data+offset);
     return true;
 }

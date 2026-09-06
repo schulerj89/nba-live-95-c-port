@@ -2015,6 +2015,29 @@
       "date": "2026-09-06"
     },
     {
+      "range": "86B154-86B334",
+      "name": "mode-fourteen special receiver parent",
+      "source": "src/nba_tipoff.c + src/nba_shot_launch.c",
+      "method": "controlled genuine-entry native differential + strict production replay + public owner-flow/acquisition scheduler integration + exact pack/listing evidence",
+      "evidence": "Repeated controlled Mesen captures retain 51 genuine $86:B154 entries, all five RTL exits, all 185 parent instruction starts, and 154 represented words without patching PC, stack, ROM, RNG, or child results. The exact start-set hash is 2ba100f987f03ddc4a7499dec07fcff87578ef71a202ee60ebfe90b726859d5f. The fixture covers continuing DEC-A wrap at $8001/$8002 and terminal boundaries $8003/$0000/$0001/$0002, grounded setup including odd +$58 table offsets, raw queue/cursor/lock writes, exact jump gates, wrapped signed +/-80 disruption boundaries, selector-zero A9B2 raw-byte facing, movement/display-facing separation, ownerless/self/other-owner relationships including the other actor's +$5E, owned attachment, complete failure cleanup, full $86:9D6E release, and the retained adjacent $86:A9D0->$86:986D terminal chain. Aggregate direct children are 15 restores, seven upper and 15 lower cancellations, 23 upper/seven lower/nine both-channel installs, 10 pose resolutions, 17 XY and 17 Z attachments, eight launches, four terminal helpers and landings, 19 point attachments, seven pass cancellations, 12 statistic calls, and two effects. Strict replay passes all 51 x 154 comparisons and stale host-owner poisoning; twelve fixture mutations are rejected before replay. Public caller cases prove animation precedes common locomotion, canonical +$60 survives a poisoned compatibility mirror, a real mode-11 owner flow initializes the special receiver and baseline velocity, a real post-common pass collision installs ownership/bit $0010 and defers B154 to the odd frame without repeating physics, and restore resumes ordinary work on the next due pass. The fbeb3e0 source baseline fails 48 of 51 cases with 460 differing words across 151 source-compatible projected fields. Native identity is slot/id5 at $39EB, player $446B, lineup $4779=2, pack roster $AC:F636 -> host context1/roster2/persistent14; controller is $FFFF and period/difficulty/context+$08 are fixed zero. The projection retains all ten actor +$5E inputs, complete queues/resources/snapshots, roster/controller statistics and B649/B66A DP $46/$47, while unrepresented DP $00/$8E/$AA/$B2 and other arithmetic scratch remain excluded. Resource 277 is now exact 640-byte/eight-range NBSHOT1 with $86:B440-$B447 appended; all eight ranges match the local ROM, while prior 620-byte/seven-range mode-thirteen and 528-byte/five-range launch packs remain supported. The data tables and shared child routines receive no instruction credit here. This grants no whole-game native trajectory claim.",
+      "provenance": {
+        "rom_sha256": "2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870",
+        "raw_vectors": ".analysis/cpu-mode-fourteen-20260906/capture-v5/cpu_mode_fourteen.vectors.jsonl",
+        "raw_vectors_sha256": "215155c4c085caf49af97dc84dd4e5bf915237e6279f9eed61af357fa4b2ba19",
+        "repeat_vectors": ".analysis/cpu-mode-fourteen-20260906/capture-v6/cpu_mode_fourteen.vectors.jsonl",
+        "repeat_vectors_sha256": "c0d88a401cba7294e6c757c176d85814a2bf4e523e796e0eba49670889f24bfd",
+        "case_matrix_sha256": "c58f19f007b91cc0d81b99c2f93f4a410522bc23b5431bfc936bbc74967a5527",
+        "path_trace_sha256": "216e33722763b6ce4941048032ebf6ea1574cf33f5b5d2f5766eb13474881914",
+        "capture_script_sha256": "2c41e0d47c897a3048ff93ff723d082129cec0e80ce414d6efccff65bb026688",
+        "mesen_script_sha256": "63ac12c12840052680740a6fe11985f9db911769ed9b89d7a2cc293dd454e037",
+        "ghidra_functions": ".analysis/cpu_gameplay_ghidra/cpu_gameplay_bank86_functions.c",
+        "ghidra_functions_sha256": "c3ce476090ee9a9ec970ce9b9ccb2fdeea42936f8a3ff9184880b609fff3b199",
+        "ghidra_instructions": ".analysis/full-rom-census/listings/bank_86_instructions.tsv",
+        "ghidra_instructions_sha256": "f642199de28e016061db579f28a28f60c772de70a6a2a6712ded609e03f7d63c"
+      },
+      "date": "2026-09-06"
+    },
+    {
       "range": "86B769-86B978",
       "name": "mode-twelve shooter parent",
       "source": "src/nba_tipoff.c + src/nba_shot_launch.c",

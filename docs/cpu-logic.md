@@ -451,12 +451,14 @@ seven new telemetry fields and two identity words are excluded from that
 source-compatible comparison.
 
 Inline `$86:A994-$A9CF` contains 60 table bytes and receives no instruction
-credit. Resource 277 `NBSHOT1` carries those bytes plus the eight-byte B448
-landing table in an exact seven-range, 620-byte form. The loader continues to
-accept the exact five-range, 528-byte launch form; close-finish accessors reject
-that legacy form and malformed inner directories. Pack contract tests exercise
-both through `nba_assets_load` and `nba_shot_launch` using only local temporary
-mutations. Native ROM table bytes remain absent from source and fixtures.
+credit. Resource 277 `NBSHOT1` now carries those bytes, the eight-byte B448
+landing table, and mode fourteen's eight-byte B440 queue table in an exact
+eight-range, 640-byte form. The loader continues to accept the exact prior
+seven-range, 620-byte mode-thirteen form and five-range, 528-byte launch form.
+Accessors reject layouts missing their required range and malformed inner
+directories. Pack contract tests exercise all three through `nba_assets_load`
+and `nba_shot_launch` using only local temporary mutations. Native ROM table
+bytes remain absent from source and fixtures.
 
 The production caller test proves animation and common physics run once,
 intervening globals are visible to the late parent, restore consumes the pass,
@@ -512,7 +514,134 @@ and pack `e22b8fde583246890ddd938f863e8cd1478ca1eea90d2c97baa7c153781857c9`.
 Raw captures, rendered images, instrumented diagnostics, and packs are local
 only. These regression results do not expand the native witness domain above.
 
-The next bounded parent is mode fourteen `$86:B154-$B334`, represented by
-`cpu_update_rom_special_receiver` in `src/nba_tipoff.c`. Assign it only after
-this mode-thirteen iteration is verified, committed, and pushed. Its existing
-terminal child integration is not evidence for the rest of the parent.
+`$86:B154-$B334` is the mode-fourteen special-receiver parent selected by
+`$87:9BD3[14] -> $87:9C4E`. The production scheduler advances its animation
+before the common `$85:963D` physics pass, runs ball/contact/role globals, and
+only then dispatches the parent through `$87:9244`. A real pass catch at that
+global boundary preserves mode 14, raises `$13E7` bit `$0010`, and defers the
+parent to the following odd frame without repeating animation or physics.
+
+Entry subtracts canonical `$C6=2` from actor `+$60`, saves the result in DP
+`$AA`, then applies `DEC A/BPL`. This makes original timers `$8001` and `$8002`
+continue with stored `$7FFF` and `$8000`, while `$8003`, `$0000`, `$0001`, and
+`$0002` take their source-accurate terminal branches. Only the continuation
+writes actor `+$60`; the terminal does not prewrite it. Owner terminals call
+the existing adjacent
+`$86:A9D0` then `$86:986D` chain. Lost-owner terminals and later invalid
+relationships queue both animation channels to state 3 before clearing
+`$1866`, restoring through `$86:9846`, and cancelling through `$86:A613`.
+
+Grounded timers at least 40 retain state. An upper state outside `$18-$1E`
+cancels both channels and installs the exact upper/lower queue layout: upper
+state `+$66`, upper queue 24/cursor 0, lower state `$1F`, and lower queue word
+`$86:B440[raw +$58]` plus 24/cursor 1. The lookup is an unaligned word read for
+every safe raw byte offset 0 through 6; it is neither divided nor restricted
+to even offsets. Valid grounded states below `$24` jump with VZ `$0270` for
+selector zero or selector six with movement-facing `+$4E==3`, otherwise
+`$0264`. Displayed facing `+$52` is not that branch input.
+
+An owned airborne receiver is disrupted only when its upper state is invalid,
+or when stored timer is at least `$12` and either wrapped signed velocity
+difference from `+$BA/+$BC` lies outside inclusive `[-80,+80]`. The fallback
+restores, cancels lower, installs upper `$17`, resolves and attaches, stores
+integer shot origins, and enters the complete `$86:9D6E` launch. Retained
+airborne selector zero uses raw `timer-8` byte offsets into `$86:A9B2`; other
+selectors copy requested direction to movement-facing `+$4E`. Ownerless
+retention requires `$0946` to name this receiver. Another owner additionally
+requires that actor's `+$5E` to be mode 15. A self owner writes `$094E=30`,
+`$0936=2`, clears actor `+$4A`, conditionally publishes `$1866`, and attaches
+through `$87:B649/$B66A` without the ordinary `$87:AEC3` path.
+
+Repeated controlled Mesen captures v5/v6 retain 51 genuine B154 entries, all
+five exits, and the exact union of all 185 instruction starts. The owned-start
+hash is `2ba100f987f03ddc4a7499dec07fcff87578ef71a202ee60ebfe90b726859d5f`.
+Exit counts are B17D=4, B1B9=7, B242=8, B28F=3, and B334=29. Cases and paths
+are byte-identical with hashes
+`c58f19f007b91cc0d81b99c2f93f4a410522bc23b5431bfc936bbc74967a5527`
+and `216e33722763b6ce4941048032ebf6ea1574cf33f5b5d2f5766eb13474881914`.
+Raw-vector hashes are
+`215155c4c085caf49af97dc84dd4e5bf915237e6279f9eed61af357fa4b2ba19`
+and `c0d88a401cba7294e6c757c176d85814a2bf4e523e796e0eba49670889f24bfd`;
+the raw vectors differ, while all 51 x 154 represented entry/exit words match.
+The compact fixture hash is
+`f26a26da6f6f750b3843caaf2d6ce1d519271b734b81e672784eb76cf5f1aec1`.
+
+The native identity is slot/id 5 at actor `$39EB`, player `$446B`, and active
+lineup `$4779=2`; pack roster `$AC:F636` maps it to host actor 5, context 1,
+roster slot 2, and persistent index 14. Controller is `$FFFF`; period,
+difficulty, and both context `+$08` fractions are fixed zero. The projection
+includes all ten actor `+$5E` words, complete queues/cursors/locks/resources,
+pose snapshots, roster/controller statistics, and attachment DP `$46/$47`.
+Argument/address/arithmetic DP `$00/$8E/$AA/$B2` and other unrepresented
+scratch are deliberately excluded. The Ghidra C export is not a snesrecomp
+source, and no Bank-$86 recomp root is claimed.
+
+Strict production replay passes all 51 x 154 comparisons, stale host-owner
+poisoning, and twelve pre-replay fixture mutations. The production caller test
+also covers canonical `+$60` with a poisoned compatibility mirror, the real
+mode-11 special-pass transition, animation-before-common ordering, real
+post-common acquisition deferral, owner-loss restore, and next-due work. The
+frozen `fbeb3e0` source baseline fails 48 of 51 cases with 460 word differences
+across 151 source-compatible fields; current production has zero. This bounded
+claim does not establish whole-game native trajectory parity, controllers
+zero through four, or nonzero period/difficulty/context-fraction behavior.
+
+The mode-one frame-1000 image census remains a C regression anchor. The
+preserved `fbeb3e0` executable and pack with the 620-byte shot-table resource
+reproduce its former pixel-layer counts exactly. Against the frozen current
+executable and pack with the 640-byte shot-table resource, the first
+gameplay-row difference is frame 730, after actor 5 enters mode 14 at frame
+728, and is confined there to its upper/lower animation accumulators changing
+from 854 to 688. The reviewed current frame 1000 retains a coherent wide
+court, players, ball, baskets, and crowd, with no HUD overlay. Its five updated
+visible-layer counts do not claim native rendering parity. The ignored audit is
+`.analysis/cpu-mode-fourteen-20260906/mode1-review/report.json`; baseline
+executable/pack hashes are
+`1ef4e5ab37e56766cdddd43e9021bf7ae281d065d248ac0b0ac265f9132affaf`
+and `e22b8fde583246890ddd938f863e8cd1478ca1eea90d2c97baa7c153781857c9`,
+and current hashes are
+`97ed45622abeeee0f5ecb825b271e0db7844d75a0c9e769296051d48ab2dafaa`
+and `378787f5a3b381cec616e63d34b05e3090518ba19b162e4412fbb0a6f182d504`.
+
+The configured regression was completed in bounded segments against that
+same frozen executable, pack, ROM, and retained 63,800-row trace. The front
+gates, census, mode-one check, CPU prefix, complete due-shot loop,
+score/rebound/camera checks, corrected attachment block, pass and stale-mode
+checks, sustained analysis, RGB images, and static source checks all pass. The
+due loop observes 77 starts and 77 releases. The pass section observes 2,731
+exact pass frames, 134 automatic unlocks, and two pass interruptions with two
+recoveries. Its source-accurate acquisition exception is limited to the
+adjacent odd scheduler row and following restore; malformed intervening rows
+remain rejected.
+
+The attachment block retains all 15,494 stable samples whose native
+`+$2A/+$2C` resource cache is valid. It classifies 363 excluded cache-invalid
+samples, all and only grounded mode-fourteen state `0/31` with upper/lower
+locks `0/1`; any other invalid signature fails. Frame 774 separately pins the
+represented pre-parent fallback: moving owner state 5 selects upper resource
+26, the locked alternate lower channel retains resource 2000, flags `$8004`
+produce ball offset `(-5,-1,32)`, and late B154 reinstalls state `0/31` while
+invalidating the end-of-frame cache. Sixty-nine other invalid-cache rows retain
+an earlier special-shot hand point whose call-boundary inputs are absent from
+end telemetry, so no native-parity claim is made for reconstructing those
+points. The direct mode-fourteen vectors and production caller cases remain
+the evidence for the late grounded queue and invalidation behavior.
+
+All five current CPU RGB anchors match the reviewed hashes. Frame 600 is
+unchanged; frames 1300, 3480, 6932, and 6954 show coherent court, players,
+ball, baskets, crowd, and applicable HUD state. This visual review guards the
+current C trajectory and does not add native instruction coverage. The
+retained trace SHA-256 is
+`b0f8ff3699320f03486e2674f07697efc9baac06fe6c3a41d46c90df2709e619`.
+The exact corrected attachment source fragment and run log are retained under
+ignored `.analysis/cpu-mode-fourteen-20260906/manager-fullsuite/`, with hashes
+`5f6eba76f98aac64ee96c35816a2db030563602399def41e4df58871c9f10578`
+and `0b2790c7a42895661095bc49cb5b285a035f010235d45b2199fece81bf49ab84`.
+
+The next bounded unverified routine is the complete mode-two parent
+`$86:F6CD-$F793`. Existing ledger entries cover six isolated leaves
+`F6CD-F6DA`, `F6EF-F702`, `F721-F72D`, `F72E-F73A`, `F780-F78A`, and
+`F78B-F792`; they do not establish the parent's countdown/reload paths or the
+`F73B-F77E` context and target routing as one exact dispatcher-selected
+contract. No implementation or additional coverage is claimed for that next
+scope here.

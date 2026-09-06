@@ -153,7 +153,7 @@ if ($Test) {
         'cpu_defense_context_vector_probe', 'cpu_mode_seven_vector_probe',
         'cpu_mode_eight_vector_probe', 'cpu_mode_nine_vector_probe',
         'cpu_mode_ten_vector_probe', 'cpu_mode_twelve_vector_probe',
-        'cpu_mode_thirteen_vector_probe',
+        'cpu_mode_thirteen_vector_probe', 'cpu_mode_fourteen_vector_probe',
         'normal_actor_parent_vector_probe'
     )
 
@@ -199,8 +199,18 @@ if ($Test) {
         '--pack', $AssetPack
     )
 
+    Invoke-PythonRegression -Script 'verify_cpu_mode_fourteen_vectors.py' -Arguments @(
+        '--vectors', (Join-Path $Root 'tests\fixtures\cpu-mode-fourteen-witnesses.json'),
+        '--probe', (Join-Path $BuildDir 'cpu_mode_fourteen_vector_probe.exe'),
+        '--pack', $AssetPack
+    )
+
+    Invoke-PythonRegression -Script 'test_cpu_mode_fourteen_fixture.py' -Arguments @(
+        '--vectors', (Join-Path $Root 'tests\fixtures\cpu-mode-fourteen-witnesses.json')
+    )
+
     Invoke-PythonRegression -Script 'test_cpu_mode_thirteen_pack.py' -Arguments @(
-        '--probe', (Join-Path $BuildDir 'cpu_mode_thirteen_vector_probe.exe'),
+        '--probe', (Join-Path $BuildDir 'cpu_mode_fourteen_vector_probe.exe'),
         '--new-pack', $AssetPack
     )
 
