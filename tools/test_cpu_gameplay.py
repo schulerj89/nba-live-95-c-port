@@ -554,7 +554,21 @@ def main():
                 raise AssertionError(
                     "$86:C4FE/$86:D12D defensive-foul bookkeeping diverged: "
                     f"{activated_foul}")
+        # Collect small liveness summaries during the existing contact scan.
+        # Every summary uses the same frame-220 suffix as its assertions below.
+        teams, modes, owners = set(), set(), set()
+        play_codes, mismatch_pairs = set(), set()
+        rng_states = []
         for row in rows[219:]:
+            teams.add(row["possession"]["team"])
+            modes.add(row["ball"]["state"])
+            owners.add(row["ball"]["owner"])
+            play_codes.add(row["possession"]["play_code_raw"])
+            rng_states.append(row["possession"]["rng_state_raw"])
+            mismatch_pairs.update(
+                (actor["animation"], actor["lower_animation"])
+                for actor in row["actors"]
+                if actor["animation"] != actor["lower_animation"])
             collision = row["collision"]
             if collision["routine"] not in (
                     0, 0x86CE1E, 0x86D12D, 0x86D1D9,
@@ -761,7 +775,6 @@ def main():
         if ordinary_special_rows and not anchor_rows:
             raise AssertionError("$85:AE1F cutter anchor was not represented")
 
-        play_codes = {row["possession"]["play_code_raw"] for row in rows[219:]}
         # BAA2 sets `$0994`; B128 now selects from the asset-packed team
         # strategy ranges instead of rotating four host-authored fixtures.
         if 0x35 not in play_codes or 0x01 not in play_codes or \
@@ -845,13 +858,10 @@ def main():
             if row["play_selector_raw"] not in (left, right, [-1, -1, -1]):
                 raise AssertionError(
                     f"play $01 side-relative selectors changed: {row}")
-        teams = {row["possession"]["team"] for row in rows[219:]}
         if not {0, 1}.issubset(teams):
             raise AssertionError(f"CPU offense did not change sides: {teams}")
-        modes = {row["ball"]["state"] for row in rows[219:]}
         if not {3, 4, 5, 6}.issubset(modes):
             raise AssertionError(f"ball physics modes missing: {modes}")
-        owners = {row["ball"]["owner"] for row in rows[219:]}
         if len(owners - {-1}) < 4:
             raise AssertionError(f"ballhandler did not rotate: {owners}")
         acquisitions = [(before, after) for before, after in zip(rows, rows[1:])
@@ -1014,12 +1024,8 @@ def main():
             # can reinstall an unchanged value even on a due pass. The exact
             # mask, order, delta and phase assertion below is the scheduler
             # regression guard (all ten actors, not this ambiguous proxy).
-        mismatch_pairs = {(actor["animation"], actor["lower_animation"])
-                          for row in rows[219:] for actor in row["actors"]
-                          if actor["animation"] != actor["lower_animation"]}
         if not {(0x0B, 0x03), (0x16, 0x32)}.issubset(mismatch_pairs):
             raise AssertionError(f"independent animation pairs missing: {mismatch_pairs}")
-        rng_states = [row["possession"]["rng_state_raw"] for row in rows[219:]]
         if any(type(value) is not int or not 0 <= value <= 0xFFFF
                for value in rng_states):
             raise AssertionError("$80:CEE7 RNG telemetry is not a 16-bit word")

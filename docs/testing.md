@@ -119,3 +119,27 @@ and all five RGB renders. Output was byte-identical. Capture time is excluded;
 this is an affected-gate comparison, not a new timing for the entire suite.
 Earlier timing figures reflect different machine load and should not be used
 as the baseline for this second optimization.
+
+## Shared liveness summary scan
+
+The CPU verifier collects possession teams, ball modes and owners, strategy
+codes, animation pairs, and ordered RNG states during its existing contact
+scan. All six use the same frame-220 suffix as before. Collection precedes
+contact-specific early continues, and the original assertions remain in place.
+This removes six complete spool passes (381,486 row decodes for this trace)
+without reducing frames or coverage. The sets and RNG list retain the same
+values and order; no persistent test-result cache is introduced.
+
+A sequential comparison on September 6, 2026 evaluated the old and new
+production summary expressions against the same retained 63,800-row trace.
+The six separate scans took 44.41 seconds; one combined scan took 7.79 seconds
+(82.5% less time), with all six results identical, including RNG order. This
+measures summary collection only, excluding spool creation and capture; it is
+not a total-suite speedup. In production, collection shares an existing scan.
+
+The complete retained-trace CPU regression passed before and after with
+byte-identical output, including sustained analysis and all five RGB checks.
+Both runs used the preserved mode-twelve executable and pack with their
+matching trace; unfinished mode-thirteen runtime edits were excluded from
+this comparison. The bounded-loader checks also pass, and all 126 explicit
+failure checks in the verifier are unchanged.
