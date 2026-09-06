@@ -45,6 +45,11 @@ typedef enum {
 typedef struct {
     NbaRom rom;
     NbaAssetPack assets;
+    /* Host-owned canonical SNES WRAM allocation. calloc supplies the host
+     * zero-power-on profile; `$80:80C5-$8136` is only the source context for
+     * native low-WRAM clearing/cursor stores. Scene transitions preserve it. */
+    uint8_t *graphics_wram;
+    NbaGraphicsBus graphics_bus;
     NbaAudio audio;
     NbaRenderer renderer;
     NbaInput input;

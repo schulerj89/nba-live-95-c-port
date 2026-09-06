@@ -15,6 +15,14 @@ the long CPU regression runs after the shorter route and compositor gates.
 See [the testing workflow](../docs/testing.md) for coverage ownership and the
 bounded trace decode cache.
 
+The canonical graphics-WRAM lifetime probe exercises real game initialization,
+scene transitions, new-match state, Tipoff binding, shutdown, and reinit:
+
+~~~powershell
+./tools/build_vector_probe.ps1 -Name game_wram_lifetime_probe
+python tools/test_game_wram_lifetime.py --probe build/game_wram_lifetime_probe.exe --pack build/nba95_assets.pak
+~~~
+
 ## Asset pipeline
 
 Enable script file I/O in Mesen, then capture the verified US ROM inputs:

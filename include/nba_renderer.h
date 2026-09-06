@@ -2,6 +2,7 @@
 #define NBA_RENDERER_H
 
 #include "nba_types.h"
+#include "nba_graphics_bus.h"
 
 /* SNES PPU (Picture Processing Unit) Memory & Register Mappings */
 #define SNES_PPU_INIDISP   0x2100  /* Display Control & Master Brightness */
@@ -26,12 +27,19 @@ typedef struct {
     /* Opaque, lazily allocated Mode-1 candidate/provenance state. Ordinary
      * software-rendered screens do not pay its framebuffer-sized cost. */
     struct NbaSnesMode1State *ppu_state;
+    /* Host lifetime binding for the canonical game WRAM allocation. The
+     * renderer borrows this view and never owns or clears its bytes. */
+    NbaGraphicsBus graphics_bus;
     int width;
     int height;
     uint32_t bg_color;
 } NbaRenderer;
 
 void nba_renderer_init(NbaRenderer *renderer);
+/* Host-only support binding; no single native address. Makes the renderer's
+ * future graphics producers observe the game-owned WRAM byte identity. */
+bool nba_renderer_bind_graphics_bus(NbaRenderer *renderer,
+                                    const NbaGraphicsBus *graphics_bus);
 void nba_renderer_clear(NbaRenderer *renderer, uint32_t color);
 void nba_renderer_set_pixel(NbaRenderer *renderer, int x, int y, uint32_t color);
 void nba_renderer_draw_rect(NbaRenderer *renderer, int x, int y, int w, int h, uint32_t color);

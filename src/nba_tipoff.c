@@ -9605,6 +9605,19 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
     return true;
 }
 
+/* Host-only support binding; no single native address. Gameplay borrows the
+ * canonical game WRAM allocation so later `$80:AD2B-$AD88` producers and
+ * `$87:B7D8` readers can share byte identity. NULL removes the borrow. */
+bool nba_tipoff_bind_graphics_bus(NbaTipoff *tipoff,
+                                  const NbaGraphicsBus *graphics_bus) {
+    NbaGraphicsBus requested = graphics_bus ? *graphics_bus : (NbaGraphicsBus){0};
+    if (!tipoff) return false;
+    tipoff->graphics_bus = (NbaGraphicsBus){0};
+    if (!graphics_bus) return true;
+    return nba_graphics_bus_view(&tipoff->graphics_bus, requested.wram,
+                                 requested.size);
+}
+
 /* Controlled Mesen witnesses from `$87:95E9` to `$86:DD47`/`$87:985C`.
  * They include the native input acknowledgements used by the capture, so the
  * stage raster remains separate; these replace the old arbitrary 120 ticks. */

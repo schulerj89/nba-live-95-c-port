@@ -18,6 +18,12 @@ throws, clock and period transitions, timeout/resume support, out-of-bounds
 presentation, and a structural final-game flow. Graphics and audio are derived
 from the verified US ROM through the asset pack.
 
+The host game now owns one zero-allocated 128 KiB canonical WRAM buffer and
+binds borrowed views to the renderer and each active Tipoff scene. The bytes
+persist across scene-union clears and new-match initialization and are released
+on shutdown. This is lifecycle support for future graphics publication; no
+native queue producer, consumer, or human action routine is credited by it.
+
 Recent source-verified visual and gameplay fixes include:
 
 - all 29 selected home-team court layouts and center logos;
@@ -99,6 +105,9 @@ mode-seven,
 - Ordinary human offense, defense, passing, shooting, inbound control, and
   controller ownership are not complete production paths. Bounded human
   helpers exist but do not make a normal matchup fully playable.
+- Canonical graphics WRAM has a production lifetime owner, but the native
+  jersey appender `$80:AD2B-$AD88`, remaining ordered producers/consumer, and
+  `$012C` provenance required by `$87:B7D8` remain unimplemented.
 - The strict native/C gameplay differential begins from different launch
   state, scheduler timing, and RNG history. Passing isolated routine vectors
   does not establish an equivalent whole-game trajectory.

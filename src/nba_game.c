@@ -4,6 +4,7 @@
 #include "nba_audio.h"
 #include "nba_snes_ppu.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define NBA_DEBUG_MAX_LINES 8
@@ -290,6 +291,8 @@ void nba_game_debug_print(const NbaGame *game) {
         printf("[DEBUG STATE] %s\n", lines.line[index]);
 }
 
+/* Host scene-entry support around `$80:DA91`. The native scene dispatcher
+ * changes mode-owned state while game-lifetime WRAM remains allocated. */
 bool nba_game_enter_state(NbaGame *game, NbaGameState state) {
     if (!game) return false;
     NbaGameState previous_state = game->state;
@@ -364,12 +367,29 @@ bool nba_game_enter_state(NbaGame *game, NbaGameState state) {
             fprintf(stderr, "[GAME] Tip-off asset initialization failed.\n");
             return false;
         }
+        if (!nba_tipoff_bind_graphics_bus(&game->scene.tipoff,
+                                          &game->graphics_bus)) {
+            fprintf(stderr, "[GAME] Tip-off WRAM binding failed.\n");
+            return false;
+        }
         if (!nba_audio_start_gameplay(&game->audio, &game->assets)) {
             fprintf(stderr, "[GAMEPLAY AUDIO] ROM gameplay bank failed to start; "
                             "continuing silently.\n");
         }
     }
     return true;
+}
+
+/* Host-only lifetime support; no single native address. Clear every borrowed
+ * view before releasing the one canonical 128 KiB allocation. */
+static void nba_game_release_graphics_wram(NbaGame *game) {
+    if (!game) return;
+    if (game->state == NBA_STATE_TIPOFF)
+        (void)nba_tipoff_bind_graphics_bus(&game->scene.tipoff, NULL);
+    (void)nba_renderer_bind_graphics_bus(&game->renderer, NULL);
+    game->graphics_bus = (NbaGraphicsBus){0};
+    free(game->graphics_wram);
+    game->graphics_wram = NULL;
 }
 
 static int nba_game_license_brightness(uint32_t state_frame) {
@@ -396,6 +416,16 @@ bool nba_game_init(NbaGame *game, const char *rom_path, const char *assets_path)
     printf("[GAME] Initializing NBA Live '95 Native C Port...\n");
 
     nba_renderer_init(&game->renderer);
+    game->graphics_wram = (uint8_t *)calloc(1u, NBA_GRAPHICS_WRAM_BYTES);
+    if (!game->graphics_wram ||
+        !nba_graphics_bus_view(&game->graphics_bus, game->graphics_wram,
+                               NBA_GRAPHICS_WRAM_BYTES) ||
+        !nba_renderer_bind_graphics_bus(&game->renderer,
+                                        &game->graphics_bus)) {
+        fprintf(stderr, "[GAME] Canonical WRAM allocation failed.\n");
+        nba_game_release_graphics_wram(game);
+        return false;
+    }
     nba_font_init();
     nba_audio_init(&game->audio);
     nba_session_init(&game->session);
@@ -404,6 +434,7 @@ bool nba_game_init(NbaGame *game, const char *rom_path, const char *assets_path)
     if (assets_path && assets_path[0] != '\0' &&
         !nba_assets_load(&game->assets, assets_path)) {
         nba_audio_shutdown(&game->audio);
+        nba_game_release_graphics_wram(game);
         return false;
     }
 
@@ -412,6 +443,7 @@ bool nba_game_init(NbaGame *game, const char *rom_path, const char *assets_path)
         fprintf(stderr, "[GAME] Asset pack lacks indexed intro resources; rebuild it with tools/extract_assets.py.\n");
         nba_assets_free(&game->assets);
         nba_audio_shutdown(&game->audio);
+        nba_game_release_graphics_wram(game);
         return false;
     }
 
@@ -419,6 +451,7 @@ bool nba_game_init(NbaGame *game, const char *rom_path, const char *assets_path)
         if (!nba_rom_load_file(&game->rom, rom_path)) {
             nba_assets_free(&game->assets);
             nba_audio_shutdown(&game->audio);
+            nba_game_release_graphics_wram(game);
             return false;
         }
     }
@@ -456,6 +489,7 @@ void nba_game_shutdown(NbaGame *game) {
     if (game->rom.is_loaded) {
         nba_rom_free(&game->rom);
     }
+    nba_game_release_graphics_wram(game);
     game->is_initialized = false;
     printf("[GAME] Shutdown complete.\n");
 }

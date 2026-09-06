@@ -8,24 +8,6 @@ static void write16(uint8_t *p, uint16_t v) {
     p[0] = (uint8_t)v; p[1] = (uint8_t)(v >> 8);
 }
 
-bool nba_graphics_bus_view(NbaGraphicsBus *view, uint8_t *wram, size_t size) {
-    if (!view || !wram || size < NBA_GRAPHICS_WRAM_BYTES) return false;
-    view->wram = wram; view->size = size; return true;
-}
-
-bool nba_graphics_bus_read16(const NbaGraphicsBus *view, size_t address,
-                             uint16_t *value) {
-    if (!view || !view->wram || view->size < NBA_GRAPHICS_WRAM_BYTES ||
-        !value || address > view->size - 2u) return false;
-    *value = read16(view->wram + address); return true;
-}
-
-bool nba_graphics_bus_receiver_word(const NbaGraphicsBus *view, uint16_t *value) {
-    /* Original quirk: 87:B7DA sets Y=$0084 and B7E1 reads $00A8,Y from
-     * DBR=$7E, hence WRAM $012C rather than receiver+$A8. */
-    return nba_graphics_bus_read16(view, NBA_GRAPHICS_RECORD5_WORD, value);
-}
-
 NbaSetupQueueResult nba_graphics_bus_publish(
     NbaGraphicsBus *view, NbaGraphicsPaletteBorrow *palette,
     NbaSetupPublicationSink sink, void *context) {

@@ -34,10 +34,24 @@ typedef struct {
 void nba_renderer_init(NbaRenderer *renderer) {
     if (!renderer) return;
     renderer->ppu_state = NULL;
+    renderer->graphics_bus = (NbaGraphicsBus){0};
     renderer->width = NBA_SNES_WIDTH;
     renderer->height = NBA_SNES_HEIGHT;
     renderer->bg_color = 0xFF000000;
     nba_renderer_clear(renderer, renderer->bg_color);
+}
+
+/* Host-only support binding; no single native address. The software renderer
+ * borrows the one game-lifetime WRAM allocation used by future publication
+ * producers and consumers. Passing NULL explicitly removes the borrow. */
+bool nba_renderer_bind_graphics_bus(NbaRenderer *renderer,
+                                    const NbaGraphicsBus *graphics_bus) {
+    NbaGraphicsBus requested = graphics_bus ? *graphics_bus : (NbaGraphicsBus){0};
+    if (!renderer) return false;
+    renderer->graphics_bus = (NbaGraphicsBus){0};
+    if (!graphics_bus) return true;
+    return nba_graphics_bus_view(&renderer->graphics_bus, requested.wram,
+                                 requested.size);
 }
 
 /**

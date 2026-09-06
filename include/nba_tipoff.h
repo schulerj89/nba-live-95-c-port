@@ -155,6 +155,9 @@ void nba_tipoff_ease_display_direction(uint8_t desired,
 typedef struct NbaTipoff {
     const NbaAssetPack *assets;
     NbaSession *session;
+    /* Host lifetime binding for gameplay graphics publication state. This is
+     * a borrowed view; standalone Tipoff callers leave it explicitly empty. */
+    NbaGraphicsBus graphics_bus;
     /* Optional read-only test observer. NULL in the normal game. These are
      * actual sweep boundaries, not cadence-derived telemetry predictions. */
     void (*differential_observer)(const struct NbaTipoff *, const char *, void *);
@@ -349,6 +352,10 @@ typedef struct NbaTipoff {
 
 bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
                      NbaSession *session);
+/* Host-only support binding; no single native address. The game calls this
+ * after each successful Tipoff scene initialization. */
+bool nba_tipoff_bind_graphics_bus(NbaTipoff *tipoff,
+                                  const NbaGraphicsBus *graphics_bus);
 void nba_tipoff_update(NbaTipoff *tipoff, const NbaInput *input);
 /* Controller initializer boundary. The normal frontend still uses neutral
  * effective selections until the complete human actor dispatcher is wired. */
