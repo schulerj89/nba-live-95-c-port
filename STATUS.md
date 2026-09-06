@@ -69,6 +69,10 @@ Recent source-verified visual and gameplay fixes include:
   live-state handling, restore, post-global scheduler timing, and the shared
   30-Hz dead-ball behavior boundary required to keep receiver and passer
   progress synchronized.
+- the native control-mode-twelve shooter parent, including ownership and pump
+  gates, raw-pose ball attachment, human and CPU release thresholds, exact
+  direction ownership, complete launch publication, post-global scheduling,
+  and the directly calling free-throw state-nine handoff.
 
 These paths are protected by test_tipoff_court_smoke.py,
 test_dribble_smoke.py, test_hoop_smoke.py, test_oob_smoke.py, and
@@ -76,8 +80,9 @@ test_cpu_reaction_smoke.py, plus their native-vector verifiers, including the
 six-case defense-context, eight-case mode-five, two-case mode-one and
 mode-three role-flag, nine-case mode-two, twelve-case mode-four, and ten-case
   mode-six actor-parent replays, plus the nineteen-case mode-seven,
-  nineteen-case mode-eight, sixteen-case mode-nine, and eighteen-case mode-ten
-  direct replays and their full-scheduler phase checks.
+  nineteen-case mode-eight, sixteen-case mode-nine, eighteen-case mode-ten,
+  and thirty-seven-case mode-twelve direct replays and their full-scheduler
+  phase checks, plus four free-throw mode-twelve caller witnesses.
 
 ## Major remaining gaps
 
@@ -103,7 +108,7 @@ Current generated captured-address measurements are:
 |---|---:|---:|
 | observed in retained execution captures | 29,438 | 100.0% |
 | documented by source provenance | 29,101 | 98.9% |
-| inside evidence-eligible verified ranges | 11,854 | 40.3% |
+| inside evidence-eligible verified ranges | 11,902 | 40.4% |
 
 These are coverage measurements for retained captures. They are not a
 percentage of the ROM, retail features, or game completion. The generated

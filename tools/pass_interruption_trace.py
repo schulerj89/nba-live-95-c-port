@@ -6,6 +6,7 @@ class PassInterruptionGuard:
         self.interrupted = {}
         self.receiver_cancel = None
         self.entries = self.recoveries = self.receiver_clears = 0
+        self.release_before_knockdowns = 0
 
     def observe(self, previous, row):
         p, oldp = row["possession"], previous["possession"]
@@ -59,6 +60,26 @@ class PassInterruptionGuard:
                         actor_id not in (contact["player_a"], contact["player_b"]) or
                         row["actors"][actor_id]["animation"] not in (0x35, 0x36)):
                     raise AssertionError("pass left mode15 without classified knockdown")
+                # Nondeferred mode 15 runs `$86:A6B3->$A749/$99C4`
+                # in the common actor sweep before the later player-contact
+                # sweep. A completed pass may therefore be followed by BFBA
+                # changing that same actor from mode 15 to mode 8.
+                released_before_knockdown = (
+                    now["pass_released"] and not old["pass_released"] and
+                    p["pass_actor_raw"] == oldp["pass_actor_raw"] == actor_id and
+                    p["pass_receiver_raw"] == oldp["pass_receiver_raw"] and
+                    not p["pass_active_raw"] and
+                    oldp["actor"] == actor_id and p["actor"] == -1 and
+                    previous["ball"]["owner"] == actor_id and
+                    previous["ball"]["state"] == 4 and
+                    row["ball"]["owner"] == -1 and
+                    row["ball"]["state"] == 3 and
+                    row["match"]["live_state_raw"] == 0 and
+                    now["pass_band_62"] == old["pass_band_62"] and
+                    now["pass_family_c0"] == old["pass_family_c0"])
+                if released_before_knockdown:
+                    self.release_before_knockdowns += 1
+                    return
                 for name in ("pass_actor_raw", "pass_receiver_raw", "pass_active_raw"):
                     if p[name] != oldp[name]:
                         raise AssertionError("knockdown changed passing actor's globals")
@@ -92,3 +113,62 @@ class PassInterruptionGuard:
         self.receiver_cancel = key
         self.receiver_clears += 1
         return True
+
+
+def pass_interruption_guard_self_test():
+    """Reject partial lookalikes for the release-before-knockdown ordering."""
+    from copy import deepcopy
+
+    actor = lambda mode, released, band=12, family=5: {
+        "animation": 0x35 if mode == 8 else 0x2F,
+        "raw": {"control_mode": mode, "pass_released": released,
+                "pass_band_62": band, "pass_family_c0": family}}
+    previous = {
+        "simulation_tick": 100,
+        "possession": {"pass_actor_raw": 1, "pass_receiver_raw": 4,
+                       "pass_active_raw": 1, "pass_distance_raw": 4,
+                       "actor": 1},
+        "actors": [actor(1, 0), actor(15, 0)],
+        "ball": {"owner": 1, "state": 4}}
+    row = {
+        "simulation_tick": 101,
+        "possession": {"pass_actor_raw": 1, "pass_receiver_raw": 4,
+                       "pass_active_raw": 0, "pass_distance_raw": 4,
+                       "actor": -1},
+        "collision": {"player_count": 1, "player_routine": 0x86BFBA,
+                      "player_a": 1, "player_b": 6},
+        "actors": [actor(1, 0), actor(8, 1)],
+        "ball": {"owner": -1, "state": 3},
+        "match": {"live_state_raw": 0}}
+    positive = PassInterruptionGuard()
+    positive.observe(previous, row)
+    if positive.release_before_knockdowns != 1:
+        raise AssertionError("release-before-knockdown witness was not counted")
+
+    mutations = (
+        ("pass actor", lambda old, new: new["possession"].__setitem__(
+            "pass_actor_raw", 2)),
+        ("pass receiver", lambda old, new: new["possession"].__setitem__(
+            "pass_receiver_raw", 3)),
+        ("active latch", lambda old, new: new["possession"].__setitem__(
+            "pass_active_raw", 1)),
+        ("release latch", lambda old, new: new["actors"][1]["raw"].__setitem__(
+            "pass_released", 0)),
+        ("old owner", lambda old, new: old["ball"].__setitem__("owner", 2)),
+        ("old ball state", lambda old, new: old["ball"].__setitem__("state", 3)),
+        ("new owner", lambda old, new: new["ball"].__setitem__("owner", 0)),
+        ("ball state", lambda old, new: new["ball"].__setitem__("state", 4)),
+        ("pass band", lambda old, new: new["actors"][1]["raw"].__setitem__(
+            "pass_band_62", 18)),
+        ("pass family", lambda old, new: new["actors"][1]["raw"].__setitem__(
+            "pass_family_c0", 4)))
+    for name, mutate in mutations:
+        old = deepcopy(previous)
+        new = deepcopy(row)
+        mutate(old, new)
+        try:
+            PassInterruptionGuard().observe(old, new)
+        except AssertionError:
+            continue
+        raise AssertionError(
+            f"release-before-knockdown guard accepted changed {name}")

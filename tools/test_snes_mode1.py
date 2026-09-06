@@ -88,11 +88,15 @@ def main():
             # first differs from the initial mode-ten build at frame947. The
             # current gameplay scene is coherent, and all rank, palette,
             # indexed-color, and exact-accounting checks below are unchanged.
-            assert summary["visible"]["bg1"] == 3321
-            assert summary["visible"]["bg2"] == 41696
+            # Mode-twelve's native +$4E turn and late behavior change actor
+            # poses/attachment from frame890. Reviewed frame1000 keeps the
+            # basket scene and identical 2-0 HUD layer; only this C-only layer
+            # census changes. All per-pixel rank/palette checks remain below.
+            assert summary["visible"]["bg1"] == 3329
+            assert summary["visible"]["bg2"] == 41848
             assert summary["visible"]["bg3"] == 6013
-            assert summary["visible"]["obj"] == 3834
-            assert summary["visible"]["backdrop"] == 2480
+            assert summary["visible"]["obj"] == 3733
+            assert summary["visible"]["backdrop"] == 2421
             counts = {name: 0 for name in
                       ("BACKDROP", "BG1", "BG2", "BG3", "OBJ")}
             indexed = direct = rows = 0

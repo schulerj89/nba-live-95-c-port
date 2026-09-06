@@ -13,7 +13,8 @@ from pathlib import Path
 
 from PIL import Image
 from test_shot_state_trace import verify as verify_shot_state_trace
-from pass_interruption_trace import PassInterruptionGuard
+from pass_interruption_trace import (
+    PassInterruptionGuard, pass_interruption_guard_self_test)
 
 class JsonlRows:
     """Disk-indexed JSONL sequence with a transient binary decode cache.
@@ -136,6 +137,11 @@ FORMATION = [
     (-8, -3), (16, 83), (24, -80), (-104, 56), (-96, -59),
 ]
 EXPECTED_RGB = {
+    # Re-reviewed for `$86:B769-$B978`: the native turn writes +$4E,
+    # and the shooter runs after old animation/physics and global work.
+    # First non-scratch C divergence is actor9 facing/attachment at frame890;
+    # frame600 is unchanged. Later inspected C-only images retain coherent
+    # court, player, ball and basket rendering; native witnesses own parity.
     # C-only visual anchors, not native frame-parity evidence. Re-reviewed
     # 2026-08-29 after the native ball ownership/substeps, actor edge response,
     # OOB predicates, raw inbound arrival and live formation anchors changed
@@ -204,10 +210,10 @@ EXPECTED_RGB = {
     # coherent gameplay frames. The pristine f7e95cd source build reproduced
     # every old RGB hash; native routine goldens are unchanged.
     600: "868b26b40f94ca3668d63a76f6c938403a12bb8e92c52393feb9ee8e04e871ec",
-    1300: "af324fc5d1ec3ee111293011fc6f2eb5d30b023bee5c24f3ca91f5529ac95f0f",
-    3480: "af829ed22e8bf6b7c2d9994aebb78003221adb7139f7a99327994dc3d0677911",
-    6932: "0ce50088c96ccebef8b8fb2802ad31108a97450710b3851c1ee82201e54b96f0",
-    6954: "27dd2a52165a76486b28abc12aa2b4e883616a6b899bfb944f7164130ba8467f",
+    1300: "100ac79e66f6716dba685764bf27c6853c690689d6fed2d454f28264e815fc28",
+    3480: "5f37d2f9bbb63d3f384b867a8de4c123d10156b6edd871bc463f77071ee008e1",
+    6932: "42b25b08fc9290ee3c5ebbfffa89995be81ccd8869d9c75d9fe3a8e241905c90",
+    6954: "6e9516a793f546a11f9751d0c55a93c00d64a41c10bf7b08d180440d375c0cfe",
 }
 
 
@@ -1083,12 +1089,28 @@ def main():
         mode11_fallbacks = 0
         mode13_carried_frames = 0
         mode13_finishes = 0
+        pending_mode_twelve_releases = {}
         for previous, current in zip(due_rows, due_rows[1:]):
             for before, after in zip(previous["actors"], current["actors"]):
                 old_mode = before["raw"]["control_mode"]
                 new_mode = after["raw"]["control_mode"]
                 actor_id = after["id"]
                 ball = current["ball"]
+                pending_release=pending_mode_twelve_releases.get(actor_id)
+                if pending_release is not None:
+                    release_frame,release_serial=pending_release
+                    if previous["frame"]!=release_frame or \
+                            old_mode!=11 or new_mode!=1 or \
+                            previous["shot_launch"]["serial"]!=release_serial or \
+                            current["shot_launch"]["serial"]!=release_serial or \
+                            previous["ball"]["state"]!=5 or ball["state"]!=5 or \
+                            previous["ball"]["owner"]!=-1 or ball["owner"]!=-1 or \
+                            current["possession"]["actor"]!=-1:
+                        raise AssertionError(
+                            f"$86:F3F6 post-release restoration changed: "
+                            f"actor={actor_id} release={release_frame} "
+                            f"current={current['frame']}")
+                    del pending_mode_twelve_releases[actor_id]
                 if new_mode == 13:
                     if after["animation"] not in (
                             0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E) or \
@@ -1165,24 +1187,36 @@ def main():
                             cadence = (ball["activity_raw"] == activity + 2 and
                                        after["vz"] == expected_vz)
                         else:
+                            # `$86:B857` installs the fresh jump after
+                            # the common Z step has already completed.
                             cadence = (ball["activity_raw"] == 0xFFFF and
-                                       after["vz"] == 0x1E0 and after["lower_animation"] == 0x32)
+                                       after["vz"] == 0x210 and after["lower_animation"] == 0x32)
                     else:
                         cadence = after["vz"] == expected_vz
-                    # $86:C0D7-C0EA / C127-C13A clears the GLOBAL shot
-                    # activity before checking whether the knocked-down actor
-                    # owns the ball. Player-pair scanning may record a later
-                    # ordinary contact after that knockdown, so use the new
-                    # mode-8 actor as the durable completed-frame witness.
+                    # `$86:C0D7-$C0EA` clears global `$0936/$0948` when
+                    # BFBA installs a knockdown before the late actor behavior.
+                    # `$86:B769` then reasserts live state 2 and advances the
+                    # cleared activity 0->2 while preserving its attached owner.
                     contact=current["collision"]
-                    contact_reset=(contact["player_count"]>0 and
-                        current["match"]["live_state_raw"]==0 and
-                        ball["activity_raw"]==0 and after["vz"]==expected_vz and
+                    old_event=previous["match"]["event_bits_raw_13e7"]
+                    late_contact_reset=(0<=activity<30 and
+                        contact["player_count"]>0 and
+                        contact["player_routine"]==0x86BFBA and
+                        previous["match"]["live_state_raw"]==2 and
+                        current["match"]["live_state_raw"]==2 and
+                        old_event&0x80==0 and
+                        current["match"]["event_bits_raw_13e7"]==old_event|0x80 and
+                        ball["activity_raw"]==2 and after["vz"]==expected_vz and
+                        after["raw"]["behavior_flags"]&2!=0 and
+                        previous["ball"]["state"]==ball["state"]==4 and
+                        previous["ball"]["owner"]==ball["owner"]==actor_id and
+                        previous["possession"]["actor"]==
+                            current["possession"]["actor"]==actor_id and
                         any(old_actor["raw"]["control_mode"]!=8 and
                             new_actor["raw"]["control_mode"]==8
                             for old_actor,new_actor in
                             zip(previous["actors"],current["actors"])))
-                    cadence = cadence or contact_reset
+                    cadence = cadence or late_contact_reset
                     if not cadence or ball["state"] != 4 or ball["owner"] != actor_id:
                         raise AssertionError(
                             f"$85:96B5 mode-12 jump cadence changed: "
@@ -1190,37 +1224,37 @@ def main():
                             f"activity={activity}->{ball['activity_raw']} "
                             f"flags={after['raw']['behavior_flags']} "
                             f"{before['vz']}->{after['vz']}")
-                elif old_mode == 12 and new_mode == 1:
-                    signed_gate = before["vz"] < 0
-                    low_rng_gate = 0 <= before["vz"] < 0x60 and \
-                        (previous["possession"]["rng_state_raw"] & 0x70) == 0
-                    free_throw_gate = 0 <= before["vz"] < 0x60 and \
-                        previous["fouls"]["free_throw_state_raw"] != 0
-                    # A low release may reach $85:9ACB rim physics in the
-                    # same completed frame. Preserve its witnessed contact
-                    # response instead of requiring a pre-physics SHOT label.
-                    immediate_rim=(ball["state"]==6 and
-                        current["match"]["rim_contact_count_raw_0920"]>
-                        previous["match"]["rim_contact_count_raw_0920"] and
-                        current["match"]["rim_response_raw_0970"]==15 and
-                        current["match"]["shot_actor_raw_09c8"]==actor_id)
-                    # A launch can detach the ball earlier in this same
-                    # scheduler pass; by the time this actor is observed its
-                    # mode-12 owner gate takes the lost-owner restoration
-                    # path, so the prior-frame velocity/RNG proxy no longer
-                    # identifies the release gate. Prefer the explicit launch
-                    # serial/actor witness when present.
+                elif old_mode == 12 and new_mode == 11:
+                    # `$85:963D` commits gravity before the late `$86:B769`;
+                    # `$86:9D6E` then publishes mode 11 and `$86:B8C0` clears
+                    # its timer/flags. The newly detached shot cannot receive
+                    # another ball-physics step in this completed actor pass.
+                    expected_release_vz = 0 if before["z_fp"] == 0 and \
+                        before["vz"] == 0 else before["vz"] - 0x30
+                    if before["z_fp"] + expected_release_vz * 2 < 0:
+                        expected_release_vz = 0
                     direct_launch = (
-                        current["shot_launch"]["serial"] >
-                            previous["shot_launch"]["serial"] and
+                        current["shot_launch"]["serial"] ==
+                            previous["shot_launch"]["serial"] + 1 and
                         current["shot_launch"]["actor"] == actor_id)
-                    if not (signed_gate or low_rng_gate or free_throw_gate or
-                            direct_launch) or \
+                    if not direct_launch or \
                             after["animation"] != 0x17 or \
-                            (ball["state"] != 5 and not immediate_rim) or ball["owner"] != -1 or \
-                            current["possession"]["actor"] != -1:
+                            after["lower_animation"] != 0x32 or \
+                            after["vz"] != expected_release_vz or \
+                            after["raw"]["reaction_threshold"] != 0 or \
+                            after["raw"]["behavior_flags"] != 0 or \
+                            previous["ball"]["activity_raw"] != 0xFFFF or \
+                            ball["activity_raw"] != 0xFFFF or \
+                            previous["ball"]["state"] != 4 or ball["state"] != 5 or \
+                            previous["ball"]["owner"] != actor_id or \
+                            ball["owner"] != -1 or \
+                            previous["possession"]["actor"] != actor_id or \
+                            current["possession"]["actor"] != -1 or \
+                            current["match"]["shot_actor_raw_09c8"] != actor_id:
                         raise AssertionError(
                             f"$86:9D6E shot release changed: {current}")
+                    pending_mode_twelve_releases[actor_id]=(
+                        current["frame"],current["shot_launch"]["serial"])
                     shot_releases += 1
                 elif old_mode == 11 and new_mode in (1, 3) and \
                         previous["possession"]["actor"] == -1:
@@ -1228,9 +1262,13 @@ def main():
                     # ownerless-role rebuild may immediately promote that
                     # actor to the sole mode-3 pursuer.
                     mode11_fallbacks += 1
+        if pending_mode_twelve_releases:
+            raise AssertionError(
+                f"mode-12 releases lack a next-due restoration: "
+                f"{pending_mode_twelve_releases}")
         if min(shot_starts, shot_releases) < 2:
             raise AssertionError(
-                "mode 11->12->1 shot lifecycle was not sustained: "
+                "mode 11->12->11->1 shot lifecycle was not sustained: "
                 f"starts={shot_starts} releases={shot_releases} "
                 f"fallbacks={mode11_fallbacks}")
         # Exact made-basket RNG cadence changes which legal play families a
@@ -1694,6 +1732,7 @@ def main():
         # phase/apex gate, then releases it via the ROM table.
         pass_rows = []
         release_rows = []
+        pass_interruption_guard_self_test()
         interruption_guard = PassInterruptionGuard()
         for index, row in enumerate(rows[219:], 219):
             interruption_guard.observe(rows[index - 1], row)
@@ -1750,7 +1789,9 @@ def main():
             raise AssertionError("trace ended before interrupted-pass recovery")
         print(f"[PASS INTERRUPTION] entries={interruption_guard.entries} "
               f"recoveries={interruption_guard.recoveries} "
-              f"receiver-only-clears={interruption_guard.receiver_clears}", flush=True)
+              f"receiver-only-clears={interruption_guard.receiver_clears} "
+              f"release-before-knockdowns="
+              f"{interruption_guard.release_before_knockdowns}", flush=True)
         if len(pass_rows) < 100 or not release_rows:
             raise AssertionError("ROM mode-15 pass lifecycle was not sustained")
         exact_pass_frames = 0

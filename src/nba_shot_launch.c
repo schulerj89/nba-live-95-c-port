@@ -126,12 +126,13 @@ static uint32_t fixed(uint16_t fraction,uint16_t integer) {
     return (uint32_t)integer<<16 | fraction;
 }
 
-/* Complete shared launch, excluding inline data: $86:9D6E-$9EB1,
+/* Shot gameplay, complete shared launch excluding inline data: $86:9D6E-$9EB1,
  * $86:9ED8-$9F31, $86:9F44-$A17C, $86:A1BD-$A343, $86:A3D4-$A476.
  * Entries $86:9D6E and $86:9DA6 differ ONLY in the ordinary
  * facing snap/upper-pose installation. No host animation frame or guessed
  * make probability is used. Scratch registers/stack preservation are not
- * gameplay state; the complete persistent outputs are represented below. */
+ * gameplay state; the mode-twelve caller nevertheless retains DP $47 so its
+ * exact parent exit projection includes the upper-pose child write. */
 bool nba_shot_launch(const NbaAssetPack *assets,const NbaShotLaunchInput *in,
                       NbaShotLaunchState *state) {
     const uint8_t *tables=shot_tables(assets);
@@ -140,8 +141,9 @@ bool nba_shot_launch(const NbaAssetPack *assets,const NbaShotLaunchInput *in,
     if(!in->special_entry) {
         s.facing=nba_shot_action_release_facing(in->actor_x,in->actor_y,in->basket_x);
         uint16_t request=0x17;
-        if(!nba_player_animation_command(assets,&s.actor.animation,
-                NBA_ANIMATION_INSTALL_UPPER,&request,in->boosted,in->alternate_lower)) return false;
+        if(!nba_player_animation_command_scratch(assets,&s.actor.animation,
+                NBA_ANIMATION_INSTALL_UPPER,&request,in->boosted,
+                in->alternate_lower,&s.scratch_47)) return false;
     }
     s.roster_low=in->roster_low; s.roster_bank=in->roster_bank;
     s.last_owner=s.display_shooter=s.owner;

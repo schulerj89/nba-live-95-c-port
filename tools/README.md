@@ -137,6 +137,22 @@ Useful focused tests include:
 Tests with golden images state whether they protect inspected C output or
 native frame parity in their source comments.
 
+Replay the mode-twelve shooter parent and its direct free-throw caller against
+their compact native witnesses with the local ROM-derived pack:
+
+~~~powershell
+./tools/build_vector_probe.ps1 -Name cpu_mode_twelve_vector_probe
+python tools/verify_cpu_mode_twelve_vectors.py `
+  --vectors tests/fixtures/cpu-mode-twelve-witnesses.json `
+  --caller-vectors tests/fixtures/cpu-mode-twelve-ft-caller-witnesses.json `
+  --probe build/cpu_mode_twelve_vector_probe.exe `
+  --pack build/nba95_assets.pak
+~~~
+
+The verifier also runs the authoritative-roster/stale-mirror launch case and
+public `nba_tipoff_update` scheduler tests. Build the production executable
+before the probe whenever production objects change.
+
 ## Coverage reports
 
 Regenerate captured-address progress:

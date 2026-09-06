@@ -292,7 +292,106 @@ to canonical `$C6=2`, represented full-word inputs, and the bounded late
 mode-ten dispatch. Broader scheduler, pass-creation, and whole-game RNG history
 remain outside this routine claim.
 
-The next bounded parent-composition target is the mode-twelve shooter at
-`$86:B769-$B978`. Several of its child slices already have separate evidence;
-the complete parent contract and its late-dispatch production binding remain
-pending.
+## Mode twelve shooter
+
+`$86:B769-$B978` is the mode-twelve shooter parent selected by `$87:9244`.
+The production actor pass first eases displayed direction `+$52`, advances the
+existing animation, and commits `$85:963D-$985F` physics. Global possession and
+contact work then runs before the late behavior scheduler calls mode twelve.
+The parent therefore computes the next pass's velocity and facing; it does not
+move the actor privately. Lost ownership restores mode 1 or 2 through
+`$86:9846` and consumes that pass. A pending behavior acquired after the common
+pass can run on the following odd presentation frame without repeating either
+physics or animation.
+
+The parent reads raw owner `$093E`, activity `$0948`, free-throw state `$0978`,
+the cached controller record pointer `$090C`, controller held word `+$08`, team
+context anchor `+$0A`, and actor position, velocity, controller, pose, movement,
+direction, timer, and flag words. `$86:B791-$B7CA` marks the live shot, records
+the actor's integer X in `$0922`, and calls `$87:B832`. The C adapter uses the
+current raw `+$2A/+$2C` resources even after a newly queued animation has made
+render resolution pending, changes only ball integer XYZ, preserves ball
+fractions and host owner/state projections, and reproduces the overlapping
+DP `$0047-$0048` result in `scratch_0047` and the high byte of
+`scratch_0046`.
+
+The branch matrix covers same- and other-group lost-owner restore; pump phase
+3, phase 4 accumulator `$05FF/$0600`, and two-channel cancellation; activity
+delay, signed wrap, `$001C` jump crossing, and free-throw jump suppression;
+stationary and moving sidesteps at anchor 119/120 and absolute X 55/56 with
+both RNG-bit outcomes; grounded human and CPU pump handling; lower accumulator
+`$05FF/$0600` and both facing turns; human vertical thresholds `$FE80/$FE81`,
+held/released input, and free throws; and CPU vertical thresholds
+negative/zero/`$005F/$0060` with RNG and free-throw variants. The turn gate
+reads and writes movement direction `+$4E`; displayed direction `+$52` remains
+owned by the preceding easing pass. Six release witnesses enter the complete
+`$86:9D6E` launch child once, publish authoritative roster shot statistics,
+synchronize the actor mirror afterward, publish human controller counters,
+and clear `+$60/+$7E` after launch.
+
+`tests/fixtures/cpu-mode-twelve-witnesses.json` retains 37 calls from two
+repeated genuine-entry Mesen captures. Their full raw files differ only in
+unrelated widened-window bytes; all 123 bounded input/output words and all
+paths agree. The calls cover all seven RTL exits and the exact union of 213
+owned instruction starts, whose set hash is
+`8687118903ea44ad124933f7bec71f23e203cef0133072afedb8b71a610502a6`.
+Aggregate child counts are 32 pose attachments, 11 directions, 11 lower
+cancellations, 10 animation installs, two restores, one upper cancellation,
+and six launches. The raw vector hashes are
+`0156643bfbd1c72cdd623a217dff36d84b63da33128f6d60a692ea7d8f6f2c7b`
+and `99bafc61ad3a1c5d474bc6c406907cf0257f848aad6afafc30c86957f1d8b605`.
+The structural sources are the Ghidra function export
+`cpu_gameplay_bank86_functions.c` with hash
+`c3ce476090ee9a9ec970ce9b9ccb2fdeea42936f8a3ff9184880b609fff3b199`
+and the Ghidra Bank `$86` instruction listing with hash
+`f642199de28e016061db579f28a28f60c772de70a6a2a6712ded609e03f7d63c`.
+The pristine `44cb6c0` parent mismatches all 37 calls; the production replay has
+zero mismatches.
+
+The direct free-throw caller `$87:9F11-$9F75` now uses the same parent. Its
+state-9 preparation clears actor `+$4A`, cancels both channels, queues command
+16, and falls through to the parent in the same actor pass. Each call saves the
+full 16-bit assistance option `$17BF`, forces one around mode twelve, restores
+the saved word, and advances state 9 only when raw owner `$093E` is negative.
+The state-10 handoff preserves the launched ball and does not run another host
+ball-physics step. Four repeated native caller witnesses compare 102 gameplay
+words, including RNG and match clock `$0928`, at `$87:A017`: prep and hold
+remain in state 9, while attempts two and one release to state 10 with one and
+zero attempts remaining. The release calls span two native frames while
+`$85:95DB` executes graphics/DMA work; that timing and volatile NMI state are
+outside the portable adapter.
+
+`tools/verify_cpu_mode_twelve_vectors.py` pins fixture identity, exact ordered
+fields and calls, source hashes, child counts, boundaries, the instruction-start
+set, and strict 16-bit JSON words before replaying production. Its pack-backed
+probe also proves the persistent roster record wins over a stale actor mirror.
+Public `nba_tipoff_update` cases prove common movement and animation execute
+once before the late parent, restore consumes its pass and ordinary behavior
+resumes on the next due pass, and an acquired pending event runs once on an odd
+frame without repeating the common prefix. The free-throw probe covers
+same-pass prep/body, raw-pose attachment, full assistance restoration,
+ownership-gated completion, and the no-extra-physics state-10 handoff.
+
+The parent evidence uses native actor slot 9, player record `$44EB`, and
+controller words `$FFFF` or zero. The free-throw caller evidence uses slot 0.
+The byte fields are bounded to the canonical 16-bit encodings observed by
+native code; the synthetic scheduler case with actor 0 does not add native
+side-zero or controller 1-through-4 coverage. The free-throw captures omit
+player record `$416B`, so their caller projection excludes its statistics and
+stamina. The parent witnesses prove the child statistic mutation contract for
+captured player `$44EB`; exact `$416B` values remain outside. DP `$06` and
+native graphics/NMI state are unmodeled. Host `ball.owner_actor` and
+`ball.state` are integration projections rather than invented native words.
+The pack-backed animation and launch tables come from
+`build/nba95_assets.pak`. These results establish the bounded parent and direct
+free-throw caller behavior, not a matching whole-game trajectory or complete
+human-control system.
+
+The next bounded parent target is the mode-thirteen carried-ball close-finish
+executor at `$86:A7DA-$A993`, implemented by `cpu_update_rom_layup`. Its directly
+called terminal helper is `$86:A9D0-$AA69`; `$A994-$A9CF` is inline table data
+and must not receive instruction coverage credit. Existing
+evidence covers its `$86:B34F-$B624` initializer and aggregate product behavior,
+but does not pin the executor's exact genuine-entry call set, owned instruction
+starts and exits, child counts, or the ordering of its private planar/vertical
+movement and repeated pose attachment against the production actor caller.

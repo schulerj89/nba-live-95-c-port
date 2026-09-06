@@ -27,6 +27,7 @@ typedef struct {
     uint16_t live_state, timeout_0930, value, display_value, initial_value;
     uint16_t roster_low, roster_bank, ball_record, assist_43, assist_45;
     uint16_t player_stats[5], controller_stats[5];
+    uint16_t scratch_47; /* `$87:B49D` descriptor scratch from upper-17 install */
     NbaGameplayRng rng;
     /* Diagnostics only; do not use these to force a made basket. */
     uint16_t chance, miss_index;

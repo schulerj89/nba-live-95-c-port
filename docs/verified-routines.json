@@ -1992,6 +1992,30 @@
       "date": "2026-09-06"
     },
     {
+      "range": "86B769-86B978",
+      "name": "mode-twelve shooter parent",
+      "source": "src/nba_tipoff.c + src/nba_shot_launch.c",
+      "method": "controlled genuine-entry native differential + strict parent and direct free-throw caller replay + public production scheduler integration + headless Ghidra function/listing evidence",
+      "evidence": "Repeated Mesen captures record 37 genuine entries at $86:B769, all seven RTL exits, the exact union of all 213 owned instruction starts, and stable represented inputs/outputs without PC, stack, ROM, RNG, or child-result patching. The v9/v10 raw vectors differ only in unrelated bytes from the widened capture window; all 123 bounded words and every path are identical. The strict fixture pins the start-set hash, ordered cases/fields, source hashes, per-call exits and children, with aggregate counts of 32 $87:B832 attachments, 11 $85:F02D directions, 11 $87:B555 lower cancellations, 10 $87:B4DB animation installs, two $86:9846 restores, one $87:B538 upper cancellation, and six complete $86:9D6E launches. It proves lost-owner restore, pump wait/cancel, signed activity and jump boundaries, sidestep geometry/RNG, raw pose attachment and overlapping DP $0046/$0047, human held/release and $FE80/$FE81 gates, CPU signed VZ/RNG/free-throw gates, native movement-facing +$4E ownership, persistent roster/controller statistics, and launch cleanup. The pristine 44cb6c0 parent mismatches all 37 cases; production replay has zero mismatches. Four repeated $87:9F11/$9F3E-to-$87:A017 free-throw caller witnesses compare 102 gameplay words including RNG and match clock: prep falls through to the parent in the same actor pass, full 16-bit assistance is restored, raw owner $093E gates completion, and both one- and two-attempt releases enter state 10 without an extra ball-physics step. Their two-frame span includes native $85:95DB graphics/DMA work; volatile NMI state is excluded. Public nba_tipoff_update tests prove prior movement/animation once, post-common ownership restore, next-due continuation, and pending-odd dispatch without repeated common work. Native parent witnesses are actor slot 9/player $44EB with controller $FFFF or zero; free-throw witnesses are slot 0 and omit uncaptured player $416B statistics/stamina. Canonical word encodings, pack-backed resources, and host owner/state projection are bounded as documented in docs/cpu-logic.md; this grants no whole-game trajectory claim.",
+      "provenance": {
+        "rom_sha256": "2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870",
+        "raw_vectors": ".analysis/cpu-mode-twelve-20260906/capture-v9/cpu_mode_twelve.vectors.jsonl",
+        "raw_vectors_sha256": "0156643bfbd1c72cdd623a217dff36d84b63da33128f6d60a692ea7d8f6f2c7b",
+        "repeat_vectors": ".analysis/cpu-mode-twelve-20260906/capture-v10/cpu_mode_twelve.vectors.jsonl",
+        "repeat_vectors_sha256": "99bafc61ad3a1c5d474bc6c406907cf0257f848aad6afafc30c86957f1d8b605",
+        "case_matrix_sha256": "9d077f1c3361ecbe54433495f557e4a945d7945faf9108643a6a8dd1cc1f4eeb",
+        "path_trace_sha256": "bf2b05615ccc2692ef60c8847d3cf4697313206fc0900225cb50aad08ccaf5f8",
+        "ghidra_functions": ".analysis/cpu_gameplay_ghidra/cpu_gameplay_bank86_functions.c",
+        "ghidra_functions_sha256": "c3ce476090ee9a9ec970ce9b9ccb2fdeea42936f8a3ff9184880b609fff3b199",
+        "ghidra_instructions": ".analysis/full-rom-census/listings/bank_86_instructions.tsv",
+        "ghidra_instructions_sha256": "f642199de28e016061db579f28a28f60c772de70a6a2a6712ded609e03f7d63c",
+        "free_throw_prep_sha256": "629e61f39258010c247bdb681ffec79efd59c863d484f8c966aab7e849a61451",
+        "free_throw_state9_sha256": "0c49d14761a42ea3071f6b4473032dcdf3628ec5be92e8b61bce7c489fcda8dd",
+        "free_throw_final_sha256": "4a65d9ccf4c7a1e1bcec398bdb599dd8a7de7180a06e9d3a87a3272da003a6b0"
+      },
+      "date": "2026-09-06"
+    },
+    {
       "range": "86C6AD-86C758",
       "name": "mode-eight knockdown recovery",
       "source": "src/nba_tipoff.c",

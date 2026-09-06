@@ -195,6 +195,11 @@ typedef struct NbaTipoff {
     uint16_t free_throw_clock_mirror_raw_493f;
     uint16_t free_throw_upload_raw_180b;
     uint16_t free_throw_upload_raw_180c;
+    uint16_t controller_record_raw_090c;
+    uint16_t shot_roster_low_raw_0914;
+    uint16_t shot_roster_bank_raw_0916;
+    uint16_t shot_control_raw_17c3;
+    uint16_t shot_display_actor_raw_493b;
     /* Native `$46EB/$476B`: context0 home/right, context1 visitor/left.
      * Published team IDs drive actor ratings, appearance and uniforms. */
     NbaGameplayTeamContext team_context[2];
@@ -398,6 +403,13 @@ bool nba_tipoff_replay_defensive_pose(NbaTipoff *tipoff, uint8_t actor);
 bool nba_tipoff_replay_normal_actor(NbaTipoff *tipoff, uint8_t actor);
 bool nba_tipoff_replay_requested_direction(NbaTipoff *tipoff, uint8_t actor);
 bool nba_tipoff_replay_passive_mode(NbaTipoff *tipoff, uint8_t actor);
+/* Exact `$86:B769-$B978` shooter behavior, callable by both mode twelve and
+ * the direct `$87:9F50` free-throw scene path. */
+bool nba_tipoff_replay_mode_twelve(NbaTipoff *tipoff, uint8_t actor);
+/* Exact `$87:9F11-$9F75` free-throw caller around the mode-twelve parent. */
+bool nba_tipoff_replay_free_throw_shooter(NbaTipoff *tipoff,
+                                          uint8_t actor,
+                                          bool enter_state_nine);
 bool nba_tipoff_replay_mode13_close_finish(NbaTipoff *tipoff, uint8_t actor);
 bool nba_tipoff_replay_mode14_close_finish(NbaTipoff *tipoff, uint8_t actor);
 bool nba_tipoff_replay_close_finish_start(NbaTipoff *tipoff, uint8_t actor);
