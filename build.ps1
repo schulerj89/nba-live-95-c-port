@@ -140,6 +140,7 @@ if ($Test) {
     Invoke-PythonRegression -Script 'test_mesen_portable.py'
     Invoke-PythonRegression -Script 'test_setup_transition_integrity.py'
     Invoke-PythonRegression -Script 'test_jsonl_rows.py'
+    Invoke-PythonRegression -Script 'test_cpu_trace_analyzer.py'
 
     $InputReportDir = Join-Path $BuildDir ('headless-input-' + [guid]::NewGuid().ToString('N'))
     Invoke-PythonRegression -Script 'test_headless_input.py' -Arguments @(

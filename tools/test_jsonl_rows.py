@@ -2,8 +2,10 @@
 
 import contextlib
 import json
+import pickle
 import tempfile
 from pathlib import Path
+from unittest import mock
 
 from test_cpu_gameplay import JsonlRows
 
@@ -15,9 +17,8 @@ def require(condition, message):
 
 def main():
     source_rows = [
-        {"frame": 1, "nested": {"values": [1, 2]}},
-        {"frame": 2, "nested": {"values": [3, 4]}},
-        {"frame": 3, "nested": {"values": [5, 6]}},
+        {"frame": frame, "nested": {"values": [frame, frame + 1]}}
+        for frame in range(1, 13)
     ]
     with tempfile.TemporaryDirectory() as directory:
         trace = Path(directory) / "trace.jsonl"
@@ -40,8 +41,51 @@ def main():
         require(list(zip(rows[:-1], rows[1:])) ==
                 list(zip(source_rows[:-1], source_rows[1:])),
                 "concurrent adjacent iterators changed rows")
+        first_iterator = iter(rows)
+        second_iterator = iter(rows)
+        first_snapshot = next(first_iterator)
+        second_snapshot = next(second_iterator)
+        first_snapshot["nested"]["values"].append(99)
+        require(second_snapshot == source_rows[0] and
+                next(iter(rows)) == source_rows[0],
+                "default iterators stopped returning independent snapshots")
+        first_iterator.close()
+        second_iterator.close()
         rows.close()
         require(not spool_path.exists(), "close retained the private spool")
+
+        shared_rows = JsonlRows(trace, read_only=True)
+        with mock.patch("test_cpu_gameplay.pickle.load",
+                        wraps=pickle.load) as decode:
+            adjacent = list(zip(shared_rows[:-1], shared_rows[1:]))
+        require(adjacent == list(zip(source_rows[:-1], source_rows[1:])),
+                "shared-cache adjacent iteration changed rows")
+        require(decode.call_count == len(source_rows),
+                "adjacent iterators decoded a shared row more than once")
+        require(adjacent[0][1] is adjacent[1][0],
+                "read-only iterators did not share decoded rows")
+        require(len(shared_rows._cache) <= shared_rows.CACHE_ROWS,
+                "adjacent iteration exceeded the bounded cache")
+
+        shared_rows._cache.clear()
+        with mock.patch("test_cpu_gameplay.pickle.load",
+                        wraps=pickle.load) as decode:
+            adjacent_frames = []
+            for index, row in enumerate(shared_rows[1:], 1):
+                adjacent_frames.append(
+                    (shared_rows[index - 1]["frame"], row["frame"]))
+        require(adjacent_frames == [
+                    (row["frame"], source_rows[index + 1]["frame"])
+                    for index, row in enumerate(source_rows[:-1])
+                ], "indexed look-behind changed rows")
+        require(decode.call_count == len(source_rows),
+                "indexed look-behind decoded a shared row more than once")
+        require(len(shared_rows._cache) <= shared_rows.CACHE_ROWS,
+                "indexed look-behind exceeded the bounded cache")
+        shared_spool_path = shared_rows._spool_path
+        shared_rows.close()
+        require(not shared_spool_path.exists(),
+                "shared-cache close retained the private spool")
 
         try:
             with contextlib.ExitStack() as cleanup:
@@ -58,7 +102,7 @@ def main():
         malformed = Path(directory) / "malformed.jsonl"
         malformed.write_text('{"frame": 1}\n{"frame":', encoding="utf-8")
         try:
-            JsonlRows(malformed)
+            JsonlRows(malformed, read_only=True)
         except json.JSONDecodeError:
             pass
         else:

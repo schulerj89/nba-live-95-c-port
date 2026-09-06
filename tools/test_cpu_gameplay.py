@@ -23,7 +23,10 @@ class JsonlRows:
     the Windows commit limit. Decode each source row once into a private pickle
     spool, then retain only spool offsets plus a small random-access cache.
     Repeated assertion passes avoid JSON decoding while decoded memory remains
-    bounded, and close removes the transient spool.
+    bounded, and close removes the transient spool. By default, iterators
+    preserve independent decoded snapshots. ``read_only=True`` lets iterators
+    share the bounded cache with indexed reads; callers using that faster mode
+    must not mutate returned rows or any nested values.
     """
 
     # Random-access assertions repeatedly revisit compact frame windows. Keep
@@ -31,10 +34,11 @@ class JsonlRows:
     # cycles while remaining far below eager 1.4-GiB trace materialization.
     CACHE_ROWS = 8
 
-    def __init__(self, path=None, *, root=None, indices=None):
+    def __init__(self, path=None, *, root=None, indices=None, read_only=False):
         if root is None:
             self._root = self
             self.path = Path(path)
+            self._read_only = read_only
             self.offsets = []
             self._spool_directory = tempfile.TemporaryDirectory(
                 prefix="nba95-cpu-trace-")
@@ -88,6 +92,10 @@ class JsonlRows:
 
     def __iter__(self):
         indices = self._indices
+        if self._root._read_only:
+            for absolute in indices:
+                yield self._load_absolute(absolute)
+            return
         if isinstance(indices, range) and indices.step == 1 and len(indices):
             with self._root._spool_path.open("rb") as source:
                 source.seek(self._root.offsets[indices.start])
@@ -438,7 +446,9 @@ def main():
             if result.returncode or "INT:$85:963D" not in result.stdout or \
                     "BALL M:" not in result.stdout:
                 raise AssertionError(result.stdout + result.stderr)
-        rows = JsonlRows(trace)
+        # Assertions treat trace dictionaries as immutable, so adjacent
+        # iterators and indexed look-behind can share the bounded decode cache.
+        rows = JsonlRows(trace, read_only=True)
         cleanup.callback(rows.close)
         if len(rows) != 63800:
             raise AssertionError(f"expected 63800 CPU frames, got {len(rows)}")

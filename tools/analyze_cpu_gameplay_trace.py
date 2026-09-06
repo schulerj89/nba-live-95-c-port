@@ -6,9 +6,39 @@ import math
 from pathlib import Path
 
 
+# Only fields read by this analyzer are retained. The full gameplay verifier
+# separately checks the complete trace; adding a new analyzer field without
+# retaining it here fails explicitly instead of silently skipping a check.
+ANALYZER_FIELDS = {
+    "possession": ("play_code_raw", "team", "actor"),
+    "ball": ("state", "owner", "x", "y", "screen_x", "screen_y"),
+    "match": ("live_state_raw",),
+    "fouls": ("free_throw_state_raw",),
+    "scheduler": ("actor_pass_mask_raw",),
+    "camera": ("x", "y"),
+}
+ACTOR_FIELDS = ("x", "y", "screen_x", "screen_y")
+
+
+def compact_row(row):
+    """Retain analyzer inputs without holding unused actor/raw telemetry."""
+    result = {key: row[key] for key in ("scene_frame", "simulation_tick")
+              if key in row}
+    for section, fields in ANALYZER_FIELDS.items():
+        if section in row:
+            result[section] = {key: row[section][key] for key in fields
+                               if key in row[section]}
+    if "actors" in row:
+        result["actors"] = [{key: actor[key] for key in ACTOR_FIELDS
+                             if key in actor} for actor in row["actors"]]
+    return result
+
+
 def load_rows(path):
-    return [json.loads(line) for line in Path(path).read_text().splitlines()
-            if line.strip()]
+    # Stream source text instead of keeping the 1.4-GiB text, split lines,
+    # and full decoded dictionaries alive together.
+    with Path(path).open(encoding="utf-8") as source:
+        return [compact_row(json.loads(line)) for line in source if line.strip()]
 
 
 def transitions(rows, getter, start):

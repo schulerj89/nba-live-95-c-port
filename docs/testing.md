@@ -34,8 +34,9 @@ instead of one, without replacing either extraction or its assertions.
 `JsonlRows` in `tools/test_cpu_gameplay.py` decodes each JSONL row once into a
 private temporary binary spool. Subsequent passes read that spool instead of
 reparsing the large JSON trace. Memory remains bounded to row offsets and an
-eight-row random-access cache. Independent iterators retain their own read
-positions. The spool is created from the current trace, never accepted from an
+eight-row decoded cache. Default iterators retain independent snapshots and
+read positions; the gameplay verifier opts into shared read-only rows as
+described below. The spool is created from the current trace, never accepted from an
 external cache, and removed on success or failure. The current trace requires
 about 636 MiB of extra temporary disk space. `tools/test_jsonl_rows.py` checks
 sequence behavior, concurrent iteration, malformed input, and cleanup.
@@ -72,3 +73,49 @@ next target visible without repeated manual profiling.
 ROMs, packs, images, raw traces, and binary spools stay outside Git. Retaining a
 trace for diagnosis does not by itself authorize reusing a test result after
 the executable or other relevant inputs change.
+
+## Further Python optimization
+
+The sustained-gameplay analyzer streams JSONL source lines and retains only
+the fields consumed by its analysis. It no longer holds the complete source
+text, split lines, and unused actor telemetry alongside its working rows.
+The main gameplay verifier still checks the complete telemetry separately.
+Every analyzer check and reporting function is unchanged; missing fields
+needed by a future check cause a failure instead of an implicit skip.
+
+`tools/test_cpu_trace_analyzer.py` compares complete reports and exit status
+for full and compact rows. It covers passing play, stationary teams,
+overlong dead-ball sequences, detached balls, retained-OBJ mismatches,
+missing ball modes, optional scheduler data, and malformed JSON. It runs in
+the normal full suite. The complete retained 63,800-frame report was also
+compared byte-for-byte before and after the loader change.
+
+On September 6, 2026, this analyzer ran in 25.22 seconds before and 10.21
+seconds after on the same retained trace. These stage measurements exclude
+capture and are separate from the complete CPU regression comparison.
+
+The main verifier enables `JsonlRows(..., read_only=True)`. Iteration and
+indexed look-behind share the existing eight-row decoded cache, so adjacent
+scans avoid decoding the same frame twice. This is a caller contract: returned
+dictionaries and nested values must not be mutated. The default remains
+independent iterator snapshots for callers that need them. The verifier and
+its helper checks read trace values without modifying them.
+
+The loader tests count actual pickle decodes over more rows than the cache
+can hold, checking adjacent iterators and indexed look-behind alongside cache
+bounds, default snapshot independence, ordering, and temporary-spool cleanup.
+On the same 63,800 rows, adjacent iteration fell from 6.60 to 3.42 seconds
+(127,598 to 63,800 decodes); iteration with indexed look-behind fell from 6.70
+to 3.46 seconds. Sequential iteration was essentially unchanged at 3.34 versus
+3.40 seconds. No frames, assertions, liveness thresholds, or image checks were
+removed.
+
+
+A fresh sequential comparison of the complete retained-trace CPU regression
+passed in 223.19 seconds before and 159.66 seconds after (28.5% less
+wall time). Both used the same 63,800-frame trace, executable, ROM, and pack,
+including whistle verification, every gameplay assertion, sustained analysis,
+and all five RGB renders. Output was byte-identical. Capture time is excluded;
+this is an affected-gate comparison, not a new timing for the entire suite.
+Earlier timing figures reflect different machine load and should not be used
+as the baseline for this second optimization.
