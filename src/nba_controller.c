@@ -116,6 +116,17 @@ void nba_controller_begin_sweep(NbaControllerState *state) {
     for (unsigned pad=0;pad<5;++pad) state->record[pad].processed=0;
 }
 
+/* `$87:9B30-$9B37`, gameplay controller input: double the 16-bit pad
+ * selector, load the corresponding held word from `$0576`, and publish it
+ * for the immediately following `$85:EF3A` input-state update. */
+bool nba_controller_sample_held(
+    const uint16_t held_by_pad[NBA_CONTROLLER_COUNT], unsigned pad,
+    uint16_t *held) {
+    if (!held_by_pad || !held || pad >= NBA_CONTROLLER_COUNT) return false;
+    *held = held_by_pad[pad];
+    return true;
+}
+
 void nba_controller_publish_input(NbaControllerRecord *r, uint16_t held,
                                    NbaControllerInputContext *c) {
     if (!r || !c) return;

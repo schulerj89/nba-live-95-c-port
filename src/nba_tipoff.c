@@ -8009,8 +8009,15 @@ static void cpu_update_actor_behaviors(NbaTipoff *tipoff) {
     nba_controller_begin_sweep(&tipoff->controllers);
     for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
         int pad=tipoff->actors[actor].controller_assignment_raw;
-        if(pad>=0 && pad<5 && !tipoff->controllers.record[pad].processed)
-            nba_tipoff_publish_controller_input(tipoff,actor,pad==0?tipoff->pad_held_raw:0);
+        if(pad>=0 && pad<NBA_CONTROLLER_COUNT &&
+           !tipoff->controllers.record[pad].processed) {
+            uint16_t held=0;
+            if (!nba_controller_sample_held(tipoff->pad_held_raw,
+                                            (unsigned)pad,&held))
+                tipoff->controller_contract_fault=true;
+            else
+                nba_tipoff_publish_controller_input(tipoff,actor,held);
+        }
         if (tipoff->actors[actor].control_mode == 7u ||
             tipoff->actors[actor].control_mode == 8u ||
             tipoff->actors[actor].control_mode == 9u ||
@@ -8027,6 +8034,14 @@ static void cpu_update_actor_behaviors(NbaTipoff *tipoff) {
         if(pad>=0 && pad<5 && tipoff->actors[actor].controller_assignment_raw>=0)
             tipoff->controllers.record[pad].processed=1;
     }
+}
+
+/* Host-only verification boundary; no direct native entry address. Execute
+ * the production behavior pass containing the bounded `$87:9B30-$9B37`
+ * sampler plumbing without claiming the complete native actor sweep. */
+void nba_tipoff_replay_actor_behavior_sweep(NbaTipoff *tipoff) {
+    if (!tipoff) return;
+    cpu_update_actor_behaviors(tipoff);
 }
 
 /* `$87:9244` scheduling boundary, gameplay: dispatch the post-global actor
@@ -10098,7 +10113,10 @@ void nba_tipoff_update(NbaTipoff *tipoff, const NbaInput *input) {
         (void)nba_tipoff_step_match_lifecycle(tipoff);
         return;
     }
-    tipoff->pad_held_raw = input ? nba_controller_native_buttons(input->held) : 0u;
+    for (unsigned pad=0;pad<NBA_CONTROLLER_COUNT;++pad)
+        tipoff->pad_held_raw[pad]=0u;
+    tipoff->pad_held_raw[0] = input ?
+        nba_controller_native_buttons(input->held) : 0u;
     /* Neutral CPU path $87:9087-908D / formation9622-9628. Input pause is
      * handled above; human dispatch and substitutions remain separate gates. */
     if(tipoff->cpu_vs_cpu) {
@@ -10407,6 +10425,8 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
     telemetry->input_held = input ? input->held : 0u;
     telemetry->input_released = input ? input->released : 0u;
     telemetry->pad_held_raw[0] = nba_controller_native_buttons(telemetry->input_held);
+    for (unsigned pad=1;pad<NBA_GAMEPLAY_PAD_COUNT;++pad)
+        telemetry->pad_held_raw[pad]=0u;
     for (unsigned pad = 0; pad < NBA_GAMEPLAY_PAD_COUNT; ++pad) {
         telemetry->controller_assignment_raw[pad] = NBA_GAMEPLAY_UNKNOWN_WORD;
         telemetry->controller_repeat_raw[pad] = NBA_GAMEPLAY_UNKNOWN_WORD;

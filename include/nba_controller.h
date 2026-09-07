@@ -48,6 +48,12 @@ bool nba_controller_acquire(NbaControllerState *state, unsigned target,
     uint16_t *previous_controller_0a00);
 /* $87:9075-9086, called once at the actor-behavior sweep boundary. */
 void nba_controller_begin_sweep(NbaControllerState *state);
+/* $87:9B30-9B37, called with the actor's controller index in 16-bit A.
+ * Samples one native held word from $0576+2*pad. The portable boundary
+ * rejects out-of-domain host indices without changing the caller's output. */
+bool nba_controller_sample_held(
+    const uint16_t held_by_pad[NBA_CONTROLLER_COUNT], unsigned pad,
+    uint16_t *held);
 
 /* Full $85:EF3A-EFEC state effects. Caller supplies the active roster's
  * stamina +18, not the actor animation-queue word sharing that offset. */

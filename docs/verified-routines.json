@@ -2419,6 +2419,14 @@
       "method": "genuine-entry Mesen controller sequence + focused Ghidra/recomp + typed replay",
       "evidence": "tests/fixtures/human-free-throw-aim-witnesses.json and tools/verify_human_free_throw_vectors.py cover every represented $0980/$0984/$0986 mutation of $87:A018-$A045: 16-bit accumulator addition, repeated subtraction by 110, cursor increment and wrap at 112. Seven retained state/input calls from .analysis/human-free-throw-native-20260829-v4 replay with zero mismatches, including a distinct 109-to-2 cursor-wrap oracle; the 1,556-vector delay-60 corpus has SHA-256 a1c252ab961d6e72d4159553706a16176dd151ba4f26e5343d39e4808486dabd and zero orphan/shared exits. Aim artwork, the dormant ordinary runtime adapter, and surrounding dispatcher/common-launch effects and same-call ordering are explicitly outside this precise range.",
       "date": "2026-08-29"
+    },
+    {
+      "range": "879B30-879B37",
+      "name": "nba_controller_sample_held / actor pad-held sampler",
+      "source": "src/nba_controller.c + src/nba_tipoff.c",
+      "method": "untouched production caller + controlled genuine-entry Mesen replay + host production behavior-pass test",
+      "evidence": "tests/fixtures/controller-held-sampler-witnesses.json and tools/test_controller_held_sampler.py retain six exact $87:9B30-$9B37 calls with zero held-word mismatches: one untouched $87:915D production call plus controlled pads zero through four using distinct $0576-$057F words. Controls seed only entry A and the input words; PC, SP, return address, ROM and outputs remain untouched. The focused C probe also rejects invalid host indices without changing output, checks pad0 host conversion/pads1-4 zero, and runs the host production behavior pass through held/previous/changed/pressed/direction/boost publication and shared-pad no-resampling. Neutral controller selection remains production policy; the complete native actor sweep, action/motion, and human playability are not claimed.",
+      "date": "2026-09-06"
     }
   ]
 }

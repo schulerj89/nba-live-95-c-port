@@ -229,6 +229,22 @@ empty/fill/swap, preserved-hole, and invalid-view cases. The lifetime probe
 exercises the bounded `$85:8B6C-$8B75` equivalent at real Tipoff entry and
 proves binding and per-frame updates do not initialize the allocator.
 
+## Controller held sampler
+
+Replay the `$87:9B30-$9B37` native entry/exit witnesses and exercise the host
+production behavior pass containing its publication caller:
+
+~~~powershell
+./tools/build_vector_probe.ps1 -Name controller_held_sampler_probe
+python tools/test_controller_held_sampler.py `
+  --probe build/controller_held_sampler_probe.exe `
+  --pack build/nba95_assets.pak
+~~~
+
+The test covers distinct pads zero through four, invalid portable indices,
+held/previous/changed/pressed/direction/boost publication, the shared-pad
+process gate, and the current pad-zero-only frontend/headless boundary.
+
 ## Coverage reports
 
 Regenerate captured-address progress:

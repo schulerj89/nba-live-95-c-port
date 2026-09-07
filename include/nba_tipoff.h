@@ -284,7 +284,7 @@ typedef struct NbaTipoff {
     int16_t inbound_target_x_raw;  /* `$0958` */
     int16_t inbound_target_y_raw;  /* `$095A` */
     uint16_t inbound_direction_raw;/* `$095C` */
-    uint16_t pad_held_raw;         /* pad0 $0576, native SNES button bits */
+    uint16_t pad_held_raw[NBA_CONTROLLER_COUNT]; /* $0576+2*pad, native bits */
     uint16_t inbound_ready_raw;    /* represented `$09BA` arrival latch */
     uint16_t inbound_transfer_raw; /* `$09B8` */
     uint16_t ball_activity_raw;    /* `$0948`, canonical shot detach */
@@ -408,6 +408,10 @@ void nba_tipoff_replay_player_contact_order(NbaTipoff *tipoff,
 void nba_tipoff_replay_collision_order(NbaTipoff *tipoff,
                                        const uint8_t *order,
                                        unsigned count);
+/* Controlled verification entry for the host production behavior pass that
+ * contains the bounded `$87:9B30-$9B37` sampler plumbing. This does not claim
+ * the complete native `$87:9106-$9283` actor sweep. */
+void nba_tipoff_replay_actor_behavior_sweep(NbaTipoff *tipoff);
 void nba_tipoff_replay_ball_acquisition(NbaTipoff *tipoff, uint8_t catcher);
 void nba_tipoff_replay_ball_acquisition_core(NbaTipoff *tipoff,
                                               uint8_t catcher);

@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "routine": "87:9B30-9B37",
+  "rom_sha256": "2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870",
+  "capture_sha256": "178ba0847f0e69b41ee24ad30a2ca9fdbbef80948f37ee5399edbc76f39a6bbd",
+  "capture_method": "One untouched production $87:915D caller, followed by five controlled genuine $87:9B30 entries. Controlled cases seed only 16-bit A and input words $0576-$057F; PC, SP, return address, ROM, and output are untouched.",
+  "cases": [
+    {"controlled": false, "pad": 0, "caller_actor": 0, "caller_pad": 0, "inputs": [0, 15, 15, 15, 15], "entry_sp": 8185, "exit_sp": 8185, "exit_x": 0, "held": 0},
+    {"controlled": true, "pad": 0, "caller_actor": 0, "caller_pad": 0, "inputs": [33059, 17767, 35243, 52719, 4951], "entry_sp": 8185, "exit_sp": 8185, "exit_x": 0, "held": 33059},
+    {"controlled": true, "pad": 1, "caller_actor": 4, "caller_pad": 0, "inputs": [33059, 17767, 35243, 52719, 4951], "entry_sp": 8185, "exit_sp": 8185, "exit_x": 2, "held": 17767},
+    {"controlled": true, "pad": 2, "caller_actor": 4, "caller_pad": 0, "inputs": [33059, 17767, 35243, 52719, 4951], "entry_sp": 8185, "exit_sp": 8185, "exit_x": 4, "held": 35243},
+    {"controlled": true, "pad": 3, "caller_actor": 3, "caller_pad": 0, "inputs": [33059, 17767, 35243, 52719, 4951], "entry_sp": 8185, "exit_sp": 8185, "exit_x": 6, "held": 52719},
+    {"controlled": true, "pad": 4, "caller_actor": 3, "caller_pad": 0, "inputs": [33059, 17767, 35243, 52719, 4951], "entry_sp": 8185, "exit_sp": 8185, "exit_x": 8, "held": 4951}
+  ]
+}
