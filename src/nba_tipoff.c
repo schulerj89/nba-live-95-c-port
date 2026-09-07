@@ -1,5 +1,6 @@
 #include "nba_tipoff.h"
 #include "nba_player_lab.h"
+#include "nba_player_graphics_map.h"
 #include "nba_shot_action.h"
 #include "nba_owner_flow.h"
 #include "nba_snes_ppu.h"
@@ -68,6 +69,35 @@ static void publish_exhibition_team_ids(NbaTipoff *tipoff) {
 
 static uint8_t team_id_for_context(const NbaTipoff *tipoff, unsigned context) {
     return (uint8_t)tipoff->team_context[context].strategy_team_raw_00;
+}
+
+/* Host-only gameplay helper; no direct native address. It interprets the
+ * `$87:9C8F` words selected by supported `$86:D7B8-$D85D`; fatigue already
+ * owns the equivalent zero-based persistent roster index. */
+static bool player_statistics_index(uint16_t address, unsigned *index) {
+    if (!index || address < 0x40EBu ||
+        (uint16_t)(address - 0x40EBu) % 0x40u != 0u)
+        return false;
+    unsigned selected = (address - 0x40EBu) / 0x40u;
+    if (selected >= 24u) return false;
+    *index = selected;
+    return true;
+}
+
+/* Host-only gameplay integration helper; no direct native address. For
+ * supported `$86:D7B8-$D85D`, team context and the current match lineup are
+ * the production writers; the asset pack supplies both complete long-address
+ * source tables. */
+static bool build_player_graphics_map(
+    const NbaTipoff *tipoff,
+    const uint8_t lineup[NBA_MATCH_TEAM_COUNT][NBA_MATCH_LINEUP_SIZE],
+    NbaPlayerGraphicsMap *map) {
+    uint8_t teams[NBA_MATCH_TEAM_COUNT];
+    if (!tipoff || !lineup || !map) return false;
+    for (unsigned side = 0; side < NBA_MATCH_TEAM_COUNT; ++side)
+        teams[side] = team_id_for_context(tipoff, side);
+    return nba_player_graphics_map_from_assets(
+        tipoff->assets, teams, lineup, map);
 }
 
 static NbaGameplayHudInput hud_input(const NbaTipoff *t) {
@@ -9500,17 +9530,13 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
     /* 878DDA-8DE4 starts the first/overtime jump-ball hold at120. */
     tipoff->tip_toss_countdown_raw_09f2=120;
     tipoff->ball.state=NBA_BALL_HIDDEN;
-    uint8_t appearance_teams[NBA_PLAYER_APPEARANCE_COUNT];
-    uint8_t appearance_roster[NBA_PLAYER_APPEARANCE_COUNT];
-    for (unsigned i = 0; i < NBA_PLAYER_APPEARANCE_COUNT; ++i) {
-        appearance_teams[i] = team_id_for_context(tipoff, i / 5u);
-        appearance_roster[i] =
-            session->match.active_lineup[i / NBA_MATCH_LINEUP_SIZE]
-                                                [i % NBA_MATCH_LINEUP_SIZE];
-    }
+    NbaPlayerGraphicsMap graphics_map;
+    if (!build_player_graphics_map(
+            tipoff, session->match.active_lineup, &graphics_map)) return false;
     NbaPlayerAppearanceSetup appearance;
-    if (!nba_player_appearance_setup(assets, appearance_teams, appearance_roster,
-                                     &appearance)) return false;
+    if (!nba_player_appearance_setup_from_addresses(
+            assets, graphics_map.active_roster_address, &appearance))
+        return false;
     NbaPlayerActiveAppearanceInput active_input = {0};
     for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
         uint8_t selector = (uint8_t)(actor % 5u);
@@ -9531,6 +9557,11 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
             &active_input, &active_appearance)) return false;
     for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
         NbaTipoffActor *state = &tipoff->actors[actor];
+        unsigned persistent;
+        if (!player_statistics_index(
+                graphics_map.statistics_address[actor], &persistent))
+            return false;
+        tipoff->fatigue.active_roster[actor] = (uint16_t)persistent;
         state->x_fp = (int32_t)formation[actor].world_x * 256;
         state->y_fp = (int32_t)formation[actor].world_y * 256;
         state->direction = formation[actor].direction;
@@ -9638,18 +9669,22 @@ bool nba_tipoff_bind_graphics_bus(NbaTipoff *tipoff,
  * canonical WRAM, publish `$87:AFA2-$B058` from the authoritative context,
  * actor identity, and active roster mapping already built by Tipoff init. */
 bool nba_tipoff_initialize_player_graphics(NbaTipoff *tipoff) {
-    uint8_t teams[NBA_PLAYER_APPEARANCE_COUNT];
-    uint8_t rosters[NBA_PLAYER_APPEARANCE_COUNT];
+    uint8_t lineup[NBA_MATCH_TEAM_COUNT][NBA_MATCH_LINEUP_SIZE];
+    NbaPlayerGraphicsMap graphics_map;
     NbaPlayerAppearanceSetup setup;
     if (!tipoff || !tipoff->is_initialized || !tipoff->assets)
         return false;
     for (unsigned actor = 0; actor < NBA_PLAYER_APPEARANCE_COUNT; ++actor) {
         unsigned context = actor / NBA_MATCH_LINEUP_SIZE;
-        teams[actor] = team_id_for_context(tipoff, context);
-        rosters[actor] = tipoff->actors[actor].roster_slot;
+        lineup[context][actor % NBA_MATCH_LINEUP_SIZE] =
+            tipoff->actors[actor].roster_slot;
     }
-    if (!nba_player_publish_active_appearance(
-            tipoff->assets, &tipoff->graphics_bus, teams, rosters, &setup))
+    /* `$87:AF9E` runs D7B8 immediately before `$87:AFA2` dereferences the
+     * selected `$3449` long addresses. Keep that caller order here. */
+    if (!build_player_graphics_map(tipoff, lineup, &graphics_map) ||
+        !nba_player_publish_active_appearance_from_addresses(
+            tipoff->assets, &tipoff->graphics_bus,
+            graphics_map.active_roster_address, &setup))
         return false;
     for (unsigned actor = 0; actor < NBA_PLAYER_APPEARANCE_COUNT; ++actor) {
         NbaTipoffActor *state = &tipoff->actors[actor];
@@ -9939,20 +9974,19 @@ bool nba_tipoff_step_match_lifecycle(NbaTipoff *tipoff) {
     return true;
 }
 
+/* Host-only gameplay substitution helper; no direct native address. It stages
+ * actor bindings while preserving the supported `$86:D7B8-$D85D` mapping as
+ * the source of active roster addresses and statistics indices. */
 static bool prepare_substitution_actor_bindings(
     const NbaTipoff *tipoff,
     const uint8_t lineup[NBA_MATCH_TEAM_COUNT][NBA_MATCH_LINEUP_SIZE],
-    NbaTipoffActor actors[NBA_GAMEPLAY_ACTOR_COUNT]) {
-    uint8_t teams[NBA_PLAYER_APPEARANCE_COUNT];
-    uint8_t rosters[NBA_PLAYER_APPEARANCE_COUNT];
-    for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
-        unsigned side = actor / NBA_MATCH_LINEUP_SIZE;
-        teams[actor] = team_id_for_context(tipoff, side);
-        rosters[actor] = lineup[side][actor % NBA_MATCH_LINEUP_SIZE];
-    }
+    NbaTipoffActor actors[NBA_GAMEPLAY_ACTOR_COUNT],
+    NbaPlayerGraphicsMap *graphics_map) {
     NbaPlayerAppearanceSetup appearance;
-    if (!nba_player_appearance_setup(tipoff->assets, teams, rosters,
-                                     &appearance)) return false;
+    if (!build_player_graphics_map(tipoff, lineup, graphics_map) ||
+        !nba_player_appearance_setup_from_addresses(
+            tipoff->assets, graphics_map->active_roster_address, &appearance))
+        return false;
     NbaPlayerActiveAppearanceInput active_input = {0};
     for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
         uint8_t selector = (uint8_t)(actor % NBA_MATCH_LINEUP_SIZE);
@@ -10021,6 +10055,9 @@ static bool prepare_substitution_actor_bindings(
     return true;
 }
 
+/* Host-only gameplay substitution caller; no direct native address. Stage
+ * `$86:D7B8-$D85D` lineup mappings and commit the selected actor/statistics
+ * bindings together after every dependent preparation succeeds. */
 bool nba_tipoff_apply_foul_out_substitution(NbaTipoff *tipoff) {
     if (!tipoff || !tipoff->is_initialized || !tipoff->session ||
         !tipoff->assets ||
@@ -10063,8 +10100,9 @@ bool nba_tipoff_apply_foul_out_substitution(NbaTipoff *tipoff) {
     memcpy(next_lineup[side], selected.roster_order,
            NBA_MATCH_LINEUP_SIZE);
     NbaTipoffActor next_actors[NBA_GAMEPLAY_ACTOR_COUNT];
+    NbaPlayerGraphicsMap next_graphics_map;
     if (!prepare_substitution_actor_bindings(
-            tipoff, next_lineup, next_actors)) return false;
+            tipoff, next_lineup, next_actors, &next_graphics_map)) return false;
 
     uint16_t next_stats[24][5];
     memcpy(next_stats, tipoff->roster_shot_statistics,
@@ -10084,9 +10122,10 @@ bool nba_tipoff_apply_foul_out_substitution(NbaTipoff *tipoff) {
     NbaShotFatigue next_fatigue = tipoff->fatigue;
     uint8_t next_actor_fouls[NBA_GAMEPLAY_ACTOR_COUNT];
     for (unsigned actor = 0; actor < NBA_GAMEPLAY_ACTOR_COUNT; ++actor) {
-        unsigned actor_side = actor / NBA_MATCH_LINEUP_SIZE;
-        unsigned persistent = actor_side * NBA_MATCH_ROSTER_SIZE +
-            next_actors[actor].roster_slot;
+        unsigned persistent;
+        if (!player_statistics_index(
+                next_graphics_map.statistics_address[actor], &persistent))
+            return false;
         memcpy(next_actors[actor].shot_statistics, next_stats[persistent],
                sizeof(next_actors[actor].shot_statistics));
         next_actor_fouls[actor] = next_personal_fouls[persistent];

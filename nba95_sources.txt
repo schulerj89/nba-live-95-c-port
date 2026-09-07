@@ -10,6 +10,7 @@ src/nba_spc.c
 src/nba_audio_debugger.c
 src/nba_asset_debugger.c
 src/nba_player_lab.c
+src/nba_player_graphics_map.c
 src/nba_shot_action.c
 src/nba_gameplay_debugger.c
 src/nba_gameplay_camera.c

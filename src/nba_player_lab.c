@@ -926,6 +926,53 @@ static bool player_record(const NbaAssetPack *assets, int team, int player,
     return true;
 }
 
+/* Host-only player-rendering lookup; no direct native address. Supports the
+ * `$86:D7B8-$D85D` caller adaptation, and accepts only exact extracted
+ * roster-record starts. */
+static bool player_record_address(const NbaAssetPack *assets, uint32_t address,
+                                  PlayerLabRecord *out) {
+    PlayerLabRecord player;
+    if (!out) return false;
+    for (unsigned team = 0; team < NBA_TEAM_COUNT; ++team) {
+        for (unsigned roster = 0; roster < NBA_PLAYER_ROSTER_SIZE; ++roster) {
+            if (!player_record(assets, (int)team, (int)roster, &player))
+                return false;
+            if (player.rom_address == address) {
+                *out = player;
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+/* Host-only player-rendering helper; no direct native address. Both public
+ * `$87:AFA2-$B053` input forms share this one appearance implementation. */
+static bool player_appearance_setup_records(
+    const PlayerLabRecord players[NBA_PLAYER_APPEARANCE_COUNT],
+    NbaPlayerAppearanceSetup *setup) {
+    if (!players || !setup) return false;
+    NbaPlayerAppearanceSetup next = {0};
+    /* Overlapping STA $180C=$8080, STA $180B=$800C. */
+    next.upload_address = 0x80800Cu;
+    for (unsigned i = 0; i < NBA_PLAYER_APPEARANCE_COUNT; ++i) {
+        const PlayerLabRecord *player = &players[i];
+        NbaPlayerAppearance *out = &next.players[i];
+        unsigned skin = player->palette_variant;
+        if (skin >= 3u) skin = 2u;
+        out->palette_offset =
+            (uint16_t)((i >= 5u ? 0x600u : 0u) + skin * 0x200u);
+        out->alternate_lower = player->height >= 0x51u;
+        out->upper_variant = player->appearance_modifier;
+        uint16_t head = player->head_raw;
+        if (head >= 0x27u) head &= 0x1Fu;
+        out->head_resource = (uint16_t)(0x049Cu + head * 5u);
+        out->dirty = 0xFFFFu;
+    }
+    *setup = next;
+    return true;
+}
+
 /* `$86:D85E-$DA17`: construct the ten active matchup/appearance records.
  * The SNES writes and sorts two temporary upload-key lists as part of this
  * routine. The production initializer consumes sorted actor offsets to publish
@@ -987,7 +1034,8 @@ bool nba_player_build_active_appearance(
     return true;
 }
 
-/* `$87:AFA2-$B053`: ten active roster entries, not twelve roster reserves.
+/* `$87:AFA2-$B053`, player rendering: ten active roster entries, not twelve
+ * roster reserves.
  * Y counts words (0,2,...18), so the second uniform begins at Y >= $0A.
  * This owns only the appearance/cache seed, not the preceding pointer setup
  * `$86:D7B8` or the following jersey-tile composition `$87:B059`. */
@@ -996,25 +1044,27 @@ bool nba_player_appearance_setup(const NbaAssetPack *assets,
     const uint8_t roster[NBA_PLAYER_APPEARANCE_COUNT],
     NbaPlayerAppearanceSetup *setup) {
     if (!teams || !roster || !setup) return false;
-    NbaPlayerAppearanceSetup next = {0};
-    /* Overlapping STA $180C=$8080, STA $180B=$800C. */
-    next.upload_address = 0x80800Cu;
+    PlayerLabRecord players[NBA_PLAYER_APPEARANCE_COUNT];
     for (unsigned i = 0; i < NBA_PLAYER_APPEARANCE_COUNT; ++i) {
-        PlayerLabRecord player;
-        if (!player_record(assets, teams[i], roster[i], &player)) return false;
-        NbaPlayerAppearance *out = &next.players[i];
-        unsigned skin = player.palette_variant;
-        if (skin >= 3u) skin = 2u;
-        out->palette_offset = (uint16_t)((i >= 5u ? 0x600u : 0u) + skin * 0x200u);
-        out->alternate_lower = player.height >= 0x51u;
-        out->upper_variant = player.appearance_modifier;
-        uint16_t head = player.head_raw;
-        if (head >= 0x27u) head &= 0x1Fu;
-        out->head_resource = (uint16_t)(0x049Cu + head * 5u);
-        out->dirty = 0xFFFFu;
+        if (!player_record(assets, teams[i], roster[i], &players[i]))
+            return false;
     }
-    *setup = next;
-    return true;
+    return player_appearance_setup_records(players, setup);
+}
+
+/* Host-only player-rendering input form; no direct native address. It supports
+ * `$87:AFA2-$B053` after `$86:D7B8-$D85D` by consuming the ten selected long
+ * roster addresses rather than resolving roster IDs again. */
+bool nba_player_appearance_setup_from_addresses(const NbaAssetPack *assets,
+    const uint32_t roster_address[NBA_PLAYER_APPEARANCE_COUNT],
+    NbaPlayerAppearanceSetup *setup) {
+    if (!roster_address || !setup) return false;
+    PlayerLabRecord players[NBA_PLAYER_APPEARANCE_COUNT];
+    for (unsigned i = 0; i < NBA_PLAYER_APPEARANCE_COUNT; ++i) {
+        if (!player_record_address(assets, roster_address[i], &players[i]))
+            return false;
+    }
+    return player_appearance_setup_records(players, setup);
 }
 
 /* `$87:AFA2-$B058`, gameplay graphics: initialize all ten active-player
@@ -1026,16 +1076,35 @@ bool nba_player_publish_active_appearance(const NbaAssetPack *assets,
     const uint8_t teams[NBA_PLAYER_APPEARANCE_COUNT],
     const uint8_t roster[NBA_PLAYER_APPEARANCE_COUNT],
     NbaPlayerAppearanceSetup *setup) {
+    uint32_t address[NBA_PLAYER_APPEARANCE_COUNT];
+    if (!teams || !roster) return false;
+    for (unsigned actor = 0; actor < NBA_PLAYER_APPEARANCE_COUNT; ++actor) {
+        if (!nba_player_gameplay_roster_address(
+                assets, teams[actor], roster[actor], &address[actor]))
+            return false;
+    }
+    return nba_player_publish_active_appearance_from_addresses(
+        assets, graphics_bus, address, setup);
+}
+
+/* Host-only player-rendering input form; no direct native address. It supports
+ * `$87:AFA2-$B058` after `$86:D7B8-$D85D`: the selected long addresses drive
+ * both appearance words and jersey composition. */
+bool nba_player_publish_active_appearance_from_addresses(
+    const NbaAssetPack *assets, NbaGraphicsBus *graphics_bus,
+    const uint32_t roster_address[NBA_PLAYER_APPEARANCE_COUNT],
+    NbaPlayerAppearanceSetup *setup) {
     static const uint8_t physical_direction[6] = {3u, 7u, 4u, 0u, 2u, 6u};
     NbaPlayerAppearanceSetup next;
     uint8_t jersey_tiles[NBA_PLAYER_JERSEY_WRAM_BYTES];
     if (!graphics_bus || !graphics_bus->wram ||
         graphics_bus->size < NBA_GRAPHICS_WRAM_BYTES || !setup ||
-        !nba_player_appearance_setup(assets, teams, roster, &next))
+        !nba_player_appearance_setup_from_addresses(
+            assets, roster_address, &next))
         return false;
     for (unsigned actor = 0; actor < NBA_PLAYER_APPEARANCE_COUNT; ++actor) {
         PlayerLabRecord player;
-        if (!player_record(assets, teams[actor], roster[actor], &player))
+        if (!player_record_address(assets, roster_address[actor], &player))
             return false;
         for (unsigned view = 0; view < 6u; ++view) {
             uint8_t *tile = jersey_tiles +

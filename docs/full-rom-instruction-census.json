@@ -3,7 +3,7 @@
   "method": "recursive Ghidra seeds; no linear sweep; unknown bytes may be data or code",
   "inputs": {
     "text_hash_policy": "UTF-8 with LF newlines",
-    "verified_routines_sha256": "54ed395a3aadea4a2af4d0aef7b3d3d7a35afd4ffbf1289ffb544d75d260be04",
+    "verified_routines_sha256": "c24742b97973974b49dbe2704b4f13b2ef63ef479a3d8ab4e088f5430234fb53",
     "census_tool_sha256": "8f7797c03f43ee5e9c44a24dc3ed17f0b887f7f58fc3f068729202e65566aeb5",
     "evidence_policy_sha256": "83069658610c442f6ec3861ffd73d586b5fdf2ee88f075474423cc8af242dd87"
   },

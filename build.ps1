@@ -153,6 +153,7 @@ if ($Test) {
         'game_wram_lifetime_probe', 'graphics_allocator_vector_probe',
         'graphics_jersey_vector_probe', 'graphics_jersey_caller_probe',
         'controller_held_sampler_probe',
+        'player_graphics_map_probe',
         'player_appearance_publication_probe',
         'cpu_defense_context_vector_probe', 'cpu_mode_seven_vector_probe',
         'cpu_mode_eight_vector_probe', 'cpu_mode_nine_vector_probe',
@@ -184,6 +185,12 @@ if ($Test) {
 
     Invoke-PythonRegression -Script 'test_controller_held_sampler.py' -Arguments @(
         '--probe', (Join-Path $BuildDir 'controller_held_sampler_probe.exe'),
+        '--pack', $AssetPack
+    )
+
+    Invoke-PythonRegression -Script 'verify_player_graphics_map_vectors.py' -Arguments @(
+        '--vectors', (Join-Path $Root 'tests\fixtures\active-player-graphics-map-witnesses.json'),
+        '--probe', (Join-Path $BuildDir 'player_graphics_map_probe.exe'),
         '--pack', $AssetPack
     )
 

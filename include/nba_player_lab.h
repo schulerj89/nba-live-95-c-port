@@ -267,10 +267,19 @@ bool nba_player_appearance_setup(const NbaAssetPack *assets,
     const uint8_t teams[NBA_PLAYER_APPEARANCE_COUNT],
     const uint8_t roster[NBA_PLAYER_APPEARANCE_COUNT],
     NbaPlayerAppearanceSetup *setup);
+/* Host-only player-rendering adapters; no direct native address. They consume
+ * the selected `$3449-$3470` outputs of supported `$86:D7B8-$D85D`. */
+bool nba_player_appearance_setup_from_addresses(const NbaAssetPack *assets,
+    const uint32_t roster_address[NBA_PLAYER_APPEARANCE_COUNT],
+    NbaPlayerAppearanceSetup *setup);
 bool nba_player_publish_active_appearance(const NbaAssetPack *assets,
     NbaGraphicsBus *graphics_bus,
     const uint8_t teams[NBA_PLAYER_APPEARANCE_COUNT],
     const uint8_t roster[NBA_PLAYER_APPEARANCE_COUNT],
+    NbaPlayerAppearanceSetup *setup);
+bool nba_player_publish_active_appearance_from_addresses(
+    const NbaAssetPack *assets, NbaGraphicsBus *graphics_bus,
+    const uint32_t roster_address[NBA_PLAYER_APPEARANCE_COUNT],
     NbaPlayerAppearanceSetup *setup);
 
 typedef enum {

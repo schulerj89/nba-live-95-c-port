@@ -23,6 +23,26 @@ scene transitions, new-match state, Tipoff binding, shutdown, and reinit:
 python tools/test_game_wram_lifetime.py --probe build/game_wram_lifetime_probe.exe --pack build/nba95_assets.pak
 ~~~
 
+Replay the `$86:D7B8-$D85D` active-player graphics map and exercise its real
+pack-backed Tipoff initialization and substitution consumers:
+
+~~~powershell
+./tools/build_vector_probe.ps1 -Name player_graphics_map_probe
+python tools/verify_player_graphics_map_vectors.py `
+  --vectors tests/fixtures/active-player-graphics-map-witnesses.json `
+  --probe build/player_graphics_map_probe.exe `
+  --pack build/nba95_assets.pak
+~~~
+
+The fixture retains both native calls, from `$87:AF9E` and `$86:D8A4`. The
+verifier checks their entry/exit provenance, all ten selected roster-record
+addresses and statistics words, asset-free permutations and atomic rejection,
+the pack's complete source tables, and production initialization/substitution
+consumption. The two retained raw captures have identical hashes, metadata and
+completion records, but no contemporaneous ROM/emulator/script manifest; the
+fixture therefore limits capture identity to retained-file integrity and
+represented boundary behavior.
+
 Replay the active-player appearance parent and its full jersey-buffer child,
 then exercise the normal post-bind Tipoff caller:
 

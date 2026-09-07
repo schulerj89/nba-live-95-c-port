@@ -34,6 +34,35 @@ writes and native court initialization history remain outside this claim. The
 host still constructs Tipoff actors before binding canonical WRAM. It then
 runs the allocator before the explicit active-player graphics publication.
 
+`nba_player_graphics_map` represents `$86:D7B8-$D85D`. For each side it reads
+the five active lineup words (`$46F9` or `$4779`), selects long roster-record
+addresses from the corresponding twelve-entry table (`$3471` or `$34A1`), and
+publishes ten addresses at `$3449-$3470`. The same roster indices select ten
+words from the regular 24-record `$87:9C8F` statistics table into
+`$3435-$3448`. The portable form carries ten 24-bit addresses and ten 16-bit
+statistics addresses, and rejects an out-of-range roster index atomically.
+
+The production writers are the authoritative match lineup and team contexts;
+the existing roster-address pack accessor reconstructs both complete source
+tables. Tipoff initialization consumes the selected statistics addresses for
+the canonical fatigue roster map and the selected roster addresses for initial
+appearance. After WRAM binding, `nba_tipoff_initialize_player_graphics` keeps
+the native `$87:AF9E` order by mapping immediately before the `$87:AFA2-$B058`
+appearance/jersey publisher. Foul-out substitution rebuilds the map from its
+staged lineup before atomically copying all ten roster identities, statistics,
+fouls, stamina mirrors, animation resources, and body status.
+
+The existing substitution caller still leaves head and palette fields, jersey
+buffers, and their cache publication stale. This mapping iteration preserves
+that limitation; full substitution graphics publication remains unverified.
+
+The durable fixture contains observed callers `$87:AF9E` and `$86:D8A4` from
+byte-identical repeated raw captures. Those runs did not record a
+contemporaneous ROM/emulator/script manifest, so the fixture claims retained
+raw/metadata/completion file integrity and represented boundary behavior only.
+Its reference ROM hash and pack/source-table checks do not retroactively prove
+the capture-time toolchain. `$86:D73E` and `$86:D85E-$DA17` remain separate.
+
 After Tipoff initialization, canonical WRAM binding, and allocator setup,
 `nba_tipoff_initialize_player_graphics` invokes `$87:AFA2-$B058`. The parent
 publishes the overlapping `$180B-$180D` upload seed, retains each actor's
@@ -100,6 +129,17 @@ python tools/verify_graphics_jersey_vectors.py `
   --pack build/nba95_assets.pak
 python tools/test_graphics_jersey_caller.py `
   --probe build/graphics_jersey_caller_probe.exe `
+  --pack build/nba95_assets.pak
+~~~
+
+Run the preceding active-player map and its initialization/substitution callers
+with:
+
+~~~powershell
+./tools/build_vector_probe.ps1 -Name player_graphics_map_probe
+python tools/verify_player_graphics_map_vectors.py `
+  --vectors tests/fixtures/active-player-graphics-map-witnesses.json `
+  --probe build/player_graphics_map_probe.exe `
   --pack build/nba95_assets.pak
 ~~~
 

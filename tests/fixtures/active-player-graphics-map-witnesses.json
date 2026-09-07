@@ -1,0 +1,261 @@
+{
+  "schema": "nba95-player-graphics-map-v2",
+  "routine": "$86:D7B8-$D85D",
+  "capture_identity": {
+    "capture_time_manifest": false,
+    "claim": "Retained raw-vector, metadata, and completion-file integrity only. Capture-time ROM, emulator, and script hashes were not recorded and are not claimed.",
+    "reference_rom_sha256": "2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870"
+  },
+  "capture": [
+    {
+      "raw_vectors": ".analysis/captures/active-player-graphics-map-native-repeat-20260906/active_player_graphics_map.vectors.jsonl",
+      "raw_vectors_sha256": "a2b416b7dd264dfbbd84e77e78218137e8c5c2ccdfa656462a3ca19511d90562",
+      "metadata": ".analysis/captures/active-player-graphics-map-native-repeat-20260906/active_player_graphics_map.meta.json",
+      "metadata_sha256": "99f70492632996e40d689b0e127f1259a6b7c4980423b13f8dc91bbdea2aafb4",
+      "completion": ".analysis/captures/active-player-graphics-map-native-repeat-20260906/capture_complete.txt",
+      "completion_sha256": "343447fbd6936f0ed3240c23777f97fe9b00e95829e00bb276cc3d8240171ea2",
+      "calls": 2
+    },
+    {
+      "raw_vectors": ".analysis/captures/active-player-graphics-map-native-repeat2-20260906/active_player_graphics_map.vectors.jsonl",
+      "raw_vectors_sha256": "a2b416b7dd264dfbbd84e77e78218137e8c5c2ccdfa656462a3ca19511d90562",
+      "metadata": ".analysis/captures/active-player-graphics-map-native-repeat2-20260906/active_player_graphics_map.meta.json",
+      "metadata_sha256": "99f70492632996e40d689b0e127f1259a6b7c4980423b13f8dc91bbdea2aafb4",
+      "completion": ".analysis/captures/active-player-graphics-map-native-repeat2-20260906/capture_complete.txt",
+      "completion_sha256": "343447fbd6936f0ed3240c23777f97fe9b00e95829e00bb276cc3d8240171ea2",
+      "calls": 2
+    }
+  ],
+  "natural_callers": [
+    "$87:AF9E",
+    "$86:D8A4"
+  ],
+  "cases": [
+    {
+      "call": 1,
+      "entry_frame": 2929,
+      "caller_return": "87afa1",
+      "entry_cpu": {
+        "a": 65535,
+        "cycleCount": 156340236,
+        "d": 0,
+        "dbr": 126,
+        "emulationMode": false,
+        "irqLock": false,
+        "irqSource": 0,
+        "k": 134,
+        "needNmi": false,
+        "nmiFlagCounter": 0,
+        "pc": 55224,
+        "prevIrqSource": 0,
+        "ps": 128,
+        "sp": 8179,
+        "waiOver": true,
+        "x": 18283,
+        "y": 24
+      },
+      "exit_cpu": {
+        "a": 0,
+        "cycleCount": 156341715,
+        "d": 0,
+        "dbr": 126,
+        "emulationMode": false,
+        "irqLock": false,
+        "irqSource": 0,
+        "k": 134,
+        "needNmi": false,
+        "nmiFlagCounter": 0,
+        "pc": 55389,
+        "prevIrqSource": 0,
+        "ps": 2,
+        "sp": 8179,
+        "waiOver": true,
+        "x": 32,
+        "y": 18
+      },
+      "lineup": [
+        [
+          2,
+          0,
+          1,
+          3,
+          4
+        ],
+        [
+          2,
+          0,
+          1,
+          3,
+          4
+        ]
+      ],
+      "roster_address": [
+        [
+          11376616,
+          11376697,
+          11376780,
+          11376861,
+          11376947,
+          11377033,
+          11377114,
+          11377194,
+          11377274,
+          11377354,
+          11377440,
+          11377520
+        ],
+        [
+          11335059,
+          11335138,
+          11335222,
+          11335305,
+          11335388,
+          11335470,
+          11335553,
+          11335638,
+          11335720,
+          11335801,
+          11335887,
+          11335973
+        ]
+      ],
+      "active_roster_address": [
+        11376780,
+        11376616,
+        11376697,
+        11376861,
+        11376947,
+        11335222,
+        11335059,
+        11335138,
+        11335305,
+        11335388
+      ],
+      "statistics_address": [
+        16747,
+        16619,
+        16683,
+        16811,
+        16875,
+        17515,
+        17387,
+        17451,
+        17579,
+        17643
+      ]
+    },
+    {
+      "call": 2,
+      "entry_frame": 2931,
+      "caller_return": "86d8a7",
+      "entry_cpu": {
+        "a": 8,
+        "cycleCount": 156443485,
+        "d": 0,
+        "dbr": 126,
+        "emulationMode": false,
+        "irqLock": false,
+        "irqSource": 0,
+        "k": 134,
+        "needNmi": false,
+        "nmiFlagCounter": 0,
+        "pc": 55224,
+        "prevIrqSource": 0,
+        "ps": 3,
+        "sp": 8171,
+        "waiOver": true,
+        "x": 15851,
+        "y": 5
+      },
+      "exit_cpu": {
+        "a": 0,
+        "cycleCount": 156444964,
+        "d": 0,
+        "dbr": 126,
+        "emulationMode": false,
+        "irqLock": false,
+        "irqSource": 0,
+        "k": 134,
+        "needNmi": false,
+        "nmiFlagCounter": 0,
+        "pc": 55389,
+        "prevIrqSource": 0,
+        "ps": 2,
+        "sp": 8171,
+        "waiOver": true,
+        "x": 32,
+        "y": 18
+      },
+      "lineup": [
+        [
+          2,
+          0,
+          1,
+          3,
+          4
+        ],
+        [
+          2,
+          0,
+          1,
+          3,
+          4
+        ]
+      ],
+      "roster_address": [
+        [
+          11376616,
+          11376697,
+          11376780,
+          11376861,
+          11376947,
+          11377033,
+          11377114,
+          11377194,
+          11377274,
+          11377354,
+          11377440,
+          11377520
+        ],
+        [
+          11335059,
+          11335138,
+          11335222,
+          11335305,
+          11335388,
+          11335470,
+          11335553,
+          11335638,
+          11335720,
+          11335801,
+          11335887,
+          11335973
+        ]
+      ],
+      "active_roster_address": [
+        11376780,
+        11376616,
+        11376697,
+        11376861,
+        11376947,
+        11335222,
+        11335059,
+        11335138,
+        11335305,
+        11335388
+      ],
+      "statistics_address": [
+        16747,
+        16619,
+        16683,
+        16811,
+        16875,
+        17515,
+        17387,
+        17451,
+        17579,
+        17643
+      ]
+    }
+  ]
+}

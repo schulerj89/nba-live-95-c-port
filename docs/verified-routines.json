@@ -2436,6 +2436,28 @@
       "method": "untouched production caller + controlled genuine-entry Mesen replay + host production behavior-pass test",
       "evidence": "tests/fixtures/controller-held-sampler-witnesses.json and tools/test_controller_held_sampler.py retain six exact $87:9B30-$9B37 calls with zero held-word mismatches: one untouched $87:915D production call plus controlled pads zero through four using distinct $0576-$057F words. Controls seed only entry A and the input words; PC, SP, return address, ROM and outputs remain untouched. The focused C probe also rejects invalid host indices without changing output, checks pad0 host conversion/pads1-4 zero, and runs the host production behavior pass through held/previous/changed/pressed/direction/boost publication and shared-pad no-resampling. Neutral controller selection remains production policy; the complete native actor sweep, action/motion, and human playability are not claimed.",
       "date": "2026-09-06"
+    },
+    {
+      "range": "86D7B8-86D85D",
+      "coverage_credit": false,
+      "name": "nba_player_graphics_map / active roster and statistics address selection",
+      "source": "src/nba_player_graphics_map.c + src/nba_tipoff.c + src/nba_player_lab.c",
+      "method": "repeated natural native boundary replay + pack source-table validation + production initialization/substitution consumers",
+      "evidence": "tests/fixtures/active-player-graphics-map-witnesses.json and tools/verify_player_graphics_map_vectors.py retain two byte-identical natural calls, first from $87:AF9E and then from $86:D8A4. All ten selected 24-bit roster-record addresses and ten $87:9C8F statistics words match the production mapper. Asset-free cases cover both sides, nontrivial permutations, roster slot11 and atomic invalid-index rejection. The pack check reconstructs both complete 12-entry source tables for the captured teams. The caller probe checks all ten initialization roster/statistics/alternate-lower/variant/head/palette consumers and all ten substitution roster/statistics/copied-statistics/foul/stamina/animation-resource/body-status consumers; stale head, palette and jersey state are excluded from substitution. Capture-time ROM, emulator and script hashes were not recorded, so this conservative row grants no address coverage; provenance is limited to retained raw/metadata/completion-file integrity, represented boundary state, the separately identified reference ROM, and the hashed Ghidra listing. No claim is made for $86:D73E, $86:D85E onward, CPU ABI/cycles, or whole-game graphics timing. docs/graphics-publication.md.",
+      "provenance": {
+        "capture_time_manifest": false,
+        "capture_identity_limit": "Capture-time ROM, emulator, and script hashes were not recorded and are not claimed.",
+        "reference_rom_sha256": "2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870",
+        "raw_vectors": ".analysis/captures/active-player-graphics-map-native-repeat-20260906/active_player_graphics_map.vectors.jsonl",
+        "raw_vectors_sha256": "a2b416b7dd264dfbbd84e77e78218137e8c5c2ccdfa656462a3ca19511d90562",
+        "repeat_vectors": ".analysis/captures/active-player-graphics-map-native-repeat2-20260906/active_player_graphics_map.vectors.jsonl",
+        "repeat_vectors_sha256": "a2b416b7dd264dfbbd84e77e78218137e8c5c2ccdfa656462a3ca19511d90562",
+        "metadata_sha256": "99f70492632996e40d689b0e127f1259a6b7c4980423b13f8dc91bbdea2aafb4",
+        "completion_sha256": "343447fbd6936f0ed3240c23777f97fe9b00e95829e00bb276cc3d8240171ea2",
+        "ghidra": ".analysis/gameplay_players_ghidra/gameplay_players_bank86_listing.txt",
+        "ghidra_sha256": "c3fd2f715aa1ad2d0ab75ae94215b2764a57cb5dfbb1095ab2eb962ca27e2e29"
+      },
+      "date": "2026-09-06"
     }
   ]
 }
