@@ -152,6 +152,7 @@ if ($Test) {
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name @(
         'game_wram_lifetime_probe', 'graphics_allocator_vector_probe',
         'controller_held_sampler_probe',
+        'player_appearance_publication_probe',
         'cpu_defense_context_vector_probe', 'cpu_mode_seven_vector_probe',
         'cpu_mode_eight_vector_probe', 'cpu_mode_nine_vector_probe',
         'cpu_mode_ten_vector_probe', 'cpu_mode_twelve_vector_probe',
@@ -171,6 +172,13 @@ if ($Test) {
 
     Invoke-PythonRegression -Script 'test_controller_held_sampler.py' -Arguments @(
         '--probe', (Join-Path $BuildDir 'controller_held_sampler_probe.exe'),
+        '--pack', $AssetPack
+    )
+
+    Invoke-PythonRegression -Script 'verify_player_appearance_publication.py' -Arguments @(
+        '--appearance-vectors', (Join-Path $Root 'tests\fixtures\action-pose-witnesses.json'),
+        '--jersey-vectors', (Join-Path $Root 'tests\fixtures\jersey-number-witnesses.json'),
+        '--probe', (Join-Path $BuildDir 'player_appearance_publication_probe.exe'),
         '--pack', $AssetPack
     )
 

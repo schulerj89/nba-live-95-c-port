@@ -23,6 +23,26 @@ scene transitions, new-match state, Tipoff binding, shutdown, and reinit:
 python tools/test_game_wram_lifetime.py --probe build/game_wram_lifetime_probe.exe --pack build/nba95_assets.pak
 ~~~
 
+Replay the active-player appearance parent and its full jersey-buffer child,
+then exercise the normal post-bind Tipoff caller:
+
+~~~powershell
+./tools/build_vector_probe.ps1 -Name player_appearance_publication_probe
+python tools/verify_player_appearance_publication.py `
+  --appearance-vectors tests/fixtures/action-pose-witnesses.json `
+  --jersey-vectors tests/fixtures/jersey-number-witnesses.json `
+  --probe build/player_appearance_publication_probe.exe `
+  --pack build/nba95_assets.pak
+~~~
+
+The parent replay checks both retained `$87:AFA2` entries, the exact 50 actor
+appearance words and upload seed, and the captured byte count and SHA-256 for
+the 1,920-byte child output at `$8690-$8E0F`. It also checks ten invalidated
+cache words at `$8E10-$8E23`, the exact write footprint on poisoned WRAM,
+atomic host rejection, and production team, roster, actor, and bus mapping.
+Digit, BCD, and roster bytes come from the local asset pack; the tracked
+fixture and verifier contain no copied asset table or glyph payload.
+
 ## Asset pipeline
 
 Enable script file I/O in Mesen, then capture the verified US ROM inputs:

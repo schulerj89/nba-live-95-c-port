@@ -1017,6 +1017,50 @@ bool nba_player_appearance_setup(const NbaAssetPack *assets,
     return true;
 }
 
+/* `$87:AFA2-$B058`, gameplay graphics: initialize all ten active-player
+ * appearance records, invalidate their jersey cache words, and invoke the
+ * already-verified `$87:B059-$B354` compositor for six ordered views each.
+ * Host input errors are rejected before canonical WRAM or output is changed. */
+bool nba_player_publish_active_appearance(const NbaAssetPack *assets,
+    NbaGraphicsBus *graphics_bus,
+    const uint8_t teams[NBA_PLAYER_APPEARANCE_COUNT],
+    const uint8_t roster[NBA_PLAYER_APPEARANCE_COUNT],
+    NbaPlayerAppearanceSetup *setup) {
+    static const uint8_t physical_direction[6] = {3u, 7u, 4u, 0u, 2u, 6u};
+    NbaPlayerAppearanceSetup next;
+    uint8_t jersey_tiles[NBA_PLAYER_JERSEY_WRAM_BYTES];
+    if (!graphics_bus || !graphics_bus->wram ||
+        graphics_bus->size < NBA_GRAPHICS_WRAM_BYTES || !setup ||
+        !nba_player_appearance_setup(assets, teams, roster, &next))
+        return false;
+    for (unsigned actor = 0; actor < NBA_PLAYER_APPEARANCE_COUNT; ++actor) {
+        PlayerLabRecord player;
+        if (!player_record(assets, teams[actor], roster[actor], &player))
+            return false;
+        for (unsigned view = 0; view < 6u; ++view) {
+            uint8_t *tile = jersey_tiles +
+                actor * NBA_PLAYER_JERSEY_ACTOR_BYTES +
+                view * NBA_PLAYER_JERSEY_VIEW_BYTES;
+            if (!nba_player_compose_jersey_number(
+                    assets, player.jersey, physical_direction[view],
+                    actor >= 5u ? 1u : 0u, tile))
+                return false;
+        }
+    }
+
+    /* Overlapping native word stores leave the long source `$80:800C` at
+     * `$180B-$180D`. Keep the byte identity used by later graphics code. */
+    graphics_bus->wram[NBA_PLAYER_APPEARANCE_UPLOAD_WRAM] = 0x0Cu;
+    graphics_bus->wram[NBA_PLAYER_APPEARANCE_UPLOAD_WRAM + 1u] = 0x80u;
+    graphics_bus->wram[NBA_PLAYER_APPEARANCE_UPLOAD_WRAM + 2u] = 0x80u;
+    *setup = next;
+    memset(graphics_bus->wram + NBA_PLAYER_JERSEY_CACHE_WRAM, 0xFF,
+           NBA_PLAYER_JERSEY_CACHE_BYTES);
+    memcpy(graphics_bus->wram + NBA_PLAYER_JERSEY_WRAM_BASE, jersey_tiles,
+           sizeof(jersey_tiles));
+    return true;
+}
+
 bool nba_player_gameplay_roster_address(const NbaAssetPack *assets,
     uint8_t team, uint8_t roster_slot, uint32_t *address) {
     PlayerLabRecord player;

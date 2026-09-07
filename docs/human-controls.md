@@ -27,8 +27,9 @@ existing pad-zero host conversion and zero values for pads one through four.
 
 The dependency order is:
 
-1. Implement `$87:AFA2` cache invalidation and `$87:B05B-$B354` jersey-buffer
-   publication, then `$80:AD2B-$AD88` with its real renderer caller inputs.
+1. `$87:AFA2-$B058` now invalidates the cache and publishes the complete
+   `$87:B059-$B354` jersey buffer. Implement `$80:AD2B-$AD88` next with its
+   real renderer caller inputs.
 2. Complete the remaining ordered graphics producers and consumer that give
    `$012C` its production provenance.
 3. Resume the complete action parent and all naturally reachable action paths,

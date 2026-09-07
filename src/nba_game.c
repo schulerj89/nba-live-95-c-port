@@ -379,6 +379,10 @@ bool nba_game_enter_state(NbaGame *game, NbaGameState state) {
             fprintf(stderr, "[GAME] Graphics allocator initialization failed.\n");
             return false;
         }
+        if (!nba_tipoff_initialize_player_graphics(&game->scene.tipoff)) {
+            fprintf(stderr, "[GAME] Tip-off player graphics publication failed.\n");
+            return false;
+        }
         if (!nba_audio_start_gameplay(&game->audio, &game->assets)) {
             fprintf(stderr, "[GAMEPLAY AUDIO] ROM gameplay bank failed to start; "
                             "continuing silently.\n");

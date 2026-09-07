@@ -31,15 +31,27 @@ the exact `$80:AC0D-$AC1A` 1,049-word cache clear and
 write replay repeated native write streams. The integration is a bounded
 equivalent of caller `$85:8B6C-$8B75`; the caller's later `$8B79-$8B93`
 writes and native court initialization history remain outside this claim. The
-host currently initializes Tipoff actors and appearance before binding and
-calling the allocator, later than native, because those systems do not yet
-consume canonical allocator state.
+host still constructs Tipoff actors before binding canonical WRAM. It then
+runs the allocator before the explicit active-player graphics publication.
 
-The next native graphics step is `$87:AFA2` cache invalidation followed by
-`$87:B05B-$B354`, which publishes the six jersey
-views per actor. Only then can `$80:AD2B-$AD88` append queue records from real
-sources. The remaining ordered producers and consumer must establish canonical
-`$012C` provenance before `$87:B7D8` can support the human pass catch path.
+After Tipoff initialization, canonical WRAM binding, and allocator setup,
+`nba_tipoff_initialize_player_graphics` invokes `$87:AFA2-$B058`. The parent
+publishes the overlapping `$180B-$180D` upload seed, retains each actor's
+native palette/height/variant/head outputs, writes `FFFF` to the ten cache
+words `$8E10,$8E12,...,$8E22`, and calls the existing `$87:B059-$B354`
+compositor. Actor `n` owns `$C0` bytes beginning at `$8690+n*$C0`; its six
+32-byte slots at offsets `$00,$20,$40,$60,$80,$A0` represent display
+directions `3,7,4,0,2,6`. Actors 0-4 use context0 home/right and uniform side
+zero; actors 5-9 use context1 visitor/left and uniform side one. The roster
+slot comes from the actor identity, not the team ID or display direction.
+
+The digit source at `$A6:AFD6`, BCD table at `$80:859C`, and player records
+come from `NBA_ASSET_PLAYER_ANIMATIONS` and `NBA_ASSET_PLAYER_ROSTERS`. The
+runtime does not pack or copy the `$87:A99E` direction table: the six verified
+slot directions are code behavior, and later `$80:AD2B-$AD88` must select them
+from actor identity and display direction. The remaining ordered producers and
+consumer must establish canonical `$012C` provenance before `$87:B7D8` can
+support the human pass catch path.
 
 Run the focused lifetime check with:
 
@@ -48,6 +60,17 @@ Run the focused lifetime check with:
 ./tools/build_vector_probe.ps1 -Name graphics_allocator_vector_probe,game_wram_lifetime_probe
 python tools/verify_graphics_allocator_vectors.py --vectors tests/fixtures/graphics-allocator-witnesses.json --probe build/graphics_allocator_vector_probe.exe
 python tools/test_game_wram_lifetime.py --probe build/game_wram_lifetime_probe.exe --pack build/nba95_assets.pak
+~~~
+
+Run the active-player publication replay with:
+
+~~~powershell
+./tools/build_vector_probe.ps1 -Name player_appearance_publication_probe
+python tools/verify_player_appearance_publication.py `
+  --appearance-vectors tests/fixtures/action-pose-witnesses.json `
+  --jersey-vectors tests/fixtures/jersey-number-witnesses.json `
+  --probe build/player_appearance_publication_probe.exe `
+  --pack build/nba95_assets.pak
 ~~~
 
 The allocator verifier projects ordered native functional WRAM writes onto

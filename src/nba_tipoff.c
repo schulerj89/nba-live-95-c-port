@@ -9633,6 +9633,38 @@ bool nba_tipoff_bind_graphics_bus(NbaTipoff *tipoff,
                                  requested.size);
 }
 
+/* Host-only Tipoff caller; no direct native address. After the game binds
+ * canonical WRAM, publish `$87:AFA2-$B058` from the authoritative context,
+ * actor identity, and active roster mapping already built by Tipoff init. */
+bool nba_tipoff_initialize_player_graphics(NbaTipoff *tipoff) {
+    uint8_t teams[NBA_PLAYER_APPEARANCE_COUNT];
+    uint8_t rosters[NBA_PLAYER_APPEARANCE_COUNT];
+    NbaPlayerAppearanceSetup setup;
+    if (!tipoff || !tipoff->is_initialized || !tipoff->assets)
+        return false;
+    for (unsigned actor = 0; actor < NBA_PLAYER_APPEARANCE_COUNT; ++actor) {
+        unsigned context = actor / NBA_MATCH_LINEUP_SIZE;
+        teams[actor] = team_id_for_context(tipoff, context);
+        rosters[actor] = tipoff->actors[actor].roster_slot;
+    }
+    if (!nba_player_publish_active_appearance(
+            tipoff->assets, &tipoff->graphics_bus, teams, rosters, &setup))
+        return false;
+    for (unsigned actor = 0; actor < NBA_PLAYER_APPEARANCE_COUNT; ++actor) {
+        NbaTipoffActor *state = &tipoff->actors[actor];
+        const NbaPlayerAppearance *appearance = &setup.players[actor];
+        state->free_throw_launch_half_raw_a8 = appearance->alternate_lower;
+        state->animation_variant_raw_6c = appearance->upper_variant;
+        state->head_resource_base_raw_2e = appearance->head_resource;
+        state->player_palette_offset_raw_ac = appearance->palette_offset;
+    }
+    tipoff->free_throw_upload_raw_180b =
+        (uint16_t)(setup.upload_address & 0xFFFFu);
+    tipoff->free_throw_upload_raw_180c =
+        (uint16_t)((setup.upload_address >> 8) & 0xFFFFu);
+    return true;
+}
+
 /* Controlled Mesen witnesses from `$87:95E9` to `$86:DD47`/`$87:985C`.
  * They include the native input acknowledgements used by the capture, so the
  * stage raster remains separate; these replace the old arbitrary 120 ticks. */

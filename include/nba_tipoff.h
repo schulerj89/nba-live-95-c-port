@@ -124,6 +124,8 @@ typedef struct {
     uint16_t catcher_latch_raw_ae;    /* actor `+$AE`, `$86:BAE0` */
     uint16_t free_throw_launch_half_raw_a8; /* actor `+$A8`, `$86:A2A7` */
     uint16_t animation_variant_raw_6c; /* roster +$08, `$87:AD3D-$AD57` */
+    uint16_t head_resource_base_raw_2e; /* actor `+$2E`, `$87:B032-$B03A` */
+    uint16_t player_palette_offset_raw_ac; /* actor `+$AC`, `$87:AFF2-$AFF4` */
     uint16_t upper_phase_target_raw_b0; /* `$87:ADC6-$AE75` held-ball phase target */
     uint16_t animation_upper_queue_cursor_raw_18;
     uint16_t animation_lower_queue_cursor_raw_1a;
@@ -356,6 +358,7 @@ bool nba_tipoff_init(NbaTipoff *tipoff, const NbaAssetPack *assets,
  * after each successful Tipoff scene initialization. */
 bool nba_tipoff_bind_graphics_bus(NbaTipoff *tipoff,
                                   const NbaGraphicsBus *graphics_bus);
+bool nba_tipoff_initialize_player_graphics(NbaTipoff *tipoff);
 void nba_tipoff_update(NbaTipoff *tipoff, const NbaInput *input);
 /* Controller initializer boundary. The normal frontend still uses neutral
  * effective selections until the complete human actor dispatcher is wired. */

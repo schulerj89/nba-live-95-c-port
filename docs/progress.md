@@ -10,7 +10,7 @@ Counts address positions in the captured exec intervals. Some captures record in
 |---|---|---|
 | executed (denominator) | 29438 | 100.0% |
 | documented by port provenance | 29101 | 98.9% |
-| verified against ground truth | 12048 | 40.9% |
+| verified against ground truth | 12051 | 40.9% |
 
 ## Per bank
 

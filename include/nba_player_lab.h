@@ -226,6 +226,15 @@ bool nba_player_resolve_pose(const NbaAssetPack *assets,
     bool alternate_lower, uint16_t variant, NbaPlayerResolvedPose *pose);
 
 #define NBA_PLAYER_APPEARANCE_COUNT 10
+enum {
+    NBA_PLAYER_APPEARANCE_UPLOAD_WRAM = 0x180B,
+    NBA_PLAYER_JERSEY_WRAM_BASE = 0x8690,
+    NBA_PLAYER_JERSEY_VIEW_BYTES = 0x20,
+    NBA_PLAYER_JERSEY_ACTOR_BYTES = 0xC0,
+    NBA_PLAYER_JERSEY_WRAM_BYTES = 0x780,
+    NBA_PLAYER_JERSEY_CACHE_WRAM = 0x8E10,
+    NBA_PLAYER_JERSEY_CACHE_BYTES = 0x14
+};
 typedef struct {
     uint16_t palette_offset, alternate_lower, upper_variant, head_resource;
     uint16_t dirty;
@@ -255,6 +264,11 @@ bool nba_player_build_active_appearance(
     const NbaPlayerActiveAppearanceInput *input,
     NbaPlayerActiveAppearance *output);
 bool nba_player_appearance_setup(const NbaAssetPack *assets,
+    const uint8_t teams[NBA_PLAYER_APPEARANCE_COUNT],
+    const uint8_t roster[NBA_PLAYER_APPEARANCE_COUNT],
+    NbaPlayerAppearanceSetup *setup);
+bool nba_player_publish_active_appearance(const NbaAssetPack *assets,
+    NbaGraphicsBus *graphics_bus,
     const uint8_t teams[NBA_PLAYER_APPEARANCE_COUNT],
     const uint8_t roster[NBA_PLAYER_APPEARANCE_COUNT],
     NbaPlayerAppearanceSetup *setup);
