@@ -1,0 +1,1182 @@
+{
+  "schema": 1,
+  "routine": "80ad2b-80ad88",
+  "projection": "ordered native functional WRAM writes over byte 0x5a",
+  "sources": {
+    "rom_sha256": "2115c39f0580ce19885b5459ad708eaa80cc80fabfe5a9325ec2280a5bcd7870",
+    "mesen_sha256": "d2eb03c2590c648bf329f127ebcfefd70130e7690a9e2ccdba8616faea1fe96b",
+    "listing_sha256": "add14f13c6ac7787369299f6a055b47cad471839e6be262f7e6d7fb6d2cb9f03",
+    "runs": [
+      {
+        "name": "native-natural-v1",
+        "manifest_sha256": "5f4a9bb317e3d97afc30f143aa0a1e13e4d56fc3000974730064d0970d7ce18f",
+        "boundaries_sha256": "a4a73be477e845d9092fcda96a189917df48bcdf9b19ad1013e5d12981f9e390",
+        "writes_sha256": "cc4c13a60b2b19a14e4477bf56a3062a195ca91903a8d5ba5137184de9bccf59",
+        "paths_sha256": "8e5f2c3d66ecab650ea428e25fe377676e76f17bfa8888a2844d14efcb1f5024"
+      },
+      {
+        "name": "native-natural-v2",
+        "manifest_sha256": "64a312f5a4bf550595600837c88d127e20324b3181ef9aa3ca11d99857457b9d",
+        "boundaries_sha256": "a4a73be477e845d9092fcda96a189917df48bcdf9b19ad1013e5d12981f9e390",
+        "writes_sha256": "cc4c13a60b2b19a14e4477bf56a3062a195ca91903a8d5ba5137184de9bccf59",
+        "paths_sha256": "8e5f2c3d66ecab650ea428e25fe377676e76f17bfa8888a2844d14efcb1f5024"
+      },
+      {
+        "name": "native-wrap-v1",
+        "manifest_sha256": "aba59e8d8c12139fa9e0777a57b682468bb8c1a64f283fdb5125ecaf9b17bdff",
+        "boundaries_sha256": "44e4864c6c998703ff8805f638dd885c8899bd7bb059f9e8978ea7033ee1699d",
+        "writes_sha256": "4a8e2bdefb28df8c265406416b92a4b4a7f3dff7b40df2f40a4ccc70a05740ae",
+        "paths_sha256": "7e77d2fdadececd17a1c9f603428a4ee2bfb48275ba49c7a5c512c9676b55422"
+      },
+      {
+        "name": "native-wrap-v2",
+        "manifest_sha256": "ad18158e87ed5aba7cf8c114efd5e380bb909667eb42d73be4c154d780483d35",
+        "boundaries_sha256": "44e4864c6c998703ff8805f638dd885c8899bd7bb059f9e8978ea7033ee1699d",
+        "writes_sha256": "4a8e2bdefb28df8c265406416b92a4b4a7f3dff7b40df2f40a4ccc70a05740ae",
+        "paths_sha256": "7e77d2fdadececd17a1c9f603428a4ee2bfb48275ba49c7a5c512c9676b55422"
+      },
+      {
+        "name": "native-hit-v1",
+        "manifest_sha256": "3f2eb3f034ef873a10dba2f40784b7abaad99b1013369d475ff680ceea011190",
+        "boundaries_sha256": "2415557a46cbfe8a09d2f87bf022a4cd8ba1f24d9779fd15f9894b7581af634d",
+        "writes_sha256": "1df089762a66b9f53acf3ee94073531b43d9ba8d29990e871b172ee8ec29b556",
+        "paths_sha256": "9a61d1f022cd0f5541c40b8229954cf2a40982f17a367100ba680c2bbb0f96a2"
+      },
+      {
+        "name": "native-hit-v2",
+        "manifest_sha256": "d6907f89f739b73fd4610ed3e159b9f40d978663f63a86dc3f789ff1259b2923",
+        "boundaries_sha256": "2415557a46cbfe8a09d2f87bf022a4cd8ba1f24d9779fd15f9894b7581af634d",
+        "writes_sha256": "1df089762a66b9f53acf3ee94073531b43d9ba8d29990e871b172ee8ec29b556",
+        "paths_sha256": "9a61d1f022cd0f5541c40b8229954cf2a40982f17a367100ba680c2bbb0f96a2"
+      },
+      {
+        "name": "native-carry-v1",
+        "manifest_sha256": "735e442fdcf8ca91794ef4315460942e332db522cb2e9876b103ae15d0479d8f",
+        "boundaries_sha256": "c5a3cbf65859e2fa9f4c75c6852904a9c8422a28b9fed5d2612a1e0880d8e7aa",
+        "writes_sha256": "139c7b10d0b3d72a4c7570f0edabb66c19d54d0c8bac7d8fc84a7e16f49163a7",
+        "paths_sha256": "7e77d2fdadececd17a1c9f603428a4ee2bfb48275ba49c7a5c512c9676b55422"
+      },
+      {
+        "name": "native-carry-v2",
+        "manifest_sha256": "bc134d707145d536d3e8b470386548044c0c7cc16c3aac74b330246c0438a675",
+        "boundaries_sha256": "c5a3cbf65859e2fa9f4c75c6852904a9c8422a28b9fed5d2612a1e0880d8e7aa",
+        "writes_sha256": "139c7b10d0b3d72a4c7570f0edabb66c19d54d0c8bac7d8fc84a7e16f49163a7",
+        "paths_sha256": "7e77d2fdadececd17a1c9f603428a4ee2bfb48275ba49c7a5c512c9676b55422"
+      }
+    ]
+  },
+  "coverage": {
+    "owned_starts": 49,
+    "natural_calls": 1288,
+    "natural_hits": 1244,
+    "natural_misses": 44,
+    "natural_valid_sources": 6,
+    "natural_rollovers": 1,
+    "interrupt_stack_sequences": 2
+  },
+  "owned_start_addresses": [
+    "80ad2b",
+    "80ad2d",
+    "80ad2e",
+    "80ad2f",
+    "80ad30",
+    "80ad33",
+    "80ad35",
+    "80ad37",
+    "80ad38",
+    "80ad39",
+    "80ad3d",
+    "80ad40",
+    "80ad42",
+    "80ad45",
+    "80ad47",
+    "80ad49",
+    "80ad4a",
+    "80ad4b",
+    "80ad4d",
+    "80ad4e",
+    "80ad4f",
+    "80ad50",
+    "80ad51",
+    "80ad52",
+    "80ad53",
+    "80ad55",
+    "80ad57",
+    "80ad59",
+    "80ad5c",
+    "80ad5f",
+    "80ad61",
+    "80ad64",
+    "80ad67",
+    "80ad6a",
+    "80ad6d",
+    "80ad70",
+    "80ad72",
+    "80ad73",
+    "80ad74",
+    "80ad75",
+    "80ad76",
+    "80ad79",
+    "80ad7c",
+    "80ad7d",
+    "80ad7e",
+    "80ad81",
+    "80ad84",
+    "80ad86",
+    "80ad88"
+  ],
+  "natural_boundary_contract": [
+    {
+      "tag": "parent.entry",
+      "pc": 8432939,
+      "call": 1,
+      "frame": 3839,
+      "cpu": {
+        "a": 1,
+        "x": 77,
+        "y": 5706,
+        "d": 0,
+        "dbr": 126,
+        "k": 128,
+        "pc": 44331,
+        "ps": 0,
+        "sp": 8169
+      },
+      "state": {
+        "be": 16,
+        "c2": 3,
+        "extent": 480,
+        "vram_base": 24576,
+        "tail": 472,
+        "cache": 65535,
+        "source": 34448,
+        "queue": "01dcb9930000e060",
+        "dp0": 0,
+        "dp4": 56321
+      }
+    },
+    {
+      "tag": "parent.exit",
+      "pc": 8433032,
+      "call": 1,
+      "frame": 3839,
+      "cpu": {
+        "a": 488,
+        "x": 472,
+        "y": 16,
+        "d": 0,
+        "dbr": 126,
+        "k": 128,
+        "pc": 44424,
+        "ps": 0,
+        "sp": 8169
+      },
+      "state": {
+        "be": 16,
+        "c2": 3,
+        "extent": 480,
+        "vram_base": 24576,
+        "tail": 480,
+        "cache": 34448,
+        "source": 34448,
+        "queue": "01fffda14000e061",
+        "dp0": 35984,
+        "dp4": 488
+      }
+    }
+  ],
+  "calls": [
+    {
+      "name": "natural_direction_0_miss",
+      "kind": "natural",
+      "operation": [
+        90,
+        2,
+        0,
+        480,
+        24576,
+        128,
+        65535
+      ],
+      "entry": {
+        "be": 2,
+        "c2": 0,
+        "extent": 480,
+        "vram_base": 24576,
+        "tail": 128,
+        "cache": 65535,
+        "source": 34544
+      },
+      "expected": {
+        "ok": 1,
+        "result": [
+          481,
+          32272,
+          34736,
+          1
+        ],
+        "full_hash": "35b4f40e8b6f63d9",
+        "changed_hash": "0ff3800d1e838335",
+        "changed_count": 15,
+        "words": [
+          34736,
+          481,
+          136,
+          24576,
+          480,
+          34544
+        ],
+        "record": [
+          1,
+          176,
+          135,
+          126,
+          32,
+          0,
+          16,
+          126
+        ],
+        "sentinels": [
+          90,
+          90,
+          90,
+          90,
+          90,
+          90
+        ],
+        "native_write_events": 20,
+        "native_unique_written_bytes": 16
+      }
+    },
+    {
+      "name": "natural_direction_0_hit",
+      "kind": "natural",
+      "operation": [
+        90,
+        2,
+        0,
+        480,
+        24576,
+        240,
+        34544
+      ],
+      "entry": {
+        "be": 2,
+        "c2": 0,
+        "extent": 480,
+        "vram_base": 24576,
+        "tail": 240,
+        "cache": 34544,
+        "source": 34544
+      },
+      "expected": {
+        "ok": 1,
+        "result": [
+          481,
+          0,
+          0,
+          0
+        ],
+        "full_hash": "17c0e9557f57ce12",
+        "changed_hash": "7f87dd2e808e545a",
+        "changed_count": 2,
+        "words": [
+          23130,
+          481,
+          240,
+          24576,
+          480,
+          34544
+        ],
+        "record": [
+          90,
+          90,
+          90,
+          90,
+          90,
+          90,
+          90,
+          90
+        ],
+        "sentinels": [
+          90,
+          90,
+          90,
+          90,
+          90,
+          90
+        ],
+        "native_write_events": 2,
+        "native_unique_written_bytes": 2
+      }
+    },
+    {
+      "name": "natural_direction_2_miss",
+      "kind": "natural",
+      "operation": [
+        90,
+        10,
+        2,
+        480,
+        24576,
+        64,
+        65535
+      ],
+      "entry": {
+        "be": 10,
+        "c2": 2,
+        "extent": 480,
+        "vram_base": 24576,
+        "tail": 64,
+        "cache": 65535,
+        "source": 34576
+      },
+      "expected": {
+        "ok": 1,
+        "result": [
+          485,
+          32336,
+          35536,
+          1
+        ],
+        "full_hash": "1ab4c66883bbac2e",
+        "changed_hash": "c5429d59863c02d5",
+        "changed_count": 15,
+        "words": [
+          35536,
+          485,
+          72,
+          24576,
+          480,
+          34576
+        ],
+        "record": [
+          1,
+          208,
+          138,
+          126,
+          32,
+          0,
+          80,
+          126
+        ],
+        "sentinels": [
+          90,
+          90,
+          90,
+          90,
+          90,
+          90
+        ],
+        "native_write_events": 20,
+        "native_unique_written_bytes": 16
+      }
+    },
+    {
+      "name": "natural_direction_2_hit",
+      "kind": "natural",
+      "operation": [
+        90,
+        10,
+        2,
+        480,
+        24576,
+        240,
+        34576
+      ],
+      "entry": {
+        "be": 10,
+        "c2": 2,
+        "extent": 480,
+        "vram_base": 24576,
+        "tail": 240,
+        "cache": 34576,
+        "source": 34576
+      },
+      "expected": {
+        "ok": 1,
+        "result": [
+          485,
+          0,
+          0,
+          0
+        ],
+        "full_hash": "7f7e20cf195e9d0f",
+        "changed_hash": "7f87dd2e808e545a",
+        "changed_count": 2,
+        "words": [
+          23130,
+          485,
+          240,
+          24576,
+          480,
+          34576
+        ],
+        "record": [
+          90,
+          90,
+          90,
+          90,
+          90,
+          90,
+          90,
+          90
+        ],
+        "sentinels": [
+          90,
+          90,
+          90,
+          90,
+          90,
+          90
+        ],
+        "native_write_events": 2,
+        "native_unique_written_bytes": 2
+      }
+    },
+    {
+      "name": "natural_direction_3_miss",
+      "kind": "natural",
+      "operation": [
+        90,
+        16,
+        3,
+        480,
+        24576,
+        472,
+        65535
+      ],
+      "entry": {
+        "be": 16,
+        "c2": 3,
+        "extent": 480,
+        "vram_base": 24576,
+        "tail": 472,
+        "cache": 65535,
+        "source": 34448
+      },
+      "expected": {
+        "ok": 1,
+        "result": [
+          488,
+          32384,
+          35984,
+          1
+        ],
+        "full_hash": "6508f2d8ca63e856",
+        "changed_hash": "7875b3c60505c679",
+        "changed_count": 15,
+        "words": [
+          35984,
+          488,
+          480,
+          24576,
+          480,
+          34448
+        ],
+        "record": [
+          1,
+          144,
+          140,
+          126,
+          32,
+          0,
+          128,
+          126
+        ],
+        "sentinels": [
+          90,
+          90,
+          90,
+          90,
+          90,
+          90
+        ],
+        "native_write_events": 20,
+        "native_unique_written_bytes": 16
+      }
+    },
+    {
+      "name": "natural_direction_3_hit",
+      "kind": "natural",
+      "operation": [
+        90,
+        16,
+        3,
+        480,
+        24576,
+        240,
+        34448
+      ],
+      "entry": {
+        "be": 16,
+        "c2": 3,
+        "extent": 480,
+        "vram_base": 24576,
+        "tail": 240,
+        "cache": 34448,
+        "source": 34448
+      },
+      "expected": {
+        "ok": 1,
+        "result": [
+          488,
+          0,
+          0,
+          0
+        ],
+        "full_hash": "8a1892597155a856",
+        "changed_hash": "7f87dd2e808e545a",
+        "changed_count": 2,
+        "words": [
+          23130,
+          488,
+          240,
+          24576,
+          480,
+          34448
+        ],
+        "record": [
+          90,
+          90,
+          90,
+          90,
+          90,
+          90,
+          90,
+          90
+        ],
+        "sentinels": [
+          90,
+          90,
+          90,
+          90,
+          90,
+          90
+        ],
+        "native_write_events": 2,
+        "native_unique_written_bytes": 2
+      }
+    },
+    {
+      "name": "natural_direction_4_miss",
+      "kind": "natural",
+      "operation": [
+        90,
+        4,
+        4,
+        480,
+        24576,
+        8,
+        65535
+      ],
+      "entry": {
+        "be": 4,
+        "c2": 4,
+        "extent": 480,
+        "vram_base": 24576,
+        "tail": 8,
+        "cache": 65535,
+        "source": 34512
+      },
+      "expected": {
+        "ok": 1,
+        "result": [
+          482,
+          32288,
+          34896,
+          1
+        ],
+        "full_hash": "49002ce805f5ef8a",
+        "changed_hash": "0803242583bc24b1",
+        "changed_count": 15,
+        "words": [
+          34896,
+          482,
+          16,
+          24576,
+          480,
+          34512
+        ],
+        "record": [
+          1,
+          80,
+          136,
+          126,
+          32,
+          0,
+          32,
+          126
+        ],
+        "sentinels": [
+          90,
+          90,
+          90,
+          90,
+          90,
+          90
+        ],
+        "native_write_events": 20,
+        "native_unique_written_bytes": 16
+      }
+    },
+    {
+      "name": "natural_direction_4_hit",
+      "kind": "natural",
+      "operation": [
+        90,
+        4,
+        4,
+        480,
+        24576,
+        240,
+        34512
+      ],
+      "entry": {
+        "be": 4,
+        "c2": 4,
+        "extent": 480,
+        "vram_base": 24576,
+        "tail": 240,
+        "cache": 34512,
+        "source": 34512
+      },
+      "expected": {
+        "ok": 1,
+        "result": [
+          482,
+          0,
+          0,
+          0
+        ],
+        "full_hash": "7dcbb74cc61f128b",
+        "changed_hash": "7f87dd2e808e545a",
+        "changed_count": 2,
+        "words": [
+          23130,
+          482,
+          240,
+          24576,
+          480,
+          34512
+        ],
+        "record": [
+          90,
+          90,
+          90,
+          90,
+          90,
+          90,
+          90,
+          90
+        ],
+        "sentinels": [
+          90,
+          90,
+          90,
+          90,
+          90,
+          90
+        ],
+        "native_write_events": 2,
+        "native_unique_written_bytes": 2
+      }
+    },
+    {
+      "name": "natural_direction_6_miss",
+      "kind": "natural",
+      "operation": [
+        90,
+        0,
+        6,
+        480,
+        24576,
+        96,
+        65535
+      ],
+      "entry": {
+        "be": 0,
+        "c2": 6,
+        "extent": 480,
+        "vram_base": 24576,
+        "tail": 96,
+        "cache": 65535,
+        "source": 34608
+      },
+      "expected": {
+        "ok": 1,
+        "result": [
+          480,
+          32256,
+          34608,
+          1
+        ],
+        "full_hash": "f2502fcecf796b67",
+        "changed_hash": "86382482be322fb1",
+        "changed_count": 15,
+        "words": [
+          34608,
+          480,
+          104,
+          24576,
+          480,
+          34608
+        ],
+        "record": [
+          1,
+          48,
+          135,
+          126,
+          32,
+          0,
+          0,
+          126
+        ],
+        "sentinels": [
+          90,
+          90,
+          90,
+          90,
+          90,
+          90
+        ],
+        "native_write_events": 20,
+        "native_unique_written_bytes": 16
+      }
+    },
+    {
+      "name": "natural_direction_6_hit",
+      "kind": "natural",
+      "operation": [
+        90,
+        0,
+        6,
+        480,
+        24576,
+        240,
+        34608
+      ],
+      "entry": {
+        "be": 0,
+        "c2": 6,
+        "extent": 480,
+        "vram_base": 24576,
+        "tail": 240,
+        "cache": 34608,
+        "source": 34608
+      },
+      "expected": {
+        "ok": 1,
+        "result": [
+          480,
+          0,
+          0,
+          0
+        ],
+        "full_hash": "487d20bb073e8df4",
+        "changed_hash": "7f87dd2e808e545a",
+        "changed_count": 2,
+        "words": [
+          23130,
+          480,
+          240,
+          24576,
+          480,
+          34608
+        ],
+        "record": [
+          90,
+          90,
+          90,
+          90,
+          90,
+          90,
+          90,
+          90
+        ],
+        "sentinels": [
+          90,
+          90,
+          90,
+          90,
+          90,
+          90
+        ],
+        "native_write_events": 2,
+        "native_unique_written_bytes": 2
+      }
+    },
+    {
+      "name": "natural_direction_7_miss",
+      "kind": "natural",
+      "operation": [
+        90,
+        6,
+        7,
+        480,
+        24576,
+        176,
+        65535
+      ],
+      "entry": {
+        "be": 6,
+        "c2": 7,
+        "extent": 480,
+        "vram_base": 24576,
+        "tail": 176,
+        "cache": 65535,
+        "source": 34480
+      },
+      "expected": {
+        "ok": 1,
+        "result": [
+          483,
+          32304,
+          35056,
+          1
+        ],
+        "full_hash": "c6715475f4047eae",
+        "changed_hash": "92fb4de251ff8f9d",
+        "changed_count": 15,
+        "words": [
+          35056,
+          483,
+          184,
+          24576,
+          480,
+          34480
+        ],
+        "record": [
+          1,
+          240,
+          136,
+          126,
+          32,
+          0,
+          48,
+          126
+        ],
+        "sentinels": [
+          90,
+          90,
+          90,
+          90,
+          90,
+          90
+        ],
+        "native_write_events": 20,
+        "native_unique_written_bytes": 16
+      }
+    },
+    {
+      "name": "natural_direction_7_hit",
+      "kind": "natural",
+      "operation": [
+        90,
+        6,
+        7,
+        480,
+        24576,
+        240,
+        34480
+      ],
+      "entry": {
+        "be": 6,
+        "c2": 7,
+        "extent": 480,
+        "vram_base": 24576,
+        "tail": 240,
+        "cache": 34480,
+        "source": 34480
+      },
+      "expected": {
+        "ok": 1,
+        "result": [
+          483,
+          0,
+          0,
+          0
+        ],
+        "full_hash": "c49367423d202407",
+        "changed_hash": "7f87dd2e808e545a",
+        "changed_count": 2,
+        "words": [
+          23130,
+          483,
+          240,
+          24576,
+          480,
+          34480
+        ],
+        "record": [
+          90,
+          90,
+          90,
+          90,
+          90,
+          90,
+          90,
+          90
+        ],
+        "sentinels": [
+          90,
+          90,
+          90,
+          90,
+          90,
+          90
+        ],
+        "native_write_events": 2,
+        "native_unique_written_bytes": 2
+      }
+    },
+    {
+      "name": "natural_tail_rollover",
+      "kind": "natural",
+      "operation": [
+        90,
+        14,
+        4,
+        480,
+        24576,
+        504,
+        34544
+      ],
+      "entry": {
+        "be": 14,
+        "c2": 4,
+        "extent": 480,
+        "vram_base": 24576,
+        "tail": 504,
+        "cache": 34544,
+        "source": 34512
+      },
+      "expected": {
+        "ok": 1,
+        "result": [
+          487,
+          32368,
+          35856,
+          1
+        ],
+        "full_hash": "2b00e77551a12749",
+        "changed_hash": "31eb2af07166662a",
+        "changed_count": 15,
+        "words": [
+          35856,
+          487,
+          0,
+          24576,
+          480,
+          34512
+        ],
+        "record": [
+          1,
+          16,
+          140,
+          126,
+          32,
+          0,
+          112,
+          126
+        ],
+        "sentinels": [
+          90,
+          90,
+          90,
+          90,
+          90,
+          90
+        ],
+        "native_write_events": 20,
+        "native_unique_written_bytes": 16
+      }
+    },
+    {
+      "name": "controlled_arithmetic_wrap",
+      "kind": "controlled",
+      "operation": [
+        90,
+        18,
+        7,
+        65535,
+        65520,
+        504,
+        0
+      ],
+      "entry": {
+        "be": 18,
+        "c2": 7,
+        "extent": 65535,
+        "vram_base": 65520,
+        "tail": 504,
+        "cache": 0,
+        "source": 34480
+      },
+      "expected": {
+        "ok": 1,
+        "result": [
+          8,
+          112,
+          36208,
+          1
+        ],
+        "full_hash": "6fe9ddcdcee419a2",
+        "changed_hash": "b3c9dfbbb902c191",
+        "changed_count": 16,
+        "words": [
+          36208,
+          8,
+          0,
+          65520,
+          65535,
+          34480
+        ],
+        "record": [
+          1,
+          112,
+          141,
+          126,
+          32,
+          0,
+          112,
+          0
+        ],
+        "sentinels": [
+          90,
+          90,
+          90,
+          90,
+          90,
+          90
+        ],
+        "native_write_events": 20,
+        "native_unique_written_bytes": 16
+      }
+    },
+    {
+      "name": "controlled_hit_high_index",
+      "kind": "controlled",
+      "operation": [
+        90,
+        0,
+        0,
+        32768,
+        4660,
+        504,
+        34544
+      ],
+      "entry": {
+        "be": 0,
+        "c2": 0,
+        "extent": 32768,
+        "vram_base": 4660,
+        "tail": 504,
+        "cache": 34544,
+        "source": 34544
+      },
+      "expected": {
+        "ok": 1,
+        "result": [
+          32768,
+          0,
+          0,
+          0
+        ],
+        "full_hash": "2276ee8dced894ac",
+        "changed_hash": "7f87dd2e808e545a",
+        "changed_count": 2,
+        "words": [
+          23130,
+          32768,
+          504,
+          4660,
+          32768,
+          34544
+        ],
+        "record": [
+          90,
+          90,
+          90,
+          90,
+          90,
+          90,
+          90,
+          90
+        ],
+        "sentinels": [
+          90,
+          90,
+          90,
+          90,
+          90,
+          90
+        ],
+        "native_write_events": 2,
+        "native_unique_written_bytes": 2
+      }
+    },
+    {
+      "name": "controlled_adc_carry",
+      "kind": "controlled",
+      "operation": [
+        90,
+        0,
+        0,
+        4096,
+        4660,
+        0,
+        0
+      ],
+      "entry": {
+        "be": 0,
+        "c2": 0,
+        "extent": 4096,
+        "vram_base": 4660,
+        "tail": 0,
+        "cache": 0,
+        "source": 34544
+      },
+      "expected": {
+        "ok": 1,
+        "result": [
+          4096,
+          4661,
+          34544,
+          1
+        ],
+        "full_hash": "3add3a6982526f31",
+        "changed_hash": "806197f147d5a171",
+        "changed_count": 15,
+        "words": [
+          34544,
+          4096,
+          8,
+          4660,
+          4096,
+          34544
+        ],
+        "record": [
+          1,
+          240,
+          134,
+          126,
+          32,
+          0,
+          53,
+          18
+        ],
+        "sentinels": [
+          90,
+          90,
+          90,
+          90,
+          90,
+          90
+        ],
+        "native_write_events": 20,
+        "native_unique_written_bytes": 16
+      }
+    }
+  ]
+}

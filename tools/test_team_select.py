@@ -45,7 +45,7 @@ EXPECTED_DEBUG_FRAME_HASHES = {
 EXPECTED_DEBUG_STABLE_HASH = \
     "3430e5ff2ca65cc16ab37e586a92bbcc717b65be0424b19dfc8a44032ad8e95d"
 EXPECTED_PLAYER_DRAW_HASH = \
-    "2c561159b63e56e5e42a4d461a1f03bee65c1f7b94fcc5ee933349cbc66bff9f"
+    "4b6057f8970c3aac8cc773fc5cc585de6dbfb75888ea5eef344fd9ae15e0af3f"
 
 # Continuous production Setup -> Team Select frames. These close the coverage
 # gap left by direct --team-only captures: the outgoing framebuffer and scroll
@@ -138,9 +138,9 @@ def player_draw_configuration(assets):
     payload, width, height, flags = item
     if len(assets) != 265 + int(288 in assets) + int(289 in assets) or \
             (len(payload), width, height, flags) != \
-            (2144, 0, 0, 0) or payload[:8] != b"NBPDRAW1" or \
+            (2160, 0, 0, 0) or payload[:8] != b"NBPDRAW1" or \
             struct.unpack_from("<6I", payload, 8) != \
-            (1, 2096, 32, 8, 2128, 2144) or \
+            (2, 2096, 32, 8, 2128, 2160) or \
             hashlib.sha256(payload).hexdigest() != EXPECTED_PLAYER_DRAW_HASH:
         raise AssertionError("literal player-draw resource 287 changed")
     if 289 in assets:

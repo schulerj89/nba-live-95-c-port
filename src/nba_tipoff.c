@@ -4,6 +4,7 @@
 #include "nba_owner_flow.h"
 #include "nba_snes_ppu.h"
 #include "nba_font.h"
+#include "nba_graphics_jersey.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -10832,6 +10833,32 @@ void nba_tipoff_capture_telemetry(const NbaTipoff *tipoff,
     }
 }
 
+/* `$87:A64D-$A656`/`$80:ACC2`, rendering caller support: use actor identity
+ * and the published +$52 display direction, and invoke `$80:AD2B` only when
+ * the composed number submission carries nonzero glyph work `$0884`. */
+static bool append_player_jersey_work(
+        const NbaTipoff *tipoff, unsigned actor,
+        const NbaPlayerSpritePoseInput *pose) {
+    NbaPlayerSpritePoseComposition composition;
+    if (!tipoff || actor >= NBA_PLAYER_APPEARANCE_COUNT || !pose ||
+        !nba_player_compose_sprite_pose(tipoff->assets, pose, &composition))
+        return false;
+    for (unsigned index = 0; index < composition.count; ++index) {
+        const NbaPlayerSpriteSubmission *part = &composition.parts[index];
+        if (part->kind == NBA_PLAYER_SPRITE_NUMBER &&
+            part->glyph_work_0884 != 0u) {
+            NbaGraphicsBus bus = tipoff->graphics_bus;
+            NbaGraphicsJerseyAppendResult result;
+            return nba_graphics_jersey_append(
+                tipoff->assets, &bus, (uint16_t)(actor * 2u),
+                tipoff->actors[actor].direction, &result);
+        }
+    }
+    return true;
+}
+
+/* `$87:A47A-$A73D`, rendering: compose the carried actor list and bind the
+ * `$87:A64D-$A656` jersey-upload caller to canonical graphics WRAM. */
 void nba_tipoff_render(const NbaTipoff *tipoff, NbaRenderer *ren) {
     if (!tipoff || !tipoff->is_initialized || !ren) return;
     const uint8_t *gameplay_vram = NULL, *gameplay_cgram = NULL;
@@ -10947,13 +10974,15 @@ void nba_tipoff_render(const NbaTipoff *tipoff, NbaRenderer *ren) {
                     .head_order_51 = head_order,
                     .movement_c0 = tipoff->actors[actor].movement_direction,
                     .attribute_4f = prepared.attribute,
-                    /* 0884 is queue work and has no pixel effect. This
-                     * adapter neither exports nor claims its live value. */
+                    /* Start ACC2's queue-work word clear. The pose composer
+                     * publishes nonzero work on the number submission, and
+                     * the jersey caller above consumes that exact guard. */
                     .glyph_work_0884 = 0u,
                     .x = prepared.x,
                     .y = (int16_t)(prepared.y - jump)
                 };
                 int16_t ball_order = 0;
+                literal = append_player_jersey_work(tipoff, actor, &pose);
                 bool dribble = tipoff->ball.state != NBA_BALL_HIDDEN &&
                     tipoff->ball.owner_actor == (int8_t)actor &&
                     tipoff->possession_actor == (int8_t)actor &&
@@ -10963,7 +10992,7 @@ void nba_tipoff_render(const NbaTipoff *tipoff, NbaRenderer *ren) {
                     tipoff->rim_effect.resource_raw_4015 < 0x082cu &&
                     draw_upper_resource < 0x00f0u &&
                     nba_player_ball_draw_order(tipoff->assets, draw_upper_resource, &ball_order);
-                if (dribble) {
+                if (literal && dribble) {
                     /* A47A walks the carried list backwards; visiting the
                      * ball first sets 3F31 before this owner's AF1E call.
                      * Z does not participate in that sort, and equal depths
@@ -10978,7 +11007,7 @@ void nba_tipoff_render(const NbaTipoff *tipoff, NbaRenderer *ren) {
                         tipoff->assets, team, slot, uniform_side,
                         tipoff->actors[actor].direction, &pose, &ball, 1);
                     ball_in_player = literal;
-                } else {
+                } else if (literal) {
                     literal = nba_player_sprite_render_pose(&object_plane,
                         tipoff->assets, team, slot, uniform_side,
                         tipoff->actors[actor].direction, &pose, 1);

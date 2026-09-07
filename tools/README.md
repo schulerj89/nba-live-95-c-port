@@ -249,6 +249,25 @@ empty/fill/swap, preserved-hole, and invalid-view cases. The lifetime probe
 exercises the bounded `$85:8B6C-$8B75` equivalent at real Tipoff entry and
 proves binding and per-frame updates do not initialize the allocator.
 
+Replay the complete jersey cache/appender and its production renderer caller:
+
+~~~powershell
+./tools/build_vector_probe.ps1 -Name graphics_jersey_vector_probe,graphics_jersey_caller_probe
+python tools/verify_graphics_jersey_vectors.py `
+  --vectors tests/fixtures/graphics-jersey-witnesses.json `
+  --probe build/graphics_jersey_vector_probe.exe `
+  --pack build/nba95_assets.pak
+python tools/test_graphics_jersey_caller.py `
+  --probe build/graphics_jersey_caller_probe.exe `
+  --pack build/nba95_assets.pak
+~~~
+
+The native replay covers `$80:AD2B-$AD88` hits, misses, all six valid source
+directions, tail rollover, wrapped arithmetic, and the destination-shift carry.
+The caller check enters Tipoff through the game lifetime, retains the real
+pack-backed `$87:AFA2-$B058` source buffers, and renders miss, hit, direction
+change, directions one/five, and rollover paths.
+
 ## Controller held sampler
 
 Replay the `$87:9B30-$9B37` native entry/exit witnesses and exercise the host

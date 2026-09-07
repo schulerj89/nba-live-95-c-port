@@ -26,33 +26,74 @@ static uint16_t asset_u16(const uint8_t *p) {
     return (uint16_t)p[0] | (uint16_t)((uint16_t)p[1] << 8);
 }
 
+/* Host-only rendering asset boundary; no direct native address. Support
+ * literal `$87:A4F5`, `$87:A525`, and optional `$80:AD2B` use of v2
+ * `$87:A99E` rendering tables. Version one remains valid for callers that do
+ * not require the jersey appender. */
 bool nba_assets_player_draw_inputs_valid(const NbaAssetPack *pack) {
     const NbaAssetItem *item=nba_assets_get(pack,NBA_ASSET_PLAYER_DRAW_INPUTS);
-    if (!item || !item->data || item->size!=2144u || item->width ||
-        item->height || item->flags) return false;
+    if (!item || !item->data || item->size<40u || item->width ||
+        item->height || item->flags)
+        return false;
     const uint8_t *p=item->data;
-    if (memcmp(p,"NBPDRAW1",8) || asset_u32(p+8)!=1u ||
-        asset_u32(p+12)!=2096u || asset_u32(p+16)!=32u ||
-        asset_u32(p+20)!=8u || asset_u32(p+24)!=2128u ||
-        asset_u32(p+28)!=2144u) return false;
+    if (memcmp(p,"NBPDRAW1",8)) return false;
+    uint32_t version=asset_u32(p+8),head_offset,number_offset;
+    if (version==1u) {
+        if (item->size!=2144u || asset_u32(p+12)!=2096u ||
+            asset_u32(p+16)!=32u || asset_u32(p+20)!=8u ||
+            asset_u32(p+24)!=2128u || asset_u32(p+28)!=2144u) return false;
+        head_offset=32u;number_offset=2128u;
+    } else if (version==2u) {
+        if (item->size!=2160u || asset_u32(p+12)!=2096u ||
+            asset_u32(p+16)!=32u || asset_u32(p+20)!=8u ||
+            asset_u32(p+24)!=2128u || asset_u32(p+28)!=2160u) return false;
+        head_offset=32u;number_offset=2128u;
+    } else return false;
     /* Complete AC:B6B3 table integrity. The extractor additionally binds
      * original ROM/table SHA256; this runtime checksum is not attestation. */
     uint32_t checksum=2166136261u;
-    for (unsigned i=32u;i<2128u;++i) checksum=(checksum^p[i])*16777619u;
+    for (unsigned i=0u;i<2096u;++i)
+        checksum=(checksum^p[head_offset+i])*16777619u;
     if (checksum!=0xc5836647u) return false;
     static const uint16_t number[8]={0x593,0xffff,0x591,0x592,0x593,0xffff,0x591,0x592};
-    for (unsigned i=0;i<8u;++i) if (asset_u16(p+2128u+i*2u)!=number[i]) return false;
+    for (unsigned i=0;i<8u;++i)
+        if (asset_u16(p+number_offset+i*2u)!=number[i]) return false;
+    if (version==2u) {
+        checksum=2166136261u;
+        for (unsigned i=0u;i<16u;++i)
+            checksum=(checksum^p[2144u+i])*16777619u;
+        if (checksum!=0xae656aa5u) return false;
+    }
     return true;
 }
 
+/* Host-only rendering lookup; no direct native address. Support
+ * `$87:A4F5-$A525` with signed head order and the number
+ * resource selected by the actor's published display direction. */
 bool nba_assets_player_draw_inputs(const NbaAssetPack *pack,uint16_t upper,
     uint16_t resolved_direction,uint16_t *head_order,uint16_t *number_resource) {
     if (!head_order || !number_resource || upper>=0x830u ||
         resolved_direction>=8u || !nba_assets_player_draw_inputs_valid(pack)) return false;
     const uint8_t *p=nba_assets_get(pack,NBA_ASSET_PLAYER_DRAW_INPUTS)->data;
-    uint16_t head=(uint16_t)(int16_t)(int8_t)p[32u+upper];
-    uint16_t number=asset_u16(p+2128u+resolved_direction*2u);
+    uint32_t head_offset=32u;
+    uint32_t number_offset=2128u;
+    uint16_t head=(uint16_t)(int16_t)(int8_t)p[head_offset+upper];
+    uint16_t number=asset_u16(p+number_offset+resolved_direction*2u);
     *head_order=head;*number_resource=number;return true;
+}
+
+/* Host-only rendering accessor; no direct native address. Expose the packed
+ * `$87:A99E-$A9AD` jersey source word for
+ * `$80:AD2B-$AD88`. `$FFFF` is a valid table value for directions one/five. */
+bool nba_assets_player_jersey_source(const NbaAssetPack *pack,
+                                     uint16_t display_direction,
+                                     uint16_t *source_address) {
+    if (!source_address || display_direction>=8u ||
+        !nba_assets_player_draw_inputs_valid(pack)) return false;
+    const uint8_t *p=nba_assets_get(pack,NBA_ASSET_PLAYER_DRAW_INPUTS)->data;
+    if (asset_u32(p+8)!=2u) return false;
+    *source_address=asset_u16(p+2144u+display_direction*2u);
+    return true;
 }
 
 static bool formation_payload_valid(const uint8_t *data, size_t size) {

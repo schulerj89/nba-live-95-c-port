@@ -151,6 +151,7 @@ if ($Test) {
     # Initialize MSVC once for all probes; each still links the current objects.
     & (Join-Path $Root 'tools\build_vector_probe.ps1') -Name @(
         'game_wram_lifetime_probe', 'graphics_allocator_vector_probe',
+        'graphics_jersey_vector_probe', 'graphics_jersey_caller_probe',
         'controller_held_sampler_probe',
         'player_appearance_publication_probe',
         'cpu_defense_context_vector_probe', 'cpu_mode_seven_vector_probe',
@@ -168,6 +169,17 @@ if ($Test) {
     Invoke-PythonRegression -Script 'verify_graphics_allocator_vectors.py' -Arguments @(
         '--vectors', (Join-Path $Root 'tests\fixtures\graphics-allocator-witnesses.json'),
         '--probe', (Join-Path $BuildDir 'graphics_allocator_vector_probe.exe')
+    )
+
+    Invoke-PythonRegression -Script 'verify_graphics_jersey_vectors.py' -Arguments @(
+        '--vectors', (Join-Path $Root 'tests\fixtures\graphics-jersey-witnesses.json'),
+        '--probe', (Join-Path $BuildDir 'graphics_jersey_vector_probe.exe'),
+        '--pack', $AssetPack
+    )
+
+    Invoke-PythonRegression -Script 'test_graphics_jersey_caller.py' -Arguments @(
+        '--probe', (Join-Path $BuildDir 'graphics_jersey_caller_probe.exe'),
+        '--pack', $AssetPack
     )
 
     Invoke-PythonRegression -Script 'test_controller_held_sampler.py' -Arguments @(

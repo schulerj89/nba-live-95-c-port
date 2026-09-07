@@ -30,6 +30,11 @@ successful Tipoff entry through the bounded `$85:8B6C-$8B75` caller contract.
 It initializes canonical allocator controls and byte tables, clears the
 `$2640-$2E71` cache through `$80:AC0D-$AC1A`, and fills/rotates the first sparse
 buffer through `$80:AC89-$ACC1`. Binding and frame updates do not trigger it.
+The renderer now calls the complete jersey cache/appender `$80:AD2B-$AD88`
+only for actual number work. It selects the pack-backed `$87:A99E` source by
+the actor's display direction, applies the actor-identity source stride, and
+publishes an eight-byte upload record into canonical WRAM with cache-hit and
+ring-rollover behavior preserved.
 
 Recent source-verified visual and gameplay fixes include:
 
@@ -112,10 +117,11 @@ mode-seven,
 - Ordinary human offense, defense, passing, shooting, inbound control, and
   controller ownership are not complete production paths. Bounded human
   helpers exist but do not make a normal matchup fully playable.
-- Canonical graphics WRAM has a production lifetime owner and allocator
-  initialization, but the native
-  jersey appender `$80:AD2B-$AD88`, remaining ordered producers/consumer, and
-  `$012C` provenance required by `$87:B7D8` remain unimplemented.
+- Canonical graphics WRAM has a production lifetime owner, allocator
+  initialization, active-player jersey publication, and the native jersey
+  appender. The appender can overlap a descriptor length onto `$012C`, but the
+  remaining producer/consumer ordering and `$012C` history required by
+  `$87:B7D8` remain unverified.
 - Tipoff's post-bind graphics initializer publishes `$87:AFA2-$B058`: all ten
   active-player appearance records, the `$8E10-$8E23` cache invalidation, and
   six pack-derived `$87:B059-$B354` jersey views per actor at `$8690-$8E0F`.
@@ -138,7 +144,7 @@ Current generated captured-address measurements are:
 |---|---:|---:|
 | observed in retained execution captures | 29,438 | 100.0% |
 | documented by source provenance | 29,101 | 98.9% |
-| inside evidence-eligible verified ranges | 12,043 | 40.9% |
+| inside evidence-eligible verified ranges | 12,100 | 41.1% |
 
 These are coverage measurements for retained captures. They are not a
 percentage of the ROM, retail features, or game completion. The generated

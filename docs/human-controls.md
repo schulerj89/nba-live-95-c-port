@@ -3,8 +3,11 @@
 Human gameplay remains incomplete. The action parent `$84:E2AC-$E3E9`
 naturally reaches the pass catch preinitializer at `$86:AF66`, whose pose
 helper `$87:B7D8` reads canonical WRAM `$012C`. The game-lifetime WRAM owner,
-shared renderer/Tipoff views, and native graphics allocator initialization are
-present, but no production graphics producer currently establishes that word.
+shared renderer/Tipoff views, native graphics allocator initialization, jersey
+buffer publication, and the jersey upload appender are present. The appender
+can write `$012C` when a ring record starts at tail `$0028`, but the complete
+producer/consumer order and the value visible at human action time are not yet
+verified.
 
 The held-input sampler `$87:9B30-$9B37` is complete. The actor sweep enters it
 from `$87:915D` with the actor's 16-bit controller index in A; the routine
@@ -27,11 +30,11 @@ existing pad-zero host conversion and zero values for pads one through four.
 
 The dependency order is:
 
-1. `$87:AFA2-$B058` now invalidates the cache and publishes the complete
-   `$87:B059-$B354` jersey buffer. Implement `$80:AD2B-$AD88` next with its
-   real renderer caller inputs.
+1. `$87:AFA2-$B058` invalidates the cache and publishes the complete
+   `$87:B059-$B354` jersey buffer. `$80:AD2B-$AD88` now appends its pack-backed
+   upload record from the real renderer caller when number work is present.
 2. Complete the remaining ordered graphics producers and consumer that give
-   `$012C` its production provenance.
+   `$012C` its full production history at the human pass boundary.
 3. Resume the complete action parent and all naturally reachable action paths,
    including `$86:AF66` and the `$86:B335` layup/shot wrapper.
 4. Complete the remaining `$87:9106-$92A4` actor/controller sweep around the

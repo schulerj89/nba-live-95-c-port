@@ -2,6 +2,15 @@
   "comment": "Routines verified against emulator ground truth. Byte ranges are 24-bit SNES bus addresses. evidence points at capture/replay artifacts; tools/progress.py counts these bytes as verified. Evidence strings may name historical reports, capture helpers, or replay probes archived during cleanup; those paths remain recoverable from Git history.",
   "routines": [
     {
+      "range": "80AD2B-80AD88",
+      "coverage_credit": true,
+      "name": "nba_graphics_jersey_append / jersey upload cache and ring appender",
+      "source": "src/nba_graphics_jersey.c + src/nba_assets.c + src/nba_tipoff.c",
+      "method": "repeated natural/controlled native write projection + production renderer caller probe",
+      "evidence": "Two natural captures with identical boundary, write and path data retain 1,288 complete calls: 1,244 cache hits and 44 misses over all six valid $87:A99E sources, one tail rollover, and all 49 instruction starts including the RTS boundary. Repeated controlled genuine-entry witnesses cover 16-bit index/VRAM wrap, a high-index cache hit, and the bit-12 carry from four ASLs into the descriptor destination ADC. The strict normalizer pins ROM, Mesen, scripts, isolated settings, manifests, paths, boundaries, exact ordered writes, and positively identified interrupt stack sequences; the tracked fixture contains only behavioral state, addresses and hashes. Production C matches 16 projected calls plus host atomic rejection and proves a cache hit ignores an unread malformed tail while still writing DP $04. The real NbaGame Tipoff renderer caller uses BE=2*actor identity, actor +$52 display direction, the composed $0884 number-work guard, pack-backed $87:A99E, and AFA2-published $8690-$8E0F buffers; its probe covers miss, hit, direction change, directions1/5, preservation and rollover. Tail $0028 can overlap a descriptor length onto $012C; full producer/consumer ordering and the value visible at the human-action boundary remain outside scope.",
+      "date": "2026-09-06"
+    },
+    {
       "range": "80AD92-80AEC1",
       "name": "nba_player_compose_sprite_parts / gameplay player compositor",
       "source": "src/nba_player_lab.c",
